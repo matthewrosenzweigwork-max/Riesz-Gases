@@ -1,0 +1,1265 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.RdInit · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.RdInit</code></h1><p><a href="../../lean/HRS/MP/RdInit.lean">Open the unaltered Lean file</a> · 1264 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MP.HNegInfra
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.KolmChentsov
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Commutator.Whole.Energy
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Commutator.Whole.LocalAuxSAMP2
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>noncomputable section
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>open scoped ENNReal NNReal BigOperators ContDiff FourierTransform
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>namespace HRS.MP.RdInit
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open HRS HRS.Whole HRS.Whole.AppendixALemmas
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>variable {d : ℕ}
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>/-- the tuple of coordinate unit vectors `e_{idx 1}, …, e_{idx j}` -/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>def mri_e {j : ℕ} (idx : Fin j → Fin d) : Fin j → Euc d := fun l =&gt; EuclideanSpace.single (idx l) 1
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>theorem mri_partialDeriv_def {j : ℕ} (idx : Fin j → Fin d) (f : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>    partialDeriv idx f x = iteratedFDeriv ℝ j f x (mri_e idx) := rfl
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>theorem mri_norm_e {j : ℕ} (idx : Fin j → Fin d) (l : Fin j) : ‖mri_e idx l‖ = 1 := by
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  simp [mri_e]
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem mri_abs_partialDeriv_le {j : ℕ} (idx : Fin j → Fin d) (f : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    |partialDeriv idx f x| ≤ ‖iteratedFDeriv ℝ j f x‖ := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  have := (iteratedFDeriv ℝ j f x).le_opNorm (mri_e idx)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  show |iteratedFDeriv ℝ j f x (mri_e idx)| ≤ _
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  simpa [mri_norm_e] using this
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>theorem mri_fourier_partial {k : ℕ} {u : Euc d → ℝ} (hu : ContDiff ℝ k u) (hc : HasCompactSupport u)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    {j : ℕ} (hj : j ≤ k) (idx : Fin j → Fin d) (ξ : Euc d) :
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    ‖𝓕 (fun x =&gt; ((partialDeriv idx u x : ℝ) : ℂ)) ξ‖ =
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>      (2 * Real.pi) ^ j * (∏ i, |ξ (idx i)|) * ‖𝓕 (fun x =&gt; ((u x : ℝ) : ℂ)) ξ‖ := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  set f : Euc d → ℂ := fun x =&gt; ((u x : ℝ) : ℂ) with hf
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have hfC : ContDiff ℝ (k : ℕ∞) f := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    have := Complex.ofRealCLM.contDiff.comp hu
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    exact this
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have hfc : HasCompactSupport f := hc.comp_left (g := fun t : ℝ =&gt; (t : ℂ)) (by simp)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hint : ∀ n : ℕ, (n : ℕ∞) ≤ (k : ℕ∞) → Integrable (iteratedFDeriv ℝ n f) volume := by
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    intro n hn
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    have hcn : Continuous (iteratedFDeriv ℝ n f) := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      refine hfC.continuous_iteratedFDeriv ?_
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>      exact_mod_cast hn
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    exact hcn.integrable_of_hasCompactSupport (hfc.iteratedFDeriv n)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hjk : (j : ℕ∞) ≤ (k : ℕ∞) := by exact_mod_cast hj
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have h1 := Real.fourier_iteratedFDeriv hfC hint hjk
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hcomp : ∀ x, iteratedFDeriv ℝ j f x (mri_e idx) = ((partialDeriv idx u x : ℝ) : ℂ) := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    intro x
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    have : iteratedFDeriv ℝ j f x = Complex.ofRealCLM.compContinuousMultilinearMap (iteratedFDeriv ℝ j u x) := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      have := Complex.ofRealCLM.iteratedFDeriv_comp_left (x := x) (f := u) (n := (k : WithTop ℕ∞))
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        hu.contDiffAt (i := j) (by exact_mod_cast hj)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      exact this
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    rw [this]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    rfl
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have h2 : 𝓕 (fun x =&gt; ((partialDeriv idx u x : ℝ) : ℂ)) ξ = 𝓕 (iteratedFDeriv ℝ j f) ξ (mri_e idx) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    have h3 := Real.fourierIntegral_continuousMultilinearMap_apply&#x27; (L := innerSL ℝ) (μ := volume)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      (hf := hint j hjk) (m := mri_e idx) (w := ξ)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    have h4 : (fun x =&gt; ((partialDeriv idx u x : ℝ) : ℂ)) = fun x =&gt; iteratedFDeriv ℝ j f x (mri_e idx) := by
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      funext x; exact (hcomp x).symm
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    rw [h4]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    exact h3.symm
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  rw [h2, h1]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  simp only [VectorFourier.fourierPowSMulRight_apply]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hin : ∀ a : Fin d, innerSL ℝ ξ (EuclideanSpace.single a (1 : ℝ)) = ξ a := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    intro a
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    rw [innerSL_apply_apply, EuclideanSpace.inner_single_right]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    simp
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  simp [mri_e, hin]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  ring
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>theorem mri_sum_idx_sq (j : ℕ) (ξ : Euc d) :
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    ∑ idx : Fin j → Fin d, (∏ i, |ξ (idx i)|) ^ 2 = ‖ξ‖ ^ (2 * j) := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have h1 : ∀ idx : Fin j → Fin d, (∏ i, |ξ (idx i)|) ^ 2 = ∏ i, ξ (idx i) ^ 2 := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    intro idx
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    rw [← Finset.prod_pow]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    exact Finset.prod_congr rfl fun i _ =&gt; sq_abs _
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  simp_rw [h1]
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have h2 := Finset.prod_univ_sum (fun _ : Fin j =&gt; (Finset.univ : Finset (Fin d)))
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (fun _ a =&gt; ξ a ^ 2)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  rw [Fintype.piFinset_univ] at h2
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  rw [← h2, Finset.prod_const, Finset.card_univ, Fintype.card_fin, pow_mul,
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    EuclideanSpace.norm_sq_eq]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  simp
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>open HRS.PDE.ToolboxRd HRS.PDE.ToolboxRd.FourierAux in
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>theorem mri_partial_memLp {k : ℕ} {u : Euc d → ℝ} (hu : ContDiff ℝ k u) (hc : HasCompactSupport u)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    {j : ℕ} (hj : j ≤ k) (idx : Fin j → Fin d) :
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    Continuous (partialDeriv idx u) ∧ HasCompactSupport (partialDeriv idx u) := by
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hcont : Continuous (iteratedFDeriv ℝ j u) := hu.continuous_iteratedFDeriv (by exact_mod_cast hj)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  refine ⟨?_, ?_⟩
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  · exact (continuous_eval_const (mri_e idx)).comp hcont
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  · have := (hc.iteratedFDeriv j).comp_left (g := fun A : ContinuousMultilinearMap ℝ (fun _ : Fin j =&gt; Euc d) ℝ =&gt; A (mri_e idx)) (by simp)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    exact this
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>open HRS.PDE.ToolboxRd HRS.PDE.ToolboxRd.FourierAux in
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>/-- For `u ∈ C^k_c`: the `H^k` norm squared is the binomial combination of the `L²` norms of the
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>partial derivatives. -/
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>theorem mri_sobolev_deriv {k : ℕ} {u : Euc d → ℝ} (hu : ContDiff ℝ k u) (hc : HasCompactSupport u) :
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    HRS.PDE.ToolboxRd.MemSobolev (k : ℝ) u ∧ HRS.PDE.ToolboxRd.sobolevNormSq (k : ℝ) u =
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      ∑ j ∈ Finset.range (k + 1), (k.choose j : ℝ) *
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        ∑ idx : Fin j → Fin d, ∫ x, (partialDeriv idx u x) ^ 2 := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hu0 : ContDiff ℝ (0 : ℕ) u := hu.of_le (by exact_mod_cast Nat.zero_le k)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  have hL2 : MemLp u 2 volume := hu0.continuous.memLp_of_hasCompactSupport hc
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hL1 : Integrable u volume := hu0.continuous.integrable_of_hasCompactSupport hc
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hFu : fourierL2 u =ᵐ[volume] 𝓕 (fun x : Euc d =&gt; ((u x : ℝ) : ℂ)) :=
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    HRS.Commutator.Whole.energyAux_fourierL2_eq u hL1 hL2
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hv : ∀ j ≤ k, ∀ idx : Fin j → Fin d, MemLp (partialDeriv idx u) 2 volume ∧
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      Integrable (partialDeriv idx u) volume := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    intro j hj idx
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    obtain ⟨h1, h2⟩ := mri_partial_memLp hu hc hj idx
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    exact ⟨h1.memLp_of_hasCompactSupport h2, h1.integrable_of_hasCompactSupport h2⟩
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hFv : ∀ j ≤ k, ∀ idx : Fin j → Fin d, ∀ᵐ ξ ∂(volume : Measure (Euc d)),
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      ‖fourierL2 (partialDeriv idx u) ξ‖ = (2 * Real.pi) ^ j * (∏ i, |ξ (idx i)|) * ‖fourierL2 u ξ‖ := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    intro j hj idx
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have h := HRS.Commutator.Whole.energyAux_fourierL2_eq (partialDeriv idx u) (hv j hj idx).2
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      (hv j hj idx).1
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    filter_upwards [h, hFu] with ξ h1 h2
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    rw [h1, h2, mri_fourier_partial hu hc hj idx ξ]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  -- the integrand identities
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hterm : ∀ j ≤ k, (∀ᵐ ξ ∂(volume : Measure (Euc d)),
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      (4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ j * ‖fourierL2 u ξ‖ ^ 2 =
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        ∑ idx : Fin j → Fin d, ‖fourierL2 (partialDeriv idx u) ξ‖ ^ 2) := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    intro j hj
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    have hall : ∀ᵐ ξ ∂(volume : Measure (Euc d)), ∀ idx : Fin j → Fin d,
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        ‖fourierL2 (partialDeriv idx u) ξ‖ = (2 * Real.pi) ^ j * (∏ i, |ξ (idx i)|) * ‖fourierL2 u ξ‖ :=
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      ae_all_iff.2 fun idx =&gt; hFv j hj idx
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    filter_upwards [hall] with ξ h
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    simp_rw [h]
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    have : ∀ idx : Fin j → Fin d, ((2 * Real.pi) ^ j * (∏ i, |ξ (idx i)|) * ‖fourierL2 u ξ‖) ^ 2 =
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        (2 * Real.pi) ^ (2 * j) * ‖fourierL2 u ξ‖ ^ 2 * (∏ i, |ξ (idx i)|) ^ 2 := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      intro idx
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      rw [show (2 * Real.pi) ^ (2 * j) = ((2 * Real.pi) ^ j) ^ 2 by ring]; ring
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    simp_rw [this]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    rw [← Finset.mul_sum, mri_sum_idx_sq]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    have h4 : (4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ j = (2 * Real.pi) ^ (2 * j) * ‖ξ‖ ^ (2 * j) := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      rw [show 4 * Real.pi ^ 2 * ‖ξ‖ ^ 2 = (2 * Real.pi) ^ 2 * ‖ξ‖ ^ 2 by ring, mul_pow, ← pow_mul, ← pow_mul]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    rw [h4]; ring
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have hint_term : ∀ j ≤ k, Integrable (fun ξ : Euc d =&gt; (4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ j * ‖fourierL2 u ξ‖ ^ 2) volume := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    intro j hj
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    have : Integrable (fun ξ : Euc d =&gt; ∑ idx : Fin j → Fin d, ‖fourierL2 (partialDeriv idx u) ξ‖ ^ 2) volume :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      integrable_finsetSum _ fun idx _ =&gt; integrable_norm_sq_fourierL2 (hv j hj idx).1
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    exact this.congr (by filter_upwards [hterm j hj] with ξ h using h.symm)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have hbin : ∀ ξ : Euc d, (1 + 4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ (k : ℝ) * ‖fourierL2 u ξ‖ ^ 2 =
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      ∑ j ∈ Finset.range (k + 1), (k.choose j : ℝ) * ((4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ j * ‖fourierL2 u ξ‖ ^ 2) := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    intro ξ
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    rw [Real.rpow_natCast, add_comm, add_pow, Finset.sum_mul]
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    refine Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    simp only [one_pow, mul_one]
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    ring
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hint : Integrable (fun ξ : Euc d =&gt; (1 + 4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ (k : ℝ) * ‖fourierL2 u ξ‖ ^ 2) volume := by
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    simp_rw [hbin]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    exact integrable_finsetSum _ fun j hj =&gt;
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      (hint_term j (by simpa [Nat.lt_succ_iff] using hj)).const_mul _
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  refine ⟨⟨hL2, hint⟩, ?_⟩
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  unfold sobolevNormSq
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  simp_rw [hbin]
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  rw [integral_finsetSum _ fun j hj =&gt;
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    (hint_term j (by simpa [Nat.lt_succ_iff] using hj)).const_mul _]
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  refine Finset.sum_congr rfl fun j hj =&gt; ?_
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have hjk : j ≤ k := by simpa [Nat.lt_succ_iff] using hj
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  rw [integral_const_mul]
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  congr 1
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  rw [integral_congr_ae (hterm j hjk), integral_finsetSum _ fun idx _ =&gt;
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    integrable_norm_sq_fourierL2 (hv j hjk idx).1]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  refine Finset.sum_congr rfl fun idx _ =&gt; ?_
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  rw [integral_norm_sq_fourierL2 (hv j hjk idx).1]
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-! ### Localization with the cutoff -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>/-- derivative bounds of the cutoff -/
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>theorem mri_cutoff_bound {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m : ℕ) :
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    ∃ M : ℝ, 0 ≤ M ∧ ∀ i ≤ m, ∀ x, ‖iteratedFDeriv ℝ i χ x‖ ≤ M := by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  obtain ⟨hsm, hcs, -, -, -⟩ := hχ
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have hb : ∀ i : ℕ, ∃ C : ℝ, ∀ x, ‖iteratedFDeriv ℝ i χ x‖ ≤ C := fun i =&gt;
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (hsm.continuous_iteratedFDeriv (by exact_mod_cast le_top)).bounded_above_of_compact_support
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      (hcs.iteratedFDeriv i)
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  choose C hC using hb
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  refine ⟨∑ i ∈ Finset.range (m + 1), |C i|, Finset.sum_nonneg fun i _ =&gt; abs_nonneg _, fun i hi x =&gt; ?_⟩
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  refine (hC i x).trans ?_
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  refine (le_abs_self _).trans ?_
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  exact Finset.single_le_sum (f := fun i =&gt; |C i|) (fun i _ =&gt; abs_nonneg _)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (Finset.mem_range.2 (Nat.lt_succ_of_le hi))
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>theorem mri_cutoff_deriv_bound {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) {M : ℝ}
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    (m : ℕ) (hM : ∀ i ≤ m, ∀ x, ‖iteratedFDeriv ℝ i χ x‖ ≤ M) (z : Euc d) {i : ℕ} (hi : i ≤ m)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (x : Euc d) :
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    ‖iteratedFDeriv ℝ i (fun y =&gt; χ (y - z)) x‖ ≤ (Metric.ball z 2).indicator (fun _ =&gt; M) x := by
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  rw [iteratedFDeriv_comp_sub]
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  by_cases hx : x ∈ Metric.ball z 2
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  · rw [Set.indicator_of_mem hx]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    exact hM i hi _
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  · rw [Set.indicator_of_notMem hx]
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have : x - z ∉ tsupport χ := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      intro h
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      apply hx
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      have := hχ.2.2.1 h
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      rw [Metric.mem_ball, dist_eq_norm]
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      simpa [Metric.mem_ball] using this
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    have hz : iteratedFDeriv ℝ i χ (x - z) = 0 := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      by_contra hne
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      exact this (support_iteratedFDeriv_subset i (Function.mem_support.2 hne))
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    rw [hz]; simp
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>/-- `∑_{i ≤ m} ‖D^i g(x)‖²` -/
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>def mriG (m : ℕ) (g : Euc d → ℝ) (x : Euc d) : ℝ := ∑ i ∈ Finset.range (m + 1), ‖iteratedFDeriv ℝ i g x‖ ^ 2
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>theorem mriG_nonneg (m : ℕ) (g : Euc d → ℝ) (x : Euc d) : 0 ≤ mriG m g x :=
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  Finset.sum_nonneg fun i _ =&gt; sq_nonneg _
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>theorem mriG_continuous {m : ℕ} {g : Euc d → ℝ} (hg : ContDiff ℝ m g) : Continuous (mriG m g) := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  unfold mriG
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  refine continuous_finset_sum _ fun i hi =&gt; ?_
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  have : i ≤ m := Nat.lt_succ_iff.1 (Finset.mem_range.1 hi)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  exact (hg.continuous_iteratedFDeriv (by exact_mod_cast this)).norm.pow 2
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>theorem mri_leibniz_sq {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) {M : ℝ} (hM0 : 0 ≤ M)
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    (m : ℕ) (hM : ∀ i ≤ m, ∀ x, ‖iteratedFDeriv ℝ i χ x‖ ≤ M) {g : Euc d → ℝ} (hg : ContDiff ℝ m g)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    (z : Euc d) {j : ℕ} (hj : j ≤ m) (x : Euc d) :
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    ‖iteratedFDeriv ℝ j (fun y =&gt; χ (y - z) * g y) x‖ ^ 2 ≤
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>      (Metric.ball z 2).indicator (fun y =&gt; ((m + 1 : ℕ) : ℝ) * 4 ^ m * M ^ 2 * mriG m g y) x := by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  have hχz : ContDiff ℝ m (fun y =&gt; χ (y - z)) :=
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    (hχ.1.of_le (by exact_mod_cast le_top)).comp (contDiff_id.sub contDiff_const)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  have hle := norm_iteratedFDeriv_mul_le hχz hg x (n := j) (by exact_mod_cast hj)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  by_cases hx : x ∈ Metric.ball z 2
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  · rw [Set.indicator_of_mem hx]
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    have hb : ∀ i ∈ Finset.range (j + 1), (j.choose i : ℝ) * ‖iteratedFDeriv ℝ i (fun y =&gt; χ (y - z)) x‖ *
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        ‖iteratedFDeriv ℝ (j - i) g x‖ ≤ (2 : ℝ) ^ j * M * ‖iteratedFDeriv ℝ (j - i) g x‖ := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      intro i hi
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      have hi&#x27; : i ≤ j := Nat.lt_succ_iff.1 (Finset.mem_range.1 hi)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      have h1 := mri_cutoff_deriv_bound hχ (M := M) m hM z (hi&#x27;.trans hj) x
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>      rw [Set.indicator_of_mem hx] at h1
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>      have h2 : (j.choose i : ℝ) ≤ 2 ^ j := by exact_mod_cast Nat.choose_le_two_pow j i
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      have : (j.choose i : ℝ) * ‖iteratedFDeriv ℝ i (fun y =&gt; χ (y - z)) x‖ ≤ 2 ^ j * M :=
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        mul_le_mul h2 h1 (norm_nonneg _) (by positivity)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      exact mul_le_mul_of_nonneg_right this (norm_nonneg _)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    have h3 := hle.trans (Finset.sum_le_sum hb)
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    have h4 : ‖iteratedFDeriv ℝ j (fun y =&gt; χ (y - z) * g y) x‖ ^ 2 ≤
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>        (∑ i ∈ Finset.range (j + 1), (2 : ℝ) ^ j * M * ‖iteratedFDeriv ℝ (j - i) g x‖) ^ 2 :=
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>      pow_le_pow_left₀ (norm_nonneg _) h3 2
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    refine h4.trans ?_
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    refine (sq_sum_le_card_mul_sum_sq).trans ?_
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    rw [Finset.card_range]
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    have h5 : ∑ i ∈ Finset.range (j + 1), ((2 : ℝ) ^ j * M * ‖iteratedFDeriv ℝ (j - i) g x‖) ^ 2 ≤
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>        4 ^ m * M ^ 2 * mriG m g x := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      have : ∀ i ∈ Finset.range (j + 1), ((2 : ℝ) ^ j * M * ‖iteratedFDeriv ℝ (j - i) g x‖) ^ 2 =
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>          (4 : ℝ) ^ j * M ^ 2 * ‖iteratedFDeriv ℝ (j - i) g x‖ ^ 2 := by
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>        intro i _
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>        rw [show (4 : ℝ) ^ j = ((2 : ℝ) ^ j) ^ 2 by rw [← pow_mul, mul_comm, pow_mul]; norm_num]
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        ring
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>      have hrefl : ∑ i ∈ Finset.range (j + 1), ‖iteratedFDeriv ℝ (j - i) g x‖ ^ 2 =
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>          ∑ i ∈ Finset.range (j + 1), ‖iteratedFDeriv ℝ i g x‖ ^ 2 := by
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>        have := Finset.sum_range_reflect (fun i =&gt; ‖iteratedFDeriv ℝ i g x‖ ^ 2) (j + 1)
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>        simpa using this
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>      rw [Finset.sum_congr rfl this, ← Finset.mul_sum, hrefl]
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>      have h6 : ∑ i ∈ Finset.range (j + 1), ‖iteratedFDeriv ℝ i g x‖ ^ 2 ≤ mriG m g x := by
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>        unfold mriG
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>        exact Finset.sum_le_sum_of_subset_of_nonneg
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>          (Finset.range_subset_range.2 (by omega)) fun i _ _ =&gt; sq_nonneg _
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>      have h7 : (4 : ℝ) ^ j ≤ 4 ^ m := pow_le_pow_right₀ (by norm_num) hj
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      exact mul_le_mul (mul_le_mul_of_nonneg_right h7 (sq_nonneg _)) h6
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        (Finset.sum_nonneg fun i _ =&gt; sq_nonneg _) (by positivity)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    have h8 : ((j + 1 : ℕ) : ℝ) ≤ ((m + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_le_succ hj
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    exact le_trans (mul_le_mul h8 h5 (Finset.sum_nonneg fun i _ =&gt; sq_nonneg _) (by positivity))
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>      (le_of_eq (by ring))
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  · rw [Set.indicator_of_notMem hx]
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    have hb : ∀ i ∈ Finset.range (j + 1), (j.choose i : ℝ) * ‖iteratedFDeriv ℝ i (fun y =&gt; χ (y - z)) x‖ *
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>        ‖iteratedFDeriv ℝ (j - i) g x‖ ≤ 0 := by
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>      intro i hi
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>      have hi&#x27; : i ≤ j := Nat.lt_succ_iff.1 (Finset.mem_range.1 hi)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      have h1 := mri_cutoff_deriv_bound hχ (M := M) m hM z (hi&#x27;.trans hj) x
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      rw [Set.indicator_of_notMem hx] at h1
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      have h0 : ‖iteratedFDeriv ℝ i (fun y =&gt; χ (y - z)) x‖ = 0 := le_antisymm h1 (norm_nonneg _)
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      rw [h0]; simp
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    have h3 := hle.trans (Finset.sum_nonpos hb)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    have : ‖iteratedFDeriv ℝ j (fun y =&gt; χ (y - z) * g y) x‖ = 0 := le_antisymm h3 (norm_nonneg _)
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    rw [this]; simp
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>theorem mri_norm_le_sum {j : ℕ} (A : ContinuousMultilinearMap ℝ (fun _ : Fin j =&gt; Euc d) ℝ) :
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    ‖A‖ ≤ ∑ idx : Fin j → Fin d, |A (mri_e idx)| := by
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  refine A.opNorm_le_bound (Finset.sum_nonneg fun _ _ =&gt; abs_nonneg _) fun m =&gt; ?_
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  have hm : ∀ i, m i = ∑ a : Fin d, (m i a) • EuclideanSpace.single a (1:ℝ) := by
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    intro i
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    ext b
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    simp [Pi.single_apply]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  have h1 : A m = ∑ r ∈ Fintype.piFinset (fun _ : Fin j =&gt; (Finset.univ : Finset (Fin d))),
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>      A.toMultilinearMap (fun i =&gt; (m i (r i)) • EuclideanSpace.single (r i) (1:ℝ)) := by
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    conv_lhs =&gt; rw [show m = fun i =&gt; ∑ a : Fin d, (m i a) • EuclideanSpace.single a (1:ℝ) from funext hm]
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    exact A.toMultilinearMap.map_sum (fun i a =&gt; (m i a) • EuclideanSpace.single a (1:ℝ))
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  have h2 : ∀ r : Fin j → Fin d, A.toMultilinearMap (fun i =&gt; (m i (r i)) • EuclideanSpace.single (r i) (1:ℝ)) =
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>      (∏ i, m i (r i)) • A (mri_e r) := by
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    intro r
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    rw [MultilinearMap.map_smul_univ]
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    rfl
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  rw [h1]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  simp_rw [h2]
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  rw [Fintype.piFinset_univ, Finset.sum_mul]
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun r _ =&gt; ?_)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  rw [norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, Finset.abs_prod, mul_comm (|A (mri_e r)|)]
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  have hp : ∏ i, |(m i).ofLp (r i)| ≤ ∏ i, ‖m i‖ :=
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    Finset.prod_le_prod₀ (fun i _ =&gt; abs_nonneg _) (fun i _ =&gt; by
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      have := PiLp.norm_apply_le (m i) (r i)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      simpa using this)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  exact mul_le_mul_of_nonneg_right hp (abs_nonneg _)
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>theorem mri_norm_sq_le {j : ℕ} (A : ContinuousMultilinearMap ℝ (fun _ : Fin j =&gt; Euc d) ℝ) :
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    ‖A‖ ^ 2 ≤ (d : ℝ) ^ j * ∑ idx : Fin j → Fin d, (A (mri_e idx)) ^ 2 := by
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have h1 := mri_norm_le_sum A
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have h2 : ‖A‖ ^ 2 ≤ (∑ idx : Fin j → Fin d, |A (mri_e idx)|) ^ 2 :=
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    pow_le_pow_left₀ (norm_nonneg _) h1 2
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  refine h2.trans ?_
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  refine (sq_sum_le_card_mul_sum_sq).trans ?_
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  rw [Finset.card_univ, Fintype.card_fun, Fintype.card_fin, Fintype.card_fin]
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  simp [sq_abs]
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>theorem mri_phi_add (a b : mhn_Hc d) : mhn_phi (a + b) = mhn_phi a + mhn_phi b := by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>  funext x
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  apply Complex.ofReal_injective
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  have hint : ∀ c : mhn_Hc d, Integrable (fun v : Euc d =&gt;
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>      Complex.exp (↑(2 * Real.pi * inner ℝ v x) * Complex.I) • c.1 v) volume := by
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    intro c
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    have hc : Continuous (fun v : Euc d =&gt;
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>        Complex.exp (↑(2 * Real.pi * inner ℝ v x) * Complex.I) • c.1 v) := by
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>      have := c.2.1.continuous
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>      fun_prop
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    refine hc.integrable_of_hasCompactSupport (c.2.2.1.mono ?_)
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>    exact Function.support_smul_subset_right (fun v : Euc d =&gt; Complex.exp (↑(2 * Real.pi * inner ℝ v x) * Complex.I)) c.1
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  rw [mhn_phi_coe, mhn_U_apply, Pi.add_apply, Complex.ofReal_add, mhn_phi_coe, mhn_phi_coe, mhn_U_apply, mhn_U_apply,
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    ← integral_add (hint a) (hint b)]
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  congr 1; funext v
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  simp only [Submodule.coe_add, Pi.add_apply, smul_eq_mul]
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  ring
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>theorem mri_phi_smul (c : ℝ) (a : mhn_Hc d) : mhn_phi (c • a) = c • mhn_phi a := by
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  funext x
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>  apply Complex.ofReal_injective
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  rw [mhn_phi_coe, mhn_U_apply]
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  simp only [Pi.smul_apply, smul_eq_mul, Complex.ofReal_mul]
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  rw [mhn_phi_coe, mhn_U_apply, ← integral_const_mul]
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  congr 1; funext v
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  simp [Complex.real_smul]
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  ring
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>theorem mri_parseval_h (Γ : ℝ) : ∃ h : ℕ → mhn_Hc d, ∀ F : HNeg d Γ,
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>    HasSum (fun n =&gt; (inner ℝ (mhn_rep Γ (h n)) F) ^ 2) (‖F‖ ^ 2) := by
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  obtain ⟨s, hsR, hs⟩ := mhn_parseval_abstract (LinearMap.range (mhn_rep (d := d) Γ))
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    (mhn_range_orth_bot Γ)
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  choose h hh using fun n =&gt; hsR n
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  refine ⟨h, fun F =&gt; ?_⟩
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  have := hs F
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>  simpa [hh] using this
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>theorem mri_bessel (Γ : ℝ) (h : ℕ → mhn_Hc d)
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    (hP : ∀ F : HNeg d Γ, HasSum (fun n =&gt; (inner ℝ (mhn_rep Γ (h n)) F) ^ 2) (‖F‖ ^ 2))
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    (Λ : mhn_Hc d →ₗ[ℝ] ℝ) (C : ℝ)
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    (hΛ : ∀ g, |Λ g| ≤ C * ‖mhn_rep Γ g‖) (n : ℕ) :
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    ∑ l ∈ Finset.range n, (Λ (h l)) ^ 2 ≤ C ^ 2 := by
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>  set c : ℕ → ℝ := fun l =&gt; Λ (h l) with hc
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  set S : ℝ := ∑ l ∈ Finset.range n, (c l) ^ 2 with hS
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  set g : mhn_Hc d := ∑ l ∈ Finset.range n, c l • h l with hg
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  set x : HNeg d Γ := mhn_rep Γ g with hx
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  have hx&#x27; : x = ∑ l ∈ Finset.range n, c l • mhn_rep Γ (h l) := by
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    rw [hx, hg, map_sum]
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    simp [map_smul]
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  have hLg : Λ g = S := by
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    rw [hg, map_sum, hS]
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    simp [map_smul, sq, hc]
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  have h1 : ‖x‖ ^ 2 = ∑ l ∈ Finset.range n, c l * inner ℝ (mhn_rep Γ (h l)) x := by
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    rw [← real_inner_self_eq_norm_sq]
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    have e : inner ℝ x x = inner ℝ (∑ l ∈ Finset.range n, c l • mhn_rep Γ (h l)) x := by
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      rw [← hx&#x27;]
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    rw [e, sum_inner]
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    refine Finset.sum_congr rfl fun l _ =&gt; ?_
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    rw [real_inner_smul_left]
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  have h2 : ∑ l ∈ Finset.range n, (inner ℝ (mhn_rep Γ (h l)) x) ^ 2 ≤ ‖x‖ ^ 2 :=
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    sum_le_hasSum _ (fun _ _ =&gt; sq_nonneg _) (hP x)
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  have h3 : (‖x‖ ^ 2) ^ 2 ≤ S * ‖x‖ ^ 2 := by
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    calc (‖x‖ ^ 2) ^ 2 = (∑ l ∈ Finset.range n, c l * inner ℝ (mhn_rep Γ (h l)) x) ^ 2 := by rw [← h1]
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>      _ ≤ (∑ l ∈ Finset.range n, (c l) ^ 2) * ∑ l ∈ Finset.range n, (inner ℝ (mhn_rep Γ (h l)) x) ^ 2 :=
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>          Finset.sum_mul_sq_le_sq_mul_sq _ _ _
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      _ ≤ S * ‖x‖ ^ 2 := mul_le_mul_of_nonneg_left h2 (Finset.sum_nonneg fun _ _ =&gt; sq_nonneg _)
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  have hS0 : 0 ≤ S := Finset.sum_nonneg fun _ _ =&gt; sq_nonneg _
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  have h4 : ‖x‖ ^ 2 ≤ S := by
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    by_cases hx0 : ‖x‖ ^ 2 = 0
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    · rw [hx0]; exact hS0
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    · have hpos : 0 &lt; ‖x‖ ^ 2 := lt_of_le_of_ne (sq_nonneg _) (Ne.symm hx0)
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>      nlinarith
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  have h5 : S ≤ C * ‖x‖ := by
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    have := hΛ g
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    rw [hLg] at this
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    exact (le_abs_self _).trans this
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  have h6 : S ^ 2 ≤ C ^ 2 * S := by
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    calc S ^ 2 ≤ (C * ‖x‖) ^ 2 := pow_le_pow_left₀ hS0 h5 2
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>      _ = C ^ 2 * ‖x‖ ^ 2 := by ring
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      _ ≤ C ^ 2 * S := mul_le_mul_of_nonneg_left h4 (sq_nonneg _)
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  by_cases hS00 : S = 0
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  · rw [hS00]; positivity
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  · have hpos : 0 &lt; S := lt_of_le_of_ne hS0 (Ne.symm hS00)
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    nlinarith
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>open HRS.PDE.ToolboxRd in
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>/-- the constant of the cell bound -/
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>def mriKc (d m : ℕ) (M : ℝ) : ℝ :=
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  (∑ j ∈ Finset.range (m + 1), (m.choose j : ℝ) * (d : ℝ) ^ j) * (((m + 1 : ℕ) : ℝ) * 4 ^ m * M ^ 2)
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>theorem mriKc_nonneg (d m : ℕ) (M : ℝ) : 0 ≤ mriKc d m M := by
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  unfold mriKc; positivity
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>open HRS.PDE.ToolboxRd in
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>theorem mri_cell_bound {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) {M : ℝ} (hM0 : 0 ≤ M)
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    (m : ℕ) (hM : ∀ i ≤ m, ∀ x, ‖iteratedFDeriv ℝ i χ x‖ ≤ M) {g : Euc d → ℝ} (hg : ContDiff ℝ m g)
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>    (z : Euc d) :
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    HRS.PDE.ToolboxRd.MemSobolev (m : ℝ) (fun x =&gt; χ (x - z) * g x) ∧
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>      0 ≤ HRS.PDE.ToolboxRd.sobolevNormSq (m : ℝ) (fun x =&gt; χ (x - z) * g x) ∧
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>      HRS.PDE.ToolboxRd.sobolevNormSq (m : ℝ) (fun x =&gt; χ (x - z) * g x) ≤
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>        mriKc d m M * ∫ x in Metric.ball z 2, mriG m g x := by
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  have hχz : ContDiff ℝ m (fun y =&gt; χ (y - z)) :=
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    (hχ.1.of_le (by exact_mod_cast le_top)).comp (contDiff_id.sub contDiff_const)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  have hu : ContDiff ℝ m (fun y =&gt; χ (y - z) * g y) := hχz.mul hg
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  have hcs : HasCompactSupport (fun y =&gt; χ (y - z)) :=
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    hχ.2.1.comp_homeomorph (Homeomorph.subRight z)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>  have hc : HasCompactSupport (fun y =&gt; χ (y - z) * g y) := hcs.mul_right
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>  obtain ⟨hmem, hsq⟩ := mri_sobolev_deriv hu hc
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>  refine ⟨hmem, ?_, ?_⟩
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  · rw [hsq]
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    refine Finset.sum_nonneg fun j _ =&gt; mul_nonneg (by positivity) (Finset.sum_nonneg fun idx _ =&gt; ?_)
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    exact integral_nonneg fun x =&gt; sq_nonneg _
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>  rw [hsq]
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  have hGint : IntegrableOn (mriG m g) (Metric.ball z 2) volume :=
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    ((mriG_continuous hg).continuousOn.integrableOn_compact (isCompact_closedBall z 2)).mono_set
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>      Metric.ball_subset_closedBall
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  set c0 : ℝ := ((m + 1 : ℕ) : ℝ) * 4 ^ m * M ^ 2 with hc0
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  have hterm : ∀ j ≤ m, ∀ idx : Fin j → Fin d,
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>      ∫ x, (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2 ≤
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>        c0 * ∫ x in Metric.ball z 2, mriG m g x := by
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    intro j hj idx
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    obtain ⟨hcont, hcomp⟩ := mri_partial_memLp hu hc (j := j) (by exact_mod_cast hj) idx
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>    have hLint : Integrable (fun x =&gt; (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2) volume := by
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>      refine (hcont.pow 2).integrable_of_hasCompactSupport ?_
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>      refine hcomp.mono fun x hx =&gt; ?_
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>      rw [Function.mem_support] at hx ⊢
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>      intro h0
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>      exact hx (by simp [h0])
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    have hRint : Integrable ((Metric.ball z 2).indicator (fun y =&gt; c0 * mriG m g y)) volume :=
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>      (integrable_indicator_iff measurableSet_ball).2 (hGint.const_mul c0)
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    calc ∫ x, (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>        ≤ ∫ x, (Metric.ball z 2).indicator (fun y =&gt; c0 * mriG m g y) x := by
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>          refine integral_mono hLint hRint fun x =&gt; ?_
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>          have h1 := mri_abs_partialDeriv_le idx (fun y =&gt; χ (y - z) * g y) x
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>          have h2 := mri_leibniz_sq hχ hM0 m hM hg z hj x
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>          calc (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>              = |partialDeriv idx (fun y =&gt; χ (y - z) * g y) x| ^ 2 := (sq_abs _).symm
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>            _ ≤ ‖iteratedFDeriv ℝ j (fun y =&gt; χ (y - z) * g y) x‖ ^ 2 :=
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>                pow_le_pow_left₀ (abs_nonneg _) h1 2
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>            _ ≤ _ := h2
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>      _ = c0 * ∫ x in Metric.ball z 2, mriG m g x := by
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>          rw [integral_indicator measurableSet_ball, integral_const_mul]
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>  calc ∑ j ∈ Finset.range (m + 1), (m.choose j : ℝ) *
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>        ∑ idx : Fin j → Fin d, ∫ x, (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>      ≤ ∑ j ∈ Finset.range (m + 1), (m.choose j : ℝ) *
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        ((d : ℝ) ^ j * (c0 * ∫ x in Metric.ball z 2, mriG m g x)) := by
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>        refine Finset.sum_le_sum fun j hj =&gt; ?_
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>        have hjm : j ≤ m := Nat.lt_succ_iff.1 (Finset.mem_range.1 hj)
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>        calc ∑ idx : Fin j → Fin d, ∫ x, (partialDeriv idx (fun y =&gt; χ (y - z) * g y) x) ^ 2
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>            ≤ ∑ _idx : Fin j → Fin d, c0 * ∫ x in Metric.ball z 2, mriG m g x :=
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>              Finset.sum_le_sum fun idx _ =&gt; hterm j hjm idx
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>          _ = (d : ℝ) ^ j * (c0 * ∫ x in Metric.ball z 2, mriG m g x) := by
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>              rw [Finset.sum_const, Finset.card_univ, Fintype.card_fun, Fintype.card_fin,
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>                Fintype.card_fin, nsmul_eq_mul]
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>              push_cast; ring
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>    _ = mriKc d m M * ∫ x in Metric.ball z 2, mriG m g x := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>        have e : ∑ j ∈ Finset.range (m + 1), (m.choose j : ℝ) *
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>            ((d : ℝ) ^ j * (c0 * ∫ x in Metric.ball z 2, mriG m g x)) =
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>            (∑ j ∈ Finset.range (m + 1), (m.choose j : ℝ) * (d : ℝ) ^ j) *
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>              (c0 * ∫ x in Metric.ball z 2, mriG m g x) := by
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>          rw [Finset.sum_mul]
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>          exact Finset.sum_congr rfl fun j _ =&gt; by ring
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>        rw [e]
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>        unfold mriKc
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>        rw [← hc0]
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>        ring
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>theorem mri_norm_iter_sq (j : ℕ) (f : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>    ‖iteratedFDeriv ℝ j f x‖ ^ 2 ≤ (d : ℝ) ^ j * ∑ idx : Fin j → Fin d, (partialDeriv idx f x) ^ 2 :=
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>  mri_norm_sq_le (iteratedFDeriv ℝ j f x)
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>theorem mri_norm_iter_le (j : ℕ) (f : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    ‖iteratedFDeriv ℝ j f x‖ ≤ ∑ idx : Fin j → Fin d, |partialDeriv idx f x| :=
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  mri_norm_le_sum (iteratedFDeriv ℝ j f x)
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>theorem mri_Y0 {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m : ℕ) {g : Euc d → ℝ}
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    (hg : ContDiff ℝ (m + 1 : ℕ) g) (K : ℝ)
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    (hK : ∀ l ≤ m + 1, ∀ (idx : Fin l → Fin d) (x : Euc d), |partialDeriv idx g x| ≤ K) :
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    HRS.Whole.AppendixA.Y0Class m χ g := by
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>  have hK0 : 0 ≤ K := (abs_nonneg _).trans (hK 0 (by omega) (fun i =&gt; i.elim0) 0)
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  have hnorm : ∀ i ≤ m + 1, ∀ x, ‖iteratedFDeriv ℝ i g x‖ ≤ (d : ℝ) ^ i * K := by
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    intro i hi x
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>    refine (mri_norm_iter_le i g x).trans ?_
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>    calc ∑ idx : Fin i → Fin d, |partialDeriv idx g x| ≤ ∑ _idx : Fin i → Fin d, K :=
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>          Finset.sum_le_sum fun idx _ =&gt; hK i hi idx x
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>      _ = (d : ℝ) ^ i * K := by
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fun, Fintype.card_fin,
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>            Fintype.card_fin, nsmul_eq_mul]
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>          push_cast; ring
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  refine ⟨?_, ⟨K, fun x =&gt; ?_⟩, ⟨(d : ℝ) * K, ?_⟩⟩
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>  · obtain ⟨M, hM0, hM⟩ := mri_cutoff_bound hχ m
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>    have hgm : ContDiff ℝ m g := hg.of_le (by exact_mod_cast Nat.le_succ m)
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>    set Gc : ℝ := ∑ i ∈ Finset.range (m + 1), ((d : ℝ) ^ i * K) ^ 2 with hGc
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>    have hG : ∀ x, mriG m g x ≤ Gc := by
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>      intro x
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>      unfold mriG
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>      refine Finset.sum_le_sum fun i hi =&gt; ?_
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>      have hi&#x27; : i ≤ m := Nat.lt_succ_iff.1 (Finset.mem_range.1 hi)
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>      exact pow_le_pow_left₀ (norm_nonneg _) (hnorm i (by omega) x) 2
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    set V0 : ℝ := (volume (Metric.ball (0 : Euc d) 2)).toReal with hV0
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    have hbound : ∀ z : Euc d, ∫ x in Metric.ball z 2, mriG m g x ≤ Gc * V0 := by
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      intro z
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>      have hGint : IntegrableOn (mriG m g) (Metric.ball z 2) volume :=
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>        ((mriG_continuous hgm).continuousOn.integrableOn_compact (isCompact_closedBall z 2)).mono_set
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>          Metric.ball_subset_closedBall
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>      have hcint : IntegrableOn (fun _ : Euc d =&gt; Gc) (Metric.ball z 2) volume :=
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>        integrableOn_const measure_ball_lt_top.ne
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>      calc ∫ x in Metric.ball z 2, mriG m g x ≤ ∫ x in Metric.ball z 2, Gc :=
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>            setIntegral_mono_on hGint hcint measurableSet_ball fun x _ =&gt; hG x
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>        _ = Gc * V0 := by
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>            rw [setIntegral_const, smul_eq_mul, Measure.real, Measure.addHaar_ball_center, mul_comm]
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    have hlt : ∀ z : Euc d, HRS.Whole.sobolevNormE (m : ℝ) (fun x =&gt; χ (x - z) * g x) ≤
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>        ENNReal.ofReal (Real.sqrt (mriKc d m M * (Gc * V0))) := by
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      intro z
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      obtain ⟨hmem, -, hle⟩ := mri_cell_bound hχ hM0 m hM hgm z
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      unfold HRS.Whole.sobolevNormE
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>      simp only [hmem, ite_true]
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>      refine ENNReal.ofReal_le_ofReal (Real.sqrt_le_sqrt ?_)
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>      exact hle.trans (mul_le_mul_of_nonneg_left (hbound z) (mriKc_nonneg d m M))
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>    unfold HRS.Whole.AppendixA.ulocNormE
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>    exact lt_of_le_of_lt (iSup_le hlt) ENNReal.ofReal_lt_top
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>  · have := hK 0 (by omega) (fun i =&gt; i.elim0) x
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    simpa [partialDeriv, iteratedFDeriv_zero_apply] using this
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  · have hdiff : Differentiable ℝ g := hg.differentiable (by simp)
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>    have hLip : LipschitzWith (Real.toNNReal ((d : ℝ) * K)) g := by
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>      refine lipschitzWith_of_nnnorm_fderiv_le hdiff fun x =&gt; ?_
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>      have h1 := hnorm 1 (by omega) x
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>      have h2 : ‖fderiv ℝ g x‖ = ‖iteratedFDeriv ℝ 1 g x‖ := by
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>        have := norm_iteratedFDeriv_fderiv (𝕜 := ℝ) (f := g) (x := x) (n := 0)
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>        rw [norm_iteratedFDeriv_zero] at this
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>        exact this
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>      rw [← NNReal.coe_le_coe, coe_nnnorm, h2, Real.coe_toNNReal _ (by positivity)]
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>      simpa using h1
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    intro x y
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>    have := hLip.dist_le_mul x y
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>    have hc : ((Real.toNNReal ((d : ℝ) * K) : ℝ≥0) : ℝ) = (d : ℝ) * K := Real.coe_toNNReal _ (by positivity)
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    rw [Real.dist_eq, dist_eq_norm, hc] at this
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>    exact this
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>theorem mri_jb_sq (x : Euc d) : jbracket x ^ 2 = 1 + ‖x‖ ^ 2 := by
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>  unfold jbracket; rw [Real.sq_sqrt (by positivity)]
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>theorem mri_jb_pos (x : Euc d) : 0 &lt; jbracket x := Real.sqrt_pos.2 (by positivity)
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>theorem mri_jb_ball (z x : Euc d) (hx : x ∈ Metric.ball z 2) : jbracket x ^ 2 ≤ 9 * jbracket z ^ 2 := by
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>  rw [mri_jb_sq, mri_jb_sq]
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>  have h1 : ‖x‖ ≤ ‖z‖ + 2 := by
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    have : ‖x - z‖ &lt; 2 := by simpa [Metric.mem_ball, dist_eq_norm] using hx
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>    calc ‖x‖ = ‖(x - z) + z‖ := by rw [sub_add_cancel]
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>      _ ≤ ‖x - z‖ + ‖z‖ := norm_add_le _ _
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>      _ ≤ ‖z‖ + 2 := by linarith
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>  have h2 : ‖x‖ ^ 2 ≤ (‖z‖ + 2) ^ 2 := pow_le_pow_left₀ (norm_nonneg _) h1 2
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>  nlinarith [norm_nonneg z, sq_nonneg (‖z‖ - 2)]
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>theorem mri_jb_ge (x : Euc d) : (1 + ‖x‖) / 2 ≤ jbracket x := by
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>  unfold jbracket
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>  apply Real.le_sqrt_of_sq_le
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>  nlinarith [norm_nonneg x, sq_nonneg (‖x‖ - 1)]
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>theorem mri_lattice_sum :
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>    ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) *
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>      jbracket (cellPt d z) ^ 2) &lt; ⊤ := by
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>  rcases Nat.eq_zero_or_pos d with rfl | hd
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>  · rw [tsum_eq_single (default : Fin 0 → ℤ) (fun b&#x27; hb&#x27; =&gt; absurd (Subsingleton.elim b&#x27; default) hb&#x27;)]
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>    exact ENNReal.ofReal_lt_top
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>  set k : ℝ := (⌈Real.sqrt d⌉ : ℝ) with hk
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>  have hd1 : (1 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>  have hs1 : (1 : ℝ) ≤ Real.sqrt d := Real.one_le_sqrt.mpr hd1
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>  have hk1 : (1 : ℝ) ≤ k := by
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>    have := Int.le_ceil (Real.sqrt d)
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>    linarith
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>  have hkpos : 0 &lt; k := by linarith
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>  set a : ℝ := k⁻¹ with ha
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>  have hapos : 0 &lt; a := inv_pos.mpr hkpos
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>  have ha1 : a ≤ 1 := inv_le_one_of_one_le₀ hk1
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>  have hnorm : ∀ z : Fin d → ℤ, ‖cellPt d z‖ = a * ‖latticePt z‖ := by
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>    intro z
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>    unfold cellPt
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>    rw [norm_smul, Real.norm_of_nonneg hapos.le]
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>  have hle : ∀ z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) *
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>      jbracket (cellPt d z) ^ 2) ≤ ENNReal.ofReal (2 ^ ((d : ℝ) + 1) * a ^ (-((d : ℝ) + 1))) *
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>        ENNReal.ofReal (HRS.Commutator.Whole.SAMP1.wtK d z) := by
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>    intro z
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>    rw [← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>    refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    have hj := mri_jb_pos (cellPt d z)
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>    have e : jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) * jbracket (cellPt d z) ^ 2 =
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>        jbracket (cellPt d z) ^ (-((d : ℝ) + 1)) := by
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>      rw [← Real.rpow_two, ← Real.rpow_add hj]
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>      congr 1; ring
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>    rw [e]
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>    have hpos : 0 &lt; (1 + ‖cellPt d z‖) / 2 := by positivity
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>    have hexp : -((d : ℝ) + 1) ≤ 0 := by linarith [(Nat.cast_nonneg d : (0 : ℝ) ≤ d)]
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>    have h1 : jbracket (cellPt d z) ^ (-((d : ℝ) + 1)) ≤ ((1 + ‖cellPt d z‖) / 2) ^ (-((d : ℝ) + 1)) :=
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>      Real.rpow_le_rpow_of_nonpos hpos (mri_jb_ge _) hexp
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>    refine h1.trans ?_
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>    have hz0 : 0 ≤ ‖latticePt z‖ := norm_nonneg _
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>    have hlow : a * (1 + ‖latticePt z‖) ≤ 1 + ‖cellPt d z‖ := by
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>      rw [hnorm]; nlinarith
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>    have h2 : (1 + ‖cellPt d z‖) ^ (-((d : ℝ) + 1)) ≤ (a * (1 + ‖latticePt z‖)) ^ (-((d : ℝ) + 1)) :=
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>      Real.rpow_le_rpow_of_nonpos (by positivity) hlow hexp
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>    rw [Real.div_rpow (by positivity) (by norm_num), Real.rpow_neg (by norm_num : (0 : ℝ) ≤ 2)]
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>    rw [Real.mul_rpow hapos.le (by positivity)] at h2
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>    unfold HRS.Commutator.Whole.SAMP1.wtK HRS.Commutator.Whole.SAMP1.latV
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>    have h3 : ‖(latticePt z : Euc d)‖ = ‖(WithLp.toLp 2 (fun i : Fin d =&gt; (z i : ℝ)) : Euc d)‖ := rfl
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>    rw [← h3]
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>    have h4 : (2 : ℝ) ^ ((d : ℝ) + 1) * a ^ (-((d : ℝ) + 1)) *
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>        (1 + ‖latticePt z‖) ^ (-((d : ℝ) + 1)) =
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>        ((2 : ℝ) ^ ((d : ℝ) + 1))  * (a ^ (-((d : ℝ) + 1)) * (1 + ‖latticePt z‖) ^ (-((d : ℝ) + 1))) := by ring
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>    rw [h4]
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>    have h5 : (1 + ‖cellPt d z‖) ^ (-((d : ℝ) + 1)) / ((2 : ℝ) ^ ((d : ℝ) + 1))⁻¹ =
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>        (2 : ℝ) ^ ((d : ℝ) + 1) * (1 + ‖cellPt d z‖) ^ (-((d : ℝ) + 1)) := by
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>      rw [div_inv_eq_mul, mul_comm]
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>    rw [h5]
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>    exact mul_le_mul_of_nonneg_left h2 (by positivity)
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>  refine lt_of_le_of_lt (ENNReal.tsum_le_tsum hle) ?_
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>  rw [ENNReal.tsum_mul_left]
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (HRS.Commutator.Whole.SAMP1.tsum_wtK_lt_top)
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>theorem mri_varpi_sq (m : ℕ) (χ ψ : Euc d → ℝ) :
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    HRS.Whole.AppendixA.varpiNormE m χ ψ ^ 2 = ∑&#x27; z : Fin d → ℤ,
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>      ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>        sobolevNormE (m : ℝ) (fun x =&gt; χ (x - cellPt d z) * ψ x) ^ 2 := by
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>  unfold HRS.Whole.AppendixA.varpiNormE
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>  rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>  norm_num
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>theorem mri_ball_sum_bound {m : ℕ} (ψ : ℕ → Euc d → ℝ) (hψ : ∀ ℓ, ContDiff ℝ m (ψ ℓ)) (B0 : ℝ)
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>    (hB0 : 0 ≤ B0)
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>    (hB : ∀ (n : ℕ) (x : Euc d), ∑ ℓ ∈ Finset.range n, mriG m (ψ ℓ) x ≤ B0 * jbracket x ^ 2)
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>    (p : Euc d) (n : ℕ) :
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>    ∑ ℓ ∈ Finset.range n, ∫ x in Metric.ball p 2, mriG m (ψ ℓ) x ≤
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>      9 * B0 * jbracket p ^ 2 * (volume (Metric.ball (0 : Euc d) 2)).toReal := by
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>  have hint : ∀ ℓ, IntegrableOn (mriG m (ψ ℓ)) (Metric.ball p 2) volume := fun ℓ =&gt;
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>    ((mriG_continuous (hψ ℓ)).continuousOn.integrableOn_compact (isCompact_closedBall p 2)).mono_set
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>      Metric.ball_subset_closedBall
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>  rw [← integral_finsetSum _ (fun ℓ _ =&gt; hint ℓ)]
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>  have hsum : IntegrableOn (fun x =&gt; ∑ ℓ ∈ Finset.range n, mriG m (ψ ℓ) x) (Metric.ball p 2) volume :=
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>    integrable_finsetSum _ fun ℓ _ =&gt; hint ℓ
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>  have hcint : IntegrableOn (fun _ : Euc d =&gt; 9 * B0 * jbracket p ^ 2) (Metric.ball p 2) volume :=
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>    integrableOn_const measure_ball_lt_top.ne
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>  calc ∫ x in Metric.ball p 2, ∑ ℓ ∈ Finset.range n, mriG m (ψ ℓ) x
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>      ≤ ∫ x in Metric.ball p 2, 9 * B0 * jbracket p ^ 2 := by
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>        refine setIntegral_mono_on hsum hcint measurableSet_ball fun x hx =&gt; ?_
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>        refine (hB n x).trans ?_
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>        have := mri_jb_ball p x hx
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>        nlinarith
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>    _ = 9 * B0 * jbracket p ^ 2 * (volume (Metric.ball (0 : Euc d) 2)).toReal := by
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>        rw [setIntegral_const, smul_eq_mul, Measure.real, Measure.addHaar_ball_center, mul_comm]
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>theorem mri_varpi_sum {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m : ℕ) :
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>    ∃ C0 : ℝ, 0 ≤ C0 ∧ ∀ (ψ : ℕ → Euc d → ℝ), (∀ ℓ, ContDiff ℝ m (ψ ℓ)) → ∀ B0 : ℝ, 0 ≤ B0 →
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>      (∀ (n : ℕ) (x : Euc d), ∑ ℓ ∈ Finset.range n, mriG m (ψ ℓ) x ≤ B0 * jbracket x ^ 2) →
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>      ∑&#x27; ℓ, HRS.Whole.AppendixA.varpiNormE m χ (ψ ℓ) ^ 2 ≤ ENNReal.ofReal (C0 * B0) := by
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>  obtain ⟨M, hM0, hM⟩ := mri_cutoff_bound hχ m
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>  set V0 : ℝ := (volume (Metric.ball (0 : Euc d) 2)).toReal with hV0
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>  set Slat : ℝ := (∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) *
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>      jbracket (cellPt d z) ^ 2)).toReal with hSlat
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>  have hV00 : 0 ≤ V0 := ENNReal.toReal_nonneg
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>  have hS0 : 0 ≤ Slat := ENNReal.toReal_nonneg
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>  refine ⟨9 * mriKc d m M * V0 * Slat, by have := mriKc_nonneg d m M; positivity, ?_⟩
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>  intro ψ hψ B0 hB0 hB
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  have hcell : ∀ ℓ, HRS.Whole.AppendixA.varpiNormE m χ (ψ ℓ) ^ 2 ≤ ∑&#x27; z : Fin d → ℤ,
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>      ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>        ENNReal.ofReal (mriKc d m M * ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x) := by
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>    intro ℓ
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>    rw [mri_varpi_sq]
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>    refine ENNReal.tsum_le_tsum fun z =&gt; ?_
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>    refine mul_le_mul&#x27; le_rfl ?_
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>    obtain ⟨hmem, hnn, hle⟩ := mri_cell_bound hχ hM0 m hM (hψ ℓ) (cellPt d z)
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>    unfold HRS.Whole.sobolevNormE
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>    simp only [hmem, ite_true]
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>    rw [← ENNReal.ofReal_pow (Real.sqrt_nonneg _), Real.sq_sqrt hnn]
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>    exact ENNReal.ofReal_le_ofReal hle
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>  have hinner : ∀ z : Fin d → ℤ, ∑&#x27; ℓ, ENNReal.ofReal (mriKc d m M *
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>      ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x) ≤
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>      ENNReal.ofReal (9 * mriKc d m M * B0 * V0 * jbracket (cellPt d z) ^ 2) := by
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>    intro z
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>    rw [ENNReal.tsum_eq_iSup_nat]
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>    refine iSup_le fun n =&gt; ?_
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>    have hnn : ∀ ℓ, 0 ≤ mriKc d m M * ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x := fun ℓ =&gt;
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>      mul_nonneg (mriKc_nonneg d m M) (integral_nonneg fun x =&gt; by
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>        unfold mriG; exact Finset.sum_nonneg fun i _ =&gt; sq_nonneg _)
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>    rw [← ENNReal.ofReal_sum_of_nonneg fun ℓ _ =&gt; hnn ℓ]
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>    refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>    rw [← Finset.mul_sum]
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>    have := mri_ball_sum_bound ψ hψ B0 hB0 hB (cellPt d z) n
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>    calc mriKc d m M * ∑ ℓ ∈ Finset.range n, ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>        ≤ mriKc d m M * (9 * B0 * jbracket (cellPt d z) ^ 2 * V0) :=
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>          mul_le_mul_of_nonneg_left this (mriKc_nonneg d m M)
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>      _ = _ := by ring
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>  calc ∑&#x27; ℓ, HRS.Whole.AppendixA.varpiNormE m χ (ψ ℓ) ^ 2
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>      ≤ ∑&#x27; ℓ, ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>        ENNReal.ofReal (mriKc d m M * ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x) :=
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>        ENNReal.tsum_le_tsum hcell
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>    _ = ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>        ∑&#x27; ℓ, ENNReal.ofReal (mriKc d m M * ∫ x in Metric.ball (cellPt d z) 2, mriG m (ψ ℓ) x) := by
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>        rw [ENNReal.tsum_comm]
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>        refine tsum_congr fun z =&gt; ?_
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>        rw [ENNReal.tsum_mul_left]
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>    _ ≤ ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>        ENNReal.ofReal (9 * mriKc d m M * B0 * V0 * jbracket (cellPt d z) ^ 2) :=
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>        ENNReal.tsum_le_tsum fun z =&gt; mul_le_mul&#x27; le_rfl (hinner z)
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>    _ = ENNReal.ofReal (9 * mriKc d m M * B0 * V0) *
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>        ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) *
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>          jbracket (cellPt d z) ^ 2) := by
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>        rw [← ENNReal.tsum_mul_left]
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>        refine tsum_congr fun z =&gt; ?_
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>        have hnn : 0 ≤ jbracket (cellPt d z) ^ (-((d : ℝ) + 3)) := Real.rpow_nonneg (mri_jb_pos _).le _
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>        have hk := mriKc_nonneg d m M
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>        rw [← ENNReal.ofReal_mul hnn, ← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>        congr 1; ring
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>    _ = ENNReal.ofReal (9 * mriKc d m M * V0 * Slat * B0) := by
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>        rw [← ENNReal.ofReal_toReal (mri_lattice_sum (d := d)).ne, ← hSlat,
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>          ← ENNReal.ofReal_mul (by have := mriKc_nonneg d m M; positivity)]
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>        congr 1; ring
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>/-! ### The propagator family -/
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>theorem mri_partialDeriv_add {i : ℕ} {f g : Euc d → ℝ} (hf : ContDiff ℝ i f) (hg : ContDiff ℝ i g)
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>    (idx : Fin i → Fin d) (x : Euc d) :
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>    partialDeriv idx (f + g) x = partialDeriv idx f x + partialDeriv idx g x := by
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>  unfold partialDeriv
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>  rw [iteratedFDeriv_add_apply hf.contDiffAt hg.contDiffAt]
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>  rfl
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>theorem mri_partialDeriv_smul {i : ℕ} {f : Euc d → ℝ} (hf : ContDiff ℝ i f) (c : ℝ)
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>    (idx : Fin i → Fin d) (x : Euc d) :
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>    partialDeriv idx (c • f) x = c * partialDeriv idx f x := by
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>  unfold partialDeriv
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>  rw [iteratedFDeriv_const_smul_apply hf.contDiffAt]
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>  rfl
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>theorem mri_partialDeriv_sub {i : ℕ} {f g : Euc d → ℝ} (hf : ContDiff ℝ i f) (hg : ContDiff ℝ i g)
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>    (idx : Fin i → Fin d) (x : Euc d) :
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>    partialDeriv idx (fun y =&gt; f y - g y) x = partialDeriv idx f x - partialDeriv idx g x := by
+</span><span class="line" id="L773"><a class="ln" aria-label="Line 773" href="#L773">773</a>  have h1 : (fun y =&gt; f y - g y) = f + (-1 : ℝ) • g := by
+</span><span class="line" id="L774"><a class="ln" aria-label="Line 774" href="#L774">774</a>    funext y; simp [sub_eq_add_neg]
+</span><span class="line" id="L775"><a class="ln" aria-label="Line 775" href="#L775">775</a>  have hg&#x27; : ContDiff ℝ i ((-1 : ℝ) • g) := hg.const_smul (-1 : ℝ)
+</span><span class="line" id="L776"><a class="ln" aria-label="Line 776" href="#L776">776</a>  rw [h1, mri_partialDeriv_add hf hg&#x27;, mri_partialDeriv_smul hg]
+</span><span class="line" id="L777"><a class="ln" aria-label="Line 777" href="#L777">777</a>  ring
+</span><span class="line" id="L778"><a class="ln" aria-label="Line 778" href="#L778">778</a>
+</span><span class="line" id="L779"><a class="ln" aria-label="Line 779" href="#L779">779</a>theorem mri_prop_add {Cf : WholeCoeff d} {T : ℝ} {Γ : ℝ} {j : ℕ} {K : ℝ}
+</span><span class="line" id="L780"><a class="ln" aria-label="Line 780" href="#L780">780</a>    (hadj : AdjointInputOneD Γ j Cf T K) {t : ℝ} (ht0 : 0 ≤ t) (htT : t ≤ T) {φ φ₂ : Euc d → ℝ}
+</span><span class="line" id="L781"><a class="ln" aria-label="Line 781" href="#L781">781</a>    (hφ : IsSobolevTest Γ φ) (hφ₂ : IsSobolevTest Γ φ₂) :
+</span><span class="line" id="L782"><a class="ln" aria-label="Line 782" href="#L782">782</a>    propagatorW Cf 0 t (φ + φ₂) = propagatorW Cf 0 t φ + propagatorW Cf 0 t φ₂ := by
+</span><span class="line" id="L783"><a class="ln" aria-label="Line 783" href="#L783">783</a>  have := (hadj 0 t le_rfl ht0 htT φ hφ).2.2.1 φ₂ hφ₂ 1
+</span><span class="line" id="L784"><a class="ln" aria-label="Line 784" href="#L784">784</a>  simpa using this
+</span><span class="line" id="L785"><a class="ln" aria-label="Line 785" href="#L785">785</a>
+</span><span class="line" id="L786"><a class="ln" aria-label="Line 786" href="#L786">786</a>theorem mri_prop_smul {Cf : WholeCoeff d} {T : ℝ} {Γ : ℝ} {j : ℕ} {K : ℝ}
+</span><span class="line" id="L787"><a class="ln" aria-label="Line 787" href="#L787">787</a>    (hadj : AdjointInputOneD Γ j Cf T K) {t : ℝ} (ht0 : 0 ≤ t) (htT : t ≤ T) {φ : Euc d → ℝ}
+</span><span class="line" id="L788"><a class="ln" aria-label="Line 788" href="#L788">788</a>    (hφ : IsSobolevTest Γ φ) (c : ℝ) :
+</span><span class="line" id="L789"><a class="ln" aria-label="Line 789" href="#L789">789</a>    propagatorW Cf 0 t (c • φ) = c • propagatorW Cf 0 t φ := by
+</span><span class="line" id="L790"><a class="ln" aria-label="Line 790" href="#L790">790</a>  have := (hadj 0 t le_rfl ht0 htT φ hφ).2.2.1 φ hφ (c - 1)
+</span><span class="line" id="L791"><a class="ln" aria-label="Line 791" href="#L791">791</a>  have e : φ + (c - 1) • φ = c • φ := by
+</span><span class="line" id="L792"><a class="ln" aria-label="Line 792" href="#L792">792</a>    funext y; simp; ring
+</span><span class="line" id="L793"><a class="ln" aria-label="Line 793" href="#L793">793</a>  rw [e] at this
+</span><span class="line" id="L794"><a class="ln" aria-label="Line 794" href="#L794">794</a>  rw [this]
+</span><span class="line" id="L795"><a class="ln" aria-label="Line 795" href="#L795">795</a>  funext y; simp; ring
+</span><span class="line" id="L796"><a class="ln" aria-label="Line 796" href="#L796">796</a>
+</span><span class="line" id="L797"><a class="ln" aria-label="Line 797" href="#L797">797</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L798"><a class="ln" aria-label="Line 798" href="#L798">798</a>theorem mri_exists_lam {Cf : WholeCoeff d} {T : ℝ} {q j : ℕ} {K : ℝ}
+</span><span class="line" id="L799"><a class="ln" aria-label="Line 799" href="#L799">799</a>    (hadj : AdjointInputOneD ((q : ℕ) : ℝ) j Cf T K) {t s&#x27; : ℝ} (ht0 : 0 ≤ t) (htT : t ≤ T)
+</span><span class="line" id="L800"><a class="ln" aria-label="Line 800" href="#L800">800</a>    (hs0 : 0 ≤ s&#x27;) (hsT : s&#x27; ≤ T) {i : ℕ} (hi : i ≤ j) (idx : Fin i → Fin d) (x : Euc d) :
+</span><span class="line" id="L801"><a class="ln" aria-label="Line 801" href="#L801">801</a>    ∃ Λ : mhn_Hc d →ₗ[ℝ] ℝ, ∀ g, Λ g = partialDeriv idx (fun y =&gt;
+</span><span class="line" id="L802"><a class="ln" aria-label="Line 802" href="#L802">802</a>      propagatorW Cf 0 t (mhn_phi g) y - propagatorW Cf 0 s&#x27; (mhn_phi g) y) x := by
+</span><span class="line" id="L803"><a class="ln" aria-label="Line 803" href="#L803">803</a>  have hcd : ∀ τ : ℝ, 0 ≤ τ → τ ≤ T → ∀ g : mhn_Hc d, ContDiff ℝ i (propagatorW Cf 0 τ (mhn_phi g)) := by
+</span><span class="line" id="L804"><a class="ln" aria-label="Line 804" href="#L804">804</a>    intro τ h0 h1 g
+</span><span class="line" id="L805"><a class="ln" aria-label="Line 805" href="#L805">805</a>    exact ((hadj 0 τ le_rfl h0 h1 _ (mhn_isSobolevTest_phi _ g)).2.1).of_le (by exact_mod_cast hi)
+</span><span class="line" id="L806"><a class="ln" aria-label="Line 806" href="#L806">806</a>  refine ⟨⟨⟨fun g =&gt; partialDeriv idx (fun y =&gt;
+</span><span class="line" id="L807"><a class="ln" aria-label="Line 807" href="#L807">807</a>      propagatorW Cf 0 t (mhn_phi g) y - propagatorW Cf 0 s&#x27; (mhn_phi g) y) x, ?_⟩, ?_⟩, fun g =&gt; rfl⟩
+</span><span class="line" id="L808"><a class="ln" aria-label="Line 808" href="#L808">808</a>  · intro a b
+</span><span class="line" id="L809"><a class="ln" aria-label="Line 809" href="#L809">809</a>    have e : (fun y =&gt; propagatorW Cf 0 t (mhn_phi (a + b)) y - propagatorW Cf 0 s&#x27; (mhn_phi (a + b)) y) =
+</span><span class="line" id="L810"><a class="ln" aria-label="Line 810" href="#L810">810</a>        (fun y =&gt; propagatorW Cf 0 t (mhn_phi a) y - propagatorW Cf 0 s&#x27; (mhn_phi a) y) +
+</span><span class="line" id="L811"><a class="ln" aria-label="Line 811" href="#L811">811</a>        (fun y =&gt; propagatorW Cf 0 t (mhn_phi b) y - propagatorW Cf 0 s&#x27; (mhn_phi b) y) := by
+</span><span class="line" id="L812"><a class="ln" aria-label="Line 812" href="#L812">812</a>      rw [mri_phi_add, mri_prop_add hadj ht0 htT (mhn_isSobolevTest_phi _ a) (mhn_isSobolevTest_phi _ b),
+</span><span class="line" id="L813"><a class="ln" aria-label="Line 813" href="#L813">813</a>        mri_prop_add hadj hs0 hsT (mhn_isSobolevTest_phi _ a) (mhn_isSobolevTest_phi _ b)]
+</span><span class="line" id="L814"><a class="ln" aria-label="Line 814" href="#L814">814</a>      funext y; simp; ring
+</span><span class="line" id="L815"><a class="ln" aria-label="Line 815" href="#L815">815</a>    show partialDeriv idx _ x = partialDeriv idx _ x + partialDeriv idx _ x
+</span><span class="line" id="L816"><a class="ln" aria-label="Line 816" href="#L816">816</a>    rw [e, mri_partialDeriv_add]
+</span><span class="line" id="L817"><a class="ln" aria-label="Line 817" href="#L817">817</a>    · exact (hcd t ht0 htT a).sub (hcd s&#x27; hs0 hsT a)
+</span><span class="line" id="L818"><a class="ln" aria-label="Line 818" href="#L818">818</a>    · exact (hcd t ht0 htT b).sub (hcd s&#x27; hs0 hsT b)
+</span><span class="line" id="L819"><a class="ln" aria-label="Line 819" href="#L819">819</a>  · intro c a
+</span><span class="line" id="L820"><a class="ln" aria-label="Line 820" href="#L820">820</a>    have e : (fun y =&gt; propagatorW Cf 0 t (mhn_phi (c • a)) y - propagatorW Cf 0 s&#x27; (mhn_phi (c • a)) y) =
+</span><span class="line" id="L821"><a class="ln" aria-label="Line 821" href="#L821">821</a>        c • (fun y =&gt; propagatorW Cf 0 t (mhn_phi a) y - propagatorW Cf 0 s&#x27; (mhn_phi a) y) := by
+</span><span class="line" id="L822"><a class="ln" aria-label="Line 822" href="#L822">822</a>      rw [mri_phi_smul, mri_prop_smul hadj ht0 htT (mhn_isSobolevTest_phi _ a),
+</span><span class="line" id="L823"><a class="ln" aria-label="Line 823" href="#L823">823</a>        mri_prop_smul hadj hs0 hsT (mhn_isSobolevTest_phi _ a)]
+</span><span class="line" id="L824"><a class="ln" aria-label="Line 824" href="#L824">824</a>      funext y; simp; ring
+</span><span class="line" id="L825"><a class="ln" aria-label="Line 825" href="#L825">825</a>    show partialDeriv idx _ x = c * partialDeriv idx _ x
+</span><span class="line" id="L826"><a class="ln" aria-label="Line 826" href="#L826">826</a>    rw [e, mri_partialDeriv_smul]
+</span><span class="line" id="L827"><a class="ln" aria-label="Line 827" href="#L827">827</a>    exact (hcd t ht0 htT a).sub (hcd s&#x27; hs0 hsT a)
+</span><span class="line" id="L828"><a class="ln" aria-label="Line 828" href="#L828">828</a>
+</span><span class="line" id="L829"><a class="ln" aria-label="Line 829" href="#L829">829</a>
+</span><span class="line" id="L830"><a class="ln" aria-label="Line 830" href="#L830">830</a>theorem mri_Y0_prop {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m₀ : ℕ)
+</span><span class="line" id="L831"><a class="ln" aria-label="Line 831" href="#L831">831</a>    {Cf : WholeCoeff d} {T : ℝ} {q : ℕ} {K : ℝ}
+</span><span class="line" id="L832"><a class="ln" aria-label="Line 832" href="#L832">832</a>    (hadj : AdjointInputOneD ((q : ℕ) : ℝ) (m₀ + 1) Cf T K) {t : ℝ} (ht0 : 0 ≤ t) (htT : t ≤ T)
+</span><span class="line" id="L833"><a class="ln" aria-label="Line 833" href="#L833">833</a>    {φ : Euc d → ℝ} (hφ : IsSobolevTest ((q : ℕ) : ℝ) φ) :
+</span><span class="line" id="L834"><a class="ln" aria-label="Line 834" href="#L834">834</a>    HRS.Whole.AppendixA.Y0Class m₀ χ (propagatorW Cf 0 t φ) := by
+</span><span class="line" id="L835"><a class="ln" aria-label="Line 835" href="#L835">835</a>  obtain ⟨-, hcd, -, hb⟩ := hadj 0 t le_rfl ht0 htT φ hφ
+</span><span class="line" id="L836"><a class="ln" aria-label="Line 836" href="#L836">836</a>  exact mri_Y0 hχ m₀ hcd (K * HRS.Whole.sobolevNorm ((q : ℕ) : ℝ) φ) fun l hl idx x =&gt; hb l hl idx x
+</span><span class="line" id="L837"><a class="ln" aria-label="Line 837" href="#L837">837</a>
+</span><span class="line" id="L838"><a class="ln" aria-label="Line 838" href="#L838">838</a>theorem mri_Y0_diff {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m₀ : ℕ)
+</span><span class="line" id="L839"><a class="ln" aria-label="Line 839" href="#L839">839</a>    {Cf : WholeCoeff d} {T : ℝ} {q : ℕ} {K : ℝ}
+</span><span class="line" id="L840"><a class="ln" aria-label="Line 840" href="#L840">840</a>    (hadj : AdjointInputOneD ((q : ℕ) : ℝ) (m₀ + 1) Cf T K) {s&#x27; t : ℝ} (hs0 : 0 ≤ s&#x27;) (hsT : s&#x27; ≤ T)
+</span><span class="line" id="L841"><a class="ln" aria-label="Line 841" href="#L841">841</a>    (ht0 : 0 ≤ t) (htT : t ≤ T)
+</span><span class="line" id="L842"><a class="ln" aria-label="Line 842" href="#L842">842</a>    {φ : Euc d → ℝ} (hφ : IsSobolevTest ((q : ℕ) : ℝ) φ) :
+</span><span class="line" id="L843"><a class="ln" aria-label="Line 843" href="#L843">843</a>    HRS.Whole.AppendixA.Y0Class m₀ χ (fun x =&gt; propagatorW Cf 0 t φ x - propagatorW Cf 0 s&#x27; φ x) := by
+</span><span class="line" id="L844"><a class="ln" aria-label="Line 844" href="#L844">844</a>  obtain ⟨-, hcd1, -, hb1⟩ := hadj 0 t le_rfl ht0 htT φ hφ
+</span><span class="line" id="L845"><a class="ln" aria-label="Line 845" href="#L845">845</a>  obtain ⟨-, hcd2, -, hb2⟩ := hadj 0 s&#x27; le_rfl hs0 hsT φ hφ
+</span><span class="line" id="L846"><a class="ln" aria-label="Line 846" href="#L846">846</a>  refine mri_Y0 hχ m₀ (hcd1.sub hcd2) (2 * (K * HRS.Whole.sobolevNorm ((q : ℕ) : ℝ) φ)) fun l hl idx x =&gt; ?_
+</span><span class="line" id="L847"><a class="ln" aria-label="Line 847" href="#L847">847</a>  rw [mri_partialDeriv_sub (hcd1.of_le (by exact_mod_cast hl)) (hcd2.of_le (by exact_mod_cast hl))]
+</span><span class="line" id="L848"><a class="ln" aria-label="Line 848" href="#L848">848</a>  have h1 := hb1 l hl idx x
+</span><span class="line" id="L849"><a class="ln" aria-label="Line 849" href="#L849">849</a>  have h2 := hb2 l hl idx x
+</span><span class="line" id="L850"><a class="ln" aria-label="Line 850" href="#L850">850</a>  calc |partialDeriv idx (propagatorW Cf 0 t φ) x - partialDeriv idx (propagatorW Cf 0 s&#x27; φ) x|
+</span><span class="line" id="L851"><a class="ln" aria-label="Line 851" href="#L851">851</a>      ≤ |partialDeriv idx (propagatorW Cf 0 t φ) x| + |partialDeriv idx (propagatorW Cf 0 s&#x27; φ) x| :=
+</span><span class="line" id="L852"><a class="ln" aria-label="Line 852" href="#L852">852</a>        abs_sub _ _
+</span><span class="line" id="L853"><a class="ln" aria-label="Line 853" href="#L853">853</a>    _ ≤ 2 * (K * HRS.Whole.sobolevNorm ((q : ℕ) : ℝ) φ) := by linarith
+</span><span class="line" id="L854"><a class="ln" aria-label="Line 854" href="#L854">854</a>
+</span><span class="line" id="L855"><a class="ln" aria-label="Line 855" href="#L855">855</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L856"><a class="ln" aria-label="Line 856" href="#L856">856</a>theorem mri_core {χ : Euc d → ℝ} (hχ : HRS.Whole.AppendixA.IsUlocCutoff χ) (m₀ : ℕ) :
+</span><span class="line" id="L857"><a class="ln" aria-label="Line 857" href="#L857">857</a>    ∃ C2 : ℝ, 0 ≤ C2 ∧ ∀ {Cf : WholeCoeff d} {T : ℝ} {q : ℕ} {K C₁ : ℝ} (h : ℕ → mhn_Hc d),
+</span><span class="line" id="L858"><a class="ln" aria-label="Line 858" href="#L858">858</a>      (∀ F : HNeg d ((q : ℕ) : ℝ),
+</span><span class="line" id="L859"><a class="ln" aria-label="Line 859" href="#L859">859</a>        HasSum (fun n =&gt; (inner ℝ (mhn_rep ((q : ℕ) : ℝ) (h n)) F) ^ 2) (‖F‖ ^ 2)) →
+</span><span class="line" id="L860"><a class="ln" aria-label="Line 860" href="#L860">860</a>      AdjointInputOneD ((q : ℕ) : ℝ) (m₀ + 1) Cf T K → IncrementBoundRd Cf T q m₀ C₁ →
+</span><span class="line" id="L861"><a class="ln" aria-label="Line 861" href="#L861">861</a>      ∀ {s&#x27; t : ℝ}, 0 ≤ s&#x27; → s&#x27; ≤ t → t ≤ T →
+</span><span class="line" id="L862"><a class="ln" aria-label="Line 862" href="#L862">862</a>        ∑&#x27; ℓ, HRS.Whole.AppendixA.varpiNormE m₀ χ (fun x =&gt; propagatorW Cf 0 t (mhn_phi (h ℓ)) x -
+</span><span class="line" id="L863"><a class="ln" aria-label="Line 863" href="#L863">863</a>          propagatorW Cf 0 s&#x27; (mhn_phi (h ℓ)) x) ^ 2 ≤
+</span><span class="line" id="L864"><a class="ln" aria-label="Line 864" href="#L864">864</a>          ENNReal.ofReal (C2 * (C₁ ^ 2 * |t - s&#x27;| ^ 2)) := by
+</span><span class="line" id="L865"><a class="ln" aria-label="Line 865" href="#L865">865</a>  obtain ⟨C0, hC0, hvs⟩ := mri_varpi_sum hχ m₀
+</span><span class="line" id="L866"><a class="ln" aria-label="Line 866" href="#L866">866</a>  set Gs : ℝ := ∑ i ∈ Finset.range (m₀ + 1), ((d : ℝ) ^ i * (d : ℝ) ^ i) with hGs
+</span><span class="line" id="L867"><a class="ln" aria-label="Line 867" href="#L867">867</a>  have hGs0 : 0 ≤ Gs := Finset.sum_nonneg fun i _ =&gt; by positivity
+</span><span class="line" id="L868"><a class="ln" aria-label="Line 868" href="#L868">868</a>  refine ⟨C0 * Gs, by positivity, ?_⟩
+</span><span class="line" id="L869"><a class="ln" aria-label="Line 869" href="#L869">869</a>  intro Cf T q K C₁ h hP hadj hinc s&#x27; t hs0 hst htT
+</span><span class="line" id="L870"><a class="ln" aria-label="Line 870" href="#L870">870</a>  have ht0 : 0 ≤ t := hs0.trans hst
+</span><span class="line" id="L871"><a class="ln" aria-label="Line 871" href="#L871">871</a>  have hsT : s&#x27; ≤ T := hst.trans htT
+</span><span class="line" id="L872"><a class="ln" aria-label="Line 872" href="#L872">872</a>  set B0 : ℝ := Gs * (C₁ * |t - s&#x27;|) ^ 2 with hB0
+</span><span class="line" id="L873"><a class="ln" aria-label="Line 873" href="#L873">873</a>  have hB00 : 0 ≤ B0 := by positivity
+</span><span class="line" id="L874"><a class="ln" aria-label="Line 874" href="#L874">874</a>  set ψ : ℕ → Euc d → ℝ := fun ℓ x =&gt; propagatorW Cf 0 t (mhn_phi (h ℓ)) x -
+</span><span class="line" id="L875"><a class="ln" aria-label="Line 875" href="#L875">875</a>    propagatorW Cf 0 s&#x27; (mhn_phi (h ℓ)) x with hψ
+</span><span class="line" id="L876"><a class="ln" aria-label="Line 876" href="#L876">876</a>  have hcd : ∀ ℓ, ContDiff ℝ (m₀ + 1 : ℕ) (ψ ℓ) := fun ℓ =&gt;
+</span><span class="line" id="L877"><a class="ln" aria-label="Line 877" href="#L877">877</a>    ((hadj 0 t le_rfl ht0 htT _ (mhn_isSobolevTest_phi _ (h ℓ))).2.1).sub
+</span><span class="line" id="L878"><a class="ln" aria-label="Line 878" href="#L878">878</a>      ((hadj 0 s&#x27; le_rfl hs0 hsT _ (mhn_isSobolevTest_phi _ (h ℓ))).2.1)
+</span><span class="line" id="L879"><a class="ln" aria-label="Line 879" href="#L879">879</a>  have hcd&#x27; : ∀ ℓ, ContDiff ℝ m₀ (ψ ℓ) := fun ℓ =&gt; (hcd ℓ).of_le (by exact_mod_cast Nat.le_succ m₀)
+</span><span class="line" id="L880"><a class="ln" aria-label="Line 880" href="#L880">880</a>  -- Bessel for each coordinate functional
+</span><span class="line" id="L881"><a class="ln" aria-label="Line 881" href="#L881">881</a>  have hbes : ∀ (i : ℕ), i ≤ m₀ + 1 → ∀ (idx : Fin i → Fin d) (x : Euc d) (n : ℕ),
+</span><span class="line" id="L882"><a class="ln" aria-label="Line 882" href="#L882">882</a>      ∑ ℓ ∈ Finset.range n, (partialDeriv idx (ψ ℓ) x) ^ 2 ≤ (C₁ * |t - s&#x27;| * jbracket x) ^ 2 := by
+</span><span class="line" id="L883"><a class="ln" aria-label="Line 883" href="#L883">883</a>    intro i hi idx x n
+</span><span class="line" id="L884"><a class="ln" aria-label="Line 884" href="#L884">884</a>    obtain ⟨Λ, hΛ⟩ := mri_exists_lam hadj ht0 htT hs0 hsT hi idx x
+</span><span class="line" id="L885"><a class="ln" aria-label="Line 885" href="#L885">885</a>    have := mri_bessel ((q : ℕ) : ℝ) h hP Λ (C₁ * |t - s&#x27;| * jbracket x) (fun g =&gt; by
+</span><span class="line" id="L886"><a class="ln" aria-label="Line 886" href="#L886">886</a>        rw [hΛ g, mhn_norm_rep]
+</span><span class="line" id="L887"><a class="ln" aria-label="Line 887" href="#L887">887</a>        exact hinc 0 s&#x27; t le_rfl hs0 hst htT (mhn_phi g) (mhn_isSobolevTest_phi _ g) i hi idx x) n
+</span><span class="line" id="L888"><a class="ln" aria-label="Line 888" href="#L888">888</a>    simpa [hΛ, hψ, mhn_phi] using this
+</span><span class="line" id="L889"><a class="ln" aria-label="Line 889" href="#L889">889</a>  have hB : ∀ (n : ℕ) (x : Euc d), ∑ ℓ ∈ Finset.range n, mriG m₀ (ψ ℓ) x ≤ B0 * jbracket x ^ 2 := by
+</span><span class="line" id="L890"><a class="ln" aria-label="Line 890" href="#L890">890</a>    intro n x
+</span><span class="line" id="L891"><a class="ln" aria-label="Line 891" href="#L891">891</a>    have hi : ∀ i ∈ Finset.range (m₀ + 1), ∑ ℓ ∈ Finset.range n, ‖iteratedFDeriv ℝ i (ψ ℓ) x‖ ^ 2 ≤
+</span><span class="line" id="L892"><a class="ln" aria-label="Line 892" href="#L892">892</a>        ((d : ℝ) ^ i * (d : ℝ) ^ i) * (C₁ * |t - s&#x27;| * jbracket x) ^ 2 := by
+</span><span class="line" id="L893"><a class="ln" aria-label="Line 893" href="#L893">893</a>      intro i hi
+</span><span class="line" id="L894"><a class="ln" aria-label="Line 894" href="#L894">894</a>      have hi&#x27; : i ≤ m₀ + 1 := by have := Finset.mem_range.1 hi; omega
+</span><span class="line" id="L895"><a class="ln" aria-label="Line 895" href="#L895">895</a>      calc ∑ ℓ ∈ Finset.range n, ‖iteratedFDeriv ℝ i (ψ ℓ) x‖ ^ 2
+</span><span class="line" id="L896"><a class="ln" aria-label="Line 896" href="#L896">896</a>          ≤ ∑ ℓ ∈ Finset.range n, (d : ℝ) ^ i * ∑ idx : Fin i → Fin d, (partialDeriv idx (ψ ℓ) x) ^ 2 :=
+</span><span class="line" id="L897"><a class="ln" aria-label="Line 897" href="#L897">897</a>            Finset.sum_le_sum fun ℓ _ =&gt; mri_norm_iter_sq i (ψ ℓ) x
+</span><span class="line" id="L898"><a class="ln" aria-label="Line 898" href="#L898">898</a>        _ = (d : ℝ) ^ i * ∑ idx : Fin i → Fin d, ∑ ℓ ∈ Finset.range n, (partialDeriv idx (ψ ℓ) x) ^ 2 := by
+</span><span class="line" id="L899"><a class="ln" aria-label="Line 899" href="#L899">899</a>            rw [← Finset.mul_sum, Finset.sum_comm]
+</span><span class="line" id="L900"><a class="ln" aria-label="Line 900" href="#L900">900</a>        _ ≤ (d : ℝ) ^ i * ∑ _idx : Fin i → Fin d, (C₁ * |t - s&#x27;| * jbracket x) ^ 2 :=
+</span><span class="line" id="L901"><a class="ln" aria-label="Line 901" href="#L901">901</a>            mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun idx _ =&gt; hbes i hi&#x27; idx x n) (by positivity)
+</span><span class="line" id="L902"><a class="ln" aria-label="Line 902" href="#L902">902</a>        _ = ((d : ℝ) ^ i * (d : ℝ) ^ i) * (C₁ * |t - s&#x27;| * jbracket x) ^ 2 := by
+</span><span class="line" id="L903"><a class="ln" aria-label="Line 903" href="#L903">903</a>            rw [Finset.sum_const, Finset.card_univ, Fintype.card_fun, Fintype.card_fin,
+</span><span class="line" id="L904"><a class="ln" aria-label="Line 904" href="#L904">904</a>              Fintype.card_fin, nsmul_eq_mul]
+</span><span class="line" id="L905"><a class="ln" aria-label="Line 905" href="#L905">905</a>            push_cast; ring
+</span><span class="line" id="L906"><a class="ln" aria-label="Line 906" href="#L906">906</a>    calc ∑ ℓ ∈ Finset.range n, mriG m₀ (ψ ℓ) x
+</span><span class="line" id="L907"><a class="ln" aria-label="Line 907" href="#L907">907</a>        = ∑ i ∈ Finset.range (m₀ + 1), ∑ ℓ ∈ Finset.range n, ‖iteratedFDeriv ℝ i (ψ ℓ) x‖ ^ 2 := by
+</span><span class="line" id="L908"><a class="ln" aria-label="Line 908" href="#L908">908</a>          unfold mriG; rw [Finset.sum_comm]
+</span><span class="line" id="L909"><a class="ln" aria-label="Line 909" href="#L909">909</a>      _ ≤ ∑ i ∈ Finset.range (m₀ + 1), ((d : ℝ) ^ i * (d : ℝ) ^ i) * (C₁ * |t - s&#x27;| * jbracket x) ^ 2 :=
+</span><span class="line" id="L910"><a class="ln" aria-label="Line 910" href="#L910">910</a>          Finset.sum_le_sum hi
+</span><span class="line" id="L911"><a class="ln" aria-label="Line 911" href="#L911">911</a>      _ = B0 * jbracket x ^ 2 := by
+</span><span class="line" id="L912"><a class="ln" aria-label="Line 912" href="#L912">912</a>          rw [← Finset.sum_mul, hB0, hGs]; ring
+</span><span class="line" id="L913"><a class="ln" aria-label="Line 913" href="#L913">913</a>  refine (hvs ψ hcd&#x27; B0 hB00 hB).trans (le_of_eq ?_)
+</span><span class="line" id="L914"><a class="ln" aria-label="Line 914" href="#L914">914</a>  congr 1
+</span><span class="line" id="L915"><a class="ln" aria-label="Line 915" href="#L915">915</a>  rw [hB0]; ring
+</span><span class="line" id="L916"><a class="ln" aria-label="Line 916" href="#L916">916</a>
+</span><span class="line" id="L917"><a class="ln" aria-label="Line 917" href="#L917">917</a>
+</span><span class="line" id="L918"><a class="ln" aria-label="Line 918" href="#L918">918</a>/-! ### Probabilistic assembly -/
+</span><span class="line" id="L919"><a class="ln" aria-label="Line 919" href="#L919">919</a>
+</span><span class="line" id="L920"><a class="ln" aria-label="Line 920" href="#L920">920</a>open HRS.MP.HNegInfra in
+</span><span class="line" id="L921"><a class="ln" aria-label="Line 921" href="#L921">921</a>theorem mri_lintegral_sq {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) {Γ : ℝ} (h : ℕ → mhn_Hc d)
+</span><span class="line" id="L922"><a class="ln" aria-label="Line 922" href="#L922">922</a>    (hP : ∀ F : HNeg d Γ, HasSum (fun n =&gt; (inner ℝ (mhn_rep Γ (h n)) F) ^ 2) (‖F‖ ^ 2))
+</span><span class="line" id="L923"><a class="ln" aria-label="Line 923" href="#L923">923</a>    (F : Ω → HNeg d Γ) (hF : Measurable F) :
+</span><span class="line" id="L924"><a class="ln" aria-label="Line 924" href="#L924">924</a>    ∫⁻ ζ, ‖F ζ‖ₑ ^ 2 ∂P =
+</span><span class="line" id="L925"><a class="ln" aria-label="Line 925" href="#L925">925</a>      ∑&#x27; ℓ, ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (F ζ)) ^ 2) ∂P := by
+</span><span class="line" id="L926"><a class="ln" aria-label="Line 926" href="#L926">926</a>  have hpair : ∀ ℓ ζ, HNeg.pairing (mhn_phi (h ℓ)) (F ζ) = inner ℝ (mhn_rep Γ (h ℓ)) (F ζ) :=
+</span><span class="line" id="L927"><a class="ln" aria-label="Line 927" href="#L927">927</a>    fun ℓ ζ =&gt; mhn_pairing_phi Γ (h ℓ) (F ζ)
+</span><span class="line" id="L928"><a class="ln" aria-label="Line 928" href="#L928">928</a>  have h1 : ∀ ζ, ‖F ζ‖ₑ ^ 2 = ∑&#x27; ℓ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (F ζ)) ^ 2) := by
+</span><span class="line" id="L929"><a class="ln" aria-label="Line 929" href="#L929">929</a>    intro ζ
+</span><span class="line" id="L930"><a class="ln" aria-label="Line 930" href="#L930">930</a>    have hs := hP (F ζ)
+</span><span class="line" id="L931"><a class="ln" aria-label="Line 931" href="#L931">931</a>    rw [← ofReal_norm, ← ENNReal.ofReal_pow (norm_nonneg _)]
+</span><span class="line" id="L932"><a class="ln" aria-label="Line 932" href="#L932">932</a>    rw [← hs.tsum_eq, ENNReal.ofReal_tsum_of_nonneg (fun _ =&gt; sq_nonneg _) hs.summable]
+</span><span class="line" id="L933"><a class="ln" aria-label="Line 933" href="#L933">933</a>    simp_rw [hpair]
+</span><span class="line" id="L934"><a class="ln" aria-label="Line 934" href="#L934">934</a>  simp_rw [h1]
+</span><span class="line" id="L935"><a class="ln" aria-label="Line 935" href="#L935">935</a>  rw [lintegral_tsum]
+</span><span class="line" id="L936"><a class="ln" aria-label="Line 936" href="#L936">936</a>  intro ℓ
+</span><span class="line" id="L937"><a class="ln" aria-label="Line 937" href="#L937">937</a>  have hm : Measurable fun ζ =&gt; HNeg.pairing (mhn_phi (h ℓ)) (F ζ) :=
+</span><span class="line" id="L938"><a class="ln" aria-label="Line 938" href="#L938">938</a>    (mhn_continuous_pairing (mhn_isSobolevTest_phi Γ (h ℓ))).measurable.comp hF
+</span><span class="line" id="L939"><a class="ln" aria-label="Line 939" href="#L939">939</a>  exact (ENNReal.measurable_ofReal.comp (hm.pow_const 2)).aemeasurable
+</span><span class="line" id="L940"><a class="ln" aria-label="Line 940" href="#L940">940</a>
+</span><span class="line" id="L941"><a class="ln" aria-label="Line 941" href="#L941">941</a>theorem mri_pair_sub {μ : Measure (Euc d)} [IsFiniteMeasure μ] {f g : Euc d → ℝ}
+</span><span class="line" id="L942"><a class="ln" aria-label="Line 942" href="#L942">942</a>    (hf : Continuous f) (hg : Continuous g) (Bf Bg : ℝ) (hBf : ∀ x, |f x| ≤ Bf) (hBg : ∀ x, |g x| ≤ Bg) :
+</span><span class="line" id="L943"><a class="ln" aria-label="Line 943" href="#L943">943</a>    HRS.Whole.pair μ (fun x =&gt; f x - g x) = HRS.Whole.pair μ f - HRS.Whole.pair μ g := by
+</span><span class="line" id="L944"><a class="ln" aria-label="Line 944" href="#L944">944</a>  unfold HRS.Whole.pair
+</span><span class="line" id="L945"><a class="ln" aria-label="Line 945" href="#L945">945</a>  exact integral_sub (Integrable.of_bound hf.aestronglyMeasurable Bf (ae_of_all _ fun x =&gt; by
+</span><span class="line" id="L946"><a class="ln" aria-label="Line 946" href="#L946">946</a>      simpa using hBf x)) (Integrable.of_bound hg.aestronglyMeasurable Bg (ae_of_all _ fun x =&gt; by
+</span><span class="line" id="L947"><a class="ln" aria-label="Line 947" href="#L947">947</a>      simpa using hBg x))
+</span><span class="line" id="L948"><a class="ln" aria-label="Line 948" href="#L948">948</a>
+</span><span class="line" id="L949"><a class="ln" aria-label="Line 949" href="#L949">949</a>theorem mri_AN_bounds (S : HRS.Whole.AppendixA.WholeMainData d) (N : ℕ) : 0 ≤ S.AN N ∧ S.AN N ≤ 1 := by
+</span><span class="line" id="L950"><a class="ln" aria-label="Line 950" href="#L950">950</a>  unfold HRS.Whole.AppendixA.WholeMainData.AN Ascale
+</span><span class="line" id="L951"><a class="ln" aria-label="Line 951" href="#L951">951</a>  have hκ := S.hκ N
+</span><span class="line" id="L952"><a class="ln" aria-label="Line 952" href="#L952">952</a>  by_cases h0 : S.invβ N = 0
+</span><span class="line" id="L953"><a class="ln" aria-label="Line 953" href="#L953">953</a>  · simp [h0]
+</span><span class="line" id="L954"><a class="ln" aria-label="Line 954" href="#L954">954</a>  · simp only [h0, ↓reduceIte]
+</span><span class="line" id="L955"><a class="ln" aria-label="Line 955" href="#L955">955</a>    unfold sigmaScale
+</span><span class="line" id="L956"><a class="ln" aria-label="Line 956" href="#L956">956</a>    simp only [h0, ↓reduceIte]
+</span><span class="line" id="L957"><a class="ln" aria-label="Line 957" href="#L957">957</a>    refine ⟨div_nonneg (le_min hκ.le (Real.sqrt_nonneg _)) hκ.le, ?_⟩
+</span><span class="line" id="L958"><a class="ln" aria-label="Line 958" href="#L958">958</a>    rw [div_le_one hκ]
+</span><span class="line" id="L959"><a class="ln" aria-label="Line 959" href="#L959">959</a>    exact min_le_left _ _
+</span><span class="line" id="L960"><a class="ln" aria-label="Line 960" href="#L960">960</a>
+</span><span class="line" id="L961"><a class="ln" aria-label="Line 961" href="#L961">961</a>theorem mri_ofReal_V_le (m : ℕ) (χ ψ : Euc d → ℝ) :
+</span><span class="line" id="L962"><a class="ln" aria-label="Line 962" href="#L962">962</a>    ENNReal.ofReal ((HRS.Whole.AppendixA.varpiNormE m χ ψ).toReal ^ 2) ≤
+</span><span class="line" id="L963"><a class="ln" aria-label="Line 963" href="#L963">963</a>      HRS.Whole.AppendixA.varpiNormE m χ ψ ^ 2 := by
+</span><span class="line" id="L964"><a class="ln" aria-label="Line 964" href="#L964">964</a>  by_cases h : HRS.Whole.AppendixA.varpiNormE m χ ψ = ⊤
+</span><span class="line" id="L965"><a class="ln" aria-label="Line 965" href="#L965">965</a>  · rw [h]; simp
+</span><span class="line" id="L966"><a class="ln" aria-label="Line 966" href="#L966">966</a>  · rw [ENNReal.ofReal_pow ENNReal.toReal_nonneg, ENNReal.ofReal_toReal h]
+</span><span class="line" id="L967"><a class="ln" aria-label="Line 967" href="#L967">967</a>
+</span><span class="line" id="L968"><a class="ln" aria-label="Line 968" href="#L968">968</a>
+</span><span class="line" id="L969"><a class="ln" aria-label="Line 969" href="#L969">969</a>theorem mri_prop_cont_bdd {Cf : WholeCoeff d} {T : ℝ} {Γ : ℝ} {j : ℕ} {K : ℝ}
+</span><span class="line" id="L970"><a class="ln" aria-label="Line 970" href="#L970">970</a>    (hadj : AdjointInputOneD Γ j Cf T K) {t : ℝ} (ht0 : 0 ≤ t) (htT : t ≤ T) {φ : Euc d → ℝ}
+</span><span class="line" id="L971"><a class="ln" aria-label="Line 971" href="#L971">971</a>    (hφ : IsSobolevTest Γ φ) :
+</span><span class="line" id="L972"><a class="ln" aria-label="Line 972" href="#L972">972</a>    Continuous (propagatorW Cf 0 t φ) ∧ ∀ x, |propagatorW Cf 0 t φ x| ≤ K * HRS.Whole.sobolevNorm Γ φ := by
+</span><span class="line" id="L973"><a class="ln" aria-label="Line 973" href="#L973">973</a>  obtain ⟨-, hcd, -, hb⟩ := hadj 0 t le_rfl ht0 htT φ hφ
+</span><span class="line" id="L974"><a class="ln" aria-label="Line 974" href="#L974">974</a>  refine ⟨hcd.continuous, fun x =&gt; ?_⟩
+</span><span class="line" id="L975"><a class="ln" aria-label="Line 975" href="#L975">975</a>  have := hb 0 (Nat.zero_le _) (fun i =&gt; i.elim0) x
+</span><span class="line" id="L976"><a class="ln" aria-label="Line 976" href="#L976">976</a>  simpa [partialDeriv, iteratedFDeriv_zero_apply] using this
+</span><span class="line" id="L977"><a class="ln" aria-label="Line 977" href="#L977">977</a>
+</span><span class="line" id="L978"><a class="ln" aria-label="Line 978" href="#L978">978</a>
+</span><span class="line" id="L979"><a class="ln" aria-label="Line 979" href="#L979">979</a>open HRS.MP.HNegInfra HRS.Whole.AppendixA in
+</span><span class="line" id="L980"><a class="ln" aria-label="Line 980" href="#L980">980</a>theorem mri_moment_N {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) (m₀ : ℕ) (Cin C₁ : ℝ) :
+</span><span class="line" id="L981"><a class="ln" aria-label="Line 981" href="#L981">981</a>    ∃ C : ℝ, ∀ (Γ : ℕ) (T Kadj : ℝ) (S : WholeMainData d), S.T = T →
+</span><span class="line" id="L982"><a class="ln" aria-label="Line 982" href="#L982">982</a>      AdjointDerivInput ((Γ + 2 : ℕ) : ℝ) (m₀ + 1) S.coeff S.T Kadj →
+</span><span class="line" id="L983"><a class="ln" aria-label="Line 983" href="#L983">983</a>      (∀ N : ℕ, 1 ≤ N → IncrementBoundRd (S.coeff N) T (Γ + 2) m₀ C₁) →
+</span><span class="line" id="L984"><a class="ln" aria-label="Line 984" href="#L984">984</a>      ∀ (R : ∀ N, RealizationRd d N) (ε : ℕ → ℝ) (Ψ : ℕ → Set (Euc d → ℝ)),
+</span><span class="line" id="L985"><a class="ln" aria-label="Line 985" href="#L985">985</a>        InitialFluctuationRd S R χ m₀ Cin ε Ψ →
+</span><span class="line" id="L986"><a class="ln" aria-label="Line 986" href="#L986">986</a>      ∀ (Iq Jq : ∀ N, ℝ → (R N).Ω → HNeg d ((Γ + 2 : ℕ) : ℝ)),
+</span><span class="line" id="L987"><a class="ln" aria-label="Line 987" href="#L987">987</a>        IsInitReprRd S R (Γ + 2) Iq Jq →
+</span><span class="line" id="L988"><a class="ln" aria-label="Line 988" href="#L988">988</a>        ∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T, s&#x27; ≤ t →
+</span><span class="line" id="L989"><a class="ln" aria-label="Line 989" href="#L989">989</a>          ∫⁻ ζ, ‖Iq N t ζ - Iq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P + ∫⁻ ζ, ‖Jq N t ζ - Jq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P ≤
+</span><span class="line" id="L990"><a class="ln" aria-label="Line 990" href="#L990">990</a>            ENNReal.ofReal (C * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L991"><a class="ln" aria-label="Line 991" href="#L991">991</a>  obtain ⟨hC2, hcore⟩ := Classical.choose_spec (mri_core hχ m₀)
+</span><span class="line" id="L992"><a class="ln" aria-label="Line 992" href="#L992">992</a>  set C2 := Classical.choose (mri_core hχ m₀) with hC2def
+</span><span class="line" id="L993"><a class="ln" aria-label="Line 993" href="#L993">993</a>  refine ⟨Cin ^ 2 * (C2 * C₁ ^ 2), ?_⟩
+</span><span class="line" id="L994"><a class="ln" aria-label="Line 994" href="#L994">994</a>  intro Γ T Kadj S hST hadj hinc R ε Ψ hinit Iq Jq hrepr N hN s&#x27; hs&#x27; t ht hst
+</span><span class="line" id="L995"><a class="ln" aria-label="Line 995" href="#L995">995</a>  subst hST
+</span><span class="line" id="L996"><a class="ln" aria-label="Line 996" href="#L996">996</a>  have hadjN : AdjointInputOneD ((Γ + 2 : ℕ) : ℝ) (m₀ + 1) (S.coeff N) S.T Kadj := hadj N hN
+</span><span class="line" id="L997"><a class="ln" aria-label="Line 997" href="#L997">997</a>  obtain ⟨h, hP⟩ := mri_parseval_h (d := d) ((Γ + 2 : ℕ) : ℝ)
+</span><span class="line" id="L998"><a class="ln" aria-label="Line 998" href="#L998">998</a>  have hsum := hcore h hP hadjN (hinc N hN) hs&#x27;.1 hst ht.2
+</span><span class="line" id="L999"><a class="ln" aria-label="Line 999" href="#L999">999</a>  have hs0 : 0 ≤ s&#x27; := hs&#x27;.1
+</span><span class="line" id="L1000"><a class="ln" aria-label="Line 1000" href="#L1000">1000</a>  have hsT : s&#x27; ≤ S.T := hs&#x27;.2
+</span><span class="line" id="L1001"><a class="ln" aria-label="Line 1001" href="#L1001">1001</a>  have ht0 : 0 ≤ t := ht.1
+</span><span class="line" id="L1002"><a class="ln" aria-label="Line 1002" href="#L1002">1002</a>  have htT : t ≤ S.T := ht.2
+</span><span class="line" id="L1003"><a class="ln" aria-label="Line 1003" href="#L1003">1003</a>  have hMI : Measurable fun ζ =&gt; Iq N t ζ - Iq N s&#x27; ζ := ((hrepr.1 N hN t).1).sub (hrepr.1 N hN s&#x27;).1
+</span><span class="line" id="L1004"><a class="ln" aria-label="Line 1004" href="#L1004">1004</a>  have hMJ : Measurable fun ζ =&gt; Jq N t ζ - Jq N s&#x27; ζ := ((hrepr.1 N hN t).2).sub (hrepr.1 N hN s&#x27;).2
+</span><span class="line" id="L1005"><a class="ln" aria-label="Line 1005" href="#L1005">1005</a>  rw [mri_lintegral_sq (R N).P h hP _ hMI, mri_lintegral_sq (R N).P h hP _ hMJ, ← ENNReal.tsum_add]
+</span><span class="line" id="L1006"><a class="ln" aria-label="Line 1006" href="#L1006">1006</a>  -- the termwise bound
+</span><span class="line" id="L1007"><a class="ln" aria-label="Line 1007" href="#L1007">1007</a>  have hterm : ∀ ℓ, (∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (Iq N t ζ - Iq N s&#x27; ζ)) ^ 2) ∂(R N).P) +
+</span><span class="line" id="L1008"><a class="ln" aria-label="Line 1008" href="#L1008">1008</a>      (∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (Jq N t ζ - Jq N s&#x27; ζ)) ^ 2) ∂(R N).P) ≤
+</span><span class="line" id="L1009"><a class="ln" aria-label="Line 1009" href="#L1009">1009</a>      ENNReal.ofReal (Cin ^ 2 * (varpiNormE m₀ χ (fun x =&gt; propagatorW (S.coeff N) 0 t (mhn_phi (h ℓ)) x -
+</span><span class="line" id="L1010"><a class="ln" aria-label="Line 1010" href="#L1010">1010</a>        propagatorW (S.coeff N) 0 s&#x27; (mhn_phi (h ℓ)) x)).toReal ^ 2) := by
+</span><span class="line" id="L1011"><a class="ln" aria-label="Line 1011" href="#L1011">1011</a>    intro ℓ
+</span><span class="line" id="L1012"><a class="ln" aria-label="Line 1012" href="#L1012">1012</a>    set e := mhn_phi (h ℓ) with he
+</span><span class="line" id="L1013"><a class="ln" aria-label="Line 1013" href="#L1013">1013</a>    have hte : IsSobolevTest ((Γ + 2 : ℕ) : ℝ) e := mhn_isSobolevTest_phi _ (h ℓ)
+</span><span class="line" id="L1014"><a class="ln" aria-label="Line 1014" href="#L1014">1014</a>    set ψ : Euc d → ℝ := fun x =&gt; propagatorW (S.coeff N) 0 t e x - propagatorW (S.coeff N) 0 s&#x27; e x with hψ
+</span><span class="line" id="L1015"><a class="ln" aria-label="Line 1015" href="#L1015">1015</a>    have hYt := mri_Y0_prop hχ m₀ hadjN ht0 htT hte
+</span><span class="line" id="L1016"><a class="ln" aria-label="Line 1016" href="#L1016">1016</a>    have hYs := mri_Y0_prop hχ m₀ hadjN hs0 hsT hte
+</span><span class="line" id="L1017"><a class="ln" aria-label="Line 1017" href="#L1017">1017</a>    have hYψ := mri_Y0_diff hχ m₀ hadjN hs0 hsT ht0 htT hte
+</span><span class="line" id="L1018"><a class="ln" aria-label="Line 1018" href="#L1018">1018</a>    obtain ⟨hct, hbt⟩ := mri_prop_cont_bdd hadjN ht0 htT hte
+</span><span class="line" id="L1019"><a class="ln" aria-label="Line 1019" href="#L1019">1019</a>    obtain ⟨hcs, hbs⟩ := mri_prop_cont_bdd hadjN hs0 hsT hte
+</span><span class="line" id="L1020"><a class="ln" aria-label="Line 1020" href="#L1020">1020</a>    have : IsProbabilityMeasure S.μ0 := S.hμ0
+</span><span class="line" id="L1021"><a class="ln" aria-label="Line 1021" href="#L1021">1021</a>    have hae := (hrepr.2 N hN t ht e hte).and (hrepr.2 N hN s&#x27; hs&#x27; e hte)
+</span><span class="line" id="L1022"><a class="ln" aria-label="Line 1022" href="#L1022">1022</a>    have hI : ∀ᵐ ζ ∂(R N).P, HNeg.pairing e (Iq N t ζ - Iq N s&#x27; ζ) = S.AN N * (S.κ N *
+</span><span class="line" id="L1023"><a class="ln" aria-label="Line 1023" href="#L1023">1023</a>        (HRS.Whole.pair (HRS.Whole.empirical ((R N).X₀ ζ)) ψ - HRS.Whole.pair S.μ0 ψ)) := by
+</span><span class="line" id="L1024"><a class="ln" aria-label="Line 1024" href="#L1024">1024</a>      filter_upwards [hae] with ζ hζ
+</span><span class="line" id="L1025"><a class="ln" aria-label="Line 1025" href="#L1025">1025</a>      obtain ⟨⟨h1, -⟩, ⟨h2, -⟩⟩ := hζ
+</span><span class="line" id="L1026"><a class="ln" aria-label="Line 1026" href="#L1026">1026</a>      have hfin : IsFiniteMeasure (HRS.Whole.empirical ((R N).X₀ ζ)) := by
+</span><span class="line" id="L1027"><a class="ln" aria-label="Line 1027" href="#L1027">1027</a>        unfold HRS.Whole.empirical
+</span><span class="line" id="L1028"><a class="ln" aria-label="Line 1028" href="#L1028">1028</a>        have : IsFiniteMeasure (∑ i : Fin N, Measure.dirac ((R N).X₀ ζ i)) := inferInstance
+</span><span class="line" id="L1029"><a class="ln" aria-label="Line 1029" href="#L1029">1029</a>        exact Measure.smul_finite _ (ENNReal.inv_ne_top.2 (by exact_mod_cast (by omega : N ≠ 0)))
+</span><span class="line" id="L1030"><a class="ln" aria-label="Line 1030" href="#L1030">1030</a>      rw [mhn_pairing_sub hte, h1, h2, hψ]
+</span><span class="line" id="L1031"><a class="ln" aria-label="Line 1031" href="#L1031">1031</a>      rw [mri_pair_sub hct hcs _ _ hbt hbs, mri_pair_sub hct hcs _ _ hbt hbs]
+</span><span class="line" id="L1032"><a class="ln" aria-label="Line 1032" href="#L1032">1032</a>      ring
+</span><span class="line" id="L1033"><a class="ln" aria-label="Line 1033" href="#L1033">1033</a>    have hJ : ∀ᵐ ζ ∂(R N).P, HNeg.pairing e (Jq N t ζ - Jq N s&#x27; ζ) = S.AN N * (R N).η ζ ψ := by
+</span><span class="line" id="L1034"><a class="ln" aria-label="Line 1034" href="#L1034">1034</a>      filter_upwards [hae] with ζ hζ
+</span><span class="line" id="L1035"><a class="ln" aria-label="Line 1035" href="#L1035">1035</a>      obtain ⟨⟨-, h1⟩, ⟨-, h2⟩⟩ := hζ
+</span><span class="line" id="L1036"><a class="ln" aria-label="Line 1036" href="#L1036">1036</a>      rw [mhn_pairing_sub hte, h1, h2]
+</span><span class="line" id="L1037"><a class="ln" aria-label="Line 1037" href="#L1037">1037</a>      have := hinit.linear N ζ (propagatorW (S.coeff N) 0 s&#x27; e) (propagatorW (S.coeff N) 0 t e) (-1)
+</span><span class="line" id="L1038"><a class="ln" aria-label="Line 1038" href="#L1038">1038</a>        hYs hYt
+</span><span class="line" id="L1039"><a class="ln" aria-label="Line 1039" href="#L1039">1039</a>      have e2 : (-1 : ℝ) • propagatorW (S.coeff N) 0 s&#x27; e + propagatorW (S.coeff N) 0 t e = ψ := by
+</span><span class="line" id="L1040"><a class="ln" aria-label="Line 1040" href="#L1040">1040</a>        funext x; simp [hψ]; ring
+</span><span class="line" id="L1041"><a class="ln" aria-label="Line 1041" href="#L1041">1041</a>      rw [e2] at this
+</span><span class="line" id="L1042"><a class="ln" aria-label="Line 1042" href="#L1042">1042</a>      rw [this]; ring
+</span><span class="line" id="L1043"><a class="ln" aria-label="Line 1043" href="#L1043">1043</a>    have hAN := mri_AN_bounds S N
+</span><span class="line" id="L1044"><a class="ln" aria-label="Line 1044" href="#L1044">1044</a>    have hA2 : ENNReal.ofReal (S.AN N ^ 2) ≤ 1 := by
+</span><span class="line" id="L1045"><a class="ln" aria-label="Line 1045" href="#L1045">1045</a>      rw [← ENNReal.ofReal_one]
+</span><span class="line" id="L1046"><a class="ln" aria-label="Line 1046" href="#L1046">1046</a>      exact ENNReal.ofReal_le_ofReal (by nlinarith [hAN.1, hAN.2])
+</span><span class="line" id="L1047"><a class="ln" aria-label="Line 1047" href="#L1047">1047</a>    have e1 : ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing e (Iq N t ζ - Iq N s&#x27; ζ)) ^ 2) ∂(R N).P =
+</span><span class="line" id="L1048"><a class="ln" aria-label="Line 1048" href="#L1048">1048</a>        ENNReal.ofReal (S.AN N ^ 2) * ∫⁻ ζ, ENNReal.ofReal ((S.κ N *
+</span><span class="line" id="L1049"><a class="ln" aria-label="Line 1049" href="#L1049">1049</a>          (HRS.Whole.pair (HRS.Whole.empirical ((R N).X₀ ζ)) ψ - HRS.Whole.pair S.μ0 ψ)) ^ 2) ∂(R N).P := by
+</span><span class="line" id="L1050"><a class="ln" aria-label="Line 1050" href="#L1050">1050</a>      rw [← lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L1051"><a class="ln" aria-label="Line 1051" href="#L1051">1051</a>      refine lintegral_congr_ae (hI.mono fun ζ hζ =&gt; ?_)
+</span><span class="line" id="L1052"><a class="ln" aria-label="Line 1052" href="#L1052">1052</a>      beta_reduce
+</span><span class="line" id="L1053"><a class="ln" aria-label="Line 1053" href="#L1053">1053</a>      rw [hζ, mul_pow, ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1054"><a class="ln" aria-label="Line 1054" href="#L1054">1054</a>    have e2 : ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing e (Jq N t ζ - Jq N s&#x27; ζ)) ^ 2) ∂(R N).P =
+</span><span class="line" id="L1055"><a class="ln" aria-label="Line 1055" href="#L1055">1055</a>        ENNReal.ofReal (S.AN N ^ 2) * ∫⁻ ζ, ENNReal.ofReal (((R N).η ζ ψ) ^ 2) ∂(R N).P := by
+</span><span class="line" id="L1056"><a class="ln" aria-label="Line 1056" href="#L1056">1056</a>      rw [← lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L1057"><a class="ln" aria-label="Line 1057" href="#L1057">1057</a>      refine lintegral_congr_ae (hJ.mono fun ζ hζ =&gt; ?_)
+</span><span class="line" id="L1058"><a class="ln" aria-label="Line 1058" href="#L1058">1058</a>      beta_reduce
+</span><span class="line" id="L1059"><a class="ln" aria-label="Line 1059" href="#L1059">1059</a>      rw [hζ, mul_pow, ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1060"><a class="ln" aria-label="Line 1060" href="#L1060">1060</a>    have hI2 := hinit.I2 N hN ψ hYψ
+</span><span class="line" id="L1061"><a class="ln" aria-label="Line 1061" href="#L1061">1061</a>    rw [e1, e2, ← mul_add]
+</span><span class="line" id="L1062"><a class="ln" aria-label="Line 1062" href="#L1062">1062</a>    calc ENNReal.ofReal (S.AN N ^ 2) * (_ + _) ≤ 1 * ENNReal.ofReal (Cin ^ 2 *
+</span><span class="line" id="L1063"><a class="ln" aria-label="Line 1063" href="#L1063">1063</a>          (varpiNormE m₀ χ ψ).toReal ^ 2) := mul_le_mul&#x27; hA2 hI2
+</span><span class="line" id="L1064"><a class="ln" aria-label="Line 1064" href="#L1064">1064</a>      _ = _ := one_mul _
+</span><span class="line" id="L1065"><a class="ln" aria-label="Line 1065" href="#L1065">1065</a>  calc ∑&#x27; ℓ, (∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (Iq N t ζ - Iq N s&#x27; ζ)) ^ 2) ∂(R N).P +
+</span><span class="line" id="L1066"><a class="ln" aria-label="Line 1066" href="#L1066">1066</a>        ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (Jq N t ζ - Jq N s&#x27; ζ)) ^ 2) ∂(R N).P)
+</span><span class="line" id="L1067"><a class="ln" aria-label="Line 1067" href="#L1067">1067</a>      ≤ ∑&#x27; ℓ, ENNReal.ofReal (Cin ^ 2) * varpiNormE m₀ χ (fun x =&gt;
+</span><span class="line" id="L1068"><a class="ln" aria-label="Line 1068" href="#L1068">1068</a>          propagatorW (S.coeff N) 0 t (mhn_phi (h ℓ)) x - propagatorW (S.coeff N) 0 s&#x27; (mhn_phi (h ℓ)) x) ^ 2 := by
+</span><span class="line" id="L1069"><a class="ln" aria-label="Line 1069" href="#L1069">1069</a>        refine ENNReal.tsum_le_tsum fun ℓ =&gt; (hterm ℓ).trans ?_
+</span><span class="line" id="L1070"><a class="ln" aria-label="Line 1070" href="#L1070">1070</a>        rw [ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1071"><a class="ln" aria-label="Line 1071" href="#L1071">1071</a>        exact mul_le_mul&#x27; le_rfl (mri_ofReal_V_le _ _ _)
+</span><span class="line" id="L1072"><a class="ln" aria-label="Line 1072" href="#L1072">1072</a>    _ = ENNReal.ofReal (Cin ^ 2) * ∑&#x27; ℓ, varpiNormE m₀ χ (fun x =&gt;
+</span><span class="line" id="L1073"><a class="ln" aria-label="Line 1073" href="#L1073">1073</a>          propagatorW (S.coeff N) 0 t (mhn_phi (h ℓ)) x - propagatorW (S.coeff N) 0 s&#x27; (mhn_phi (h ℓ)) x) ^ 2 :=
+</span><span class="line" id="L1074"><a class="ln" aria-label="Line 1074" href="#L1074">1074</a>        ENNReal.tsum_mul_left
+</span><span class="line" id="L1075"><a class="ln" aria-label="Line 1075" href="#L1075">1075</a>    _ ≤ ENNReal.ofReal (Cin ^ 2) * ENNReal.ofReal (C2 * (C₁ ^ 2 * |t - s&#x27;| ^ 2)) :=
+</span><span class="line" id="L1076"><a class="ln" aria-label="Line 1076" href="#L1076">1076</a>        mul_le_mul&#x27; le_rfl hsum
+</span><span class="line" id="L1077"><a class="ln" aria-label="Line 1077" href="#L1077">1077</a>    _ = ENNReal.ofReal (Cin ^ 2 * (C2 * C₁ ^ 2) * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L1078"><a class="ln" aria-label="Line 1078" href="#L1078">1078</a>        rw [← ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1079"><a class="ln" aria-label="Line 1079" href="#L1079">1079</a>        congr 1; ring
+</span><span class="line" id="L1080"><a class="ln" aria-label="Line 1080" href="#L1080">1080</a>
+</span><span class="line" id="L1081"><a class="ln" aria-label="Line 1081" href="#L1081">1081</a>
+</span><span class="line" id="L1082"><a class="ln" aria-label="Line 1082" href="#L1082">1082</a>open HRS.MP.HNegInfra HRS.Whole.AppendixA in
+</span><span class="line" id="L1083"><a class="ln" aria-label="Line 1083" href="#L1083">1083</a>/-- Lemma S.A.23 on `ℝ^d` from the increment bound (conditional form of the frozen `path_initial_modulus_rd`):
+</span><span class="line" id="L1084"><a class="ln" aria-label="Line 1084" href="#L1084">1084</a>the hypothesis `PathAdjointInput` of the frozen statement is replaced by the adjoint estimates it contains
+</span><span class="line" id="L1085"><a class="ln" aria-label="Line 1085" href="#L1085">1085</a>(`AdjointDerivInput`, only the `adjoint` field is used; the `weighted` field and `MeanFieldRegularityRd`,
+</span><span class="line" id="L1086"><a class="ln" aria-label="Line 1086" href="#L1086">1086</a>`VHypRd`, `fd.Holds`, `MatBound`, `TransportedInitialFieldRd`, `InitialFieldDist` are not needed once the
+</span><span class="line" id="L1087"><a class="ln" aria-label="Line 1087" href="#L1087">1087</a>increment bound `IncrementBoundRd` (S.A.22(ii), constant `C₁`) is a hypothesis). -/
+</span><span class="line" id="L1088"><a class="ln" aria-label="Line 1088" href="#L1088">1088</a>theorem path_initial_modulus_rd_of_increment (s : ℝ) (fd : FieldDensityRd d s)
+</span><span class="line" id="L1089"><a class="ln" aria-label="Line 1089" href="#L1089">1089</a>    (T Kadj Cin C₁ : ℝ) (m₀ : ℕ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L1090"><a class="ln" aria-label="Line 1090" href="#L1090">1090</a>    ∃ C : ℝ, ∀ (S : WholeMainData d), S.T = T →
+</span><span class="line" id="L1091"><a class="ln" aria-label="Line 1091" href="#L1091">1091</a>      AdjointDerivInput ((fd.Gamma + 2 : ℕ) : ℝ) (m₀ + 1) S.coeff S.T Kadj →
+</span><span class="line" id="L1092"><a class="ln" aria-label="Line 1092" href="#L1092">1092</a>      (∀ N : ℕ, 1 ≤ N → IncrementBoundRd (S.coeff N) T (fd.Gamma + 2) m₀ C₁) →
+</span><span class="line" id="L1093"><a class="ln" aria-label="Line 1093" href="#L1093">1093</a>      ∀ (R : ∀ N, RealizationRd d N) (ε : ℕ → ℝ) (Ψ : ℕ → Set (Euc d → ℝ)),
+</span><span class="line" id="L1094"><a class="ln" aria-label="Line 1094" href="#L1094">1094</a>        InitialFluctuationRd S R χ m₀ Cin ε Ψ →
+</span><span class="line" id="L1095"><a class="ln" aria-label="Line 1095" href="#L1095">1095</a>      ∀ (Iq Jq : ∀ N, ℝ → (R N).Ω → HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)),
+</span><span class="line" id="L1096"><a class="ln" aria-label="Line 1096" href="#L1096">1096</a>        IsInitReprRd S R (fd.Gamma + 2) Iq Jq →
+</span><span class="line" id="L1097"><a class="ln" aria-label="Line 1097" href="#L1097">1097</a>        (∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L1098"><a class="ln" aria-label="Line 1098" href="#L1098">1098</a>          ∫⁻ ζ, ‖Iq N t ζ - Iq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P + ∫⁻ ζ, ‖Jq N t ζ - Jq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P ≤
+</span><span class="line" id="L1099"><a class="ln" aria-label="Line 1099" href="#L1099">1099</a>            ENNReal.ofReal (C * |t - s&#x27;| ^ 2)) ∧
+</span><span class="line" id="L1100"><a class="ln" aria-label="Line 1100" href="#L1100">1100</a>        (∃ Zc, ContVersionTight T (fun N =&gt; (R N).P) (fun N t ζ =&gt; Iq N t ζ) Zc) ∧
+</span><span class="line" id="L1101"><a class="ln" aria-label="Line 1101" href="#L1101">1101</a>        (∃ Zc, ContVersionTight T (fun N =&gt; (R N).P) (fun N t ζ =&gt; Jq N t ζ) Zc) := by
+</span><span class="line" id="L1102"><a class="ln" aria-label="Line 1102" href="#L1102">1102</a>  obtain ⟨C, hC⟩ := mri_moment_N hχ m₀ Cin C₁
+</span><span class="line" id="L1103"><a class="ln" aria-label="Line 1103" href="#L1103">1103</a>  refine ⟨C, fun S hST hadj hinc R ε Ψ hinit Iq Jq hrepr =&gt; ?_⟩
+</span><span class="line" id="L1104"><a class="ln" aria-label="Line 1104" href="#L1104">1104</a>  have hTpos : 0 &lt; T := hST ▸ S.hT
+</span><span class="line" id="L1105"><a class="ln" aria-label="Line 1105" href="#L1105">1105</a>  have hmom : ∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L1106"><a class="ln" aria-label="Line 1106" href="#L1106">1106</a>      ∫⁻ ζ, ‖Iq N t ζ - Iq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P + ∫⁻ ζ, ‖Jq N t ζ - Jq N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P ≤
+</span><span class="line" id="L1107"><a class="ln" aria-label="Line 1107" href="#L1107">1107</a>        ENNReal.ofReal (C * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L1108"><a class="ln" aria-label="Line 1108" href="#L1108">1108</a>    intro N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L1109"><a class="ln" aria-label="Line 1109" href="#L1109">1109</a>    rcases le_total s&#x27; t with hst | hts
+</span><span class="line" id="L1110"><a class="ln" aria-label="Line 1110" href="#L1110">1110</a>    · exact hC fd.Gamma T Kadj S hST hadj hinc R ε Ψ hinit Iq Jq hrepr N hN s&#x27; hs&#x27; t ht hst
+</span><span class="line" id="L1111"><a class="ln" aria-label="Line 1111" href="#L1111">1111</a>    · have := hC fd.Gamma T Kadj S hST hadj hinc R ε Ψ hinit Iq Jq hrepr N hN t ht s&#x27; hs&#x27; hts
+</span><span class="line" id="L1112"><a class="ln" aria-label="Line 1112" href="#L1112">1112</a>      simp only [enorm_sub_rev (Iq N s&#x27; _), enorm_sub_rev (Jq N s&#x27; _), abs_sub_comm s&#x27; t] at this ⊢
+</span><span class="line" id="L1113"><a class="ln" aria-label="Line 1113" href="#L1113">1113</a>      exact this
+</span><span class="line" id="L1114"><a class="ln" aria-label="Line 1114" href="#L1114">1114</a>  refine ⟨hmom, ?_, ?_⟩
+</span><span class="line" id="L1115"><a class="ln" aria-label="Line 1115" href="#L1115">1115</a>  · obtain ⟨Zc, hZc⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof
+</span><span class="line" id="L1116"><a class="ln" aria-label="Line 1116" href="#L1116">1116</a>      (E := HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)) (Ω := fun N =&gt; (R N).Ω) T hTpos (fun N =&gt; (R N).P)
+</span><span class="line" id="L1117"><a class="ln" aria-label="Line 1117" href="#L1117">1117</a>      (fun N t ζ =&gt; Iq N t ζ) (fun N hN t =&gt; (hrepr.1 N hN t).1) 2 1 C (by norm_num) (by norm_num)
+</span><span class="line" id="L1118"><a class="ln" aria-label="Line 1118" href="#L1118">1118</a>      (fun N hN s&#x27; hs&#x27; t ht =&gt; by
+</span><span class="line" id="L1119"><a class="ln" aria-label="Line 1119" href="#L1119">1119</a>        have h := hmom N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L1120"><a class="ln" aria-label="Line 1120" href="#L1120">1120</a>        rw [show |t - s&#x27;| ^ (1 + (1 : ℝ)) = |t - s&#x27;| ^ 2 by
+</span><span class="line" id="L1121"><a class="ln" aria-label="Line 1121" href="#L1121">1121</a>          rw [show (1 : ℝ) + 1 = 2 by norm_num, Real.rpow_two]]
+</span><span class="line" id="L1122"><a class="ln" aria-label="Line 1122" href="#L1122">1122</a>        simp only [ENNReal.rpow_two]
+</span><span class="line" id="L1123"><a class="ln" aria-label="Line 1123" href="#L1123">1123</a>        exact le_trans le_self_add h)
+</span><span class="line" id="L1124"><a class="ln" aria-label="Line 1124" href="#L1124">1124</a>    exact ⟨Zc, hZc⟩
+</span><span class="line" id="L1125"><a class="ln" aria-label="Line 1125" href="#L1125">1125</a>  · obtain ⟨Zc, hZc⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof
+</span><span class="line" id="L1126"><a class="ln" aria-label="Line 1126" href="#L1126">1126</a>      (E := HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)) (Ω := fun N =&gt; (R N).Ω) T hTpos (fun N =&gt; (R N).P)
+</span><span class="line" id="L1127"><a class="ln" aria-label="Line 1127" href="#L1127">1127</a>      (fun N t ζ =&gt; Jq N t ζ) (fun N hN t =&gt; (hrepr.1 N hN t).2) 2 1 C (by norm_num) (by norm_num)
+</span><span class="line" id="L1128"><a class="ln" aria-label="Line 1128" href="#L1128">1128</a>      (fun N hN s&#x27; hs&#x27; t ht =&gt; by
+</span><span class="line" id="L1129"><a class="ln" aria-label="Line 1129" href="#L1129">1129</a>        have h := hmom N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L1130"><a class="ln" aria-label="Line 1130" href="#L1130">1130</a>        rw [show |t - s&#x27;| ^ (1 + (1 : ℝ)) = |t - s&#x27;| ^ 2 by
+</span><span class="line" id="L1131"><a class="ln" aria-label="Line 1131" href="#L1131">1131</a>          rw [show (1 : ℝ) + 1 = 2 by norm_num, Real.rpow_two]]
+</span><span class="line" id="L1132"><a class="ln" aria-label="Line 1132" href="#L1132">1132</a>        simp only [ENNReal.rpow_two]
+</span><span class="line" id="L1133"><a class="ln" aria-label="Line 1133" href="#L1133">1133</a>        exact le_trans le_add_self h)
+</span><span class="line" id="L1134"><a class="ln" aria-label="Line 1134" href="#L1134">1134</a>    exact ⟨Zc, hZc⟩
+</span><span class="line" id="L1135"><a class="ln" aria-label="Line 1135" href="#L1135">1135</a>
+</span><span class="line" id="L1136"><a class="ln" aria-label="Line 1136" href="#L1136">1136</a>
+</span><span class="line" id="L1137"><a class="ln" aria-label="Line 1137" href="#L1137">1137</a>open HRS.MP.HNegInfra HRS.Whole.AppendixA in
+</span><span class="line" id="L1138"><a class="ln" aria-label="Line 1138" href="#L1138">1138</a>theorem mri_limit_moment {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) (m₀ : ℕ) (Cin C₁ : ℝ) :
+</span><span class="line" id="L1139"><a class="ln" aria-label="Line 1139" href="#L1139">1139</a>    ∃ C : ℝ, ∀ (Γ : ℕ) (T Kadj : ℝ) (S : WholeMainData d) (L : LimitCoeffsRd d), S.T = T →
+</span><span class="line" id="L1140"><a class="ln" aria-label="Line 1140" href="#L1140">1140</a>      AdjointInputOneD ((Γ + 2 : ℕ) : ℝ) (m₀ + 1) (L.coeff S) S.T Kadj →
+</span><span class="line" id="L1141"><a class="ln" aria-label="Line 1141" href="#L1141">1141</a>      IncrementBoundRd (L.coeff S) T (Γ + 2) m₀ C₁ → L.A ≤ 1 →
+</span><span class="line" id="L1142"><a class="ln" aria-label="Line 1142" href="#L1142">1142</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L1143"><a class="ln" aria-label="Line 1143" href="#L1143">1143</a>        (η : Ω → (Euc d → ℝ) → ℝ),
+</span><span class="line" id="L1144"><a class="ln" aria-label="Line 1144" href="#L1144">1144</a>      (∀ (ψ ψ&#x27; : Euc d → ℝ) (c : ℝ), Y0Class m₀ χ ψ → Y0Class m₀ χ ψ&#x27; →
+</span><span class="line" id="L1145"><a class="ln" aria-label="Line 1145" href="#L1145">1145</a>        ∀ᵐ ζ ∂P, η ζ (c • ψ + ψ&#x27;) = c * η ζ ψ + η ζ ψ&#x27;) →
+</span><span class="line" id="L1146"><a class="ln" aria-label="Line 1146" href="#L1146">1146</a>      (∀ ψ : Euc d → ℝ, Y0Class m₀ χ ψ → ∫⁻ ζ, ENNReal.ofReal ((η ζ ψ) ^ 2) ∂P ≤
+</span><span class="line" id="L1147"><a class="ln" aria-label="Line 1147" href="#L1147">1147</a>        ENNReal.ofReal (Cin ^ 2 * (varpiNormE m₀ χ ψ).toReal ^ 2)) →
+</span><span class="line" id="L1148"><a class="ln" aria-label="Line 1148" href="#L1148">1148</a>      ∀ J : ℝ → Ω → HNeg d ((Γ + 2 : ℕ) : ℝ), (∀ t, Measurable (J t)) →
+</span><span class="line" id="L1149"><a class="ln" aria-label="Line 1149" href="#L1149">1149</a>        (∀ t ∈ Set.Icc (0 : ℝ) T, ∀ φ : Euc d → ℝ, IsSobolevTest ((Γ + 2 : ℕ) : ℝ) φ →
+</span><span class="line" id="L1150"><a class="ln" aria-label="Line 1150" href="#L1150">1150</a>          ∀ᵐ ζ ∂P, HNeg.pairing φ (J t ζ) = L.A * η ζ (propagatorW (L.coeff S) 0 t φ)) →
+</span><span class="line" id="L1151"><a class="ln" aria-label="Line 1151" href="#L1151">1151</a>        ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T, s&#x27; ≤ t →
+</span><span class="line" id="L1152"><a class="ln" aria-label="Line 1152" href="#L1152">1152</a>          ∫⁻ ζ, ‖J t ζ - J s&#x27; ζ‖ₑ ^ 2 ∂P ≤ ENNReal.ofReal (C * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L1153"><a class="ln" aria-label="Line 1153" href="#L1153">1153</a>  obtain ⟨hC2, hcore⟩ := Classical.choose_spec (mri_core hχ m₀)
+</span><span class="line" id="L1154"><a class="ln" aria-label="Line 1154" href="#L1154">1154</a>  set C2 := Classical.choose (mri_core hχ m₀) with hC2def
+</span><span class="line" id="L1155"><a class="ln" aria-label="Line 1155" href="#L1155">1155</a>  refine ⟨Cin ^ 2 * (C2 * C₁ ^ 2), ?_⟩
+</span><span class="line" id="L1156"><a class="ln" aria-label="Line 1156" href="#L1156">1156</a>  intro Γ T Kadj S L hST hadj hinc hA1 Ω _ P _ η hlin hη J hJm hJrep s&#x27; hs&#x27; t ht hst
+</span><span class="line" id="L1157"><a class="ln" aria-label="Line 1157" href="#L1157">1157</a>  subst hST
+</span><span class="line" id="L1158"><a class="ln" aria-label="Line 1158" href="#L1158">1158</a>  obtain ⟨h, hP⟩ := mri_parseval_h (d := d) ((Γ + 2 : ℕ) : ℝ)
+</span><span class="line" id="L1159"><a class="ln" aria-label="Line 1159" href="#L1159">1159</a>  have hsum := hcore h hP hadj hinc hs&#x27;.1 hst ht.2
+</span><span class="line" id="L1160"><a class="ln" aria-label="Line 1160" href="#L1160">1160</a>  have hs0 : 0 ≤ s&#x27; := hs&#x27;.1
+</span><span class="line" id="L1161"><a class="ln" aria-label="Line 1161" href="#L1161">1161</a>  have hsT : s&#x27; ≤ S.T := hs&#x27;.2
+</span><span class="line" id="L1162"><a class="ln" aria-label="Line 1162" href="#L1162">1162</a>  have ht0 : 0 ≤ t := ht.1
+</span><span class="line" id="L1163"><a class="ln" aria-label="Line 1163" href="#L1163">1163</a>  have htT : t ≤ S.T := ht.2
+</span><span class="line" id="L1164"><a class="ln" aria-label="Line 1164" href="#L1164">1164</a>  have hMJ : Measurable fun ζ =&gt; J t ζ - J s&#x27; ζ := (hJm t).sub (hJm s&#x27;)
+</span><span class="line" id="L1165"><a class="ln" aria-label="Line 1165" href="#L1165">1165</a>  rw [mri_lintegral_sq P h hP _ hMJ]
+</span><span class="line" id="L1166"><a class="ln" aria-label="Line 1166" href="#L1166">1166</a>  have hterm : ∀ ℓ, (∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (J t ζ - J s&#x27; ζ)) ^ 2) ∂P) ≤
+</span><span class="line" id="L1167"><a class="ln" aria-label="Line 1167" href="#L1167">1167</a>      ENNReal.ofReal (Cin ^ 2 * (varpiNormE m₀ χ (fun x =&gt; propagatorW (L.coeff S) 0 t (mhn_phi (h ℓ)) x -
+</span><span class="line" id="L1168"><a class="ln" aria-label="Line 1168" href="#L1168">1168</a>        propagatorW (L.coeff S) 0 s&#x27; (mhn_phi (h ℓ)) x)).toReal ^ 2) := by
+</span><span class="line" id="L1169"><a class="ln" aria-label="Line 1169" href="#L1169">1169</a>    intro ℓ
+</span><span class="line" id="L1170"><a class="ln" aria-label="Line 1170" href="#L1170">1170</a>    set e := mhn_phi (h ℓ) with he
+</span><span class="line" id="L1171"><a class="ln" aria-label="Line 1171" href="#L1171">1171</a>    have hte : IsSobolevTest ((Γ + 2 : ℕ) : ℝ) e := mhn_isSobolevTest_phi _ (h ℓ)
+</span><span class="line" id="L1172"><a class="ln" aria-label="Line 1172" href="#L1172">1172</a>    set ψ : Euc d → ℝ := fun x =&gt; propagatorW (L.coeff S) 0 t e x - propagatorW (L.coeff S) 0 s&#x27; e x with hψ
+</span><span class="line" id="L1173"><a class="ln" aria-label="Line 1173" href="#L1173">1173</a>    have hYt := mri_Y0_prop hχ m₀ hadj ht0 htT hte
+</span><span class="line" id="L1174"><a class="ln" aria-label="Line 1174" href="#L1174">1174</a>    have hYs := mri_Y0_prop hχ m₀ hadj hs0 hsT hte
+</span><span class="line" id="L1175"><a class="ln" aria-label="Line 1175" href="#L1175">1175</a>    have hYψ := mri_Y0_diff hχ m₀ hadj hs0 hsT ht0 htT hte
+</span><span class="line" id="L1176"><a class="ln" aria-label="Line 1176" href="#L1176">1176</a>    have hae := (hJrep t ht e hte).and (hJrep s&#x27; hs&#x27; e hte)
+</span><span class="line" id="L1177"><a class="ln" aria-label="Line 1177" href="#L1177">1177</a>    have hJ : ∀ᵐ ζ ∂P, HNeg.pairing e (J t ζ - J s&#x27; ζ) = L.A * η ζ ψ := by
+</span><span class="line" id="L1178"><a class="ln" aria-label="Line 1178" href="#L1178">1178</a>      filter_upwards [hae, hlin (propagatorW (L.coeff S) 0 s&#x27; e) (propagatorW (L.coeff S) 0 t e) (-1) hYs hYt]
+</span><span class="line" id="L1179"><a class="ln" aria-label="Line 1179" href="#L1179">1179</a>        with ζ hζ this
+</span><span class="line" id="L1180"><a class="ln" aria-label="Line 1180" href="#L1180">1180</a>      obtain ⟨h1, h2⟩ := hζ
+</span><span class="line" id="L1181"><a class="ln" aria-label="Line 1181" href="#L1181">1181</a>      rw [mhn_pairing_sub hte, h1, h2]
+</span><span class="line" id="L1182"><a class="ln" aria-label="Line 1182" href="#L1182">1182</a>      have e2 : (-1 : ℝ) • propagatorW (L.coeff S) 0 s&#x27; e + propagatorW (L.coeff S) 0 t e = ψ := by
+</span><span class="line" id="L1183"><a class="ln" aria-label="Line 1183" href="#L1183">1183</a>        funext x; simp [hψ]; ring
+</span><span class="line" id="L1184"><a class="ln" aria-label="Line 1184" href="#L1184">1184</a>      rw [e2] at this
+</span><span class="line" id="L1185"><a class="ln" aria-label="Line 1185" href="#L1185">1185</a>      rw [this]; ring
+</span><span class="line" id="L1186"><a class="ln" aria-label="Line 1186" href="#L1186">1186</a>    have hA2 : ENNReal.ofReal (L.A ^ 2) ≤ 1 := by
+</span><span class="line" id="L1187"><a class="ln" aria-label="Line 1187" href="#L1187">1187</a>      rw [← ENNReal.ofReal_one]
+</span><span class="line" id="L1188"><a class="ln" aria-label="Line 1188" href="#L1188">1188</a>      exact ENNReal.ofReal_le_ofReal (by nlinarith [L.hA, hA1])
+</span><span class="line" id="L1189"><a class="ln" aria-label="Line 1189" href="#L1189">1189</a>    have e2 : ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing e (J t ζ - J s&#x27; ζ)) ^ 2) ∂P =
+</span><span class="line" id="L1190"><a class="ln" aria-label="Line 1190" href="#L1190">1190</a>        ENNReal.ofReal (L.A ^ 2) * ∫⁻ ζ, ENNReal.ofReal ((η ζ ψ) ^ 2) ∂P := by
+</span><span class="line" id="L1191"><a class="ln" aria-label="Line 1191" href="#L1191">1191</a>      rw [← lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L1192"><a class="ln" aria-label="Line 1192" href="#L1192">1192</a>      refine lintegral_congr_ae (hJ.mono fun ζ hζ =&gt; ?_)
+</span><span class="line" id="L1193"><a class="ln" aria-label="Line 1193" href="#L1193">1193</a>      beta_reduce
+</span><span class="line" id="L1194"><a class="ln" aria-label="Line 1194" href="#L1194">1194</a>      rw [hζ, mul_pow, ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1195"><a class="ln" aria-label="Line 1195" href="#L1195">1195</a>    rw [e2]
+</span><span class="line" id="L1196"><a class="ln" aria-label="Line 1196" href="#L1196">1196</a>    calc ENNReal.ofReal (L.A ^ 2) * ∫⁻ ζ, ENNReal.ofReal ((η ζ ψ) ^ 2) ∂P
+</span><span class="line" id="L1197"><a class="ln" aria-label="Line 1197" href="#L1197">1197</a>        ≤ 1 * ENNReal.ofReal (Cin ^ 2 * (varpiNormE m₀ χ ψ).toReal ^ 2) :=
+</span><span class="line" id="L1198"><a class="ln" aria-label="Line 1198" href="#L1198">1198</a>          mul_le_mul&#x27; hA2 (hη ψ hYψ)
+</span><span class="line" id="L1199"><a class="ln" aria-label="Line 1199" href="#L1199">1199</a>      _ = _ := one_mul _
+</span><span class="line" id="L1200"><a class="ln" aria-label="Line 1200" href="#L1200">1200</a>  calc ∑&#x27; ℓ, ∫⁻ ζ, ENNReal.ofReal ((HNeg.pairing (mhn_phi (h ℓ)) (J t ζ - J s&#x27; ζ)) ^ 2) ∂P
+</span><span class="line" id="L1201"><a class="ln" aria-label="Line 1201" href="#L1201">1201</a>      ≤ ∑&#x27; ℓ, ENNReal.ofReal (Cin ^ 2) * varpiNormE m₀ χ (fun x =&gt;
+</span><span class="line" id="L1202"><a class="ln" aria-label="Line 1202" href="#L1202">1202</a>          propagatorW (L.coeff S) 0 t (mhn_phi (h ℓ)) x - propagatorW (L.coeff S) 0 s&#x27; (mhn_phi (h ℓ)) x) ^ 2 := by
+</span><span class="line" id="L1203"><a class="ln" aria-label="Line 1203" href="#L1203">1203</a>        refine ENNReal.tsum_le_tsum fun ℓ =&gt; (hterm ℓ).trans ?_
+</span><span class="line" id="L1204"><a class="ln" aria-label="Line 1204" href="#L1204">1204</a>        rw [ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1205"><a class="ln" aria-label="Line 1205" href="#L1205">1205</a>        exact mul_le_mul&#x27; le_rfl (mri_ofReal_V_le _ _ _)
+</span><span class="line" id="L1206"><a class="ln" aria-label="Line 1206" href="#L1206">1206</a>    _ = ENNReal.ofReal (Cin ^ 2) * ∑&#x27; ℓ, varpiNormE m₀ χ (fun x =&gt;
+</span><span class="line" id="L1207"><a class="ln" aria-label="Line 1207" href="#L1207">1207</a>          propagatorW (L.coeff S) 0 t (mhn_phi (h ℓ)) x - propagatorW (L.coeff S) 0 s&#x27; (mhn_phi (h ℓ)) x) ^ 2 :=
+</span><span class="line" id="L1208"><a class="ln" aria-label="Line 1208" href="#L1208">1208</a>        ENNReal.tsum_mul_left
+</span><span class="line" id="L1209"><a class="ln" aria-label="Line 1209" href="#L1209">1209</a>    _ ≤ ENNReal.ofReal (Cin ^ 2) * ENNReal.ofReal (C2 * (C₁ ^ 2 * |t - s&#x27;| ^ 2)) :=
+</span><span class="line" id="L1210"><a class="ln" aria-label="Line 1210" href="#L1210">1210</a>        mul_le_mul&#x27; le_rfl hsum
+</span><span class="line" id="L1211"><a class="ln" aria-label="Line 1211" href="#L1211">1211</a>    _ = ENNReal.ofReal (Cin ^ 2 * (C2 * C₁ ^ 2) * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L1212"><a class="ln" aria-label="Line 1212" href="#L1212">1212</a>        rw [← ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L1213"><a class="ln" aria-label="Line 1213" href="#L1213">1213</a>        congr 1; ring
+</span><span class="line" id="L1214"><a class="ln" aria-label="Line 1214" href="#L1214">1214</a>
+</span><span class="line" id="L1215"><a class="ln" aria-label="Line 1215" href="#L1215">1215</a>open HRS.MP.HNegInfra HRS.Whole.AppendixA in
+</span><span class="line" id="L1216"><a class="ln" aria-label="Line 1216" href="#L1216">1216</a>/-- Lemma S.A.23, the limiting transported initial field on `ℝ^d`, conditional on the increment bound for the
+</span><span class="line" id="L1217"><a class="ln" aria-label="Line 1217" href="#L1217">1217</a>limiting propagator (conditional form of the repaired `StatementRepairsRd.path_initial_modulus_rd_limit&#x27;`).
+</span><span class="line" id="L1218"><a class="ln" aria-label="Line 1218" href="#L1218">1218</a>`LimitPathHyp` is replaced by the adjoint estimates it contains; `MatBound`, `VHypRd`, `L.invβ ≤ νbar` are not
+</span><span class="line" id="L1219"><a class="ln" aria-label="Line 1219" href="#L1219">1219</a>needed. The hypothesis `hlin` (almost-sure linearity of `η` on `Y_0`, the analogue of the `linear` field of
+</span><span class="line" id="L1220"><a class="ln" aria-label="Line 1220" href="#L1220">1220</a>`InitialFluctuationRd`) is used to identify `η(U^{0,t}φ) - η(U^{0,s}φ) = η(U^{0,t}φ - U^{0,s}φ)` almost surely;
+</span><span class="line" id="L1221"><a class="ln" aria-label="Line 1221" href="#L1221">1221</a>it is applied to countably many triples, one per Parseval index and fixed `(s&#x27;, t)`, so the almost-sure form
+</span><span class="line" id="L1222"><a class="ln" aria-label="Line 1222" href="#L1222">1222</a>suffices. The conclusion is not provable from the second-moment hypothesis alone. -/
+</span><span class="line" id="L1223"><a class="ln" aria-label="Line 1223" href="#L1223">1223</a>theorem path_initial_modulus_rd_limit&#x27;_of_increment (s : ℝ) (fd : FieldDensityRd d s)
+</span><span class="line" id="L1224"><a class="ln" aria-label="Line 1224" href="#L1224">1224</a>    (T Kadj Cin C₁ : ℝ) (m₀ : ℕ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L1225"><a class="ln" aria-label="Line 1225" href="#L1225">1225</a>    ∃ C : ℝ, ∀ (S : WholeMainData d), S.T = T → ∀ L : LimitCoeffsRd d,
+</span><span class="line" id="L1226"><a class="ln" aria-label="Line 1226" href="#L1226">1226</a>      AdjointInputOneD ((fd.Gamma + 2 : ℕ) : ℝ) (m₀ + 1) (L.coeff S) S.T Kadj →
+</span><span class="line" id="L1227"><a class="ln" aria-label="Line 1227" href="#L1227">1227</a>      IncrementBoundRd (L.coeff S) T (fd.Gamma + 2) m₀ C₁ → L.A ≤ 1 →
+</span><span class="line" id="L1228"><a class="ln" aria-label="Line 1228" href="#L1228">1228</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L1229"><a class="ln" aria-label="Line 1229" href="#L1229">1229</a>        (η : Ω → (Euc d → ℝ) → ℝ),
+</span><span class="line" id="L1230"><a class="ln" aria-label="Line 1230" href="#L1230">1230</a>      (∀ (ψ ψ&#x27; : Euc d → ℝ) (c : ℝ), Y0Class m₀ χ ψ → Y0Class m₀ χ ψ&#x27; →
+</span><span class="line" id="L1231"><a class="ln" aria-label="Line 1231" href="#L1231">1231</a>        ∀ᵐ ζ ∂P, η ζ (c • ψ + ψ&#x27;) = c * η ζ ψ + η ζ ψ&#x27;) →
+</span><span class="line" id="L1232"><a class="ln" aria-label="Line 1232" href="#L1232">1232</a>      (∀ ψ : Euc d → ℝ, Y0Class m₀ χ ψ → ∫⁻ ζ, ENNReal.ofReal ((η ζ ψ) ^ 2) ∂P ≤
+</span><span class="line" id="L1233"><a class="ln" aria-label="Line 1233" href="#L1233">1233</a>        ENNReal.ofReal (Cin ^ 2 * (varpiNormE m₀ χ ψ).toReal ^ 2)) →
+</span><span class="line" id="L1234"><a class="ln" aria-label="Line 1234" href="#L1234">1234</a>      ∀ J : ℝ → Ω → HNeg d ((fd.Gamma + 2 : ℕ) : ℝ), (∀ t, Measurable (J t)) →
+</span><span class="line" id="L1235"><a class="ln" aria-label="Line 1235" href="#L1235">1235</a>        (∀ t ∈ Set.Icc (0 : ℝ) T, ∀ φ : Euc d → ℝ, IsSobolevTest ((fd.Gamma + 2 : ℕ) : ℝ) φ →
+</span><span class="line" id="L1236"><a class="ln" aria-label="Line 1236" href="#L1236">1236</a>          ∀ᵐ ζ ∂P, HNeg.pairing φ (J t ζ) = L.A * η ζ (propagatorW (L.coeff S) 0 t φ)) →
+</span><span class="line" id="L1237"><a class="ln" aria-label="Line 1237" href="#L1237">1237</a>        (∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L1238"><a class="ln" aria-label="Line 1238" href="#L1238">1238</a>          ∫⁻ ζ, ‖J t ζ - J s&#x27; ζ‖ₑ ^ 2 ∂P ≤ ENNReal.ofReal (C * |t - s&#x27;| ^ 2)) ∧
+</span><span class="line" id="L1239"><a class="ln" aria-label="Line 1239" href="#L1239">1239</a>        ∃ Zc, ContVersionTight (Ω := fun _ : ℕ =&gt; Ω) T (fun _ =&gt; P) (fun _ t ζ =&gt; J t ζ) Zc := by
+</span><span class="line" id="L1240"><a class="ln" aria-label="Line 1240" href="#L1240">1240</a>  obtain ⟨C, hC⟩ := mri_limit_moment hχ m₀ Cin C₁
+</span><span class="line" id="L1241"><a class="ln" aria-label="Line 1241" href="#L1241">1241</a>  refine ⟨C, fun S hST L hadj hinc hA1 Ω _ P _ η hlin hη J hJm hJrep =&gt; ?_⟩
+</span><span class="line" id="L1242"><a class="ln" aria-label="Line 1242" href="#L1242">1242</a>  have hTpos : 0 &lt; T := hST ▸ S.hT
+</span><span class="line" id="L1243"><a class="ln" aria-label="Line 1243" href="#L1243">1243</a>  have hmom : ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L1244"><a class="ln" aria-label="Line 1244" href="#L1244">1244</a>      ∫⁻ ζ, ‖J t ζ - J s&#x27; ζ‖ₑ ^ 2 ∂P ≤ ENNReal.ofReal (C * |t - s&#x27;| ^ 2) := by
+</span><span class="line" id="L1245"><a class="ln" aria-label="Line 1245" href="#L1245">1245</a>    intro s&#x27; hs&#x27; t ht
+</span><span class="line" id="L1246"><a class="ln" aria-label="Line 1246" href="#L1246">1246</a>    rcases le_total s&#x27; t with hst | hts
+</span><span class="line" id="L1247"><a class="ln" aria-label="Line 1247" href="#L1247">1247</a>    · exact hC fd.Gamma T Kadj S L hST hadj hinc hA1 P η hlin hη J hJm hJrep s&#x27; hs&#x27; t ht hst
+</span><span class="line" id="L1248"><a class="ln" aria-label="Line 1248" href="#L1248">1248</a>    · have := hC fd.Gamma T Kadj S L hST hadj hinc hA1 P η hlin hη J hJm hJrep t ht s&#x27; hs&#x27; hts
+</span><span class="line" id="L1249"><a class="ln" aria-label="Line 1249" href="#L1249">1249</a>      simp only [enorm_sub_rev (J s&#x27; _), abs_sub_comm s&#x27; t] at this ⊢
+</span><span class="line" id="L1250"><a class="ln" aria-label="Line 1250" href="#L1250">1250</a>      exact this
+</span><span class="line" id="L1251"><a class="ln" aria-label="Line 1251" href="#L1251">1251</a>  refine ⟨hmom, ?_⟩
+</span><span class="line" id="L1252"><a class="ln" aria-label="Line 1252" href="#L1252">1252</a>  obtain ⟨Zc, hZc⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof
+</span><span class="line" id="L1253"><a class="ln" aria-label="Line 1253" href="#L1253">1253</a>    (E := HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)) (Ω := fun _ : ℕ =&gt; Ω) T hTpos (fun _ =&gt; P)
+</span><span class="line" id="L1254"><a class="ln" aria-label="Line 1254" href="#L1254">1254</a>    (fun _ t ζ =&gt; J t ζ) (fun _ _ t =&gt; hJm t) 2 1 C (by norm_num) (by norm_num)
+</span><span class="line" id="L1255"><a class="ln" aria-label="Line 1255" href="#L1255">1255</a>    (fun N hN s&#x27; hs&#x27; t ht =&gt; by
+</span><span class="line" id="L1256"><a class="ln" aria-label="Line 1256" href="#L1256">1256</a>      have h := hmom s&#x27; hs&#x27; t ht
+</span><span class="line" id="L1257"><a class="ln" aria-label="Line 1257" href="#L1257">1257</a>      rw [show |t - s&#x27;| ^ (1 + (1 : ℝ)) = |t - s&#x27;| ^ 2 by
+</span><span class="line" id="L1258"><a class="ln" aria-label="Line 1258" href="#L1258">1258</a>        rw [show (1 : ℝ) + 1 = 2 by norm_num, Real.rpow_two]]
+</span><span class="line" id="L1259"><a class="ln" aria-label="Line 1259" href="#L1259">1259</a>      simp only [ENNReal.rpow_two]
+</span><span class="line" id="L1260"><a class="ln" aria-label="Line 1260" href="#L1260">1260</a>      exact h)
+</span><span class="line" id="L1261"><a class="ln" aria-label="Line 1261" href="#L1261">1261</a>  exact ⟨Zc, hZc⟩
+</span><span class="line" id="L1262"><a class="ln" aria-label="Line 1262" href="#L1262">1262</a>
+</span><span class="line" id="L1263"><a class="ln" aria-label="Line 1263" href="#L1263">1263</a>
+</span><span class="line" id="L1264"><a class="ln" aria-label="Line 1264" href="#L1264">1264</a>end HRS.MP.RdInit
+</span></code></pre></main></body></html>

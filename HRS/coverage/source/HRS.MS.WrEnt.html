@@ -1,0 +1,254 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.WrEnt · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.WrEnt</code></h1><p><a href="../../lean/HRS/MS/WrEnt.lean">Open the unaltered Lean file</a> · 253 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.WrEntAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># HRS.MS.WrEnt -- the pair-entropy consequences of Proposition S3.1 (WR-9)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Packet WR-9 of `docs/SUPP_FOUND_PACKETS.md` (Track D), namespace `HRS.MS.Wr`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* `wr9_shape_final`: for a law `Q` with `∫ e^{±cNF^H} dQ ≤ e^{2C₀ N δ}` the two displays of
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  `euclidean_pair_entropy` in the exact shape of the frozen statement (via `wr9_moments`).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `wr9_pair_inst`: the tilt identity `E_Q[e^{±cNF^h}] = K^{g ∓ (c/b)h}/K^g` and the two-sided pressure
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  bounds give `∫ e^{±cNF^h} dQ ≤ e^{2C₀ N δ}`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* `wr9_self_inst`: for `h = g` the tilt is `K_{b ∓ c}/K_b`, with `b ∓ c` in an enlarged `β` interval.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `euclidean_pair_entropy_proof : type_of% @HRS.Whole.euclidean_pair_entropy`: `c = b₋θ₀`, with `θ₀, C₀` of
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `euclidean_pressure_proof`.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `euclidean_pair_entropy_self_proof : type_of% @HRS.Whole.euclidean_pair_entropy_self`: the pressure bound
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  at `θ = 0` with the kernel `h = 0` (`B = 0`) and the enlarged interval `[b₋/2, b₊ + b₋/2]`, `c = b₋/2`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>Statement adjustments: none.  Helper lemmas carry the prefix `wr9_`.  Ties in `HRS/MS/WrEntTie.lean`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>-/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open MeasureTheory ProbabilityTheory Function Set
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open scoped ENNReal
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>noncomputable section
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>namespace HRS.MS.Wr
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open HRS.Whole
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>variable {d N : ℕ}
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>/-! ### Shape of the conclusion -/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>theorem wr9_shape_final {μ : Measure (Euc d)} [SFinite μ] (Q : Measure (EucConfig d N))
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    [IsProbabilityMeasure Q] (H : Euc d → Euc d → ℝ) (hHm : Measurable (Function.uncurry H))
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    {c C0 δ C : ℝ} (hc : 0 &lt; c) (hC0 : 0 ≤ C0) (hT : 1 ≤ (N : ℝ) * δ)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    (hC : (2 * C0 + 1) * (1 + c⁻¹) ≤ C)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hp : ∫⁻ X, ENNReal.ofReal (Real.exp (c * ((N : ℝ) * pairEnergy H X μ))) ∂Q ≤
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      ENNReal.ofReal (Real.exp (2 * C0 * ((N : ℝ) * δ))))
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hm : ∫⁻ X, ENNReal.ofReal (Real.exp (-(c * ((N : ℝ) * pairEnergy H X μ)))) ∂Q ≤
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      ENNReal.ofReal (Real.exp (2 * C0 * ((N : ℝ) * δ)))) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (Integrable (fun X : EucConfig d N =&gt; Real.exp (c * N * |pairEnergy H X μ|)) Q ∧
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>        Real.log (∫ X : EucConfig d N, Real.exp (c * N * |pairEnergy H X μ|) ∂Q) ≤ C * N * δ) ∧
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      ∀ f : Measure (EucConfig d N), IsProbabilityMeasure f → relEntropy f Q &lt; ⊤ →
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>        Integrable (fun X : EucConfig d N =&gt; N * |pairEnergy H X μ|) f ∧
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>          ∫ X, N * |pairEnergy H X μ| ∂f ≤ C * ((relEntropy f Q).toReal + N * δ) := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hΨ : Measurable (fun X : EucConfig d N =&gt; (N : ℝ) * pairEnergy H X μ) :=
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    measurable_const.mul (wr9_measurable_pairEnergy hHm)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  obtain ⟨⟨hi, hl⟩, hent⟩ := wr9_moments Q hΨ hc hC0 hT hp hm
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hshape : ∀ X : EucConfig d N, c * N * |pairEnergy H X μ| =
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      c * |(N : ℝ) * pairEnergy H X μ| := by
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    intro X; rw [abs_mul, abs_of_nonneg hN0]; ring
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have e1 : (fun X : EucConfig d N =&gt; Real.exp (c * N * |pairEnergy H X μ|)) =
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      fun X =&gt; Real.exp (c * |(N : ℝ) * pairEnergy H X μ|) := funext fun X =&gt; by rw [hshape]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have e2 : (fun X : EucConfig d N =&gt; (N : ℝ) * |pairEnergy H X μ|) =
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      fun X =&gt; |(N : ℝ) * pairEnergy H X μ| := funext fun X =&gt; by rw [abs_mul, abs_of_nonneg hN0]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hTnn : 0 ≤ (N : ℝ) * δ := by linarith
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hA : 0 ≤ 2 * C0 + 1 := by linarith
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hcinv : 0 ≤ c⁻¹ := inv_nonneg.2 hc.le
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  have hCa : 2 * C0 + 1 ≤ C := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    refine le_trans ?_ hC
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    nlinarith
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hCb : c⁻¹ * (2 * C0 + 1) ≤ C := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    refine le_trans ?_ hC
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    nlinarith
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  refine ⟨⟨?_, ?_⟩, fun f hf hKL =&gt; ?_⟩
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  · rw [e1]; exact hi
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  · rw [e1]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    refine hl.trans ?_
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    calc (2 * C0 + 1) * ((N : ℝ) * δ) ≤ C * ((N : ℝ) * δ) := mul_le_mul_of_nonneg_right hCa hTnn
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      _ = C * N * δ := by ring
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  · rw [e2]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    obtain ⟨hi2, hb2⟩ := hent f hf hKL.ne
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    refine ⟨hi2, hb2.trans ?_⟩
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    have hH : 0 ≤ (relEntropy f Q).toReal + (N : ℝ) * δ := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      have := ENNReal.toReal_nonneg (a := relEntropy f Q); linarith
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    exact mul_le_mul_of_nonneg_right hCb hH
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>/-! ### The tilted exponential moments -/
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>theorem wr9_nonneg_of_abs_le {C0 T : ℝ} {x : ℝ} (h : |x| ≤ C0 * T) (hT : 1 ≤ T) : 0 ≤ C0 := by
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  by_contra hneg
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  push Not at hneg
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have h1 : 0 ≤ C0 * T := (abs_nonneg _).trans h
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  nlinarith
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>/-- `E_Q[e^{±cNF^h}] = K^{g ∓ (c/b)h}/K^g ≤ e^{2 C₀ T}` for `Q = Q^g_{N,b}`. -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>theorem wr9_pair_inst {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {G H : Euc d → Euc d → ℝ}
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (hGm : Measurable (Function.uncurry G)) (hHm : Measurable (Function.uncurry H)) {b c C0 T : ℝ}
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (hb : 0 &lt; b) (hc : 0 &lt; c) (hGW : GibbsWellDefined G N b μ)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (h0 : |Real.log (pairNormalizer G N b μ)| ≤ C0 * T)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (hGp : GibbsWellDefined (fun x y =&gt; G x y - (c / b) * H x y) N b μ)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (hp : |Real.log (pairNormalizer (fun x y =&gt; G x y - (c / b) * H x y) N b μ)| ≤ C0 * T)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (hGn : GibbsWellDefined (fun x y =&gt; G x y - (-(c / b)) * H x y) N b μ)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (hn : |Real.log (pairNormalizer (fun x y =&gt; G x y - (-(c / b)) * H x y) N b μ)| ≤ C0 * T) :
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    ∫⁻ X, ENNReal.ofReal (Real.exp (c * ((N : ℝ) * pairEnergy H X μ))) ∂(pairGibbs G N b μ) ≤
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        ENNReal.ofReal (Real.exp (2 * C0 * T)) ∧
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      ∫⁻ X, ENNReal.ofReal (Real.exp (-(c * ((N : ℝ) * pairEnergy H X μ)))) ∂(pairGibbs G N b μ) ≤
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        ENNReal.ofReal (Real.exp (2 * C0 * T)) := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hGok : Wr8Ok μ G := wr9_ok_of_gwd hGm hGW
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hHok : Wr8Ok μ H := wr9_ok_of_sub hGok hHm (div_ne_zero hc.ne&#x27; hb.ne&#x27;) hGp
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hHm&#x27; : Measurable (fun X : EucConfig d N =&gt; pairEnergy H X μ) := wr9_measurable_pairEnergy hHm
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hbc : b * (c / b) = c := by field_simp
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  have e2 : 2 * (C0 * T) = 2 * C0 * T := by ring
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  constructor
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  · have e : ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (c * ((N : ℝ) * pairEnergy H X μ)))
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        ∂(pairGibbs G N b μ) = (ENNReal.ofReal (pairNormalizer G N b μ))⁻¹ *
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>        ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-b * N *
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>          pairEnergy (fun x y =&gt; G x y - (c / b) * H x y) X μ)) ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      refine wr9_tilt hGm (Ψ := fun X =&gt; c * ((N : ℝ) * pairEnergy H X μ))
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        (W2 := fun X =&gt; -b * N * pairEnergy (fun x y =&gt; G x y - (c / b) * H x y) X μ)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        (measurable_const.mul (measurable_const.mul hHm&#x27;)) (fun X =&gt; ?_)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      rw [wr9_pairEnergy_sub hGok hHok]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      linear_combination (-(1 : ℝ)) * (N : ℝ) * (pairEnergy H X μ) * hbc
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    rw [e, wr9_partition hGp]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    refine (wr9_ratio_bound hGW.normalizer_pos hGp.normalizer_pos h0 hp).trans (le_of_eq ?_)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [e2]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  · have e : ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-(c * ((N : ℝ) * pairEnergy H X μ))))
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        ∂(pairGibbs G N b μ) = (ENNReal.ofReal (pairNormalizer G N b μ))⁻¹ *
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-b * N *
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          pairEnergy (fun x y =&gt; G x y - (-(c / b)) * H x y) X μ)) ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      refine wr9_tilt hGm (Ψ := fun X =&gt; -(c * ((N : ℝ) * pairEnergy H X μ)))
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        (W2 := fun X =&gt; -b * N * pairEnergy (fun x y =&gt; G x y - (-(c / b)) * H x y) X μ)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        (measurable_const.mul (measurable_const.mul hHm&#x27;)).neg (fun X =&gt; ?_)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      rw [wr9_pairEnergy_sub hGok hHok]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      linear_combination ((1 : ℝ)) * (N : ℝ) * (pairEnergy H X μ) * hbc
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    rw [e, wr9_partition hGn]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    refine (wr9_ratio_bound hGW.normalizer_pos hGn.normalizer_pos h0 hn).trans (le_of_eq ?_)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    rw [e2]
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>/-- `h = g`: `E_Q[e^{±cNF^g}] = K_{b ∓ c}/K_b ≤ e^{2 C₀ T}`. -/
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>theorem wr9_self_inst {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {G : Euc d → Euc d → ℝ}
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    (hGm : Measurable (Function.uncurry G)) {b c C0 T : ℝ} (hGW : GibbsWellDefined G N b μ)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    (h0 : |Real.log (pairNormalizer G N b μ)| ≤ C0 * T)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    (hGp : GibbsWellDefined G N (b - c) μ) (hp : |Real.log (pairNormalizer G N (b - c) μ)| ≤ C0 * T)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    (hGn : GibbsWellDefined G N (b + c) μ) (hn : |Real.log (pairNormalizer G N (b + c) μ)| ≤ C0 * T) :
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    ∫⁻ X, ENNReal.ofReal (Real.exp (c * ((N : ℝ) * pairEnergy G X μ))) ∂(pairGibbs G N b μ) ≤
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>        ENNReal.ofReal (Real.exp (2 * C0 * T)) ∧
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      ∫⁻ X, ENNReal.ofReal (Real.exp (-(c * ((N : ℝ) * pairEnergy G X μ)))) ∂(pairGibbs G N b μ) ≤
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>        ENNReal.ofReal (Real.exp (2 * C0 * T)) := by
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hGm&#x27; : Measurable (fun X : EucConfig d N =&gt; pairEnergy G X μ) := wr9_measurable_pairEnergy hGm
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have e2 : 2 * (C0 * T) = 2 * C0 * T := by ring
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  constructor
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  · have e : ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (c * ((N : ℝ) * pairEnergy G X μ)))
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>        ∂(pairGibbs G N b μ) = (ENNReal.ofReal (pairNormalizer G N b μ))⁻¹ *
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-(b - c) * N * pairEnergy G X μ))
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      refine wr9_tilt hGm (Ψ := fun X =&gt; c * ((N : ℝ) * pairEnergy G X μ))
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        (W2 := fun X =&gt; -(b - c) * N * pairEnergy G X μ)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        (measurable_const.mul (measurable_const.mul hGm&#x27;)) (fun X =&gt; ?_)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      ring
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    rw [e, wr9_partition hGp]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    refine (wr9_ratio_bound hGW.normalizer_pos hGp.normalizer_pos h0 hp).trans (le_of_eq ?_)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    rw [e2]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  · have e : ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-(c * ((N : ℝ) * pairEnergy G X μ))))
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        ∂(pairGibbs G N b μ) = (ENNReal.ofReal (pairNormalizer G N b μ))⁻¹ *
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        ∫⁻ X : EucConfig d N, ENNReal.ofReal (Real.exp (-(b + c) * N * pairEnergy G X μ))
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>          ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      refine wr9_tilt hGm (Ψ := fun X =&gt; -(c * ((N : ℝ) * pairEnergy G X μ)))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>        (W2 := fun X =&gt; -(b + c) * N * pairEnergy G X μ)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>        (measurable_const.mul (measurable_const.mul hGm&#x27;)).neg (fun X =&gt; ?_)
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      ring
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    rw [e, wr9_partition hGn]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    refine (wr9_ratio_bound hGW.normalizer_pos hGn.normalizer_pos h0 hn).trans (le_of_eq ?_)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    rw [e2]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>/-! ### The two statements -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>/-- **Proposition S3.1, pair-entropy consequences** (`HRS.Whole.euclidean_pair_entropy`): `c = b₋ θ₀`,
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>`E_Q[e^{±cNF^h}] = K^{g ∓ (c/b)h}/K^g ≤ e^{2 C₀ N δ_N}`, `e^{|x|} ≤ e^x + e^{-x}` and the
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>Donsker--Varadhan inequality. -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>theorem euclidean_pair_entropy_proof : type_of% @HRS.Whole.euclidean_pair_entropy := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  intro d s hd hs0 hsd M L bm bp B hbm hb
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  obtain ⟨θ0, hθ0, C0, hP⟩ := euclidean_pressure_proof hd hs0 hsd M L bm bp B hbm hb
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  have hc : 0 &lt; bm * θ0 := mul_pos hbm hθ0
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  refine ⟨bm * θ0, hc, (2 * max C0 0 + 1) * (1 + (bm * θ0)⁻¹), ?_⟩
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  intro ρ hρ hρM hlog h hh N hN b hb&#x27;
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hμprob : IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := Q34.isProbabilityMeasure_nu hρ
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hb0 : 0 &lt; b := hbm.trans_le hb&#x27;.1
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hθ : |bm * θ0 / b| ≤ θ0 := by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    rw [abs_of_pos (div_pos hc hb0), div_le_iff₀ hb0]
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    nlinarith [hb&#x27;.1]
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hT : 1 ≤ (N : ℝ) * deltaN d s N := wr8_one_le_mul_deltaN hs0 N (by omega)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  obtain ⟨hW0, hb0&#x27;⟩ := hP ρ hρ hρM hlog h hh N hN b hb&#x27; 0 (by rw [abs_zero]; exact hθ0.le)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  obtain ⟨hWp, hbp⟩ := hP ρ hρ hρM hlog h hh N hN b hb&#x27; (bm * θ0 / b) hθ
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  obtain ⟨hWn, hbn⟩ := hP ρ hρ hρM hlog h hh N hN b hb&#x27; (-(bm * θ0 / b)) (by rwa [abs_neg])
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  simp only [zero_mul, sub_zero] at hW0 hb0&#x27;
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hb0&#x27;&#x27; : |Real.log (pairNormalizer (fun x y =&gt; rieszKernel d s (x - y)) N b (HRS.Whole.withDensityReal ρ))| ≤
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      C0 * ((N : ℝ) * deltaN d s N) := by simpa only [mul_assoc] using hb0&#x27;
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hbp&#x27; : |Real.log (pairNormalizer (fun x y =&gt; rieszKernel d s (x - y) - (bm * θ0 / b) * h x y) N b
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      (HRS.Whole.withDensityReal ρ))| ≤ C0 * ((N : ℝ) * deltaN d s N) := by simpa only [mul_assoc] using hbp
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hbn&#x27; : |Real.log (pairNormalizer (fun x y =&gt; rieszKernel d s (x - y) - (-(bm * θ0 / b)) * h x y) N b
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      (HRS.Whole.withDensityReal ρ))| ≤ C0 * ((N : ℝ) * deltaN d s N) := by simpa only [mul_assoc] using hbn
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  have hC0 : 0 ≤ C0 := wr9_nonneg_of_abs_le hb0&#x27;&#x27; hT
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  obtain ⟨hpl, hmi⟩ := wr9_pair_inst (G := fun x y =&gt; rieszKernel d s (x - y)) (H := h)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    (wr9_rieszKernel_pair_meas s) hh.measurable hb0 hc hW0 hb0&#x27;&#x27; hWp hbp&#x27; hWn hbn&#x27;
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  have := wr9_gibbs_prob hW0
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  have key := wr9_shape_final (μ := HRS.Whole.withDensityReal ρ)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    (pairGibbs (fun x y =&gt; rieszKernel d s (x - y)) N b (HRS.Whole.withDensityReal ρ)) h hh.measurable hc hC0 hT
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    (C := (2 * max C0 0 + 1) * (1 + (bm * θ0)⁻¹))
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    (le_of_eq (by rw [max_eq_left hC0])) hpl hmi
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have hQ : HRS.Whole.modulatedGibbs (rieszKernel d s) N b (HRS.Whole.withDensityReal ρ) =
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      pairGibbs (fun x y =&gt; rieszKernel d s (x - y)) N b (HRS.Whole.withDensityReal ρ) := rfl
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  rw [hQ]
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  exact key
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>/-- **Proposition S3.1, last sentence** (`HRS.Whole.euclidean_pair_entropy_self`): `h = g`; the tilt is
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>`K_{b ∓ c}/K_b` and the pressure bound is applied at `θ = 0`, `h = 0` on the enlarged interval
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>`[b₋/2, b₊ + b₋/2]` with `c = b₋/2`. -/
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>theorem euclidean_pair_entropy_self_proof : type_of% @HRS.Whole.euclidean_pair_entropy_self := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  intro d s hd hs0 hsd M L bm bp hbm hb
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  have hbm2 : 0 &lt; bm / 2 := by positivity
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  have hb2 : bm / 2 &lt; bp + bm / 2 := by linarith
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  obtain ⟨θ0, hθ0, C0, hP⟩ := euclidean_pressure_proof hd hs0 hsd M L (bm / 2) (bp + bm / 2) 0 hbm2 hb2
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  refine ⟨bm / 2, hbm2, (2 * max C0 0 + 1) * (1 + (bm / 2)⁻¹), ?_⟩
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  intro ρ hρ hρM hlog N hN b hb&#x27;
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hμprob : IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := Q34.isProbabilityMeasure_nu hρ
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  have hT : 1 ≤ (N : ℝ) * deltaN d s N := wr8_one_le_mul_deltaN hs0 N (by omega)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  have hhz : IsBoundedPairKernel s 0 (fun _ _ : Euc d =&gt; (0 : ℝ)) :=
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    ⟨measurable_const, fun _ _ =&gt; rfl, fun x y _ =&gt; by simp⟩
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  have key : ∀ b&#x27; ∈ Set.Icc (bm / 2) (bp + bm / 2),
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>      GibbsWellDefined (fun x y =&gt; rieszKernel d s (x - y)) N b&#x27; (HRS.Whole.withDensityReal ρ) ∧
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      |Real.log (pairNormalizer (fun x y =&gt; rieszKernel d s (x - y)) N b&#x27; (HRS.Whole.withDensityReal ρ))| ≤
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>        C0 * ((N : ℝ) * deltaN d s N) := by
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    intro b&#x27; hb&#x27;&#x27;
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    obtain ⟨hW, hbd⟩ := hP ρ hρ hρM hlog (fun _ _ =&gt; 0) hhz N hN b&#x27; hb&#x27;&#x27; 0
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      (by rw [abs_zero]; exact hθ0.le)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    simp only [zero_mul, sub_zero] at hW hbd
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    exact ⟨hW, by simpa only [mul_assoc] using hbd⟩
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  have hbmem : b ∈ Set.Icc (bm / 2) (bp + bm / 2) := ⟨by linarith [hb&#x27;.1], by linarith [hb&#x27;.2]⟩
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  have hmmem : b - bm / 2 ∈ Set.Icc (bm / 2) (bp + bm / 2) := ⟨by linarith [hb&#x27;.1], by linarith [hb&#x27;.2]⟩
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  have hpmem : b + bm / 2 ∈ Set.Icc (bm / 2) (bp + bm / 2) := ⟨by linarith [hb&#x27;.1], by linarith [hb&#x27;.2]⟩
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  obtain ⟨hW0, hb0&#x27;&#x27;⟩ := key b hbmem
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  obtain ⟨hWm, hbm&#x27;&#x27;⟩ := key _ hmmem
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  obtain ⟨hWp, hbp&#x27;&#x27;⟩ := key _ hpmem
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  have hC0 : 0 ≤ C0 := wr9_nonneg_of_abs_le hb0&#x27;&#x27; hT
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  obtain ⟨hpl, hmi⟩ := wr9_self_inst (G := fun x y =&gt; rieszKernel d s (x - y))
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    (wr9_rieszKernel_pair_meas s) hW0 hb0&#x27;&#x27; hWm hbm&#x27;&#x27; hWp hbp&#x27;&#x27;
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  have := wr9_gibbs_prob hW0
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  have key2 := wr9_shape_final (μ := HRS.Whole.withDensityReal ρ)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (pairGibbs (fun x y =&gt; rieszKernel d s (x - y)) N b (HRS.Whole.withDensityReal ρ))
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    (fun x y =&gt; rieszKernel d s (x - y)) (wr9_rieszKernel_pair_meas s) hbm2 hC0 hT
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    (C := (2 * max C0 0 + 1) * (1 + (bm / 2)⁻¹))
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    (le_of_eq (by rw [max_eq_left hC0])) hpl hmi
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  have hQ : HRS.Whole.modulatedGibbs (rieszKernel d s) N b (HRS.Whole.withDensityReal ρ) =
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>      pairGibbs (fun x y =&gt; rieszKernel d s (x - y)) N b (HRS.Whole.withDensityReal ρ) := rfl
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  rw [hQ]
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  exact key2
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>end HRS.MS.Wr
+</span></code></pre></main></body></html>

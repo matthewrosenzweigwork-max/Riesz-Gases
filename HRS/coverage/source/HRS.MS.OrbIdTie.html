@@ -1,0 +1,298 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.OrbIdTie · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.OrbIdTie</code></h1><p><a href="../../lean/HRS/MS/OrbIdTie.lean">Open the unaltered Lean file</a> · 297 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.OrbIdAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.OrbIdAux2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># S5.2 `orbit_maximal_identification`: the identification clause (all-horizon form)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>**Status.**  `orbit_maximal_identification_allhorizon` below is the identification clause of Lemma S5.2 with exactly the
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>conclusion of the frozen statement `HRS.Whole.orbit_maximal_identification` and the following single change of
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>hypothesis: `hΦ : ∀ T&#x27;, IsHSIntegrand P ℱ T&#x27; Φ` (Hilbert-Schmidt integrand on every finite horizon `T&#x27;`) in place of
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`hΦ : IsHSIntegrand P ℱ T Φ` (horizon `T` only).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>**Why the change is necessary.**  `IsHilbertItoIntegral.approx` quantifies over all times `τ ≥ 0` and is phrased
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>through `itoIntegral`, which is `Classical.choose` of an `IsItoIntegral` when one exists and `0` otherwise
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>(`IsItoIntegral.approx` is vacuous for times at which the integrand is not `L²`).  With the integrand square
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>integrable only on `[0,T]` the coordinate integrals `⟨Φ,x⟩` can have no continuous version on `[0,∞)` (the integrand
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>beyond `T` is the base part `c(Dφ_α(X_r))_α`, controlled only pointwise in `x` by `OscAdjointInput.feature`, not
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>uniformly), so `itoIntegral = 0` and `hM` holds for a `M` with `⟨M_t,x⟩ = 0`; then the conclusion fails.  This is
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>the defect already recorded for `hilbert_polar_coupling` (attempt 4, `HRS/Prob/HilbertMartingale.lean`).  Whenever the
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>base part is bounded uniformly in `x` (as under the hypotheses of `orbit_feature_bounded`, `b = 0`), `hΦ` on `[0,T]`
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>implies the all-horizon form.  The originally frozen statement therefore could not be tied; approved (2026-10-23)
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>the repair that adds the uniform bound `hB` of the base part to `HRS.Whole.orbit_maximal_identification`, and
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>`orbit_maximal_identification_bdd` below is tied to the repaired statement with `type_of%`.
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>Proof: `⟨M_τ, y⟩` is the Itô integral of `⟨Φ, y⟩` (`s52_pair_ito`); the coordinate `α` of `(𝒯M)(t)` is
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>`⟨M_T,y1⟩ - ⟨M_T,y2⟩ + ⟨M_t,y2⟩` (`s52_coord_recon`); by the Duhamel identity of `OscAdjointInput`
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>`⟨Φ, y1⟩ - ⟨Φ, y2⟩` vanishes for `r &gt; t` (`s52_pair_grad_y1`), so the integral of the difference stops at `t`
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>(`s52_lc`, `s52_kill`), and `⟨Φ, y1⟩` is the truncated integrand of the conclusion on `[0,t]`.
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>-/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>noncomputable section
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>namespace HRS.MS.S52
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>open HRS HRS.Whole
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>variable {d : ℕ}
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>/-- The pairing integrands of an all-horizon Hilbert-Schmidt integrand over a finite index set are progressive `L²`. -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>lemma s52_pairL2 {Ω : Type*} {mΩ : MeasurableSpace Ω} {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    {ℱ : Filtration ℝ mΩ} {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] {κ : Type*} [Fintype κ]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    {Φ : ℝ → Ω → κ → H} (hΦ : ∀ T : ℝ, IsHSIntegrand P ℱ T Φ) (y : H) :
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    IsProgressiveL2 P ℱ (fun r ω (k : κ) =&gt; inner ℝ (Φ r ω k) y) := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  refine ⟨isProgressive_pi (u := fun (k : κ) r ω =&gt; inner ℝ (Φ r ω k) y) fun k i =&gt;
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    ((hΦ 0).prog k i).inner measurable_const, fun T =&gt; ?_⟩
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have h1 := pc_sqIntegralOn_inner_le (P := P) (Φ := Φ) (Finset.univ : Finset κ) y T
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have h2 : sqIntegralOn P (fun r ω (k : κ) =&gt; inner ℝ (Φ r ω k) y) T =
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      sqIntegralOn P (fun r ω (k : (Finset.univ : Finset κ)) =&gt; inner ℝ (Φ r ω k) y) T := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    unfold sqIntegralOn
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    refine lintegral_congr fun ω =&gt; lintegral_congr fun r =&gt; ?_
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    exact (Finset.sum_coe_sort (Finset.univ : Finset κ)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      (fun k =&gt; ‖inner ℝ (Φ r ω k) y‖ₑ ^ 2)).symm.trans (by simp)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  rw [h2]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  exact lt_of_le_of_lt h1
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (ENNReal.mul_lt_top (hΦ T).sq (lt_top_iff_ne_top.2 (pc_enorm_sq_ne_top y)))
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>lemma s52_pair_Φ {C : WholeCoeff d} {m T q : ℝ} {N : ℕ} {Ω : Type*}
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (X : ℝ≥0 → Ω → EucConfig d N) (r : ℝ) (ω : Ω) (k : Fin N × Fin d) (y : KSpace d m T) :
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    inner ℝ (empiricalNoiseIntegrand C m T q X r ω k) y =
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      Real.sqrt (2 * q / N) * inner ℝ (gradFeature C m T k.2 r (X (Real.toNNReal r) ω k.1)) y := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  unfold empiricalNoiseIntegrand
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  rw [real_inner_smul_left]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- **Lemma S5.2, identification clause, all-horizon form** (see the module docstring: `hΦ` on every horizon). -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>theorem orbit_maximal_identification_allhorizon (C : WholeCoeff d) (m T q : ℝ) (N : ℕ)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (ℱ : Filtration ℝ mΩ) (W : ℝ≥0 → Ω → Fin N × Fin d → ℝ) (X : ℝ≥0 → Ω → EucConfig d N)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (M : ℝ → Ω → KSpace d m T) (hN : 1 ≤ N) (hW : IsCylindricalBrownian P ℱ W)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (hΦ : ∀ T&#x27; : ℝ, IsHSIntegrand P ℱ T&#x27; (empiricalNoiseIntegrand C m T q X))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    (hM : IsHilbertItoIntegral P ℱ W (empiricalNoiseIntegrand C m T q X) M)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (hC : OscAdjointInput C m T) :
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ α : MultiIndex d, ∀ᵐ ζ ∂P,
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      OscDual.coord (reconstructPath m T M ζ t) α =
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        itoIntegral P ℱ W (fun r ζ&#x27; ia =&gt; if r ∈ Set.Icc (0 : ℝ) t then Real.sqrt (2 * q / N) *
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          gradComp ia.2 (propagatorW C r t (oscTestFun m α)) (X (Real.toNNReal r) ζ&#x27; ia.1) else 0) t ζ := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  classical
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  intro t ht α
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hT : 0 ≤ T := ht.1.trans ht.2
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hW&#x27; : IsBrownianFiltration P ℱ W := s52_brownian_of_cyl hW
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  set Φ := empiricalNoiseIntegrand C m T q X with hΦdef
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  set c0 : ℝ := Real.sqrt (2 * q / N) with hc0
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  set u1 : ℝ → Ω → Fin N × Fin d → ℝ := fun r ω k =&gt; inner ℝ (Φ r ω k) (s52y1 m T t α) with hu1
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  set u2 : ℝ → Ω → Fin N × Fin d → ℝ := fun r ω k =&gt; inner ℝ (Φ r ω k) (s52y2 m T α) with hu2
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hL1 : IsProgressiveL2 P ℱ u1 := s52_pairL2 hΦ _
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hL2 : IsProgressiveL2 P ℱ u2 := s52_pairL2 hΦ _
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hLd : IsProgressiveL2 P ℱ (fun r ω k =&gt; u1 r ω k - u2 r ω k) := isProgressiveL2_sub hL1 hL2
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  set ud : ℝ → Ω → Fin N × Fin d → ℝ := fun r ω k =&gt; u1 r ω k - u2 r ω k with hud
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  -- pointwise values of the pairings
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hu2val : ∀ r ω (k : Fin N × Fin d), u2 r ω k =
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      c0 * gradComp k.2 (oscTestFun m α) (X (Real.toNNReal r) ω k.1) := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    intro r ω k
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    simp only [hu2, hΦdef, hc0]
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    rw [s52_pair_Φ, s52_pair_grad_y2 hC hT]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hu1val : ∀ r ∈ Set.Icc (0 : ℝ) T, ∀ ω (k : Fin N × Fin d), u1 r ω k =
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      c0 * (if r ≤ t then gradComp k.2 (propagatorW C r t (oscTestFun m α))
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>        (X (Real.toNNReal r) ω k.1) else gradComp k.2 (oscTestFun m α) (X (Real.toNNReal r) ω k.1)) := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    intro r hr ω k
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    simp only [hu1, hΦdef, hc0]
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    rw [s52_pair_Φ, s52_pair_grad_y1 hC ht.2 k.2 hr]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  -- the pairings with the Itô integrals
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hp1T := s52_pair_ito hW&#x27; hM (s52y1 m T t α)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    (pc_isProgressiveL2_inner hΦ (s52y1 m T t α) Finset.univ) hT
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hp2T := s52_pair_ito hW&#x27; hM (s52y2 m T α) (pc_isProgressiveL2_inner hΦ (s52y2 m T α) Finset.univ) hT
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hp2t := s52_pair_ito hW&#x27; hM (s52y2 m T α) (pc_isProgressiveL2_inner hΦ (s52y2 m T α) Finset.univ) ht.1
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hsub := itoIntegral_sub hW&#x27; hL1 hL2
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  -- the integral of the difference stops at `t`
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have hagreeE : ∀ r ∈ Set.Icc (0 : ℝ) T, ∀ ω, ud r ω = (fun r ω k =&gt; if r ≤ t then ud r ω k else 0) r ω := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    intro r hr ω
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    funext k
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    by_cases hrt : r ≤ t
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    · simp [hrt]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    · simp only [hrt, if_false, hud, hu2val r ω k, hu1val r hr ω k]
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      simp
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  have hLdt : IsProgressiveL2 P ℱ (fun r ω k =&gt; if r ≤ t then ud r ω k else 0) := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have := s52_isProgressiveL2_ite hLd (measurableSet_Iic (a := t))
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    simpa using this
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hlcE := s52_lc hW&#x27; hLd hLdt hT hagreeE
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  have hkillE := s52_kill hW&#x27; hLd ht.1
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  -- the target integrand
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  set ψ : ℝ → Ω → Fin N × Fin d → ℝ := fun r ζ&#x27; ia =&gt; if r ∈ Set.Icc (0 : ℝ) t then Real.sqrt (2 * q / N) *
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    gradComp ia.2 (propagatorW C r t (oscTestFun m α)) (X (Real.toNNReal r) ζ&#x27; ia.1) else 0 with hψ
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hψeq : ψ = fun r ω k =&gt; if r ∈ Set.Icc (0 : ℝ) t then u1 r ω k else 0 := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    funext r ω k
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    by_cases hr : r ∈ Set.Icc (0 : ℝ) t
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    · have hrT : r ∈ Set.Icc (0 : ℝ) T := ⟨hr.1, hr.2.trans ht.2⟩
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      simp only [hψ, hr, if_true, hu1val r hrT ω k, hr.2]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      rfl
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    · simp only [hψ, if_neg hr]
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hLψ : IsProgressiveL2 P ℱ ψ := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    rw [hψeq]; exact s52_isProgressiveL2_ite hL1 measurableSet_Icc
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have hagreeG : ∀ r ∈ Set.Icc (0 : ℝ) t, ∀ ω, u1 r ω = ψ r ω := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    intro r hr ω
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    rw [hψeq]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    simp [hr]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hlcG := s52_lc hW&#x27; hL1 hLψ ht.1 hagreeG
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  filter_upwards [hp1T, hp2T, hp2t, hsub, hlcE, hkillE, hlcG] with ζ h1 h2 h3 h4 h5 h6 h7
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  rw [s52_coord_recon ht.1 ht.2]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  have k0a : inner ℝ (M T ζ) (s52y1 m T t α) = itoIntegral P ℱ W u1 T ζ := h1
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have k0b : inner ℝ (M T ζ) (s52y2 m T α) = itoIntegral P ℱ W u2 T ζ := h2
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have k0c : inner ℝ (M t ζ) (s52y2 m T α) = itoIntegral P ℱ W u2 t ζ := h3
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have k1 : itoIntegral P ℱ W ud T ζ = itoIntegral P ℱ W u1 T ζ - itoIntegral P ℱ W u2 T ζ := h4 T
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have k2 : itoIntegral P ℱ W ud t ζ = itoIntegral P ℱ W u1 t ζ - itoIntegral P ℱ W u2 t ζ := h4 t
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have k3 : itoIntegral P ℱ W ud (min T T) ζ =
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      itoIntegral P ℱ W (fun r ω k =&gt; if r ≤ t then ud r ω k else 0) (min T T) ζ := h5 T hT
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have k4 : itoIntegral P ℱ W (fun r ω k =&gt; if r ≤ t then ud r ω k else 0) T ζ =
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      itoIntegral P ℱ W ud (min T t) ζ := h6 T hT
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have k5 : itoIntegral P ℱ W u1 (min t t) ζ = itoIntegral P ℱ W ψ (min t t) ζ := h7 t ht.1
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  rw [min_self] at k3 k5
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  rw [min_eq_right ht.2] at k4
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  rw [k0a, k0b, k0c]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  linarith
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>/-! ### From the horizon `T` to all horizons under a uniform bound of the base part -/
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>lemma s52_norm_mk_le {m T : ℝ} (a a&#x27; b : _) :
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    ‖(KSpace.mk a a&#x27; b : KSpace d m T)‖ ≤ ‖(a : OscDual d m)‖ + ‖(a&#x27; : L2Path d m T)‖ + ‖(b : OscDual d m)‖ := by
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  unfold KSpace.mk
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  show ‖(WithLp.toLp 2 (a, WithLp.toLp 2 (a&#x27;, b)) :
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    WithLp 2 (OscDual d m × WithLp 2 (L2Path d m T × OscDual d m)))‖ ≤ _
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  rw [WithLp.prod_norm_eq_of_L2]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  change Real.sqrt (‖a‖ ^ 2 + ‖(WithLp.toLp 2 (a&#x27;, b) : WithLp 2 (L2Path d m T × OscDual d m))‖ ^ 2) ≤ _
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  rw [WithLp.prod_norm_eq_of_L2]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  change Real.sqrt (‖a‖ ^ 2 + Real.sqrt (‖a&#x27;‖ ^ 2 + ‖b‖ ^ 2) ^ 2) ≤ _
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have h1 : Real.sqrt (‖a&#x27;‖ ^ 2 + ‖b‖ ^ 2) ≤ ‖a&#x27;‖ + ‖b‖ :=
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    Real.sqrt_le_iff.2 ⟨by positivity, by nlinarith [norm_nonneg a&#x27;, norm_nonneg b]⟩
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have h2 : Real.sqrt (‖a‖ ^ 2 + Real.sqrt (‖a&#x27;‖ ^ 2 + ‖b‖ ^ 2) ^ 2) ≤
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      ‖a‖ + Real.sqrt (‖a&#x27;‖ ^ 2 + ‖b‖ ^ 2) :=
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    Real.sqrt_le_iff.2 ⟨by positivity, by nlinarith [norm_nonneg a, Real.sqrt_nonneg (‖a&#x27;‖ ^ 2 + ‖b‖ ^ 2)]⟩
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  linarith
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>/-- For `r ≥ T` the `L²_t` component of the feature vanishes, so `‖Γ‖ ≤ 2 ‖base‖`. -/
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>lemma s52_norm_feature_tail {C : WholeCoeff d} {m T r : ℝ} (hr : T ≤ r)
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    (Dop : (Euc d → ℝ) → Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    ‖orbitFeature C m T Dop r x‖ ≤ 2 * ‖ellVec (d := d) m (fun α =&gt; Dop (oscTestFun m α) x)‖ := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  classical
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hf : (fun t : ℝ =&gt; if r &lt; t then ellVec (d := d) m (fun α =&gt; Dop
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>      (propagatorW C r t (generatorW C t (oscTestFun m α))) x) else 0) =ᵐ[volume.restrict (Set.Icc (0 : ℝ) T)]
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      (fun _ =&gt; (0 : OscDual d m)) := by
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    filter_upwards [ae_restrict_mem (measurableSet_Icc (a := (0 : ℝ)) (b := T))] with t ht
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    have : ¬ r &lt; t := not_lt.2 (ht.2.trans hr)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    simp [this]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  have hA : (if h : MemLp (fun t : ℝ =&gt; if r &lt; t then ellVec (d := d) m (fun α =&gt; Dop
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      (propagatorW C r t (generatorW C t (oscTestFun m α))) x) else 0) 2
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>        (volume.restrict (Set.Icc (0 : ℝ) T)) then h.toLp _ else (0 : L2Path d m T)) = 0 := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    split_ifs with h
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    · have hz : MemLp (fun _ : ℝ =&gt; (0 : OscDual d m)) 2 (volume.restrict (Set.Icc (0 : ℝ) T)) :=
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        MemLp.zero
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      have := MemLp.toLp_congr h hz hf
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      rw [this]; exact MemLp.toLp_zero _
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    · rfl
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  unfold orbitFeature
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  simp only []
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  rw [hA]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  have := s52_norm_mk_le (d := d) (m := m) (T := T)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    (ellVec (d := d) m (fun α =&gt; Dop (oscTestFun m α) x)) 0
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    (ellVec (d := d) m (fun α =&gt; Dop (oscTestFun m α) x))
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  simp only [norm_zero, add_zero] at this
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  linarith
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>/-- The frozen horizon-`T` hypothesis `hΦ` together with a uniform bound of the base part gives all horizons. -/
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>lemma s52_hs_allhorizon {C : WholeCoeff d} {m T q : ℝ} (hT0 : 0 ≤ T) {N : ℕ} {Ω : Type*}
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    {mΩ : MeasurableSpace Ω} (P : Measure Ω) [IsProbabilityMeasure P] (ℱ : Filtration ℝ mΩ)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    (X : ℝ≥0 → Ω → EucConfig d N)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    (hΦ : IsHSIntegrand P ℱ T (empiricalNoiseIntegrand C m T q X))
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    (hB : ∃ B : ℝ, ∀ (a : Fin d) (x : Euc d),
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      ‖ellVec (d := d) m (fun α =&gt; gradComp a (oscTestFun m α) x)‖ ≤ B) (T&#x27; : ℝ) :
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    IsHSIntegrand P ℱ T&#x27; (empiricalNoiseIntegrand C m T q X) := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  classical
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  obtain ⟨B, hB⟩ := hB
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  refine ⟨hΦ.prog, hΦ.summable, ?_⟩
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  by_cases hTT : T&#x27; ≤ T
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  · refine lt_of_le_of_lt ?_ hΦ.sq
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    unfold hsSqIntegralOn
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    refine lintegral_mono fun ω =&gt; lintegral_mono_set (Set.Icc_subset_Icc_right hTT)
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  · have hTT&#x27; : T ≤ T&#x27; := (not_le.1 hTT).le
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    set K : ℝ≥0∞ := (Fintype.card (Fin N × Fin d) : ℝ≥0∞) *
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      (ENNReal.ofReal (2 * |Real.sqrt (2 * q / N)| * max B 0)) ^ 2 with hK
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    have hpt : ∀ r : ℝ, T ≤ r → ∀ ω, ∑&#x27; k : Fin N × Fin d,
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2 ≤ K := by
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      intro r hr ω
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      rw [tsum_fintype]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>      calc ∑ k : Fin N × Fin d, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>          ≤ ∑ _k : Fin N × Fin d, (ENNReal.ofReal (2 * |Real.sqrt (2 * q / N)| * max B 0)) ^ 2 := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>            refine Finset.sum_le_sum fun k _ =&gt; ?_
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>            gcongr
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>            rw [← ofReal_norm]
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>            apply ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>            unfold empiricalNoiseIntegrand
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>            rw [norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>            have h1 := s52_norm_feature_tail (C := C) (m := m) (T := T) hr (gradComp k.2)
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>              (X (Real.toNNReal r) ω k.1)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>            have h2 := hB k.2 (X (Real.toNNReal r) ω k.1)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>            have h3 : ‖gradFeature C m T k.2 r (X (Real.toNNReal r) ω k.1)‖ ≤ 2 * max B 0 := by
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>              unfold gradFeature
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>              exact h1.trans (by linarith [le_max_left B 0])
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>            calc |Real.sqrt (2 * q / N)| * ‖gradFeature C m T k.2 r (X (Real.toNNReal r) ω k.1)‖
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>                ≤ |Real.sqrt (2 * q / N)| * (2 * max B 0) := by gcongr
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>              _ = _ := by ring
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        _ = K := by simp [hK]
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    unfold hsSqIntegralOn
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    have hsplit : ∀ ω : Ω, (∫⁻ r in Set.Icc 0 T&#x27;, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2) ≤
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        (∫⁻ r in Set.Icc 0 T, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2) +
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>          ENNReal.ofReal (T&#x27; - T) * K := by
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>      intro ω
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      rw [← Set.Icc_union_Ioc_eq_Icc hT0 hTT&#x27;, lintegral_union measurableSet_Ioc
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>        (Set.disjoint_left.2 fun a ha hb =&gt; absurd ha.2 (not_le.2 hb.1))]
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      refine add_le_add_right ?_ _
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      calc (∫⁻ r in Set.Ioc T T&#x27;, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2)
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>          ≤ ∫⁻ r in Set.Ioc T T&#x27;, K :=
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>            setLIntegral_mono&#x27; measurableSet_Ioc fun r hr =&gt; hpt r hr.1.le ω
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        _ = ENNReal.ofReal (T&#x27; - T) * K := by
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>            rw [setLIntegral_const, Real.volume_Ioc, mul_comm]
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    have hKtop : ENNReal.ofReal (T&#x27; - T) * K &lt; ⊤ :=
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>      ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>        (ENNReal.mul_lt_top (ENNReal.natCast_lt_top _) (ENNReal.pow_lt_top ENNReal.ofReal_lt_top))
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    calc ∫⁻ ω, (∫⁻ r in Set.Icc 0 T&#x27;, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2) ∂P
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>        ≤ ∫⁻ ω, ((∫⁻ r in Set.Icc 0 T, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2) +
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>          ENNReal.ofReal (T&#x27; - T) * K) ∂P := lintegral_mono hsplit
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>      _ = (∫⁻ ω, (∫⁻ r in Set.Icc 0 T, ∑&#x27; k, ‖empiricalNoiseIntegrand C m T q X r ω k‖ₑ ^ 2) ∂P) +
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>          ENNReal.ofReal (T&#x27; - T) * K := by
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>            rw [lintegral_add_right _ measurable_const]; simp
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      _ &lt; ⊤ := ENNReal.add_lt_top.2 ⟨hΦ.sq, hKtop⟩
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>/-- **Lemma S5.2, identification clause, with the frozen hypotheses plus a uniform bound of the base part.**
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>Same hypotheses as the frozen `orbit_maximal_identification` (`hΦ` on the horizon `T` only) and one extra hypothesis
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>`hB`: `x ↦ (∂_aφ_α(x))_α` is bounded in `ℓ²` uniformly in `x` (`a &lt; d`).  Under `hB`, `hΦ` implies the
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>all-horizon form (`s52_hs_allhorizon`).  `hB` holds in the setting of `orbit_feature_bounded` (the base part is the
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>`ℓ²` component `A₀ = B` of `Γ_{r,a}(x)`, bounded by `C_{T,0}`); it is the only difference to the frozen statement. -/
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>theorem orbit_maximal_identification_bdd (C : WholeCoeff d) (m T q : ℝ) (N : ℕ)
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    (ℱ : Filtration ℝ mΩ) (W : ℝ≥0 → Ω → Fin N × Fin d → ℝ) (X : ℝ≥0 → Ω → EucConfig d N)
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    (M : ℝ → Ω → KSpace d m T) (hN : 1 ≤ N) (hW : IsCylindricalBrownian P ℱ W)
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    (hΦ : IsHSIntegrand P ℱ T (empiricalNoiseIntegrand C m T q X))
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    (hM : IsHilbertItoIntegral P ℱ W (empiricalNoiseIntegrand C m T q X) M)
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    (hC : OscAdjointInput C m T)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    (hB : ∃ B : ℝ, ∀ (a : Fin d) (x : Euc d),
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>      ‖ellVec (d := d) m (fun α =&gt; gradComp a (oscTestFun m α) x)‖ ≤ B) :
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ α : MultiIndex d, ∀ᵐ ζ ∂P,
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>      OscDual.coord (reconstructPath m T M ζ t) α =
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>        itoIntegral P ℱ W (fun r ζ&#x27; ia =&gt; if r ∈ Set.Icc (0 : ℝ) t then Real.sqrt (2 * q / N) *
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>          gradComp ia.2 (propagatorW C r t (oscTestFun m α)) (X (Real.toNNReal r) ζ&#x27; ia.1) else 0) t ζ := by
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  intro t ht α
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  have hT0 : 0 ≤ T := ht.1.trans ht.2
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  exact orbit_maximal_identification_allhorizon C m T q N P ℱ W X M hN hW
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    (s52_hs_allhorizon hT0 P ℱ X hΦ hB) hM hC t ht α
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>/-- Tie to the repaired frozen statement (S5.2 repair `hB`, approved 2026-10-23). -/
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>example := (@orbit_maximal_identification_bdd : type_of% @HRS.Whole.orbit_maximal_identification)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>end HRS.MS.S52
+</span></code></pre></main></body></html>

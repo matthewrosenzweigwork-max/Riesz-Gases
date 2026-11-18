@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Duality.PairingExpansionRd · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Duality.PairingExpansionRd</code></h1><p><a href="../../lean/HRS/Duality/PairingExpansionRd.lean">Open the unaltered Lean file</a> · 84 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.Headline
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Sections.Sec3
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Duality.PairingExpansion
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MH.DualityRdDefs
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># Lemma 3.1 (`M:B:lem:pairing-expansion`) on `𝔻 = ℝ^d`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Statement only (the theorem ends in `sorry`; the definitions are complete); relocated from `HRS/SA/Drafts/SAD1.lean` after
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>the independent review recorded in `docs/ISSUES.md` and subsequent approval.  TeX L1518-1524: the statement is for
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`𝔻 ∈ {𝕋^d, ℝ^d}` (`\mathbb D`, with the explicit clause &quot;`∫⟨x⟩dμ &lt; ∞` if `𝔻 = ℝ^d` and `s = 0`&quot;).  The torus case is
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`HRS.Duality.pairing_expansion`; the vocabulary below is the whole-space copy of `HRS.Duality.pairKernelB`, `pairB`,
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`pairBSigned`, `pairEmp`, `divConvB`.  Choices recorded in ISSUES: `α ≤ 1` is added (harmless: a global Hölder bound with
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`α &gt; 1` forces a constant density) and the moment hypothesis of the TeX is kept.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.Duality
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open HRS
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ} {N : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>/-- The symmetrized kernel `½ (∇f(x) - ∇f(y)) · M ∇g(x - y)` of `B:eq:B-symmetrized` on `ℝ^d`, `0` on the diagonal. -/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>def pairKernelRdB (f : Euc d → ℝ) (M : Matrix (Fin d) (Fin d) ℝ) (s : ℝ) (x y : Euc d) : ℝ :=
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  if x = y then 0 else
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (1 / 2 : ℝ) * inner ℝ (gradient f x - gradient f y)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      (Torus.matVec M (Whole.rieszKernelGrad d s (x - y)))
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>/-- `B_f(α, λ)` in symmetrized, off-diagonal form on `ℝ^d`. -/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>def pairBRd (f : Euc d → ℝ) (M : Matrix (Fin d) (Fin d) ℝ) (s : ℝ) (α ν : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  ∫ p, pairKernelRdB f M s p.1 p.2 ∂(α.prod ν)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- `B_f(ν - μ, ν - μ)` expanded bilinearly (four terms). -/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>def pairBSignedRd (f : Euc d → ℝ) (M : Matrix (Fin d) (Fin d) ℝ) (s : ℝ) (ν μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  pairBRd f M s ν ν - pairBRd f M s ν μ - pairBRd f M s μ ν + pairBRd f M s μ μ
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>/-- `⟨φ, μ_N - μ⟩ = N⁻¹ ∑ φ(x_i) - ∫ φ dμ`. -/
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>def pairEmpRd (φ : Euc d → ℝ) (X : Whole.EucConfig d N) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  (N : ℝ)⁻¹ * ∑ i, φ (X i) - ∫ x, φ x ∂μ
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- `Div g * (ρ M^* ∇f) = (∇g) * (ρ M^* ∇f)` (contracted) with the cancellation convention on `ℝ^d`. -/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>def divConvBRd (f : Euc d → ℝ) (M : Matrix (Fin d) (Fin d) ℝ) (s : ℝ) (ρ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  ∑ a : Fin d, Whole.convGradConvW (Whole.rieszKernelGrad d s)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (fun y =&gt; ρ y * Torus.matVec M.transpose (gradient f y) a) x a
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-- Lemma 3.1 `B:lem:pairing-expansion` (TeX L1518-1524) on `𝔻 = ℝ^d`: for `f ∈ C²_b(ℝ^d)`, a probability density `ρ`
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>(`μ = ρ dx`) in `C^{0,α}_b(ℝ^d)` with `α &gt; max(0, s+1-d)` (and `∫⟨x⟩ dμ &lt; ∞` if `s = 0`), and pairwise distinct
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>`x_1, …, x_N`, the four quantities `B_f(μ,μ)`, `B_f(μ_N,μ)`, `B_f(μ,μ_N)` (absolutely convergent integrals), the
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>convolution `∇g * μ` and `Div g * (μ M^*∇f)` (cancellation convention integrals) are finite and
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`B_f(μ_N,μ_N) - B_f(μ,μ) = ⟨∇f·M(∇g*μ), ρ_N⟩ - ⟨Div g*(μ M^*∇f), ρ_N⟩ + B_f(ρ_N,ρ_N)`.
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>Same shape and conclusions as `HRS.Duality.pairing_expansion`.  Reading: `C^{0,α}` is the Hölder space of exponent
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>`α ∈ (0,1]` (`hα1`; the torus statement leaves `α ≤ 1` implicit), boundedness of `ρ` is `hρb`, `⟨x⟩ = √(1+|x|²)`,
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>`μ_N = N⁻¹∑δ_{x_i}` with `N ≥ 1`. -/
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>theorem pairing_expansion_rd (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (M : Matrix (Fin d) (Fin d) ℝ) (f : Euc d → ℝ) (hf : MemCb 2 f)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (ρ : Euc d → ℝ) (hρ : Whole.IsProbDensity ρ) (hρb : ∃ B, ∀ x, |ρ x| ≤ B)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (C α : NNReal) (hα0 : 0 &lt; (α : ℝ)) (hα1 : (α : ℝ) ≤ 1) (hα : s + 1 - d &lt; α)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (hHol : HolderWith C α ρ)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    (hmom : s = 0 → Integrable (fun x : Euc d =&gt; Real.sqrt (1 + ‖x‖ ^ 2)) (Whole.withDensityReal ρ))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (hN : 1 ≤ N) (X : Whole.EucConfig d N) (hX : Pairwise fun i j =&gt; X i ≠ X j) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    let μ := Whole.withDensityReal ρ
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    let μN := Whole.empirical X
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    let φ₁ : Euc d → ℝ := fun x =&gt;
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      inner ℝ (gradient f x) (Torus.matVec M (Whole.convGradConvW (Whole.rieszKernelGrad d s) ρ x))
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    let φ₂ : Euc d → ℝ := divConvBRd f M s ρ
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (Integrable (fun p : Euc d × Euc d =&gt; pairKernelRdB f M s p.1 p.2) (μ.prod μ) ∧
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      Integrable (fun p : Euc d × Euc d =&gt; pairKernelRdB f M s p.1 p.2) (μN.prod μ) ∧
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      Integrable (fun p : Euc d × Euc d =&gt; pairKernelRdB f M s p.1 p.2) (μ.prod μN) ∧
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      (∀ x, Integrable (fun y =&gt; if ‖x - y‖ ≤ 1 / 4 then (ρ y - ρ x) • Whole.rieszKernelGrad d s (x - y)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        else ρ y • Whole.rieszKernelGrad d s (x - y))) ∧
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      (∀ (a : Fin d) x, let ψ : Euc d → ℝ := fun y =&gt; ρ y * Torus.matVec M.transpose (gradient f y) a
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        Integrable (fun y =&gt; if ‖x - y‖ ≤ 1 / 4 then (ψ y - ψ x) • Whole.rieszKernelGrad d s (x - y)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          else ψ y • Whole.rieszKernelGrad d s (x - y))) ∧
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      Integrable φ₁ μ ∧ Integrable φ₂ μ) ∧
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    pairBRd f M s μN μN - pairBRd f M s μ μ =
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      pairEmpRd φ₁ X μ - pairEmpRd φ₂ X μ + pairBSignedRd f M s μN μ := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  sorry
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>end HRS.Duality
+</span></code></pre></main></body></html>

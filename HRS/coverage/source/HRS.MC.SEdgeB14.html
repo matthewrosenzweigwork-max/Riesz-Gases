@@ -1,0 +1,255 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.SEdgeB14 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.SEdgeB14</code></h1><p><a href="../../lean/HRS/MC/SEdgeB14.lean">Open the unaltered Lean file</a> · 254 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.SEdgeB14Aux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Packet B14: `static_edge` (assembly) -- relocation of `HRS.MC.SEdge.static_edge_proof`
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>For `F in C_b^5`, `f` is the Stein solution of B11b.  B12 gives the exact decomposition
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`sqrt N (E F(W_N) - E F(Z)) = e1 - e2 + e3` with
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* `e1 = sum_ab sqrt N (C_ab - E A_ab) E g_ab(W_N) -&gt; 0` (B13a),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* `e2 = sum_ab E[Y_{w_ab} g_ab(W_N)] -&gt; sum mu(w_ab r_c) E d_cba f(Z)` (B13b),
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `e3 = beta sum_a E[B_a d_a f(W_N)] -&gt; (beta/2) sum Q_{a;bc} E d_abc f(Z)` (B13c; absent for `beta = 0`),
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>and the cubic cancellation B9cancel together with the symmetry of `D^3 f` and B11b give the limit.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>-/
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>noncomputable section
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS.MC.SEdge.B14
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS.Sec7
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS.MC.SEdge
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>section Main
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) {β : ℝ} (hβ : 0 ≤ β)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>include hd hs0 hs hβ hρ
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>theorem b14_main {p : ℕ} {φ : Fin p → Torus d → ℝ} (hφ : ∀ a, Torus.IsSmooth (φ a))
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    {F : EuclideanSpace ℝ (Fin p) → ℝ} (hF : MemCb 5 F) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    Tendsto (fun N : ℕ =&gt; Real.sqrt N *
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>        (∫ X, F (centeredStat (sed_Q d s N β ρ) φ X) ∂(sed_Q d s N β ρ) -
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>          ∫ z, F z ∂(multivariateGaussian 0 (sed_Cmat d s β ρ φ)) -
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>          (1 / (6 * Real.sqrt N)) * ∑ a, ∑ b, ∑ c, sed_kappa d s β ρ φ a b c *
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>            ∫ z, iteratedFDeriv ℝ 3 F z ![stdVec a, stdVec b, stdVec c]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>              ∂(multivariateGaussian 0 (sed_Cmat d s β ρ φ)))) atTop (𝓝 0) := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  haveI hP : IsProbabilityMeasure (withDensityReal ρ) := B3.b3_prob hρ
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  set γ := multivariateGaussian 0 (sed_Cmat d s β ρ φ) with hγ
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hCpsd : (sed_Cmat d s β ρ φ).PosSemidef := B11a.sed_B11a_cov_psd_proof hd hs0 hs hβ hρ hφ
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  obtain ⟨f, -, hf5, hfb, hstein, hthird⟩ := B11b.sed_B11b_ou_proof _ hCpsd hF
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hf3 : ContDiff ℝ 3 f := hf5.of_le (by norm_num)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have hf : sed_StBdd f 3 := ⟨hf3, fun j h1 h3 =&gt;
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    ⟨(j : ℝ)⁻¹ * ⨆ y, ‖iteratedFDeriv ℝ j F y‖, fun x =&gt; hfb j h1 (by omega) x⟩⟩
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hFc : Continuous F := hF.1.continuous
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hFb : ∃ M, ∀ z, |F z| ≤ M := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    obtain ⟨M, hM⟩ := hF.2 0 (Nat.zero_le _)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    exact ⟨M, fun z =&gt; by simpa [norm_iteratedFDeriv_zero, Real.norm_eq_abs] using hM ⟨z, rfl⟩⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  -- smooth data
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  choose ra va hras hvas hae hresp hmean hdiv using
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    fun a =&gt; B1.sed_B1_regular_proof hd hs0 hs hβ hρ (hφ a)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hint : ∀ a, ∀ N : ℕ, 1 ≤ N → Integrable
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      (fun X : Config d N =&gt; modulatedEnergy (Q66.q66_hv d s (va a)) X (withDensityReal ρ))
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      (sed_Q d s N β ρ) := fun a =&gt; (B4b.sed_B4b_energy_proof hd hs0 hs hβ hρ (hvas a)).1
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  -- tensors
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  obtain ⟨T, hTdef⟩ : ∃ T : Fin p → Fin p → Fin p → ℝ, ∀ a b c,
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      T a b c = ∫ z, iteratedFDeriv ℝ 3 f z ![stdVec a, stdVec b, stdVec c] ∂γ :=
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    ⟨fun a b c =&gt; _, fun _ _ _ =&gt; rfl⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  obtain ⟨mm, hmm⟩ : ∃ mm : Fin p → Fin p → Fin p → ℝ, ∀ a b c,
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      mm a b c = ∫ x, sed_drift (va a) (φ b) x *
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        responseInverse (periodicRiesz d s) (withDensityReal ρ) β (φ c) x ∂(withDensityReal ρ) :=
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    ⟨fun a b c =&gt; _, fun _ _ _ =&gt; rfl⟩
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨q, hq⟩ : ∃ q : Fin p → Fin p → Fin p → ℝ, ∀ a b c,
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      q a b c = sed_Qt d s ρ (va a)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        (responseInverse (periodicRiesz d s) (withDensityReal ρ) β (φ b))
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        (responseInverse (periodicRiesz d s) (withDensityReal ρ) β (φ c)) :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ⟨fun a b c =&gt; _, fun _ _ _ =&gt; rfl⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  -- the three sequences
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  obtain ⟨e1, he1⟩ : ∃ e1 : ℕ → ℝ, e1 = fun N : ℕ =&gt; ∑ a, ∑ b, Real.sqrt N *
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      (sed_Cmat d s β ρ φ a b - ∫ X, sed_A (va a) (φ b) X ∂(sed_Q d s N β ρ)) *
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      ∫ X, iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>        ∂(sed_Q d s N β ρ) := ⟨_, rfl⟩
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  obtain ⟨e2, he2⟩ : ∃ e2 : ℕ → ℝ, e2 = fun N : ℕ =&gt; ∑ a, ∑ b,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      ∫ X, sed_Y (sed_Q d s N β ρ) (sed_drift (va a) (φ b)) X *
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        ∂(sed_Q d s N β ρ) := ⟨_, rfl⟩
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  obtain ⟨e3, he3⟩ : ∃ e3 : ℕ → ℝ, e3 = fun N : ℕ =&gt; β * ∑ a,
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      ∫ X, sed_B d s ρ β (va a) X * fderiv ℝ f (centeredStat (sed_Q d s N β ρ) φ X) (stdVec a)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        ∂(sed_Q d s N β ρ) := ⟨_, rfl⟩
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  -- the exact identity
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hid : ∀ N : ℕ, 1 ≤ N → Real.sqrt N *
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      (∫ X, F (centeredStat (sed_Q d s N β ρ) φ X) ∂(sed_Q d s N β ρ) - ∫ z, F z ∂γ) =
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      e1 N - e2 N + e3 N := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    intro N hN
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    haveI := B5a.b5a_Q_prob hd hs0 hs hβ hρ hN
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    have hmaster := B12.sed_B12_master_proof hd hs0 hs hβ hρ hN hφ hras hvas hdiv hresp
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      (fun a =&gt; hint a N hN) hFc hFb hf hstein
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    have hsq : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 (by exact_mod_cast hN)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    have hWm := b14_Wmeas hN hφ (sed_Q d s N β ρ)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    have hg : ∀ a b, b14Bdd (fun X : Config d N =&gt; iteratedFDeriv ℝ 2 f
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]) := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      intro a b
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      obtain ⟨hc, M, hM⟩ := B12.b12_second_facts hf a b
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      exact ⟨hc.measurable.comp hWm, M, fun X =&gt; hM _⟩
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    have hA : ∀ a b, b14Bdd (fun X : Config d N =&gt; sed_A (va a) (φ b) X) := fun a b =&gt;
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      B12.b12_A_facts hN (hvas a) (hφ b)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    have hterm : ∀ a b, Real.sqrt N * ∫ X, (sed_Cmat d s β ρ φ a b - sed_A (va a) (φ b) X) *
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>        iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          ∂(sed_Q d s N β ρ) =
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        Real.sqrt N * (sed_Cmat d s β ρ φ a b - ∫ X, sed_A (va a) (φ b) X ∂(sed_Q d s N β ρ)) *
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          ∫ X, iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            ∂(sed_Q d s N β ρ) -
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>        ∫ X, sed_Y (sed_Q d s N β ρ) (sed_drift (va a) (φ b)) X *
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>          iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>            ∂(sed_Q d s N β ρ) := fun a b =&gt;
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      b14_split (sed_Q d s N β ρ) (sed_Cmat d s β ρ φ a b) (Real.sqrt N) _ _
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        ((hg a b).integrable _) (((hA a b).mul (hg a b)).integrable _)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    rw [hmaster, he1, he2, he3]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have h1 : Real.sqrt N * (β / Real.sqrt N * ∑ a, ∫ X, sed_B d s ρ β (va a) X *
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        fderiv ℝ f (centeredStat (sed_Q d s N β ρ) φ X) (stdVec a) ∂(sed_Q d s N β ρ)) =
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>        β * ∑ a, ∫ X, sed_B d s ρ β (va a) X *
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>          fderiv ℝ f (centeredStat (sed_Q d s N β ρ) φ X) (stdVec a) ∂(sed_Q d s N β ρ) := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      field_simp
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    rw [mul_add, h1, Finset.mul_sum]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    simp only [Finset.mul_sum, hterm, Finset.sum_sub_distrib]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  -- e1 -&gt; 0
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  have hT1 : Tendsto e1 atTop (𝓝 0) := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have hab : ∀ a b, Tendsto (fun N : ℕ =&gt; Real.sqrt N *
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        (sed_Cmat d s β ρ φ a b - ∫ X, sed_A (va a) (φ b) X ∂(sed_Q d s N β ρ)) *
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        ∫ X, iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>          ∂(sed_Q d s N β ρ)) atTop (𝓝 0) := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      intro a b
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      obtain ⟨K, hK⟩ := B13a.sed_B13a_bias_proof hd hs0 hs hβ hρ hφ (a := a) (b := b)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        (hras a) (hvas a) (hdiv a) (hresp a)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      obtain ⟨hc, Mg, hMg⟩ := B12.b12_second_facts hf a b
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      have hlim : Tendsto (fun N : ℕ =&gt; |K| * |Mg| / Real.sqrt N) atTop (𝓝 0) :=
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        tendsto_const_nhds.div_atTop b14_tendsto_sqrt
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      refine squeeze_zero_norm&#x27; ?_ hlim
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      filter_upwards [Filter.eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      haveI := B5a.b5a_Q_prob hd hs0 hs hβ hρ hN
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      have hsq : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 (by exact_mod_cast hN)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      have hg : |∫ X, iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          ![stdVec b, stdVec a] ∂(sed_Q d s N β ρ)| ≤ |Mg| :=
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        (b14_abs_integral_le (fun X =&gt; hMg _)).trans (le_abs_self _)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      have hb : |Real.sqrt N * (sed_Cmat d s β ρ φ a b -
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          ∫ X, sed_A (va a) (φ b) X ∂(sed_Q d s N β ρ))| ≤ |K| / Real.sqrt N := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        rw [abs_mul, abs_of_pos hsq]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        calc Real.sqrt N * |sed_Cmat d s β ρ φ a b - ∫ X, sed_A (va a) (φ b) X ∂(sed_Q d s N β ρ)|
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>            ≤ Real.sqrt N * (K / N) := mul_le_mul_of_nonneg_left (hK N hN) hsq.le
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          _ = K / Real.sqrt N := b14_sqrt_div hN K
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>          _ ≤ |K| / Real.sqrt N := div_le_div_of_nonneg_right (le_abs_self K) hsq.le
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      rw [Real.norm_eq_abs, abs_mul]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      calc _ ≤ |K| / Real.sqrt N * |Mg| := mul_le_mul hb hg (abs_nonneg _) (by positivity)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>        _ = |K| * |Mg| / Real.sqrt N := by ring
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    rw [he1]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    have := tendsto_finset_sum Finset.univ fun a _ =&gt;
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      tendsto_finset_sum Finset.univ fun b _ =&gt; hab a b
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    simpa only [Finset.sum_const_zero] using this
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  -- e2
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hlim2 : ∀ a b, Tendsto (fun N : ℕ =&gt; ∫ X, sed_Y (sed_Q d s N β ρ) (sed_drift (va a) (φ b)) X *
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        iteratedFDeriv ℝ 2 f (centeredStat (sed_Q d s N β ρ) φ X) ![stdVec b, stdVec a]
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        ∂(sed_Q d s N β ρ)) atTop (𝓝 (∑ c, mm a b c * T a c b)) := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    intro a b
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    have h := B13b.sed_B13b_linear_limit_proof hd hs0 hs hβ hρ hφ
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      (b14_drift_smooth (hvas a) (hφ b)) (b14_g_memCb hf a b)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have heq : ∀ c, ∫ z, fderiv ℝ (fun x =&gt; iteratedFDeriv ℝ 2 f x ![stdVec b, stdVec a]) z
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        (stdVec c) ∂γ = T a c b := fun c =&gt; by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      rw [hTdef]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      exact integral_congr_ae (Filter.Eventually.of_forall fun z =&gt; b14_fderiv_g hf3 a b c z)
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    have hsum : ∑ c, (∫ x, sed_drift (va a) (φ b) x *
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        responseInverse (periodicRiesz d s) (withDensityReal ρ) β (φ c) x ∂(withDensityReal ρ)) *
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        ∫ z, fderiv ℝ (fun x =&gt; iteratedFDeriv ℝ 2 f x ![stdVec b, stdVec a]) z (stdVec c) ∂γ =
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>        ∑ c, mm a b c * T a c b := Finset.sum_congr rfl fun c _ =&gt; by rw [heq c, hmm]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    rw [← hsum]
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    exact h
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have hT2 : Tendsto e2 atTop (𝓝 (∑ a, ∑ b, ∑ c, mm a b c * T a c b)) := by
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    rw [he2]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    exact tendsto_finset_sum _ fun a _ =&gt; tendsto_finset_sum _ fun b _ =&gt; hlim2 a b
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  -- e3
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hT3 : Tendsto e3 atTop (𝓝 (β * ∑ a, (1 / 2) * ∑ b, ∑ c, q a b c * T a b c)) := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    rw [he3]
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    by_cases hβ0 : β = 0
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    · simp [hβ0]
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    · have hβpos : 0 &lt; β := lt_of_le_of_ne hβ (Ne.symm hβ0)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      refine Tendsto.const_mul β (tendsto_finset_sum _ fun a _ =&gt; ?_)
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      have := B13c.sed_B13c_chaos_limit_proof hd hs0 hs hβ hρ hβpos hφ (hvas a) hf a
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      simp only [hq, hTdef]
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>      exact this
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  -- the cubic cancellation, transferred to `responseInverse`
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have hcan : ∀ a b c, mm a b c + mm a c b - β * q a b c = sed_kappa d s β ρ φ a b c := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    intro a b c
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    have h := B9cancel.sed_B9cancel_proof hd hs0 hs hβ hρ (hras a) (hras b) (hras c) (hφ b) (hφ c)
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>      (hvas a) (hdiv a) (hresp b) (hresp c)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have e1&#x27; : ∫ x, sed_drift (va a) (φ b) x * ra c x ∂(withDensityReal ρ) = mm a b c := by
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      rw [hmm]
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      refine integral_congr_ae ?_
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      filter_upwards [hae c] with x hx
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      rw [hx]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    have e2&#x27; : ∫ x, sed_drift (va a) (φ c) x * ra b x ∂(withDensityReal ρ) = mm a c b := by
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      rw [hmm]
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      refine integral_congr_ae ?_
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      filter_upwards [hae b] with x hx
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      rw [hx]
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    have e3&#x27; := (B15c.sed_B15c_congr_proof s (va a) (hae b) (hae c) (hae a)).1
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    have e4&#x27; := (B15c.sed_B15c_congr_proof s (va a) (hae a) (hae b) (hae c)).2
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    rw [hq, ← e3&#x27;]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    unfold sed_kappa
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    rw [← e4&#x27;]
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    linarith [h, e1&#x27;, e2&#x27;]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  have hTsymm : ∀ a b c, T a b c = T a c b := fun a b c =&gt; by
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    rw [hTdef, hTdef]; exact b14_T_symm hf3 γ a b c
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  have halg := b14_alg β T mm q (sed_kappa d s β ρ φ) hTsymm hcan
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  obtain ⟨S, hS⟩ : ∃ S : ℝ, S = ∑ a, ∑ b, ∑ c, sed_kappa d s β ρ φ a b c *
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      ∫ z, iteratedFDeriv ℝ 3 F z ![stdVec a, stdVec b, stdVec c] ∂γ := ⟨_, rfl⟩
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have hκT : ∑ a, ∑ b, ∑ c, sed_kappa d s β ρ φ a b c * T a b c = -(1 / 3) * S := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    rw [hS, Finset.mul_sum]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    refine Finset.sum_congr rfl fun a _ =&gt; ?_
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    rw [Finset.mul_sum]
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    refine Finset.sum_congr rfl fun b _ =&gt; ?_
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    rw [Finset.mul_sum]
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    refine Finset.sum_congr rfl fun c _ =&gt; ?_
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    rw [hTdef, hthird]; ring
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  have key : Tendsto (fun N =&gt; e1 N - e2 N + e3 N - S / 6) atTop (𝓝 0) := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    have := ((hT1.sub hT2).add hT3).sub_const (S / 6)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    convert this using 2
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    linarith
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  rw [← hS]
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  refine Tendsto.congr&#x27; ?_ key
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  filter_upwards [Filter.eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hsq : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 (by exact_mod_cast hN)
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  rw [← hid N hN]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  field_simp
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>end Main
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>section Final
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>variable {d : ℕ}
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>theorem static_edge_assembly_proof (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    (hβ : 0 ≤ β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (p : ℕ) (φ : Fin p → Torus d → ℝ)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    (hφ : ∀ a, Torus.IsSmooth (φ a)) :
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    let μ := withDensityReal ρ
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    let r : Fin p → Torus d → ℝ := fun a =&gt; responseInverse (periodicRiesz d s) μ β (φ a)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    let C : Matrix (Fin p) (Fin p) ℝ := Matrix.of fun a b =&gt; ∫ x, φ a x * r b x ∂μ
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    let κ : Fin p → Fin p → Fin p → ℝ := fun a b c =&gt; ∫ x, r a x * r b x * r c x ∂μ
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    ∀ F : EuclideanSpace ℝ (Fin p) → ℝ, MemCb 5 F →
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      Tendsto (fun N : ℕ =&gt; Real.sqrt N *
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        (∫ X, F (centeredStat (modulatedGibbs (periodicRiesz d s) N β μ) φ X)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>            ∂(modulatedGibbs (periodicRiesz d s) N β μ) -
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>          ∫ z, F z ∂(multivariateGaussian 0 C) -
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>          (1 / (6 * Real.sqrt N)) * ∑ a, ∑ b, ∑ c, κ a b c *
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>            ∫ z, iteratedFDeriv ℝ 3 F z ![stdVec a, stdVec b, stdVec c] ∂(multivariateGaussian 0 C)))
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        atTop (𝓝 0) := by
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  intro μ r C κ F hF
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  exact b14_main hd hs0 hs hβ hρ hφ hF
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>end Final
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>end HRS.MC.SEdge.B14
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>end
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>
+</span></code></pre></main></body></html>

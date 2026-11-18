@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.SuppU1 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.SuppU1</code></h1><p><a href="../../lean/HRS/MS/SuppU1.lean">Open the unaltered Lean file</a> · 157 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Round2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.SuppU1Aux9
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># U1: proof of the supplement lemma S9.1 `HRS.Whole.round2_approximation`
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Route (S L6826-6834): cut-off, mollification by a bump on `ℝ^d × ℝ^d` (the envelope constant comes from the
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>average of `W_s` over a small ball), Stone-Weierstrass for the finite-rank kernels (cut off again), symmetrisation;
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>the exponents `r_j ↑ d/s` handle all `r` at once.  The generic analysis is in `SuppU1Aux1`-`SuppU1Aux9`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal ContDiff
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>namespace HRS.Whole.U1
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>variable {d : ℕ}
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>lemma u1_isProb {ρ : Euc d → ℝ} (hρ : IsProbDensity ρ) : IsProbabilityMeasure (withDensityReal ρ) := by
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  have hint : Integrable ρ :=
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    Integrable.of_integral_ne_zero (by rw [hρ.integral_one]; exact one_ne_zero)
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  refine ⟨?_⟩
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  unfold withDensityReal
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  rw [withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    ← ofReal_integral_eq_lintegral_ofReal hint (Filter.Eventually.of_forall hρ.nonneg),
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    hρ.integral_one]
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  simp
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>lemma u1_le_smul {ρ : Euc d → ℝ} {M : ℝ} (hM : ∀ x, ρ x ≤ M) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    withDensityReal ρ ≤ ENNReal.ofReal M • (volume : Measure (Euc d)) := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  refine Measure.le_iff.2 fun s hs =&gt; ?_
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  unfold withDensityReal
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  rw [withDensity_apply _ hs, Measure.smul_apply, smul_eq_mul]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  calc ∫⁻ x in s, ENNReal.ofReal (ρ x) ∂volume
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      ≤ ∫⁻ x in s, ENNReal.ofReal M ∂volume := lintegral_mono fun x =&gt; ENNReal.ofReal_le_ofReal (hM x)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    _ = ENNReal.ofReal M * volume s := by rw [setLIntegral_const, mul_comm]
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>lemma u1_rseq (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    ∃ rs : ℕ → ℝ, (∀ j, 1 ≤ rs j) ∧ (∀ j, rs j * s &lt; (d : ℝ)) ∧
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      ∀ r : ℝ, 1 ≤ r → r * s &lt; (d : ℝ) → ∃ J : ℕ, ∀ j, J ≤ j → r ≤ rs j := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  by_cases h0 : s = 0
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  · refine ⟨fun j =&gt; (j : ℝ) + 1, fun j =&gt; by linarith [(Nat.cast_nonneg j : (0:ℝ) ≤ j)],
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      fun j =&gt; by rw [h0]; linarith, fun r _ _ =&gt; ?_⟩
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    obtain ⟨J, hJ⟩ := exists_nat_ge r
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    refine ⟨J, fun j hj =&gt; ?_⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    have : (J : ℝ) ≤ j := by exact_mod_cast hj
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    linarith
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  · have hs&#x27; : 0 &lt; s := lt_of_le_of_ne hs0 (Ne.symm h0)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have hD : 2 &lt; (d : ℝ) / s := by rw [lt_div_iff₀ hs&#x27;]; linarith
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    refine ⟨fun j =&gt; (d : ℝ) / s * (1 - 1 / ((j : ℝ) + 2)), ?_, ?_, ?_⟩
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    · intro j
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      have hq : 1 / ((j : ℝ) + 2) ≤ 1 / 2 :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        one_div_le_one_div_of_le (by norm_num) (by linarith [(Nat.cast_nonneg j : (0:ℝ) ≤ j)])
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      have : (d : ℝ) / s * (1 / 2) ≤ (d : ℝ) / s * (1 - 1 / ((j : ℝ) + 2)) :=
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      linarith
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    · intro j
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      have hq : 0 &lt; 1 / ((j : ℝ) + 2) := by positivity
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      have : (d : ℝ) / s * (1 - 1 / ((j : ℝ) + 2)) * s = (d : ℝ) * (1 - 1 / ((j : ℝ) + 2)) := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>        field_simp
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      rw [this]; nlinarith
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    · intro r hr1 hrs
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      have hδ : 0 &lt; ((d : ℝ) - r * s) / d := by apply div_pos &lt;;&gt; linarith
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      obtain ⟨N, hN⟩ := exists_nat_one_div_lt hδ
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      refine ⟨N, fun j hj =&gt; ?_⟩
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      have hj&#x27; : (N : ℝ) ≤ j := by exact_mod_cast hj
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      have hq : 1 / ((j : ℝ) + 2) ≤ 1 / ((N : ℝ) + 1) :=
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>        one_div_le_one_div_of_le (by positivity) (by linarith)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      have h2 : 1 / ((j : ℝ) + 2) &lt; ((d : ℝ) - r * s) / d := lt_of_le_of_lt hq hN
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      have h3 : (d : ℝ) * (1 / ((j : ℝ) + 2)) &lt; (d : ℝ) - r * s := by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        have := (lt_div_iff₀ (by linarith : (0:ℝ) &lt; d)).mp (by linarith [h2] : 1 / ((j : ℝ) + 2) &lt; _)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        linarith
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      have h4 : r * s ≤ (d : ℝ) * (1 - 1 / ((j : ℝ) + 2)) := by nlinarith
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      have : (d : ℝ) / s * (1 - 1 / ((j : ℝ) + 2)) = (d : ℝ) * (1 - 1 / ((j : ℝ) + 2)) / s := by
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>        field_simp
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      show r ≤ (d : ℝ) / s * (1 - 1 / ((j : ℝ) + 2))
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      rw [this, le_div_iff₀ hs&#x27;]
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      exact h4
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>theorem round2_approximation_proof : type_of% @HRS.Whole.round2_approximation := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  intro d hd s hs0 hs
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hfr : Module.finrank ℝ (Euc d) = d := finrank_euclideanSpace_fin
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hsd : s &lt; (Module.finrank ℝ (Euc d) : ℝ) := by rw [hfr]; linarith
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  obtain ⟨C, hC0, hCap⟩ := u1_approx (volume : Measure (Euc d)) hs0 hsd
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  refine ⟨C, fun M L ρ hρ B h hh =&gt; ?_⟩
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  haveI : IsProbabilityMeasure (withDensityReal ρ) := u1_isProb hρ.prob
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hle := u1_le_smul (d := d) hρ.bdd
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hV : ∀ z : Euc d, u1Vs s ‖z‖ = 1 + rieszWeight s z := fun z =&gt; rfl
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  -- `B ≥ 0`
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  haveI : Nontrivial (Euc d) := Module.nontrivial_of_finrank_pos (R := ℝ) (by rw [hfr]; omega)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  obtain ⟨x0, y0, hxy0⟩ := exists_pair_ne (Euc d)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  have hB0 : 0 ≤ B := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    have h1 := hh.bound x0 y0 hxy0
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have h2 : 0 &lt; 1 + rieszWeight s (x0 - y0) := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      rw [← hV]; linarith [u1Vs_ge_one (s := s) (norm_nonneg (x0 - y0))]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have := (abs_nonneg (h x0 y0)).trans h1
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    exact (mul_nonneg_iff_of_pos_right h2).mp this
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  rcases hB0.eq_or_lt with hB | hBpos
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  · -- `B = 0`: the kernel vanishes a.e.
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    subst hB
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    refine ⟨fun _ _ _ =&gt; 0, ?_⟩
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    refine ⟨fun j =&gt; ⟨0, fun _ _ =&gt; 0, fun _ _ =&gt; 0, ⟨fun _ _ =&gt; rfl, fun a =&gt; a.elim0,
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      fun a =&gt; a.elim0⟩, by funext x y; simp [r2FiniteRankKernel]⟩, fun j x y hxy =&gt; by simp, ?_⟩
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    intro r hr hrs
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have hμ&#x27;μ : withDensityReal ρ ≪ (volume : Measure (Euc d)) :=
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      Measure.absolutelyContinuous_of_le_smul hle
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have hPν : (withDensityReal ρ).prod (withDensityReal ρ) ≪ (volume : Measure (Euc d)).prod volume :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      Measure.AbsolutelyContinuous.prod hμ&#x27;μ hμ&#x27;μ
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    have hoff : ∀ᵐ q ∂((withDensityReal ρ).prod (withDensityReal ρ)), q.1 ≠ q.2 :=
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      hPν.ae_le (u1_ae_offdiag (volume : Measure (Euc d)) (by rw [hfr]; omega))
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    have hz : eLpNorm (fun p : Euc d × Euc d =&gt; (fun _ _ =&gt; (0 : ℝ)) p.1 p.2 - h p.1 p.2)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        (ENNReal.ofReal r) ((withDensityReal ρ).prod (withDensityReal ρ)) = 0 := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      rw [← eLpNorm_zero (p := ENNReal.ofReal r) (μ := (withDensityReal ρ).prod (withDensityReal ρ))
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        (ε := ℝ)]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      refine eLpNorm_congr_ae ?_
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      filter_upwards [hoff] with q hq
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      have := hh.bound q.1 q.2 hq
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      have h0 : h q.1 q.2 = 0 := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        have h1 : |h q.1 q.2| ≤ 0 := by simpa using this
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        exact abs_nonpos_iff.mp h1
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      simp [h0]
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    simp only [hz]
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    exact tendsto_const_nhds
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  · obtain ⟨rs, hrs1, hrs2, hrs3⟩ := u1_rseq hd hs0 hs
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    have hex : ∀ j : ℕ, ∃ (m : ℕ) (c : Fin m → Fin m → ℝ) (u : Fin m → Euc d → ℝ),
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        (∀ a b, c a b = c b a) ∧ (∀ a, ContDiff ℝ ∞ (u a)) ∧ (∀ a, HasCompactSupport (u a)) ∧
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        (∀ x y, x ≠ y → |∑ a, ∑ b, c a b * u a x * u b y| ≤ C * B * u1Vs s ‖x - y‖) ∧
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        eLpNorm (fun p : Euc d × Euc d =&gt; (∑ a, ∑ b, c a b * u a p.1 * u b p.2) - h p.1 p.2)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          (ENNReal.ofReal (rs j)) ((withDensityReal ρ).prod (withDensityReal ρ))
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>            ≤ ENNReal.ofReal (1 / ((j : ℝ) + 1)) := fun j =&gt;
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      hCap M (withDensityReal ρ) hle B hBpos h hh.measurable hh.symm
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        (fun x y hxy =&gt; by rw [hV]; exact hh.bound x y hxy) (rs j) (hrs1 j)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        (by rw [hfr]; exact hrs2 j) (1 / ((j : ℝ) + 1)) (by positivity)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    choose m c u hcs hsm hcp henv hL using hex
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    refine ⟨fun j =&gt; r2FiniteRankKernel (c j) (u j), ?_, ?_, ?_⟩
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    · intro j
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      exact ⟨m j, c j, u j, ⟨hcs j, hsm j, hcp j⟩, rfl⟩
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    · intro j x y hxy
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      have := henv j x y hxy
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      rw [hV] at this
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      exact this
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    · intro r hr hrs
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      obtain ⟨J, hJ⟩ := hrs3 r hr hrs
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      have hup : Tendsto (fun j : ℕ =&gt; ENNReal.ofReal (1 / ((j : ℝ) + 1))) atTop (𝓝 0) := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        have := ENNReal.tendsto_ofReal (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ))
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        simpa using this
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      refine tendsto_of_tendsto_of_tendsto_of_le_of_le&#x27; tendsto_const_nhds hup
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        (Eventually.of_forall fun j =&gt; zero_le) ?_
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      filter_upwards [eventually_ge_atTop J] with j hj
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      refine le_trans ?_ (hL j)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      exact eLpNorm_le_eLpNorm_of_exponent_le (ENNReal.ofReal_le_ofReal (hJ j hj))
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>end HRS.Whole.U1
+</span></code></pre></main></body></html>

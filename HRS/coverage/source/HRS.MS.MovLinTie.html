@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.MovLinTie · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.MovLinTie</code></h1><p><a href="../../lean/HRS/MS/MovLinTie.lean">Open the unaltered Lean file</a> · 127 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.MovLinAux19
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Moving
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># S6.2 `mov_linear`: assembly and tie
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Namespace `HRS.MS.MovLin`, helpers `movlin_`.
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`mov_linear_proof : type_of% @HRS.Whole.mov_linear`.  Existence of `T` with `MovIsSemigroup` is `mov2d_isSemigroup`
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>(global Volterra flow on the scale `OscSpace d r`, transported to `L²_0`); uniqueness at every `t ≥ 0` is `mov2d_uniq_core`
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>(Schwartz core) plus the density of the core `mov2d_dense_core` (`movlin_uniq`); the decay rate `c = λ` is the `L²`-decay of
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`T` on `L²_0` (`movlin_L2_decay`, from `mov2e_decay` and density); the two bounds of `MovSmoothingBounds` follow from
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`movlin_abstract` (`L²` decay + short-time smoothing with arbitrary loss + the semigroup law) for `T` (`movlin_Hs_T`, from
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`movlin_smooth`) and for the `L²_0`-adjoint (`movlin_Hs_adj`, by duality on the scale; the projection onto `L²_0` costs the
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>rank-one term `κ e₁`).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>-/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>noncomputable section
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.MS.MovLin
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open HRS HRS.Whole
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>local notation &quot;𝓢R&quot; =&gt; SchwartzMap (Euc _) ℝ
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>lemma movlin_smoothing_mono {d : ℕ} {s : ℝ} {ρ : Euc d → ℝ} {m c C C&#x27; : ℝ}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    {U : ℝ → (MovL2Zero ρ →L[ℝ] MovL2Zero ρ)} (h : C ≤ C&#x27;) (hb : MovSmoothingBounds d s ρ m c C U) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    MovSmoothingBounds d s ρ m c C&#x27; U := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  obtain ⟨h1, h2⟩ := hb
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hnn : ∀ (r : ℝ) (f : Euc d → ℝ), 0 ≤ oscNorm r f := HRS.MS.MovC1.movc1_osc_nonneg
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  refine ⟨fun t ht v hv =&gt; ?_, fun t ht v hv =&gt; ?_⟩
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  · obtain ⟨hm, hn⟩ := h1 t ht v hv
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    exact ⟨hm, hn.trans (mul_le_mul_of_nonneg_right
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      (mul_le_mul_of_nonneg_right h (Real.exp_pos _).le) (hnn _ _))⟩
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  · obtain ⟨hm, hn⟩ := h2 t ht v hv
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    refine ⟨hm, hn.trans (mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>      (mul_le_mul_of_nonneg_right h (by have := Real.rpow_nonneg ht.le (-(movA d s) / 2); linarith))
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      (Real.exp_pos _).le) (hnn _ _))⟩
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>lemma movlin_adjoint_one {d : ℕ} {ρ : Euc d → ℝ} :
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    ContinuousLinearMap.adjoint (1 : MovL2Zero ρ →L[ℝ] MovL2Zero ρ) = 1 :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  ContinuousLinearMap.adjoint_one
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>lemma movlin_adjoint_mul {d : ℕ} {ρ : Euc d → ℝ} (A B : MovL2Zero ρ →L[ℝ] MovL2Zero ρ) :
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    ContinuousLinearMap.adjoint (A * B) = ContinuousLinearMap.adjoint B * ContinuousLinearMap.adjoint A :=
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  ContinuousLinearMap.adjoint_comp _ _
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>lemma movlin_adjoint_dec {d : ℕ} {ρ : Euc d → ℝ} {A : MovL2Zero ρ →L[ℝ] MovL2Zero ρ} {K : ℝ}
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (hA : ‖A‖ ≤ K) (v : MovL2Zero ρ) : ‖ContinuousLinearMap.adjoint A v‖ ≤ K * ‖v‖ := by
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have h1 : ‖ContinuousLinearMap.adjoint A‖ = ‖A‖ := LinearIsometryEquiv.norm_map _ _
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have h2 : ‖ContinuousLinearMap.adjoint A‖ ≤ K := by rw [h1]; exact hA
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  exact ((ContinuousLinearMap.adjoint A).le_opNorm v).trans
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (mul_le_mul_of_nonneg_right h2 (norm_nonneg _))
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>section Parts
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>variable {d : ℕ} {s : ℝ} {β q : ℝ} {ρ : Euc d → ℝ}
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>set_option maxHeartbeats 1600000 in
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>lemma movlin_part_T (H : Mov2dTh d s β q ρ) (ψ0 : SchwartzMap (Euc d) ℝ)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (hψ0 : (⇑ψ0 : Euc d → ℝ) = fun x =&gt; Real.sqrt (ρ x)) (lam C0 : ℝ) (hlam : 0 &lt; lam) (hC0 : 1 ≤ C0)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    (hdec : ∀ t : ℝ, 0 ≤ t → ∀ v : MovL2Zero ρ,
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      ‖mov2d_T H ψ0 hψ0 t v‖ ≤ C0 * Real.exp (-lam * t) * ‖v‖) {m : ℝ} (hm : movA d s ≤ m) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    ∃ C : ℝ, MovSmoothingBounds d s ρ m lam C (mov2d_T H ψ0 hψ0) :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  movlin_abstract s (mov2d_T H ψ0 hψ0) lam C0 hlam hC0 (mov2d_isSemigroup H ψ0 hψ0).zero
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    (mov2d_isSemigroup H ψ0 hψ0).add hdec (movlin_Hs_T H ψ0 hψ0) hm
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>set_option maxHeartbeats 1600000 in
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>lemma movlin_part_adj (H : Mov2dTh d s β q ρ) (ψ0 : SchwartzMap (Euc d) ℝ)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (hψ0 : (⇑ψ0 : Euc d → ℝ) = fun x =&gt; Real.sqrt (ρ x)) (lam C0 : ℝ) (hlam : 0 &lt; lam) (hC0 : 1 ≤ C0)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (hdec : ∀ t : ℝ, 0 ≤ t → ∀ v : MovL2Zero ρ,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      ‖mov2d_T H ψ0 hψ0 t v‖ ≤ C0 * Real.exp (-lam * t) * ‖v‖) {m : ℝ} (hm : movA d s ≤ m) :
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    ∃ C : ℝ, MovSmoothingBounds d s ρ m lam C (fun t =&gt; ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 t)) := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hTs := mov2d_isSemigroup H ψ0 hψ0
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hU0 : ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 0) = 1 :=
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    (congrArg ContinuousLinearMap.adjoint hTs.zero).trans movlin_adjoint_one
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hUadd : ∀ a b : ℝ, 0 ≤ a → 0 ≤ b →
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 (a + b)) =
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 a) * ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 b) := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    intro a b ha hb
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have e2 : mov2d_T H ψ0 hψ0 (a + b) = mov2d_T H ψ0 hψ0 b * mov2d_T H ψ0 hψ0 a := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      rw [add_comm]; exact hTs.add b a hb ha
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    exact (congrArg ContinuousLinearMap.adjoint e2).trans (movlin_adjoint_mul _ _)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hUdec : ∀ t : ℝ, 0 ≤ t → ∀ v : MovL2Zero ρ,
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      ‖ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 t) v‖ ≤ C0 * Real.exp (-lam * t) * ‖v‖ := by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    intro t ht v
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    have hop : ‖mov2d_T H ψ0 hψ0 t‖ ≤ C0 * Real.exp (-lam * t) :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      ContinuousLinearMap.opNorm_le_bound _ (by positivity) (hdec t ht)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    exact movlin_adjoint_dec hop v
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  exact movlin_abstract s (fun t =&gt; ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 t)) lam C0 hlam hC0
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    hU0 hUadd hUdec (movlin_Hs_adj H ψ0 hψ0) hm
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>set_option maxHeartbeats 1600000 in
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>lemma movlin_part_both (H : Mov2dTh d s β q ρ) (ψ0 : SchwartzMap (Euc d) ℝ)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (hψ0 : (⇑ψ0 : Euc d → ℝ) = fun x =&gt; Real.sqrt (ρ x)) (lam C0 : ℝ) (hlam : 0 &lt; lam) (hC0 : 1 ≤ C0)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (hdec : ∀ t : ℝ, 0 ≤ t → ∀ v : MovL2Zero ρ,
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      ‖mov2d_T H ψ0 hψ0 t v‖ ≤ C0 * Real.exp (-lam * t) * ‖v‖) {m : ℝ} (hm : movA d s ≤ m) :
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    ∃ C : ℝ, MovSmoothingBounds d s ρ m lam C (mov2d_T H ψ0 hψ0) ∧
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      MovSmoothingBounds d s ρ m lam C (fun t =&gt; ContinuousLinearMap.adjoint (mov2d_T H ψ0 hψ0 t)) :=
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  ⟨max (movlin_part_T H ψ0 hψ0 lam C0 hlam hC0 hdec hm).choose
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      (movlin_part_adj H ψ0 hψ0 lam C0 hlam hC0 hdec hm).choose,
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    movlin_smoothing_mono (le_max_left _ _) (movlin_part_T H ψ0 hψ0 lam C0 hlam hC0 hdec hm).choose_spec,
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    movlin_smoothing_mono (le_max_right _ _) (movlin_part_adj H ψ0 hψ0 lam C0 hlam hC0 hdec hm).choose_spec⟩
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>end Parts
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>set_option maxHeartbeats 1600000 in
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>theorem mov_linear_proof {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β q : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    (hq : 0 &lt; q) (ρ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ) :
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    ∃ T : ℝ → (MovL2Zero ρ →L[ℝ] MovL2Zero ρ), MovIsSemigroup d s β ρ T ∧
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      (∀ T&#x27; : ℝ → (MovL2Zero ρ →L[ℝ] MovL2Zero ρ), MovIsSemigroup d s β ρ T&#x27; →
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        ∀ t : ℝ, 0 ≤ t → T&#x27; t = T t) ∧
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      ∃ c : ℝ, 0 &lt; c ∧ ∀ m : ℝ, movA d s ≤ m → ∃ C : ℝ,
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        MovSmoothingBounds d s ρ m c C T ∧
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        MovSmoothingBounds d s ρ m c C (fun t =&gt; ContinuousLinearMap.adjoint (T t)) := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have H : Mov2dTh d s β q ρ := ⟨hd, hs0, hsd, hβ, hq, hρ⟩
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  obtain ⟨ψ0, hψ0⟩ := mov2d_sqrt_schwartz H
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  obtain ⟨lam, hlam, C0, hC0, hdec⟩ := movlin_L2_decay H ψ0 hψ0
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  refine ⟨mov2d_T H ψ0 hψ0, mov2d_isSemigroup H ψ0 hψ0, fun T&#x27; hT&#x27; t ht =&gt; movlin_uniq H ψ0 hψ0 hT&#x27; ht,
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    lam, hlam, fun m hm =&gt; ?_⟩
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  exact movlin_part_both H ψ0 hψ0 lam C0 hlam hC0 hdec hm
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>end HRS.MS.MovLin
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>example := (@HRS.MS.MovLin.mov_linear_proof : type_of% @HRS.Whole.mov_linear)
+</span></code></pre></main></body></html>

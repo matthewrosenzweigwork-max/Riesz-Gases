@@ -1,0 +1,389 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.ThmLog · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.ThmLog</code></h1><p><a href="../../lean/HRS/MS/ThmLog.lean">Open the unaltered Lean file</a> · 388 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.ThmLogAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># THM-7 (`s = 0`): proof of `HRS.Whole.logThermalDensity_spec`
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Instantiate `ThmSetting` with `K = t67K d` (`K̃ x y = -log |x-y| + ½ l x + ½ l y + ½ log 2`, `l = log (1+|·|²)`) and
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`r = γ̄ = t67gammaBar d a β` (the NORMALISED density `(1+|x|²)^{β/2} e^{-βa|x|²/2} / c̄`), `ThmLogAux2.t67_setting`.
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>THM-3/THM-4 give an a.e. Euler fixed point `μ ∈ C_M` minimising `G = β⁻¹ H(· | γ̄) + ½ E_K̃`, and
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`ρ₀ = thermalRep μ = Tmap μ` is a pointwise fixed point.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Translation (`t67_freeEnergy_eq`): on probability densities with finite free energy,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`F(ρ) = G(ρ) - β⁻¹ log c̄ - ¼ log 2`.  It uses `l ≤ V + C` (`V = a|x|²/2`), so `∫ l ρ &lt; ∞` from `V ρ ∈ L¹`, and
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`∫ρ = 1`:  `E_K̃(ρ) = E_g(ρ) + ∫ l ρ + ½ log 2` and `H(ρ | γ̄) = ∫ρ log ρ - (β/2) ∫ l ρ + β ∫ V ρ + log c̄`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>Exports: `logThermalDensity_spec_proof : type_of% @HRS.Whole.logThermalDensity_spec`.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>-/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open MeasureTheory
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open scoped ENNReal
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>noncomputable section
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>namespace HRS.MS.Thm
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>open HRS.Whole
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>variable {d : ℕ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>/-! ### Comparison `l ≤ V + C` and moments of `γ̄` -/
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>/-- The constant in `l ≤ V + C`. -/
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>def t67C2 (a : ℝ) : ℝ := a / 2 - 1 - Real.log (a / 2)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>lemma t67l_le_V {a : ℝ} (ha : 0 &lt; a) (x : Euc d) : t67l x ≤ confinement a x + t67C2 a := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  have h := t67l_le (d := d) (ε := a / 2) (by positivity) x
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have e : a / 2 * ‖x‖ ^ 2 = confinement a x := by unfold confinement; ring
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  unfold t67C2
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  linarith
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>lemma t67_V_gammaBar_integrable {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    Integrable fun x : Euc d =&gt; confinement a x * t67gammaBar d a β x := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hc := t67cbar_pos (d := d) ha hβ
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have h := (t012_integrable_sq_mul_exp (d := d) (b := β * a / 4) (by positivity)).const_mul
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (a / 2 * (Real.exp (β * (a / 2 - 1 - Real.log (a / 2)) / 2) / t67cbar d a β))
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hm : Measurable fun x : Euc d =&gt; confinement a x * t67gammaBar d a β x := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    unfold confinement
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    exact (by fun_prop : Measurable fun x : Euc d =&gt; a * ‖x‖ ^ 2 / 2).mul (t67gammaBar_measurable a β)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  refine Integrable.mono&#x27; h hm.aestronglyMeasurable (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hV0 : 0 ≤ confinement a x := by unfold confinement; positivity
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hV0 (t67gammaBar_pos ha hβ x).le)]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  unfold t67gammaBar
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have h1 : t67w a β x / t67cbar d a β ≤
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      (Real.exp (β * (a / 2 - 1 - Real.log (a / 2)) / 2) * Real.exp (-(β * a / 4) * ‖x‖ ^ 2)) /
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        t67cbar d a β := div_le_div_of_nonneg_right (t67w_le ha hβ x) hc.le
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  calc confinement a x * (t67w a β x / t67cbar d a β)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      ≤ (a / 2 * ‖x‖ ^ 2) * ((Real.exp (β * (a / 2 - 1 - Real.log (a / 2)) / 2) *
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>          Real.exp (-(β * a / 4) * ‖x‖ ^ 2)) / t67cbar d a β) := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        have e : confinement a x = a / 2 * ‖x‖ ^ 2 := by unfold confinement; ring
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        rw [e]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>        exact mul_le_mul_of_nonneg_left h1 (by positivity)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    _ = _ := by ring
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>lemma t67_log_gammaBar {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) (x : Euc d) :
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    Real.log (t67gammaBar d a β x) =
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      β / 2 * t67l x - β * confinement a x - Real.log (t67cbar d a β) := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  unfold t67gammaBar t67w
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  rw [Real.log_div (Real.exp_pos _).ne&#x27; (t67cbar_pos ha hβ).ne&#x27;, Real.log_exp]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-! ### Integrability bookkeeping for a probability density -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>section Density
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>variable {a β : ℝ} {ρ : Euc d → ℝ}
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>lemma t67_lrho_integrable (ha : 0 &lt; a) (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (hV : Integrable fun x =&gt; confinement a x * ρ x) : Integrable fun x =&gt; t67l x * ρ x := by
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hρi : Integrable ρ := t012_integrable_of_prob hρ
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  refine Integrable.mono&#x27; (hV.add (hρi.const_mul (t67C2 a)))
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    (t67l_measurable.mul hρ.measurable).aestronglyMeasurable (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (t67l_nonneg x) (hρ.nonneg x))]
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have := mul_le_mul_of_nonneg_right (t67l_le_V ha x) (hρ.nonneg x)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  simp only [Pi.add_apply]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  nlinarith [this]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>/-- The part of `K̃ ρ ρ` that does not come from `g`. -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>def t67E (ρ : Euc d → ℝ) (p : Euc d × Euc d) : ℝ :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  (1 / 2) * ((t67l p.1 * ρ p.1) * ρ p.2) + (1 / 2) * (ρ p.1 * (t67l p.2 * ρ p.2)) +
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (1 / 2 * Real.log 2) * (ρ p.1 * ρ p.2)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>lemma t67_decomp (ρ : Euc d → ℝ) (p : Euc d × Euc d) :
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    t67K d p.1 p.2 * ρ p.1 * ρ p.2 = rieszKernel d 0 (p.1 - p.2) * ρ p.1 * ρ p.2 + t67E ρ p := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  unfold t67K t67E
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  ring
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>lemma t67_E_integrable (hρi : Integrable ρ) (hlρ : Integrable fun x =&gt; t67l x * ρ x) :
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    Integrable (t67E ρ) ((volume : Measure (Euc d)).prod volume) := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  unfold t67E
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  exact (((hlρ.mul_prod hρi).const_mul (1 / 2)).add ((hρi.mul_prod hlρ).const_mul (1 / 2))).add
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    ((hρi.mul_prod hρi).const_mul (1 / 2 * Real.log 2))
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>lemma t67_E_integral (hρ : HRS.Whole.IsProbDensity ρ) (hρi : Integrable ρ)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    (hlρ : Integrable fun x =&gt; t67l x * ρ x) :
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    ∫ p, t67E ρ p ∂((volume : Measure (Euc d)).prod volume) =
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (∫ x, t67l x * ρ x) + (1 / 2) * Real.log 2 := by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  unfold t67E
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have h1 : Integrable (fun p : Euc d × Euc d =&gt; (1 / 2) * ((t67l p.1 * ρ p.1) * ρ p.2))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      ((volume : Measure (Euc d)).prod volume) := (hlρ.mul_prod hρi).const_mul _
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have h2 : Integrable (fun p : Euc d × Euc d =&gt; (1 / 2) * (ρ p.1 * (t67l p.2 * ρ p.2)))
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      ((volume : Measure (Euc d)).prod volume) := (hρi.mul_prod hlρ).const_mul _
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have h3 : Integrable (fun p : Euc d × Euc d =&gt; (1 / 2 * Real.log 2) * (ρ p.1 * ρ p.2))
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      ((volume : Measure (Euc d)).prod volume) := (hρi.mul_prod hρi).const_mul _
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have h12 : Integrable (fun p : Euc d × Euc d =&gt; (1 / 2) * ((t67l p.1 * ρ p.1) * ρ p.2) +
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      (1 / 2) * (ρ p.1 * (t67l p.2 * ρ p.2))) ((volume : Measure (Euc d)).prod volume) := h1.add h2
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  rw [integral_add h12 h3, integral_add h1 h2, integral_const_mul, integral_const_mul,
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    integral_const_mul]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  rw [integral_prod_mul (fun x =&gt; t67l x * ρ x) ρ, integral_prod_mul ρ (fun x =&gt; t67l x * ρ x),
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    integral_prod_mul ρ ρ, hρ.integral_one]
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  ring
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>/-- `K̃`-pairing integrable on the product, from the `g`-pairing and `l ρ ∈ L¹`. -/
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>lemma t67_K_integrable_of_g (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    (hlρ : Integrable fun x =&gt; t67l x * ρ x)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (hg : Integrable (fun p : Euc d × Euc d =&gt; rieszKernel d 0 (p.1 - p.2) * ρ p.1 * ρ p.2)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      ((volume : Measure (Euc d)).prod volume)) :
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    Integrable (fun p : Euc d × Euc d =&gt; t67K d p.1 p.2 * ρ p.1 * ρ p.2)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      ((volume : Measure (Euc d)).prod volume) :=
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  (hg.add (t67_E_integrable (t012_integrable_of_prob hρ) hlρ)).congr
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    (ae_of_all _ fun p =&gt; (t67_decomp ρ p).symm)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>lemma t67_g_integrable_of_K (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (hlρ : Integrable fun x =&gt; t67l x * ρ x)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (hK : Integrable (fun p : Euc d × Euc d =&gt; t67K d p.1 p.2 * ρ p.1 * ρ p.2)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ((volume : Measure (Euc d)).prod volume)) :
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    Integrable (fun p : Euc d × Euc d =&gt; rieszKernel d 0 (p.1 - p.2) * ρ p.1 * ρ p.2)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      ((volume : Measure (Euc d)).prod volume) :=
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  (hK.sub (t67_E_integrable (t012_integrable_of_prob hρ) hlρ)).congr
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    (ae_of_all _ fun p =&gt; by simp only [Pi.sub_apply, t67_decomp ρ p]; ring)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>lemma t67_ent_pt (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ) (x : Euc d) :
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    ρ x * Real.log (ρ x / t67gammaBar d a β x) =
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      (ρ x * Real.log (ρ x) - (β / 2) * (t67l x * ρ x)) +
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>        (β * (confinement a x * ρ x) + Real.log (t67cbar d a β) * ρ x) := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  by_cases h0 : ρ x = 0
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  · simp [h0]
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  · have hρne : 0 &lt; ρ x := lt_of_le_of_ne (hρ.nonneg x) (Ne.symm h0)
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    rw [Real.log_div hρne.ne&#x27; (t67gammaBar_pos ha hβ x).ne&#x27;, t67_log_gammaBar ha hβ]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    ring
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>lemma t67_ent_integrable (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (hent : Integrable fun x =&gt; ρ x * Real.log (ρ x))
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (hV : Integrable fun x =&gt; confinement a x * ρ x) :
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    Integrable fun x =&gt; ρ x * Real.log (ρ x / t67gammaBar d a β x) := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  have hρi := t012_integrable_of_prob hρ
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hlρ := t67_lrho_integrable ha hρ hV
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  have := (hent.sub (hlρ.const_mul (β / 2))).add ((hV.const_mul β).add (hρi.const_mul (Real.log (t67cbar d a β))))
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  exact this.congr (ae_of_all _ fun x =&gt; (t67_ent_pt ha hβ hρ x).symm)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>lemma t67_ent_integrable&#x27; (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    (hlog : Integrable fun x =&gt; ρ x * Real.log (ρ x / t67gammaBar d a β x))
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    (hV : Integrable fun x =&gt; confinement a x * ρ x) :
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    Integrable fun x =&gt; ρ x * Real.log (ρ x) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  have hρi := t012_integrable_of_prob hρ
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hlρ := t67_lrho_integrable ha hρ hV
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have := ((hlog.add (hlρ.const_mul (β / 2))).sub ((hV.const_mul β).add (hρi.const_mul (Real.log (t67cbar d a β)))))
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  refine this.congr (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have h := t67_ent_pt ha hβ hρ x
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  simp only [Pi.sub_apply, Pi.add_apply]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  linarith
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>lemma t67_relEnt_eq (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    (hent : Integrable fun x =&gt; ρ x * Real.log (ρ x))
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    (hV : Integrable fun x =&gt; confinement a x * ρ x) :
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    relEnt ρ (t67gammaBar d a β) =
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      (∫ x, ρ x * Real.log (ρ x)) - (β / 2) * (∫ x, t67l x * ρ x) +
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>        β * (∫ x, confinement a x * ρ x) + Real.log (t67cbar d a β) := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have hρi := t012_integrable_of_prob hρ
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hlρ := t67_lrho_integrable ha hρ hV
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  unfold relEnt
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  simp_rw [t67_ent_pt ha hβ hρ]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have h0 : Integrable fun x : Euc d =&gt; (β / 2) * (t67l x * ρ x) := hlρ.const_mul _
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have h1 : Integrable fun x : Euc d =&gt; ρ x * Real.log (ρ x) - (β / 2) * (t67l x * ρ x) :=
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    hent.sub h0
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have h2a : Integrable fun x : Euc d =&gt; β * (confinement a x * ρ x) := hV.const_mul β
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  have h2b : Integrable fun x : Euc d =&gt; Real.log (t67cbar d a β) * ρ x := hρi.const_mul _
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  have h2 : Integrable fun x : Euc d =&gt; β * (confinement a x * ρ x) +
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      Real.log (t67cbar d a β) * ρ x := h2a.add h2b
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  rw [integral_add h1 h2, integral_sub hent h0, integral_add h2a h2b, integral_const_mul,
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    integral_const_mul, integral_const_mul, hρ.integral_one]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  ring
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>/-- **Translation.**  `F(ρ) = G(ρ) - β⁻¹ log c̄ - ¼ log 2` on probability densities with finite free energy. -/
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>theorem t67_freeEnergy_eq (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (hfin : HasFiniteFreeEnergy (rieszKernel d 0) (confinement a) ρ) :
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    freeEnergy (rieszKernel d 0) (confinement a) β ρ =
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      Gfun (t67K d) (t67gammaBar d a β) β ρ - β⁻¹ * Real.log (t67cbar d a β) -
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        (1 / 4) * Real.log 2 := by
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  have hρi := t012_integrable_of_prob hρ
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have hlρ := t67_lrho_integrable ha hρ hfin.2.1
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hKi := t67_K_integrable_of_g hρ hlρ hfin.2.2
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  have hpair : pairE (t67K d) ρ ρ =
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      (∫ x, ∫ y, rieszKernel d 0 (x - y) * ρ x * ρ y) + ((∫ x, t67l x * ρ x) + (1 / 2) * Real.log 2) := by
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    rw [t012_pairE_eq_prod hKi, ← t67_E_integral hρ hρi hlρ, ← integral_prod _ hfin.2.2,
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      ← integral_add hfin.2.2 (t67_E_integrable hρi hlρ)]
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    exact integral_congr_ae (ae_of_all _ fun p =&gt; t67_decomp ρ p)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  unfold Gfun freeEnergy
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  rw [t67_relEnt_eq ha hβ hρ hfin.1 hfin.2.1, hpair]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have hb : β ≠ 0 := hβ.ne&#x27;
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  field_simp
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  ring
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>end Density
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>/-! ### Bounded densities: finite free energy, the convolution, the thermal equation -/
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>section Fixed
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>variable {a β B M : ℝ} {ρ : Euc d → ℝ}
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>lemma t67_Vrho_of_le (ha : 0 &lt; a) (hβ : 0 &lt; β) (hρ : HRS.Whole.IsProbDensity ρ) {M : ℝ}
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    (hρM : ∀ x, ρ x ≤ M * t67gammaBar d a β x) : Integrable fun x =&gt; confinement a x * ρ x := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  have hm : Measurable fun x : Euc d =&gt; confinement a x * ρ x := by
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    unfold confinement
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    exact (by fun_prop : Measurable fun x : Euc d =&gt; a * ‖x‖ ^ 2 / 2).mul hρ.measurable
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  refine Integrable.mono&#x27; ((t67_V_gammaBar_integrable ha hβ).const_mul M) hm.aestronglyMeasurable
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have hV0 : 0 ≤ confinement a x := by unfold confinement; positivity
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hV0 (hρ.nonneg x))]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  calc confinement a x * ρ x ≤ confinement a x * (M * t67gammaBar d a β x) :=
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>        mul_le_mul_of_nonneg_left (hρM x) hV0
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    _ = M * (confinement a x * t67gammaBar d a β x) := by ring
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>/-- A probability density `ρ ≤ M γ̄` has finite free energy for `g = -log |·|`. -/
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>theorem t67_hasFiniteFreeEnergy_of_le (hS : ThmSetting (t67K d) (t67gammaBar d a β) B)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (hM : 1 ≤ M) (hρ : ρ ∈ Cset (t67gammaBar d a β) M) :
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    HasFiniteFreeEnergy (rieszKernel d 0) (confinement a) ρ := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  have hρi := t012_integrable_of_prob hρ.1
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  have hV := t67_Vrho_of_le ha hβ hρ.1 hρ.2
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  have hlρ := t67_lrho_integrable ha hρ.1 hV
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  have hlog := t012_integrable_mul_log_div_of_le (t67gammaBar_integrable ha hβ)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    (t67gammaBar_pos ha hβ) (t67gammaBar_measurable a β) hρ.1.measurable hρ.1.nonneg hρ.2
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  have hent := t67_ent_integrable&#x27; ha hβ hρ.1 hlog hV
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  have hKi := t012_prod_integrable hS.meas hS.nonneg (fun y =&gt; (hS.r_pos y).le) hS.k1
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    hρ.1.measurable hρi hρ.1.measurable (by linarith) (fun y =&gt; by
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      rw [abs_of_nonneg (hρ.1.nonneg y)]; exact hρ.2 y)
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  exact ⟨hent, hV, t67_g_integrable_of_K hρ.1 hlρ hKi⟩
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-- The pairing `K̃ * ρ` against a bounded density, in terms of the `g`-convolution. -/
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>lemma t67_conv_eq (hS : ThmSetting (t67K d) (t67gammaBar d a β) B) (ha : 0 &lt; a) (hβ : 0 &lt; β)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    (hM : 1 ≤ M) (hρ : ρ ∈ Cset (t67gammaBar d a β) M) (z : Euc d) :
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    Integrable (fun y =&gt; rieszKernel d 0 (z - y) * ρ y) ∧
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      ∫ y, t67K d z y * ρ y = (∫ y, rieszKernel d 0 (z - y) * ρ y) + (1 / 2) * t67l z +
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>        (1 / 2) * (∫ y, t67l y * ρ y) + (1 / 2) * Real.log 2 := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  have hρi := t012_integrable_of_prob hρ.1
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  have hV := t67_Vrho_of_le ha hβ hρ.1 hρ.2
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  have hlρ := t67_lrho_integrable ha hρ.1 hV
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  obtain ⟨hKi, -, -⟩ := conv_bound_of_le hS.meas hS.nonneg hS.k1 hρ.1.measurable hρ.1.nonneg
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    (by linarith : 0 ≤ M) hρ.2 z
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  have hpt : ∀ y, t67K d z y * ρ y = rieszKernel d 0 (z - y) * ρ y +
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>      (((1 / 2 * t67l z) * ρ y + (1 / 2) * (t67l y * ρ y)) + (1 / 2 * Real.log 2) * ρ y) := by
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    intro y; unfold t67K; ring
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have r1 : Integrable fun y : Euc d =&gt; (1 / 2 * t67l z) * ρ y := hρi.const_mul _
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  have r2 : Integrable fun y : Euc d =&gt; (1 / 2) * (t67l y * ρ y) := hlρ.const_mul _
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  have r3 : Integrable fun y : Euc d =&gt; (1 / 2 * Real.log 2) * ρ y := hρi.const_mul _
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  have r12 : Integrable fun y : Euc d =&gt; (1 / 2 * t67l z) * ρ y + (1 / 2) * (t67l y * ρ y) := r1.add r2
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  have hrest : Integrable fun y : Euc d =&gt;
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>      ((1 / 2 * t67l z) * ρ y + (1 / 2) * (t67l y * ρ y)) + (1 / 2 * Real.log 2) * ρ y := r12.add r3
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  have hgi : Integrable (fun y =&gt; rieszKernel d 0 (z - y) * ρ y) :=
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    (hKi.sub hrest).congr (ae_of_all _ fun y =&gt; by simp only [Pi.sub_apply]; rw [hpt y]; ring)
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  refine ⟨hgi, ?_⟩
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  simp_rw [hpt]
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  rw [integral_add hgi hrest, integral_add r12 r3, integral_add r1 r2, integral_const_mul,
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    integral_const_mul, integral_const_mul, hρ.1.integral_one]
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  ring
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>/-- An everywhere fixed point of `Tmap K̃ γ̄` in `C_M` solves the thermal equation for `g = -log |·|`. -/
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>theorem t67_thermalDensity_of_fixed (hS : ThmSetting (t67K d) (t67gammaBar d a β) B) (ha : 0 &lt; a)
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    (hβ : 0 &lt; β) (hM : 1 ≤ M) (hρ : ρ ∈ Cset (t67gammaBar d a β) M)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    (hfix : ∀ x, ρ x = Tmap (t67K d) (t67gammaBar d a β) β ρ x) :
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    HRS.Whole.IsThermalDensity (rieszKernel d 0) (confinement a) β ρ := by
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>  refine ⟨hρ.1, fun x =&gt; ?_⟩
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  have hconv : ∀ z, HRS.Whole.convMeasure (rieszKernel d 0) (HRS.Whole.withDensityReal ρ) z =
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>      ∫ y, rieszKernel d 0 (z - y) * ρ y := fun z =&gt;
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    convMeasure_withDensityReal _ hρ.1.measurable hρ.1.nonneg z
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  simp_rw [hconv]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  set c0 : ℝ := (1 / 2) * (∫ y, t67l y * ρ y) + (1 / 2) * Real.log 2 with hc0
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>  have hc := t67cbar_pos (d := d) ha hβ
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  have key : ∀ z, t67gammaBar d a β z * Real.exp (-β * ∫ y, t67K d z y * ρ y) =
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>      (Real.exp (-β * c0) / t67cbar d a β) *
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>        Real.exp (-β * (confinement a z + ∫ y, rieszKernel d 0 (z - y) * ρ y)) := by
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    intro z
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    rw [(t67_conv_eq hS ha hβ hM hρ z).2]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    unfold t67gammaBar t67w
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    have gen : ∀ A B C D : ℝ, A + B = D + C →
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>        Real.exp A / t67cbar d a β * Real.exp B = Real.exp D / t67cbar d a β * Real.exp C := by
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>      intro A B C D h
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>      rw [div_mul_eq_mul_div, ← Real.exp_add, h, Real.exp_add]
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>      ring
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    apply gen
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    rw [hc0]
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    ring
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  have hA : 0 &lt; Real.exp (-β * c0) / t67cbar d a β := div_pos (Real.exp_pos _) hc
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  rw [hfix x]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  unfold Tmap
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  simp_rw [key]
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  rw [integral_const_mul, mul_div_mul_left _ _ hA.ne&#x27;]
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>/-- A fixed point of the Euler map in `C_M` is a thermal equilibrium for `s = 0` (existence part). -/
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>theorem t67_equilibrium_of_fixed (hS : ThmSetting (t67K d) (t67gammaBar d a β) B) (ha : 0 &lt; a)
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    (hβ : 0 &lt; β) (hM : 1 ≤ M) (hρ : ρ ∈ Cset (t67gammaBar d a β) M)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    (hfix : ∀ x, ρ x = Tmap (t67K d) (t67gammaBar d a β) β ρ x) :
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    HRS.Whole.IsThermalEquilibrium d 0 a β ρ := by
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  have hfin := t67_hasFiniteFreeEnergy_of_le hS ha hβ hM hρ
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  refine ⟨⟨hρ.1, hfin, ?_⟩, t67_thermalDensity_of_fixed hS ha hβ hM hρ hfix⟩
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  intro ρ&#x27; hρ&#x27; hfin&#x27;
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have hfae : ρ =ᵐ[volume] Tmap (t67K d) (t67gammaBar d a β) β ρ := ae_of_all _ hfix
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hlρ&#x27; := t67_lrho_integrable ha hρ&#x27; hfin&#x27;.2.1
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have hmin := (minimizer_of_fixedpoint hS hβ hM hρ hfae).1 ρ&#x27; hρ&#x27;
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    (t67_ent_integrable ha hβ hρ&#x27; hfin&#x27;.1 hfin&#x27;.2.1) (t67_K_integrable_of_g hρ&#x27; hlρ&#x27; hfin&#x27;.2.2)
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  rw [t67_freeEnergy_eq ha hβ hρ.1 hfin, t67_freeEnergy_eq ha hβ hρ&#x27; hfin&#x27;]
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  linarith
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>/-- Every free-energy minimiser equals the fixed point a.e. -/
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>theorem t67_minimizer_ae_eq (hS : ThmSetting (t67K d) (t67gammaBar d a β) B) (ha : 0 &lt; a)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    (hβ : 0 &lt; β) (hM : 1 ≤ M) (hρ : ρ ∈ Cset (t67gammaBar d a β) M)
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    (hfix : ∀ x, ρ x = Tmap (t67K d) (t67gammaBar d a β) β ρ x) {l : Euc d → ℝ}
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    (hl : HRS.Whole.IsFreeEnergyMinimizer (rieszKernel d 0) (confinement a) β l) :
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    l =ᵐ[volume] ρ := by
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  have hfae : ρ =ᵐ[volume] Tmap (t67K d) (t67gammaBar d a β) β ρ := ae_of_all _ hfix
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  have hfin := t67_hasFiniteFreeEnergy_of_le hS ha hβ hM hρ
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>  obtain ⟨hlp, hlfin, hlmin⟩ := hl
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  have h1 := hlmin ρ hρ.1 hfin
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  rw [t67_freeEnergy_eq ha hβ hρ.1 hfin, t67_freeEnergy_eq ha hβ hlp hlfin] at h1
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  have hlρ&#x27; := t67_lrho_integrable ha hlp hlfin.2.1
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  have hent := t67_ent_integrable ha hβ hlp hlfin.1 hlfin.2.1
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  have hKl := t67_K_integrable_of_g hlp hlρ&#x27; hlfin.2.2
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  obtain ⟨hA, hB&#x27;⟩ := minimizer_of_fixedpoint hS hβ hM hρ hfae
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  have h2 := hA l hlp hent hKl
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  have h3 : Gfun (t67K d) (t67gammaBar d a β) β l = Gfun (t67K d) (t67gammaBar d a β) β ρ := by
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    exact le_antisymm (by linarith) h2
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  exact hB&#x27; l hlp hent hKl h3
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>end Fixed
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>/-- The data produced by THM-3/THM-4 for `K̃` and `γ̄`: an a.e. Euler fixed point in `C_M`. -/
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>theorem t67_exists_fixed (hd : 1 ≤ d) {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    ∃ (B M : ℝ) (μ : Euc d → ℝ), ThmSetting (t67K d) (t67gammaBar d a β) B ∧ 1 ≤ M ∧
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>      Real.exp (β * B) ≤ M ∧ μ ∈ Cset (t67gammaBar d a β) M ∧
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>      μ =ᵐ[volume] Tmap (t67K d) (t67gammaBar d a β) β μ := by
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  obtain ⟨B, hS⟩ := t67_setting hd ha hβ
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  have hM : 1 ≤ max 1 (Real.exp (β * B)) := le_max_left _ _
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have hexp : Real.exp (β * B) ≤ max 1 (Real.exp (β * B)) := le_max_right _ _
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  obtain ⟨μ, hμ, hmin⟩ := exists_min_Cset hS hM hβ
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  exact ⟨B, _, μ, hS, hM, hexp, hμ, fixedpoint_of_min hS hβ hM hexp hμ hmin⟩
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>/-- Everything about the `s = 0` thermal equilibrium: the pointwise representative `ρ₀ = thermalRep μ` is a bounded
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>thermal equilibrium and every free-energy minimiser equals it a.e. -/
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>theorem t67_spec_data (hd : 1 ≤ d) {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>    ∃ ρ₀ : Euc d → ℝ, HRS.Whole.IsThermalEquilibrium d 0 a β ρ₀ ∧ (∃ C, ∀ x, ρ₀ x ≤ C) ∧
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>      ∀ l : Euc d → ℝ, HRS.Whole.IsFreeEnergyMinimizer (rieszKernel d 0) (confinement a) β l →
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>        l =ᵐ[volume] ρ₀ := by
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  obtain ⟨B, M, μ, hS, hM, hexp, hμ, hfix⟩ := t67_exists_fixed hd ha hβ
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  have hρC := thermalRep_mem_Cset hS hβ.le hexp hμ.1
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>  have hρfix := thermalRep_fixed hfix
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  have hEq := t67_equilibrium_of_fixed hS ha hβ hM hρC hρfix
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  refine ⟨_, hEq, ⟨M * (Real.exp (β * (a / 2 - 1 - Real.log (a / 2)) / 2) / t67cbar d a β), fun x =&gt; ?_⟩,
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    fun l hl =&gt; t67_minimizer_ae_eq hS ha hβ hM hρC hρfix hl⟩
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  exact (hρC.2 x).trans (mul_le_mul_of_nonneg_left (t67gammaBar_le ha hβ x) (by linarith))
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>/-- **THM-7.**  The logarithmic (`s = 0`) thermal equilibrium exists, is bounded, is the unique free-energy
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>minimiser (a.e.), and is `thermalDensity d 0 a β` (a.e.). -/
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>theorem logThermalDensity_spec_proof : type_of% @HRS.Whole.logThermalDensity_spec := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  intro d hd a β ha hβ
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  obtain ⟨ρ₀, hEq, hbd, hmin⟩ := t67_spec_data hd1 ha hβ
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  have hex : ∃ ρ, HRS.Whole.IsThermalEquilibrium d 0 a β ρ := ⟨_, hEq⟩
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  have hτ : HRS.Whole.IsThermalEquilibrium d 0 a β (thermalDensity d 0 a β) := by
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    unfold thermalDensity
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>    rw [dif_pos hex]
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    exact hex.choose_spec
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  refine ⟨⟨ρ₀, hEq, hbd⟩, ?_, ?_⟩
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  · intro ρ ρ&#x27; h h&#x27;
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    exact (hmin ρ h).trans (hmin ρ&#x27; h&#x27;).symm
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  · intro ρ h
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    exact (hmin ρ h).trans (hmin _ hτ.1).symm
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>end HRS.MS.Thm
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>end
+</span></code></pre></main></body></html>

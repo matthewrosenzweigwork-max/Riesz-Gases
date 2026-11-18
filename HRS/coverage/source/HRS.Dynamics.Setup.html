@@ -1,0 +1,575 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Dynamics.Setup · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Dynamics.Setup</code></h1><p><a href="../../lean/HRS/Dynamics/Setup.lean">Open the unaltered Lean file</a> · 574 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Energy.Modulated
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Prob.Gaussian
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Prob.CLT
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Stochastic.Brownian
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># The particle system, the mean-field equation, the linearised evolution, and the general
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>fluctuation theorem
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Sources (HRS periodic main paper):
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Particle system `H:eq:intro-particles` (source lines 170-178):
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `dx_i = (N⁻¹ ∑_{j≠i} M ∇g(x_i - x_j) - ∇V(x_i)) dt + √(2/β_N) dW_i`, independent Brownian
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  motions, independent of the initial configuration.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* Mean-field equation `H:eq:meanfield` (lines 191-194):
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  `∂_t ρ = β_N⁻¹ Δρ - Div(ρ (M ∇g*ρ - ∇V))`, `μ^t = ρ^t dx`; weak formulation `B:eq:mf-weak`
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  (lines 10101-10104); `(r,Λ)`-regularity `B:eq:mf-regularity` (line 10082); the force
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  convention `B:eq:nabla-g-convolution` (lines 10091-10101).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* Backward generator `H:eq:backward-generator` (lines 476-483), propagator `U^{r,t}`, transpose
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `V^{t,r}`; classical adjoint solution, Definition 3.5 (lines 1633-1635); adjoint operator,
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  Definition 3.2 (lines 1587-1593).
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* Linear fluctuation equation `H:eq:linear-equation` and mild form `H:eq:linear-mild`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  (lines 489-500); noise covariance `2q μ^r(∇φ·∇ψ) dr`.
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* General scale: `H:eq:intro-scales` (line 216) `σ_N = min{κ_N, √(Nβ_N)}`;
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `H:eq:general-scale-ratios` (lines 565-569); `H:eq:general-initial-errors` (571-575);
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  `𝔈_N`, `𝔈_{N,2}` (556-560); hypotheses (538-579); energy completion (546-555).
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>* Theorem 2.1 `M:H:thm:general` (lines 580-620): gradient case (582-597), transport
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  improvement (598-604), general-matrix clause (609-619).
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>## Representation decisions (consequential; see `docs/ISSUES.md` §D1-D4 and `docs/SPEC_AUDIT.md`)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* **The particle SDE has additive noise**, so a strong solution is represented *pathwise*
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  (no Itô integral needed): `X_t = X_0 + ∫_0^t b(X_s) ds + √(2/β_N) W_t` on the covering
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  space `(ℝ^d)^N`, projected to the torus by `Torus.mk`.  `W_i` are `d`-dimensional Brownian
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  motions built from Mathlib&#x27;s `IsBrownianReal` coordinatewise with joint independence.
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  `β_N = ∞` is represented by `invβ = 0` (`invβ = β_N⁻¹ ∈ [0,∞)`), as in the source
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  (&quot;`1/β := 0` when `β = ∞`&quot;, line 1592).  The drift uses `∇g` *off the diagonal*; a solution
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  is required to be collision-free (`B:eq:particle-uniform-separation`).
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>* **The force `∇g * ρ`** is the cancellation-convention integral `B:eq:nabla-g-convolution`
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  (`convGradConv`), which is the absolutely convergent integral the source prescribes for all
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  `0 ≤ s &lt; d` (for `s &lt; d-1` and bounded `ρ` it is the plain integral).  A plain Bochner
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  integral would be the junk value `0` for `d-1 ≤ s &lt; d` (`docs/SPEC_AUDIT.md` A8(3)).
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>* The mean-field solution is a density `ρ : ℝ → Torus d → ℝ` with the weak formulation
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  `B:eq:mf-weak` holding for every `C²` test, plus `(r,Λ)`-regularity as a hypothesis.
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* The adjoint propagator `U^{r,t}φ` is the classical adjoint solution (Definition 3.5), when
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  it exists; `IsClassicalAdjointSolution` is the defining predicate.  Its existence is
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  Proposition 3.9 (package ADJ-01), *not* assumed in definitions.
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>* The linear SPDE solution `Y` (`H:eq:linear-equation`) is characterised through its mild form
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  `Y^t(φ) = Y^0(U^{0,t}φ) + Gaussian stochastic convolution` by the law of the Gaussian part,
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  tested on `C^∞` functions (`Torus.IsSmooth`, not `IsCk ⊤`, which is analyticity):
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  `IsLinearFluctuationSolution` requires that `(Y^t(φ) - Y^0(U^{0,t}φ))_φ` be a centered
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  Gaussian family independent of `Y^0` with covariance `2q ∫_0^t μ^r(∇U^{r,t}φ·∇U^{r,t}ψ) dr`
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  (`B:eq:surrogate-cov`, line 10272, with `2σ_N²/(Nβ_N) = 2q_N`).  This is the characterisation
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  the source itself uses (`B:eq:surrogate-def`, `B:eq:surrogate-field-torus`, A.33); building the
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  solution from a cylindrical Wiener process is package SPDE-01.
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>* **Theorem 2.1** is stated with the constant quantified *before* the setup: `∃ C, ∀ S` with
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  `S` ranging over all setups sharing the stated bounds `GeneralBounds` (M L543-544, L605-607).
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  The heat-kernel completion constant `C₀` is constrained by `GeneralSetup.energy_nonneg`
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  (M L546-555, &quot;chosen so that `𝓔_N^t ≥ 0`&quot;), and the energy moments `𝔈_N`, `𝔈_{N,2}` are
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  assumed finite (`EnergyMomentFinite`, `EnergyMoment2Finite`), so that the real-valued
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  `energyMoment`/`energyMoment2` are the source&#x27;s quantities (M L556-561).
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>-/
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>noncomputable section
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>namespace HRS
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>variable {d N : ℕ}
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-! ### Coefficients -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>/-- Data of the periodic dynamics: dimension, Riesz exponent, constant matrix `M`,
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>one-body potential `V`, inverse temperature as `invβ = β⁻¹ ∈ [0,∞)` (`0` means `β = ∞`). -/
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>structure DynData (d : ℕ) where
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  s : ℝ
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  M : Matrix (Fin d) (Fin d) ℝ
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  V : Torus d → ℝ
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  invβ : ℝ
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  hs0 : 0 ≤ s
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  hsd : s &lt; d
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  hβ : 0 ≤ invβ
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>/-- The particle drift `b_i(X) = N⁻¹ ∑_{j≠i} M ∇g(x_i - x_j) - ∇V(x_i)` (line 171). -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>def particleDrift (D : DynData d) (X : Config d N) (i : Fin N) : Euc d :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  (1 / (N : ℝ)) • ∑ j ∈ Finset.univ.erase i, Torus.matVec D.M (periodicRieszGrad d D.s (X i - X j))
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    - Torus.grad D.V (X i)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>/-- The force `∇g * ρ` by the cancellation convention `B:eq:nabla-g-convolution`
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>(source lines 10091-10101):
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>`∫ ∇g(x-y)(ρ(y)-ρ(x)) 1_{|x-y|≤1/4} dy + ∫ ∇g(x-y) 1_{|x-y|&gt;1/4} ρ(y) dy`.
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>The subtracted constant contributes zero by oddness of `∇g` and symmetry of the cube
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>(line 10096), so for `0 ≤ s &lt; d-1` and bounded `ρ` this is the plain integral; for
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>`d-1 ≤ s &lt; d` and Hölder `ρ` it is the absolutely convergent integral the source prescribes. -/
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>def convGradConv (G : Torus d → Euc d) (ρ : Torus d → ℝ) (x : Torus d) : Euc d :=
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  ∫ y, (if ‖x - y‖ ≤ 1 / 4 then (ρ y - ρ x) • G (x - y) else ρ y • G (x - y))
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>/-- The mean-field drift `M ∇g*ρ - ∇V` (convention convolution). -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>def meanFieldDrift (D : DynData d) (ρ : Torus d → ℝ) (x : Torus d) : Euc d :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  Torus.matVec D.M (convGradConv (periodicRieszGrad d D.s) ρ x) - Torus.grad D.V x
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-! ### Brownian motion and the particle SDE -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>/-- `W : ℝ≥0 → Ω → (Fin N → Euc d)` is a family of `N` independent `d`-dimensional standard
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>Brownian motions: each real coordinate is a Brownian motion and all `N·d` coordinates are
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>jointly independent. -/
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>def IsVectorBrownian {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    (W : ℝ≥0 → Ω → (Fin N → Euc d)) : Prop :=
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  (∀ i j, ProbabilityTheory.IsBrownianReal (fun t ω =&gt; W t ω i j) P) ∧
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    ProbabilityTheory.iIndepFun (fun (ij : Fin N × Fin d) ω =&gt; fun t : ℝ≥0 =&gt; W t ω ij.1 ij.2) P
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>/-- Lift of a configuration path to the covering space: a path `Y : ℝ≥0 → Ω → (Fin N → Euc d)`
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>projects to the torus configuration `X t ω i = Torus.mk (Y t ω i)`. -/
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>def projectPath {Ω : Type*} (Y : ℝ≥0 → Ω → (Fin N → Euc d)) : ℝ≥0 → Ω → Config d N :=
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  fun t ω i =&gt; Torus.mk (Y t ω i)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- A collision-free strong solution of the particle system `H:eq:intro-particles` on `[0,T]`
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>driven by `W`, with initial configuration `X₀`, in integrated (pathwise) form on the covering
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>space:
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>`Y_t = Y_0 + ∫_0^t b(mk Y_s) ds + √(2 invβ) W_t`, `X_t = mk Y_t`, with `X_0 = X₀`, the drift
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>integrable in time, and no collisions on `[0,T]` a.s. (`B:eq:particle-uniform-separation`). -/
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>structure IsStrongSolution {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (D : DynData d)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (T : ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  lift : ∃ Y : ℝ≥0 → Ω → (Fin N → Euc d),
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    (∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      (∀ i, IntegrableOn (fun s : ℝ =&gt; particleDrift D (projectPath Y (Real.toNNReal s) ω) i)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        (Set.Icc 0 (t : ℝ))) ∧
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      ∀ i, Y t ω i = Y 0 ω i + (∫ s in Set.Icc (0 : ℝ) t, particleDrift D (projectPath Y (Real.toNNReal s) ω) i)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        + Real.sqrt (2 * D.invβ) • (W t ω i - W 0 ω i)) ∧
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    X = projectPath Y
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  init : ∀ᵐ ω ∂P, X 0 ω = X₀ ω
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  cont : ∀ᵐ ω ∂P, ∀ i, Continuous fun t =&gt; X t ω i
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  adapted : ∀ t : ℝ≥0, Measurable (X t)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  no_collision : ∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω ∉ collisionSet d N
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>/-! `IsFilteredSolution` lives here (it was in `HRS/Stochastic/SelectedFlow.lean`, which imports this file) so that
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>the statements of Theorem 2.1 below can assume it (ISSUES §I, &quot;Specification repairs: filtered strong solutions&quot;). -/
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>/-- Filtration bookkeeping.  `IsStrongSolution.adapted` only asserts `mΩ`-measurability
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>(ISSUES D1), while every Itô identity needs a Brownian filtration to which `X` is adapted
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>and in which `W` is the Brownian motion.  This structure records exactly the strong-solution
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>adaptedness the manuscript takes for granted (&quot;strong solution&quot;, L10131).
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>The field `progressive` (not in `PART01_REST_SPEC.md`) says that `X` is a progressively
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>measurable process.  It is implied by `adapted` and everywhere-continuity of the paths, and it
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>is needed because the paths of `X` are only a.s. continuous (see the module docstring). -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>structure IsFilteredSolution {Ω : Type*} [mΩ : MeasurableSpace Ω] (P : Measure Ω) (ℱ : Filtration ℝ mΩ)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  brownian : IsBrownianFiltration P ℱ W&#x27;
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  coords : ∀ᵐ ω ∂P, ∀ t i j, W&#x27; t ω (i, j) = W t ω i j
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  adapted : ∀ t : ℝ≥0, Measurable[ℱ t] (X t)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  progressive : IsProgressive ℱ (ofNNRealTime X)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>/-- Pathwise uniqueness on `[0,T]` among collision-free strong solutions. -/
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>def PathwiseUnique {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (D : DynData d) (T : ℝ)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) : Prop :=
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  ∀ X X&#x27; : ℝ≥0 → Ω → Config d N, IsStrongSolution P D T X₀ W X → IsStrongSolution P D T X₀ W X&#x27; →
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    ∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω = X&#x27; t ω
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>/-! Proposition B.1 `M:B:thm:particle-wp` is stated and proved in
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>`HRS/Dynamics/ParticleWellposed.lean` (moved unchanged; its proof lives in `HRS/Stochastic`). -/
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-! ### The mean-field equation -/
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>/-- The symmetrised interaction pairing
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>`½ ∬ (∇ψ(x) - ∇ψ(y)) · M ∇g(x - y) dν(x) dν&#x27;(y)` off the diagonal
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>(`B:eq:mf-weak`, right-hand side; `B:eq:B-symmetrized`). -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>def interactionPairing (D : DynData d) (ψ : Torus d → ℝ) (ν ν&#x27; : Measure (Torus d)) : ℝ :=
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  (1 / 2) * ∫ x, ∫ y, (if x = y then 0 else
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    inner ℝ (Torus.grad ψ x - Torus.grad ψ y) (Torus.matVec D.M (periodicRieszGrad d D.s (x - y)))) ∂ν&#x27; ∂ν
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>/-- A weak solution of the mean-field equation `H:eq:meanfield` on `[0,T]` with viscosity
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>`invβ`: a time-dependent probability density `ρ`, continuous in time as a measure, satisfying
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>`B:eq:mf-weak` for every `C²` test, in integrated form. -/
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>structure IsMeanFieldSolution (D : DynData d) (T : ℝ) (ρ : ℝ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  density : ∀ t ∈ Set.Icc 0 T, IsProbDensity (ρ t)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  weak : ∀ ψ : Torus d → ℝ, Torus.IsCk 2 ψ → ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    pair (withDensityReal (ρ t)) ψ - pair (withDensityReal (ρ 0)) ψ =
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      ∫ r in Set.Icc 0 t,
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>        (pair (withDensityReal (ρ r)) (fun x =&gt; D.invβ * Torus.laplacian ψ x -
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>            inner ℝ (Torus.grad D.V x) (Torus.grad ψ x)) +
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>          interactionPairing D ψ (withDensityReal (ρ r)) (withDensityReal (ρ r)))
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>/-- `(r,Λ)`-regularity on `[0,T]` (`B:eq:mf-regularity`, line 10082):
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>`sup_{t ≤ T} ‖ρ^t‖_{C^r} ≤ Λ`. -/
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>def IsRegularMF (r : ℕ) (Λ T : ℝ) (ρ : ℝ → Torus d → ℝ) : Prop :=
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  ∀ t ∈ Set.Icc 0 T, Torus.IsCk r (ρ t) ∧ Torus.cbNorm r (ρ t) ≤ Λ
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>/-! ### The backward generator, the adjoint propagator and the linear equation -/
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>/-- The backward generator `𝓛_r φ = β⁻¹Δφ + (M∇g*ρ^r - ∇V)·∇φ - ∑_j ∂_j g*(ρ^r (Mᵀ∇φ)_j)`
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>(`H:eq:backward-generator`, lines 476-483; `B:eq:adjoint-def`, line 1590), with both
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>convolutions by the convention `B:eq:nabla-g-convolution` (`convGradConv`). -/
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>def backwardGenerator (D : DynData d) (ρ : Torus d → ℝ) (φ : Torus d → ℝ) (x : Torus d) : ℝ :=
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  D.invβ * Torus.laplacian φ x + inner ℝ (meanFieldDrift D ρ x) (Torus.grad φ x) -
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    ∑ j : Fin d, (convGradConv (periodicRieszGrad d D.s)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      (fun y =&gt; ρ y * (Torus.matVec D.M.transpose (Torus.grad φ y)) j) x) j
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>/-- A classical adjoint solution on `[0,t]` with terminal datum `φ` (Definition 3.5, lines
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>1633-1635): `f ∈ C([0,t]; C²_b)`, `∂_r f ∈ C([0,t]; C⁰_b)`, `f(t) = φ`,
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>`-∂_r f = 𝓛_r f` pointwise.  Time regularity is expressed through the lift. -/
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>structure IsClassicalAdjointSolution (D : DynData d) (ρ : ℝ → Torus d → ℝ) (t : ℝ)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    (φ : Torus d → ℝ) (f : ℝ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  c2 : ∀ r ∈ Set.Icc 0 t, Torus.IsCk 2 (f r)
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  cont_c2 : ∀ j ≤ 2, Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt;
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    iteratedFDeriv ℝ j (Torus.lift (f p.1)) p.2
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  terminal : f t = φ
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  time_deriv : ∀ x : Torus d, ∀ r ∈ Set.Ioo 0 t,
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    HasDerivAt (fun r&#x27; =&gt; f r&#x27; x) (-(backwardGenerator D (ρ r) (f r) x)) r
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  cont_time_deriv : Continuous fun p : Set.Icc (0 : ℝ) t × Torus d =&gt;
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    backwardGenerator D (ρ p.1) (f p.1) p.2
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>open Classical in
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>/-- The adjoint propagator `U^{r,t} φ`: the classical adjoint solution at time `r` when it
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>exists (`0` otherwise; existence is Proposition 3.9, package ADJ-01). -/
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>def propagator (D : DynData d) (ρ : ℝ → Torus d → ℝ) (r t : ℝ) (φ : Torus d → ℝ) : Torus d → ℝ :=
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  if h : ∃ f, IsClassicalAdjointSolution D ρ t φ f then h.choose r else 0
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>/-- The noise covariance `2q ∫_0^t μ^r(∇U^{r,t}φ · ∇U^{r,t}ψ) dr` of the linear equation
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>(`H:eq:linear-mild`, line 498; `B:eq:surrogate-cov`, line 10272). -/
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>def noiseCovariance (D : DynData d) (ρ : ℝ → Torus d → ℝ) (q t : ℝ) (φ ψ : Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  2 * q * ∫ r in Set.Icc 0 t, ∫ x, inner ℝ (Torus.grad (propagator D ρ r t φ) x)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    (Torus.grad (propagator D ρ r t ψ) x) * ρ r x
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>/-- A solution `Y` of the linear fluctuation equation `H:eq:linear-equation` with noise level
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>`q ≥ 0` and initial value `Y⁰` (an `E_m`-valued random variable), on `[0,T]`, in mild form
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>(`H:eq:linear-mild`): for all `C^∞` tests `φ`, `Y^t(φ) - Y^0(U^{0,t}φ)` is a centered Gaussian
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>family independent of `Y^0`, jointly over finitely many tests and times, with covariance
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>`noiseCovariance` at equal times and the corresponding cross-covariance
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>`2q ∫_0^{t∧t&#x27;} μ^r(∇U^{r,t}φ·∇U^{r,t&#x27;}ψ) dr` at different times; paths are continuous in `E_m`. -/
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>structure IsLinearFluctuationSolution {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m q T : ℝ) (Y₀ : Ω → NegSobolev d m)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    (Y : ℝ → Ω → NegSobolev d m) : Prop where
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  init : ∀ᵐ ω ∂P, Y 0 ω = Y₀ ω
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  cont : ∀ᵐ ω ∂P, ContinuousOn (fun t =&gt; Y t ω) (Set.Icc 0 T)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  meas : ∀ t, Measurable (Y t)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  gaussian_part : ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ),
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    (∀ a, ts a ∈ Set.Icc 0 T) → (∀ a, Torus.IsSmooth (φ a)) →
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    let G : Ω → EuclideanSpace ℝ (Fin p) := fun ω =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      NegSobolev.eval (Y (ts a) ω) (φ a) - NegSobolev.eval (Y₀ ω) (propagator D ρ 0 (ts a) (φ a))
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    ProbabilityTheory.IndepFun G Y₀ P ∧
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    law P G = ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun a b =&gt;
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      2 * q * ∫ r in Set.Icc 0 (min (ts a) (ts b)), ∫ x,
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        inner ℝ (Torus.grad (propagator D ρ r (ts a) (φ a)) x)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>          (Torus.grad (propagator D ρ r (ts b) (φ b)) x) * ρ r x)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>/-! ### Scales (`H:eq:intro-scales`, `H:eq:general-scale-ratios`) -/
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>/-- `σ_N = min{κ_N, √(Nβ_N)}`, with `(σ_N, A_N, q_N) = (κ_N, 1, 0)` when `β_N = ∞`
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>(`invβ = 0`). -/
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>def sigmaScale (N : ℕ) (κ invβ : ℝ) : ℝ :=
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  if invβ = 0 then κ else min κ (Real.sqrt (N / invβ))
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>/-- `A_N = σ_N / κ_N`. -/
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>def Ascale (N : ℕ) (κ invβ : ℝ) : ℝ := if invβ = 0 then 1 else sigmaScale N κ invβ / κ
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>/-- `q_N = σ_N² /(N β_N) = σ_N² invβ / N`. -/
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>def qScale (N : ℕ) (κ invβ : ℝ) : ℝ := if invβ = 0 then 0 else sigmaScale N κ invβ ^ 2 * invβ / N
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>/-! ### Theorem 2.1 (`M:H:thm:general`, lines 538-620) -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>open Classical in
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>/-- The random path `t ↦ Ξ_N^t = σ_N(μ_N^t - μ^t)` in `𝒳_{γ,T}`, given a continuous particle
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>path and the mean-field density (`0` path if continuity fails). -/
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>def flucPath {Ω : Type*} (γ T : ℝ) (σ : ℝ) (X : ℝ≥0 → Ω → Config d N) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    (ω : Ω) : PathSpace d γ T :=
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  if h : Continuous fun t : Set.Icc (0 : ℝ) T =&gt;
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>      σ • NegSobolev.ofMeasureDiff γ (empirical (X (Real.toNNReal t) ω)) (withDensityReal (ρ t))
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  then ⟨_, h⟩ else 0
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>open Classical in
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>/-- A random path in `𝒳_{γ,T}` from a continuous `E_γ`-valued process. -/
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>def toPath {Ω : Type*} (γ T : ℝ) (Y : ℝ → Ω → NegSobolev d γ) (ω : Ω) : PathSpace d γ T :=
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  if h : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; Y t ω then ⟨_, h⟩ else 0
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>/-- The hypotheses of Theorem 2.1 (source lines 538-579).  The heat-kernel completion constant
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>`C₀` is constrained by `energy_nonneg`, which is the source&#x27;s &quot;choose once a sufficiently large
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>heat-kernel completion `𝓔_N^t = F_N(X_N^t, μ^t) + o_N ≥ 0`&quot; (lines 546-555). -/
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>structure GeneralSetup (d : ℕ) where
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  s : ℝ
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  hs0 : 0 ≤ s
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  hsd : s &lt; d
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>  hd : 2 ≤ d
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  T : ℝ
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  hT : 0 &lt; T
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  γ : ℕ
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  hγ : 2 * d + 10 &lt; γ
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  /-- inverse temperatures `β_N⁻¹`, with `sup_N β_N⁻¹ &lt; ∞` -/
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  invβ : ℕ → ℝ
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  hinvβ : ∀ N, 0 ≤ invβ N
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  invβ_bdd : ∃ C, ∀ N, invβ N ≤ C
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  V : Torus d → ℝ
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  /-- uniform derivative bounds through order `γ + 2d + 12` on `V` -/
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  V_reg : Torus.IsCk (γ + 2 * d + 12) V
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  /-- the mean-field solutions `ρ_N` with uniform derivative bounds through order `γ+2d+12` -/
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  ρ : ℕ → ℝ → Torus d → ℝ
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  Λ : ℝ
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  /-- the initial scale `κ_N &gt; 0` -/
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  κ : ℕ → ℝ
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  hκ : ∀ N, 0 &lt; κ N
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  /-- the heat-kernel completion constant `C₀` of `o_N` -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  C₀ : ℝ
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  /-- `C₀` is large enough that `𝓔_N^t = F_N(X, μ_N^t) + o_N ≥ 0` off the collision set
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  (`H:eq:energy-completion`, lines 546-555) -/
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>  energy_nonneg : ∀ N, 2 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ X : Config d N,
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    X ∉ collisionSet d N →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      0 ≤ rieszEnergy d s X (withDensityReal (ρ N t)) + oN d s C₀ N
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>/-- The bounds on which the constant of Theorem 2.1 is allowed to depend (source lines
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>543-544: &quot;the constant in each estimate is allowed to depend on these bounds and on `T, d, s`&quot;;
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>lines 605-607: &quot;independent of `N` and of `β_N` subject to the stated uniform bounds&quot;). -/
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>structure GeneralBounds (d : ℕ) where
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  s : ℝ
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  T : ℝ
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  γ : ℕ
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  /-- the `(γ+2d+12, Λ)`-regularity bound of the mean-field solutions -/
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  Λ : ℝ
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  /-- a bound on `β_N⁻¹` -/
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  Bβ : ℝ
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  /-- read only by `Within`; Theorem 2.1 and its variants override it by the quantified `C₀ ≥ C₀min`
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  (`{ b with C₀ := C₀ }`, ISSUES &quot;SPEC-C0&quot;) -/
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  C₀ : ℝ
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>  V : Torus d → ℝ
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  /-- the positive lower density bound of the gradient assertion -/
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  c : ℝ
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>namespace GeneralSetup
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>variable (S : GeneralSetup d)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>/-- `S` is a setup with the bounds `b`. -/
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>def Within (b : GeneralBounds d) : Prop :=
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  S.s = b.s ∧ S.T = b.T ∧ S.γ = b.γ ∧ S.Λ = b.Λ ∧ (∀ N, S.invβ N ≤ b.Bβ) ∧ S.C₀ = b.C₀ ∧
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    S.V = b.V
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>/-- The dynamics data at particle number `N` for a constant matrix `M`. -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>def dynM (M : Matrix (Fin d) (Fin d) ℝ) (N : ℕ) : DynData d :=
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  ⟨S.s, M, S.V, S.invβ N, S.hs0, S.hsd, S.hinvβ N⟩
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>/-- The dynamics data at particle number `N` (gradient case `M = -I`). -/
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>def dyn (N : ℕ) : DynData d := S.dynM (-1) N
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>/-- Mean-field regularity hypothesis for a constant matrix `M`: `ρ_N` solves the mean-field
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>equation with uniform bounds through order `γ + 2d + 12` on `[0,T]`. -/
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>def MFHypM (M : Matrix (Fin d) (Fin d) ℝ) : Prop :=
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  ∀ N, IsMeanFieldSolution (S.dynM M N) S.T (S.ρ N) ∧
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    IsRegularMF (S.γ + 2 * d + 12) S.Λ S.T (S.ρ N)
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>/-- Mean-field regularity hypothesis in the gradient case. -/
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>def MFHyp : Prop := S.MFHypM (-1)
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>/-- Positive density hypothesis for the gradient assertion with an explicit lower bound `c`:
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>`inf_{N,t,x} ρ_N^t(x) ≥ c &gt; 0`. -/
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>def PosDensityWith (c : ℝ) : Prop :=
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  0 &lt; c ∧ ∀ N, ∀ t ∈ Set.Icc 0 S.T, ∀ x, c ≤ S.ρ N t x
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>/-- Positive density hypothesis for the gradient assertion: `inf_{N,t,x} ρ_N^t(x) &gt; 0`. -/
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>def PosDensity : Prop := ∃ c, S.PosDensityWith c
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>/-- `𝓔_N^t = F_N(X_N^t, μ^t) + o_N ≥ 0` (`H:eq:energy-completion`). -/
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>def energyCompletion (N : ℕ) (X : Config d N) (t : ℝ) : ℝ :=
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  rieszEnergy d S.s X (withDensityReal (S.ρ N t)) + oN d S.s S.C₀ N
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>/-- `𝔈_N = sup_{t≤T} E[𝓔_N^t]` (meaningful under `EnergyMomentFinite`). -/
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>def energyMoment {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ)
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    (X : ℝ≥0 → Ω → Config d N) : ℝ :=
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>  ⨆ t : Set.Icc (0 : ℝ) S.T, ∫ ω, S.energyCompletion N (X (Real.toNNReal t) ω) t ∂P
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>/-- `𝔈_{N,2} = sup_{t≤T} ‖𝓔_N^t‖_{L²(P)}` (meaningful under `EnergyMoment2Finite`). -/
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>def energyMoment2 {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ)
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    (X : ℝ≥0 → Ω → Config d N) : ℝ :=
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  ⨆ t : Set.Icc (0 : ℝ) S.T, Real.sqrt (∫ ω, (S.energyCompletion N (X (Real.toNNReal t) ω) t) ^ 2 ∂P)
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>/-- `𝔈_N &lt; ∞`: each `𝓔_N^t` is integrable and `t ↦ E[𝓔_N^t]` is bounded on `[0,T]`
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>(source lines 556-561; without this the real-valued `energyMoment` would take the junk value
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>`0` where the source has `𝔈_N = ∞`). -/
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>def EnergyMomentFinite {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ)
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    (X : ℝ≥0 → Ω → Config d N) : Prop :=
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  (∀ t ∈ Set.Icc (0 : ℝ) S.T,
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    Integrable (fun ω =&gt; S.energyCompletion N (X (Real.toNNReal t) ω) t) P) ∧
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>  BddAbove (Set.range fun t : Set.Icc (0 : ℝ) S.T =&gt;
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    ∫ ω, S.energyCompletion N (X (Real.toNNReal t) ω) t ∂P)
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>/-- `𝔈_{N,2} &lt; ∞`: each `𝓔_N^t` is in `L²(P)` and `t ↦ ‖𝓔_N^t‖_{L²}` is bounded on `[0,T]`. -/
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>def EnergyMoment2Finite {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ)
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    (X : ℝ≥0 → Ω → Config d N) : Prop :=
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  (∀ t ∈ Set.Icc (0 : ℝ) S.T,
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    MemLp (fun ω =&gt; S.energyCompletion N (X (Real.toNNReal t) ω) t) 2 P) ∧
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  BddAbove (Set.range fun t : Set.Icc (0 : ℝ) S.T =&gt;
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    Real.sqrt (∫ ω, (S.energyCompletion N (X (Real.toNNReal t) ω) t) ^ 2 ∂P))
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>/-- `ε_{N,p} = ‖κ_N(μ_N^0 - μ^0) - η°‖_{L^p(P; E_γ)}` (`H:eq:general-initial-errors`). -/
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>def initialError {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ) (p : ℝ)
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    (X₀ : Ω → Config d N) (η₀ : Ω → NegSobolev d S.γ) : ℝ :=
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>  (∫ ω, ‖S.κ N • NegSobolev.ofMeasureDiff (S.γ : ℝ) (empirical (X₀ ω)) (withDensityReal (S.ρ N 0)) -
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      η₀ ω‖ ^ p ∂P) ^ (1 / p)
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>/-- Finiteness of `ε_{N,p}`: the `p`-th power of the initial discrepancy is integrable. -/
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>def InitialErrorFinite {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (N : ℕ) (p : ℝ)
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    (X₀ : Ω → Config d N) (η₀ : Ω → NegSobolev d S.γ) : Prop :=
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  Integrable (fun ω =&gt; ‖S.κ N • NegSobolev.ofMeasureDiff (S.γ : ℝ) (empirical (X₀ ω))
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    (withDensityReal (S.ρ N 0)) - η₀ ω‖ ^ p) P
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>/-- Theorem 2.1 `M:H:thm:general` (lines 580-607), gradient case, the three estimates
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>`H:eq:general-smooth`, `H:eq:general-W1`, `H:eq:general-W2` on `𝒳_{γ,T}`: for every choice of
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>the bounds `b` there is `C_T` (depending only on `b`, hence independent of `N`, of the
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>sequences `β_N`, `κ_N`, `ρ_N` and of the realisation) such that for every setup `S` with these
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>bounds, every `N ≥ 2`, every probability space carrying a strong solution `X` with finite
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>energy moments, with initial law independent of the noise, every `E_γ`-valued `η°` coupled to
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>`X₀` independently of the noise with finite initial errors, and every solution `Y_N` of the
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>linear equation with `q = q_N` and initial value `A_N η°`:
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>`d_2(Ξ_N, Y_N) ≤ C_T (A_N ε_{N,1} + σ_N 𝔈_N + q_N (𝔈_N^{1/2} + N^{-2/d}))`,
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>`W_1(Ξ_N, Y_N) ≤ C_T (A_N ε_{N,1} + σ_N 𝔈_N + √q_N (𝔈_N^{1/4} + N^{-1/d}))`,
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>`W_2(Ξ_N, Y_N) ≤ C_T (A_N ε_{N,2} + σ_N 𝔈_{N,2} + √q_N (𝔈_N^{1/4} + N^{-1/d}))`
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>(the last requires the displayed second moments to be finite, line 598).
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>Statement repair (ISSUES.md, entries &quot;5.14 `criterion_comparison`…&quot; and &quot;N:thm:dynamic …&quot;; final entry &quot;Filtered strong solutions …&quot;): its proof (U-section, `U:eq:quantitative-mild`) rests on the exact empirical-adjoint identity `B:prop:duality-identity` (Lemma 3.7), whose Itô calculus needs a Brownian filtration, so `X` is assumed a filtered strong solution (`IsFilteredSolution`), the strong-solution adaptedness of A.1 that `IsStrongSolution` (measurability only, ISSUES D1) does not record.
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>Statement repair 2026-10-16 (ISSUES &quot;SPEC-C0&quot;): the completion constant `C₀` of `o_N` must be taken large enough (TeX M L546-555, L2279-2299 &quot;Increasing its constant once suffices&quot;), so the conclusion is now stated for every `C₀ ≥ C₀min` (with `C₀min` independent of `C₀`) and the setups `Within { b with C₀ := C₀ }`; previously `C₀` was pinned to `b.C₀` with no lower bound. -/
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>theorem general_fluctuation (b : GeneralBounds d) :
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    ∃ C₀min : ℝ, ∀ C₀ : ℝ, C₀min ≤ C₀ → ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>      ∀ S : GeneralSetup d, S.Within { b with C₀ := C₀ } → S.MFHyp → S.PosDensityWith b.c →
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>      ∀ (N : ℕ) (_ : 2 ≤ N) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>      [IsProbabilityMeasure P]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>      (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (_ : IsVectorBrownian P W)
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>      (X : ℝ≥0 → Ω → Config d N) (_ : IsStrongSolution P (S.dyn N) S.T X₀ W X)
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>      (_ : ∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>        (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>      (_ : S.EnergyMomentFinite P N X)
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>      (η₀ : Ω → NegSobolev d S.γ) (_ : Measurable η₀)
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>      (_ : ProbabilityTheory.IndepFun (fun ω =&gt; (X₀ ω, η₀ ω)) (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>      (_ : S.InitialErrorFinite P N 1 X₀ η₀)
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>      (Y : ℝ → Ω → NegSobolev d S.γ)
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>      (_ : IsLinearFluctuationSolution P (S.dyn N) (S.ρ N) S.γ (qScale N (S.κ N) (S.invβ N)) S.T
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>        (fun ω =&gt; Ascale N (S.κ N) (S.invβ N) • η₀ ω) Y),
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      let σ := sigmaScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>      let A := Ascale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>      let q := qScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>      let 𝔈 := S.energyMoment P N X
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>      let Ξ := law P (flucPath S.γ S.T σ X (S.ρ N))
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>      let YN := law P (toPath S.γ S.T Y)
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>      smoothDist 2 Ξ YN ≤
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>          C * (A * S.initialError P N 1 X₀ η₀ + σ * 𝔈 + q * (Real.sqrt 𝔈 + (N : ℝ) ^ (-(2 : ℝ) / d))) ∧
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>      wassersteinE 1 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>          (C * (A * S.initialError P N 1 X₀ η₀ + σ * 𝔈 +
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>            Real.sqrt q * (𝔈 ^ ((1 : ℝ) / 4) + (N : ℝ) ^ (-(1 : ℝ) / d)))) ∧
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>      (S.EnergyMoment2Finite P N X →
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>        Integrable (fun ω =&gt; ‖flucPath S.γ S.T σ X (S.ρ N) ω‖ ^ 2) P →
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>        S.InitialErrorFinite P N 2 X₀ η₀ →
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>        wassersteinE 2 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>          (C * (A * S.initialError P N 2 X₀ η₀ + σ * S.energyMoment2 P N X +
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>            Real.sqrt q * (𝔈 ^ ((1 : ℝ) / 4) + (N : ℝ) ^ (-(1 : ℝ) / d))))) := by
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>  sorry
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>/-- Theorem 2.1, transport improvement `H:eq:general-transport-improvement` (lines 598-604):
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>under the hypotheses of `general_fluctuation` (gradient case, positive density bound), the
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>covariance contribution in the two Wasserstein estimates can be replaced by
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>`C_T √q_N min{𝔈_N^{1/4} + N^{-1/d}, 𝔈_N^{1/max{2, d-s}} + N^{-1/d}}`.
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>Statement repair (ISSUES.md, entries &quot;5.14 `criterion_comparison`…&quot; and &quot;N:thm:dynamic …&quot;; final entry &quot;Filtered strong solutions …&quot;): its proof (U-section, `U:eq:quantitative-mild`) rests on the exact empirical-adjoint identity `B:prop:duality-identity` (Lemma 3.7), whose Itô calculus needs a Brownian filtration, so `X` is assumed a filtered strong solution (`IsFilteredSolution`), the strong-solution adaptedness of A.1 that `IsStrongSolution` (measurability only, ISSUES D1) does not record.
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>Statement repair 2026-10-16 (ISSUES &quot;SPEC-C0&quot;): the completion constant `C₀` of `o_N` must be taken large enough (TeX M L546-555, L2279-2299 &quot;Increasing its constant once suffices&quot;), so the conclusion is now stated for every `C₀ ≥ C₀min` (with `C₀min` independent of `C₀`) and the setups `Within { b with C₀ := C₀ }`; previously `C₀` was pinned to `b.C₀` with no lower bound. -/
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>theorem general_fluctuation_transport (b : GeneralBounds d) :
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    ∃ C₀min : ℝ, ∀ C₀ : ℝ, C₀min ≤ C₀ → ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>      ∀ S : GeneralSetup d, S.Within { b with C₀ := C₀ } → S.MFHyp → S.PosDensityWith b.c →
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>      ∀ (N : ℕ) (_ : 2 ≤ N) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      [IsProbabilityMeasure P]
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>      (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (_ : IsVectorBrownian P W)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>      (X : ℝ≥0 → Ω → Config d N) (_ : IsStrongSolution P (S.dyn N) S.T X₀ W X)
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>      (_ : ∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>      (_ : S.EnergyMomentFinite P N X)
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>      (η₀ : Ω → NegSobolev d S.γ) (_ : Measurable η₀)
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>      (_ : ProbabilityTheory.IndepFun (fun ω =&gt; (X₀ ω, η₀ ω)) (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      (_ : S.InitialErrorFinite P N 1 X₀ η₀)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      (Y : ℝ → Ω → NegSobolev d S.γ)
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>      (_ : IsLinearFluctuationSolution P (S.dyn N) (S.ρ N) S.γ (qScale N (S.κ N) (S.invβ N)) S.T
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>        (fun ω =&gt; Ascale N (S.κ N) (S.invβ N) • η₀ ω) Y),
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>      let σ := sigmaScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>      let A := Ascale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>      let q := qScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>      let 𝔈 := S.energyMoment P N X
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>      let cov := Real.sqrt q * min (𝔈 ^ ((1 : ℝ) / 4) + (N : ℝ) ^ (-(1 : ℝ) / d))
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>        (𝔈 ^ ((1 : ℝ) / max 2 ((d : ℝ) - S.s)) + (N : ℝ) ^ (-(1 : ℝ) / d))
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>      let Ξ := law P (flucPath S.γ S.T σ X (S.ρ N))
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>      let YN := law P (toPath S.γ S.T Y)
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>      wassersteinE 1 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>          (C * (A * S.initialError P N 1 X₀ η₀ + σ * 𝔈 + cov)) ∧
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      (S.EnergyMoment2Finite P N X →
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>        Integrable (fun ω =&gt; ‖flucPath S.γ S.T σ X (S.ρ N) ω‖ ^ 2) P →
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>        S.InitialErrorFinite P N 2 X₀ η₀ →
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>        wassersteinE 2 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>          (C * (A * S.initialError P N 2 X₀ η₀ + σ * S.energyMoment2 P N X + cov))) := by
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  sorry
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>/-- The adjoint input `H:eq:matrix-adjoint-input` (lines 609-616) for a general constant
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>matrix `M`, with bound `K`: uniformly for `0 ≤ r ≤ t ≤ T` and every `N`, the adjoint
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>evolution exists on `H^γ ∩ C²` (so that `propagator` is the genuine `U^{r,t}`) and
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>`‖U^{r,t}‖_{H^γ→H^γ} + ‖U^{r,t}‖_{H^{γ+2}→H^{γ+2}} + ‖𝓛_r‖_{H^{γ+2}→H^γ} ≤ K`.
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>Statement repair 2026-10-16 (ISSUES &quot;ADJIN&quot;): the TeX bounds operator norms of *the* adjoint evolution, which
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>presupposes that `U^{r,t}` is a well-defined (unique) operator mapping `H^γ` and `H^{γ+2}` into themselves; the
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>`MemSobolev` conjuncts and the uniqueness clause make this explicit (without them `sobolevNorm` of a non-member is a
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>junk value and `propagator`, a `choose`, need not satisfy the cocycle identity). -/
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>def AdjointInput (M : Matrix (Fin d) (Fin d) ℝ) (K : ℝ) : Prop :=
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  (∀ N, ∀ t : ℝ, 0 ≤ t → t ≤ S.T → ∀ φ : Torus d → ℝ, ∀ f g : ℝ → Torus d → ℝ,
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    IsClassicalAdjointSolution (S.dynM M N) (S.ρ N) t φ f →
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    IsClassicalAdjointSolution (S.dynM M N) (S.ρ N) t φ g → ∀ r ∈ Set.Icc 0 t, f r = g r) ∧
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>  ∀ N, ∀ r t : ℝ, 0 ≤ r → r ≤ t → t ≤ S.T →
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    (∀ φ : Torus d → ℝ, Torus.IsCk 2 φ → MemSobolev (S.γ : ℝ) φ →
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>      (∃ f, IsClassicalAdjointSolution (S.dynM M N) (S.ρ N) t φ f) ∧
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      MemSobolev (S.γ : ℝ) (propagator (S.dynM M N) (S.ρ N) r t φ) ∧
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>      sobolevNorm (S.γ : ℝ) (propagator (S.dynM M N) (S.ρ N) r t φ) ≤
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>        K * sobolevNorm (S.γ : ℝ) φ) ∧
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>    (∀ φ : Torus d → ℝ, Torus.IsCk 2 φ → MemSobolev ((S.γ : ℝ) + 2) φ →
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>      MemSobolev ((S.γ : ℝ) + 2) (propagator (S.dynM M N) (S.ρ N) r t φ) ∧
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>      sobolevNorm ((S.γ : ℝ) + 2) (propagator (S.dynM M N) (S.ρ N) r t φ) ≤
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>        K * sobolevNorm ((S.γ : ℝ) + 2) φ ∧
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>      sobolevNorm (S.γ : ℝ) (backwardGenerator (S.dynM M N) (S.ρ N r) φ) ≤
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>        K * sobolevNorm ((S.γ : ℝ) + 2) φ)
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>/-- Theorem 2.1, general-matrix clause (lines 609-619): for a constant matrix `M` with
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>`Sym M ≤ 0`, under the adjoint input `AdjointInput M K` (uniformly in `0 ≤ r ≤ t ≤ T`), the
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>three estimates hold on `𝒳_{γ+2,T}` with the same energy and initial-law inputs (initial
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>errors in `E_γ`, paths compared in `E_{γ+2}` through `NegSobolev.embed`; the linear solution
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>is taken in `E_{γ+2}`).  No positive density bound is required (the transport improvement
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>with the positive density bound is `general_fluctuation_transport`, gradient case).
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>Statement repair (ISSUES.md, entries &quot;5.14 `criterion_comparison`…&quot; and &quot;N:thm:dynamic …&quot;; final entry &quot;Filtered strong solutions …&quot;): its proof (U-section, `U:eq:quantitative-mild`) rests on the exact empirical-adjoint identity `B:prop:duality-identity` (Lemma 3.7), whose Itô calculus needs a Brownian filtration, so `X` is assumed a filtered strong solution (`IsFilteredSolution`), the strong-solution adaptedness of A.1 that `IsStrongSolution` (measurability only, ISSUES D1) does not record.
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>Statement repair 2026-10-16 (ISSUES &quot;SPEC-C0&quot;): the completion constant `C₀` of `o_N` must be taken large enough (TeX M L546-555, L2279-2299 &quot;Increasing its constant once suffices&quot;), so the conclusion is now stated for every `C₀ ≥ C₀min` (with `C₀min` independent of `C₀`) and the setups `Within { b with C₀ := C₀ }`; previously `C₀` was pinned to `b.C₀` with no lower bound. -/
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>theorem general_fluctuation_matrix (b : GeneralBounds d) (M : Matrix (Fin d) (Fin d) ℝ)
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>    (hM : Torus.SymNonpos M) (K : ℝ) :
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    ∃ C₀min : ℝ, ∀ C₀ : ℝ, C₀min ≤ C₀ → ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>      ∀ S : GeneralSetup d, S.Within { b with C₀ := C₀ } → S.MFHypM M → S.AdjointInput M K →
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>      ∀ (N : ℕ) (_ : 2 ≤ N) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>      [IsProbabilityMeasure P]
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>      (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (_ : IsVectorBrownian P W)
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>      (X : ℝ≥0 → Ω → Config d N) (_ : IsStrongSolution P (S.dynM M N) S.T X₀ W X)
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>      (_ : ∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>        (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>      (_ : S.EnergyMomentFinite P N X)
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>      (η₀ : Ω → NegSobolev d S.γ) (_ : Measurable η₀)
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      (_ : ProbabilityTheory.IndepFun (fun ω =&gt; (X₀ ω, η₀ ω)) (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      (_ : S.InitialErrorFinite P N 1 X₀ η₀)
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      (Y : ℝ → Ω → NegSobolev d ((S.γ : ℝ) + 2))
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>      (_ : IsLinearFluctuationSolution P (S.dynM M N) (S.ρ N) ((S.γ : ℝ) + 2)
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>        (qScale N (S.κ N) (S.invβ N)) S.T
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>        (fun ω =&gt; Ascale N (S.κ N) (S.invβ N) • NegSobolev.embed ((S.γ : ℝ) + 2) (η₀ ω)) Y),
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>      let σ := sigmaScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>      let A := Ascale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>      let q := qScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>      let 𝔈 := S.energyMoment P N X
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>      let Ξ := law P (flucPath ((S.γ : ℝ) + 2) S.T σ X (S.ρ N))
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>      let YN := law P (toPath ((S.γ : ℝ) + 2) S.T Y)
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>      smoothDist 2 Ξ YN ≤
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>          C * (A * S.initialError P N 1 X₀ η₀ + σ * 𝔈 + q * (Real.sqrt 𝔈 + (N : ℝ) ^ (-(2 : ℝ) / d))) ∧
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>      wassersteinE 1 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>          (C * (A * S.initialError P N 1 X₀ η₀ + σ * 𝔈 +
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>            Real.sqrt q * (𝔈 ^ ((1 : ℝ) / 4) + (N : ℝ) ^ (-(1 : ℝ) / d)))) ∧
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>      (S.EnergyMoment2Finite P N X →
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>        Integrable (fun ω =&gt; ‖flucPath ((S.γ : ℝ) + 2) S.T σ X (S.ρ N) ω‖ ^ 2) P →
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>        S.InitialErrorFinite P N 2 X₀ η₀ →
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>        wassersteinE 2 Ξ YN ≤ ENNReal.ofReal
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>          (C * (A * S.initialError P N 2 X₀ η₀ + σ * S.energyMoment2 P N X +
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>            Real.sqrt q * (𝔈 ^ ((1 : ℝ) / 4) + (N : ℝ) ^ (-(1 : ℝ) / d))))) := by
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>  sorry
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>end GeneralSetup
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>end HRS
+</span></code></pre></main></body></html>

@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.ThCorr · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.ThCorr</code></h1><p><a href="../../lean/HRS/MS/ThCorr.lean">Open the unaltered Lean file</a> · 132 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.ThCorrAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># TC-6: the thermal corrector (S4.4, step 10)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>`thermal_corrector_proof` and `thermal_corrector_sobolev_proof` have exactly the types of the frozen statements
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`HRS.Whole.thermal_corrector` and `HRS.Whole.thermal_corrector_sobolev` (ties in `ThCorrTie.lean`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Proof structure (`tc6_core`, generic in the data class `P φ` and its norm `nf φ`):
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>1. `tc6_unif`: uniform thermal data `TcRef`/`TcDrift` (constants before `a, β`), `0 ≤ s &lt; d`;
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>2. a resolvent hypothesis `hres` (instance: `tc5_resolvent_rep` for `C_b^J`, `tc5_resolvent_rep_sob` for `H^J`):
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>   `r₀ + γ K r₀ = γ P_μ φ` a.e. with a `C_b^{k+1}` representative `r =ᵐ r₀`, `‖r‖_{C_b^{k+1}} ≤ C5 nf φ`;
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>3. `tc1_poisson_thermal` (Poisson solve, uniform in `q = a β ∈ [am βm, ap βp]`): `χ` with `thermalGen χ = r`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>4. `tc6_corrector_of_data` (the six conjuncts of `IsThermalCorrector`).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>No statement was adjusted.  If an interval is empty (`ap &lt; am` or `βp &lt; βm`) the statement is vacuous (`C = 0`).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>-/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open MeasureTheory Set Filter Topology
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open scoped ContDiff
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open HRS.Whole
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>noncomputable section
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>namespace HRS.MS.Tc6
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>/-- the generic assembly. -/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem tc6_core (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ) (hk : 1 ≤ k)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am) (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) (P : (Euc d → ℝ) → Prop)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (nf : (Euc d → ℝ) → ℝ) (hnf : ∀ φ, P φ → 0 ≤ nf φ)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (hres : ∃ N0 : ℕ, ∀ M₀ c S : ℝ, 0 &lt; c → ∃ C5 : ℝ, 0 ≤ C5 ∧
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      ∀ ρ : Euc d → ℝ, HRS.MS.TcDefs.TcRef d ρ M₀ c S N0 → ∀ γ : ℝ, 0 &lt; γ → γ ≤ γp →
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>        ∀ φ : Euc d → ℝ, P φ →
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>          ∃ r₀ r : Euc d → ℝ, HRS.Whole.MemL2Zero (HRS.Whole.withDensityReal ρ) r₀ ∧
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>            (∀ᵐ x ∂(HRS.Whole.withDensityReal ρ),
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>              r₀ x + γ * HRS.Whole.Kop (rieszKernel d s) (HRS.Whole.withDensityReal ρ) r₀ x =
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>                γ * HRS.Whole.projMean (HRS.Whole.withDensityReal ρ) φ x) ∧
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            HRS.MemCb (k + 1) r ∧ HRS.cbNorm (k + 1) r ≤ C5 * nf φ ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>            r =ᵐ[HRS.Whole.withDensityReal ρ] r₀) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ ∈ Set.Icc γm γp,
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      ∀ φ : Euc d → ℝ, P φ → ∃ χ : Euc d → ℝ, IsThermalCorrector d s a β γ k φ (nf φ) C χ := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  by_cases hint : am ≤ ap ∧ βm ≤ βp
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  swap
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  · refine ⟨0, fun a ha β hβ =&gt; ?_⟩
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    exact absurd ⟨ha.1.trans ha.2, hβ.1.trans hβ.2⟩ hint
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  obtain ⟨hap, hβp⟩ := hint
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  obtain ⟨N0, hN0⟩ := hres
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  obtain ⟨c, M₀, m₂, hc, hM₀, hS, hMb⟩ := tc6_unif hd hs0 hsd ham hβm hap hβp
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨S, hS0, hSρ⟩ := hS N0
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  obtain ⟨Mb, hMb0, hMbρ⟩ := hMb (k + 1)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  obtain ⟨C5, hC5, hC5ρ⟩ := hN0 M₀ c S hc
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hqm : 0 &lt; am * βm := mul_pos ham hβm
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  obtain ⟨C, Cm, hP⟩ := HRS.MS.Tc1.tc1_poisson_thermal hd (am * βm) (ap * βp) Mb m₂ hqm (k + 1)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (by omega)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  refine ⟨|C| * C5 + |Cm| * C5, fun a ha β hβ γ hγ φ hφ =&gt; ?_⟩
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have ha0 : 0 &lt; a := ham.trans_le ha.1
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hβ0 : 0 &lt; β := hβm.trans_le hβ.1
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hγ0 : 0 &lt; γ := hγm.trans_le hγ.1
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hqa : am * βm ≤ a * β := mul_le_mul ha.1 hβ.1 hβm.le ha0.le
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hqb : a * β ≤ ap * βp := mul_le_mul ha.2 hβ.2 hβ0.le (ham.le.trans hap)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hρ := hSρ a β ha.1 ha.2 hβ.1 hβ.2
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  have hdr := hMbρ a β ha.1 ha.2 hβ.1 hβ.2
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  obtain ⟨r₀, r, hr₀, hae, hr, hbd, hrr⟩ := hC5ρ _ hρ γ hγ0 hγ.2 φ hφ
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hprob : IsProbabilityMeasure (thermalMeasure d s a β) := HRS.MS.TcF.tc4_isProb hρ.prob
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  obtain ⟨-, -, hint2, -⟩ := HRS.MS.Tc1.tc1_drift_data hd hs0 hsd ha0 hβ0 hdr
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hri : Integrable r (thermalMeasure d s a β) :=
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    (HRS.MS.Tc5.tc5_memLp_of_cb hr).integrable one_le_two
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hr0 : ∫ x, r x ∂(thermalMeasure d s a β) = 0 := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    exact (integral_congr_ae hrr).trans hr₀.2
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  obtain ⟨χ, hχc, hχi, hχ0, hgen, hlog, -, hder⟩ := hP s a β hs0 hsd ha0 hβ0 hqa hqb hdr r hr hri hr0
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  exact ⟨χ, tc6_corrector_of_data hk (hnf φ hφ) hγ0 hprob hint2 hC5 hr hrr hae hχc hχ0 hgen hlog hder hbd⟩
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>/-- **S4.4, `C_b^J` version.** -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>theorem thermal_corrector_proof : type_of% @HRS.Whole.thermal_corrector := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  intro d s hd hs0 hsd k hk J hJ am ap βm βp γm γp ham hβm hγm
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hα : 0 &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  set m : ℕ := k + 1 with hm
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hmJ : m ≤ J := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have : ((m : ℕ) : ℝ) ≤ J := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      rw [hm]; push_cast; have : (0 : ℝ) ≤ (d : ℝ) / 2 := by positivity
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      linarith
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    exact_mod_cast this
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  set M : ℕ := ⌈((m : ℝ) + d / 2) / ((d : ℝ) - s)⌉₊ + 1 with hM
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hMs : (m : ℝ) + d / 2 &lt; M * ((d : ℝ) - s) := HRS.MS.Tc5.tc5_M_spec hsd m
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  set N0 : ℕ := m + ⌈(M : ℝ) * ((d : ℝ) - s) + d⌉₊ + 1 with hN0
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hmN : m ≤ N0 := by omega
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hN : (M : ℝ) * ((d : ℝ) - s) + d &lt; N0 := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    have h1 := Nat.le_ceil ((M : ℝ) * ((d : ℝ) - s) + d)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    have : ((⌈(M : ℝ) * ((d : ℝ) - s) + d⌉₊ : ℕ) : ℝ) + 1 ≤ N0 := by
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      rw [hN0]; push_cast; have : (0 : ℝ) ≤ m := by positivity
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      linarith
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    linarith
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  exact tc6_core hd hs0 hsd k hk am ap βm βp γm γp ham hβm hγm (HRS.MemCb J) (HRS.cbNorm J)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (fun φ _ =&gt; HRS.MS.Tc5.tc5_cb_nonneg J φ)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    ⟨N0, fun M₀ c S hc =&gt; HRS.MS.Tc5.tc5_resolvent_rep (d := d) hs0 hsd m J M hmJ hMs γp M₀ c S hc N0 hmN hN
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      |&gt;.imp fun C hC =&gt; hC⟩
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>/-- **S4.4, `H^J` version.** -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>theorem thermal_corrector_sobolev_proof : type_of% @HRS.Whole.thermal_corrector_sobolev := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  intro d s hd hs0 hsd k hk J hJ am ap βm βp γm γp ham hβm hγm
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hα : 0 &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  set m : ℕ := k + 1 with hm
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hJm : (m : ℝ) + d / 2 &lt; J := by rw [hm]; push_cast; exact hJ
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  set M : ℕ := ⌈((m : ℝ) + d / 2) / ((d : ℝ) - s)⌉₊ + 1 with hM
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hMs : (m : ℝ) + d / 2 &lt; M * ((d : ℝ) - s) := HRS.MS.Tc5.tc5_M_spec hsd m
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  set N0 : ℕ := J + ⌈(M : ℝ) * ((d : ℝ) - s) + d⌉₊ + 1 with hN0
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hN : (J : ℝ) + M * ((d : ℝ) - s) + d &lt; N0 := by
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have h1 := Nat.le_ceil ((M : ℝ) * ((d : ℝ) - s) + d)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    have : ((⌈(M : ℝ) * ((d : ℝ) - s) + d⌉₊ : ℕ) : ℝ) + 1 + J ≤ N0 := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      rw [hN0]; push_cast; linarith
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    linarith
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  obtain ⟨Cs, hCs0, hCs⟩ := HRS.MS.TcS.tcs_sobolevNorm_le_hsmooth d J
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  obtain ⟨C1, hC10, hC1⟩ := HRS.MS.TcS.tcs_sobolev_of_hsmooth d J
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hW : ∀ φ : Euc d → ℝ, 0 ≤ HRS.Whole.sobolevWNorm J 2 φ := fun φ =&gt; by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    unfold HRS.Whole.sobolevWNorm
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    exact Finset.sum_nonneg fun n _ =&gt; Real.rpow_nonneg (integral_nonneg fun x =&gt; by positivity) _
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  refine tc6_core hd hs0 hsd k hk am ap βm βp γm γp ham hβm hγm (HRS.Whole.MemHSmooth J)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    (HRS.Whole.sobolevWNorm J 2) (fun φ _ =&gt; hW φ) ⟨N0, fun M₀ c S hc =&gt; ?_⟩
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  obtain ⟨C, hC0, hCρ⟩ := HRS.MS.Tc5.tc5_resolvent_rep_sob (d := d) hs0 hsd m J M hJm hMs γp M₀ c S hc N0 hN
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  refine ⟨C * Cs, mul_nonneg hC0 hCs0, fun ρ hρ γ hγ hγp φ hφ =&gt; ?_⟩
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  obtain ⟨r₀, r, h1, h2, h3, h4, h5⟩ := hCρ ρ hρ γ hγ hγp φ (hC1 φ hφ).1
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  refine ⟨r₀, r, h1, h2, h3, ?_, h5⟩
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hs : Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (J : ℝ) φ) ≤ Cs * HRS.Whole.sobolevWNorm J 2 φ :=
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    hCs φ hφ
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  calc HRS.cbNorm m r ≤ C * Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (J : ℝ) φ) := h4
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    _ ≤ C * (Cs * HRS.Whole.sobolevWNorm J 2 φ) := mul_le_mul_of_nonneg_left hs hC0
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    _ = C * Cs * HRS.Whole.sobolevWNorm J 2 φ := by ring
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>end HRS.MS.Tc6
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>end
+</span></code></pre></main></body></html>

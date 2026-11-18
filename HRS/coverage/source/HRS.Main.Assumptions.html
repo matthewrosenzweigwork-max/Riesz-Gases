@@ -1,0 +1,387 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.Assumptions · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.Assumptions</code></h1><p><a href="../../lean/HRS/Main/Assumptions.lean">Open the unaltered Lean file</a> · 386 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Dynamics.Setup
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.ForwardEq
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.PDE.Convention
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.PDE.Fourier
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.Stochastic.SelectedFlow
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Energy.Coercivity
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>/-!
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a># Appendix A (main manuscript): the standing assumptions of the torus fluctuation theorems
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Specification file SPEC-A.  Sources (`HRS_periodic_main_20261008T010000Z.tex`, &quot;M&quot;):
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* Assumption A.1 `M:B:ass:sde` (L10127-10143);
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* Assumption A.2 `M:B:ass:regime` (L10168-10180; already `HRS.PDE.Regime`, `Regime.Holds`);
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* Assumption A.3 `M:B:ass:mf-reg` (L10201-10203);
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* Assumption A.4 `M:B:ass:init` (L10207-10218);
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* Assumption A.5 `M:B:ass:init-field` (L10221-10232);
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* Assumption A.6 `M:B:ass:MF` (L10235-10247);
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* Assumption A.7 `M:B:ass:MF2` (L10249-10259);
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* the global notation of the section (L10156-10164): `m_* = ⌊d/2⌋ + 3`, `γ = m_* + d + 3`
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  (`B:eq:gamma-def`, L10333), the coefficient discrepancy `Δ_N^{(m)}` (`B:eq:deltaN`, L10412-10418).
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>## Representation decisions (all checked by the orchestrator against the TeX)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* **Sequences.**  The TeX works with a sequence in `N` of coefficients and of particle systems.  The
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  deterministic data (`d, s, M, V, T, μ°, β_N⁻¹, κ_N`, and the mean-field solutions `μ_{β_N}`) is the
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  structure `MainData`; the random data at particle number `N` (probability space, `X_N^0`, the
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  Brownian motions, the particle flow `X_N`, and the initial fluctuation functional `η°`) is the
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  structure `Realization d N`, and a sequence is `R : ∀ N, Realization d N` (the probability space
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  may depend on `N`, as the couplings do).  Every per-`N` assumption is imposed for `1 ≤ N` only
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  (for `N = 0` the empirical measure is the zero measure and the assumptions could not hold).
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* `β_N = ∞` is `invβ N = 0` (`DynData`), exactly as in `HRS/Dynamics/Setup.lean`.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>* **`η°`** is a *random real-linear functional on `Y_0 = H^{m_0}`* (A.4, &quot;random real-linear functional
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  `η°` on the test class `Y_0`&quot;): `Realization.η : Ω → (Torus d → ℝ) → ℝ`, jointly measurable (the
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  product σ-algebra), real-linear on `{ψ | MemSobolev m₀ ψ}`.  It is *not* an element of
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  `NegSobolev d m₀`, because `m₀ ≤ m_*` may be `≤ d/2`.  In the field-level assumption A.5 the
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  same `η°` is `H^{-γ}`-valued: `ηF : Ω → NegSobolev d γ` with `η ω ψ = eval (ηF ω) ψ` for mean-zero
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  `ψ ∈ H^γ` (the project&#x27;s zero-total-mass convention `E_γ = H^{-γ}_0`; the zero mode of `η°` is not
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  recorded, as `⟨1, Ξ_N⟩ = 0`).
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>* **Expectations** of possibly non-integrable quantities are `lintegral`s of `ENNReal.ofReal`
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  (as in `HRS/Dynamics/InitialData.lean`), so that no junk Bochner value can make a bound vacuous.
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>* **`o_N(Λ)`** of A.6 is `HRS.oNΛ d s C₀ Λ N` (`B:eq:hrs-coercivity-exact-correction`, L2882) with a
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  completion constant `C₀` as in Proposition 3.34 (`IsCoercivityPair`); the corrected energy is
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  `HRS.correctedEnergy`.
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>-/
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>noncomputable section
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>namespace HRS
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>namespace Main
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>variable {d : ℕ}
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-! ### Global notation of Appendix A -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- `γ = m_* + d + 3` (`B:eq:gamma-def`, TeX L10333), with `m_* = ⌊d/2⌋ + 3` (`PDE.mStar`,
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>`B:eq:mstar-def`, L10158). -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>def gammaIdx (d : ℕ) : ℕ := PDE.mStar d + d + 3
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>/-! ### The deterministic data -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>/-- The deterministic data of Appendix A, &quot;Throughout this section&quot; (TeX L10156): `d ≥ 1`,
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>`0 ≤ s &lt; d`, the constant matrix `M`, the periodic potential `V`, the horizon `T &gt; 0`, the datum
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>`μ°` (a probability measure, independent of `N`), the inverse temperatures `β_N⁻¹ ∈ [0,∞)`
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>(`0` means `β_N = ∞`) with the standing bound `sup_N β_N⁻¹ &lt; ∞` (`invβ_bdd`, TeX L539), the scales `κ_N &gt; 0`, and the mean-field solutions
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>`μ_{β_N}^t = ρ N t dx` (A.3 prescribes which properties they have). -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>structure MainData (d : ℕ) where
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  s : ℝ
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  hs0 : 0 ≤ s
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  hsd : s &lt; d
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  hd : 1 ≤ d
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  M : Matrix (Fin d) (Fin d) ℝ
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  V : Torus d → ℝ
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  T : ℝ
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  hT : 0 &lt; T
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  μ0 : Measure (Torus d)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  hμ0 : IsProbabilityMeasure μ0
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  invβ : ℕ → ℝ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  hinvβ : ∀ N, 0 ≤ invβ N
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  /-- the standing bound `sup_N β_N⁻¹ &lt; ∞` of `H:subsec:general` (TeX L539), imported by L10156 -/
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  invβ_bdd : ∃ B : ℝ, ∀ N, invβ N ≤ B
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  κ : ℕ → ℝ
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  hκ : ∀ N, 0 &lt; κ N
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  ρ : ℕ → ℝ → Torus d → ℝ
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>namespace MainData
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>variable (S : MainData d)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>/-- The dynamics data at particle number `N` (`HRS.DynData`). -/
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>def dyn (N : ℕ) : DynData d := ⟨S.s, S.M, S.V, S.invβ N, S.hs0, S.hsd, S.hinvβ N⟩
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>/-- `σ_N = min{κ_N, √(Nβ_N)}` (`H:eq:intro-scales`; `(σ_N,A_N,q_N) = (κ_N,1,0)` if `β_N = ∞`). -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>def sigma (N : ℕ) : ℝ := sigmaScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>/-- `A_N = σ_N / κ_N`. -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>def AN (N : ℕ) : ℝ := Ascale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>/-- `q_N = σ_N² / (N β_N)`; the noise covariance of `B:eq:surrogate-cov` is `2 q_N ∫ ...`. -/
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>def qN (N : ℕ) : ℝ := qScale N (S.κ N) (S.invβ N)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>/-- Assumption A.2 `M:B:ass:regime` for the whole sequence: in the regime `Rg` (with `ν₀` for R3)
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>every trajectory `μ_{β_N}` satisfies `HRS.PDE.Regime.Holds` (TeX L10168-10180: &quot;one of the following
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>holds&quot;, with `inf_N inf μ_{β_N} ≥ λ₀` in R2b and `inf_N β_N⁻¹ = ν₀ &gt; 0` in R3). -/
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>def RegimeHolds (Rg : PDE.Regime) (ν₀ : ℝ) : Prop :=
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  ∀ N : ℕ, 1 ≤ N → Rg.Holds d S.s S.M (S.invβ N) ν₀ S.T (S.ρ N)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>end MainData
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>/-! ### The random data at particle number `N` -/
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-- The random objects at particle number `N`: a probability space, the initial configuration `X_N^0`,
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>the Brownian motions `(W_i)_{i ≤ N}`, the selected empirical flow `X_N`, and the initial fluctuation
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>functional `η°` (a random real-linear functional on the test class, see the module docstring). -/
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>structure Realization (d N : ℕ) where
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  Ω : Type
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  [mΩ : MeasurableSpace Ω]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  P : Measure Ω
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  [isProb : IsProbabilityMeasure P]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  X₀ : Ω → Config d N
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  W : ℝ≥0 → Ω → (Fin N → Euc d)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  X : ℝ≥0 → Ω → Config d N
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  η : Ω → (Torus d → ℝ) → ℝ
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>attribute [instance] Realization.mΩ Realization.isProb
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>/-! ### Assumption A.1 -/
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>/-- Assumption A.1 `M:B:ass:sde` (TeX L10127-10143), selected empirical semimartingale flow at one
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>`N`: `X_N^0` is a.s. pairwise distinct and independent of `(W_i)`, and the flow is one of
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>(a)/(d) the pathwise unique collision-free strong solution (the TeX cases (a) &quot;its canonical
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>collision-free strong solution&quot; and (d) &quot;a pathwise unique collision-free strong solution has been
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>selected&quot; are the same notion and collapse into one disjunct, as in `HRS.SelectedFlow`),
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>(b) `d = 1`, `s = 0`, `β_N &lt; ∞`, `M = -a` (`a &gt; 0`): the Cépa–Lépingle flow,
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>(c) `d = 1`, `s = 0`, `β_N &lt; ∞`, `M = 0`: the ordinary system of independent confined diffusions
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>(a contact-allowing strong solution; with `M = 0` the drift has no singular term).
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>This extends `HRS.SelectedFlow`, which omits case (c) (`M = 0`, L10132); the law `P_N^t` and the
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>density `f_N^t` of `B:eq:selected-particle-law` are `HRS.selectedLaw`, `HRS.HasSelectedDensity`,
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>`HRS.selectedDensity`. -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>structure SelectedFlowA1 {Ω : Type*} [MeasurableSpace Ω] {N : ℕ} (P : Measure Ω) (D : DynData d)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    (T : ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  init_meas : Measurable X₀
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  init_distinct : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet d N
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  brownian : IsVectorBrownian P W
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  indep : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  flow :
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (IsStrongSolution P D T X₀ W X ∧ PathwiseUnique P D T X₀ W) ∨
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    (d = 1 ∧ D.s = 0 ∧ 0 &lt; D.invβ ∧ (∃ a : ℝ, 0 &lt; a ∧ D.M = -(a • 1)) ∧
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      IsCepaLepingleFlow P D T X₀ W X) ∨
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    (d = 1 ∧ D.s = 0 ∧ 0 &lt; D.invβ ∧ D.M = 0 ∧ IsContactStrongSolution P D T X₀ W X)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>/-- `HRS.SelectedFlow` (cases (a),(b),(d) of A.1) implies `SelectedFlowA1`. -/
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>theorem SelectedFlow.toA1 {Ω : Type*} [MeasurableSpace Ω] {N : ℕ} {P : Measure Ω}
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    {D : DynData d} {T : ℝ} {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)}
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    {X : ℝ≥0 → Ω → Config d N} (h : SelectedFlow P D T X₀ W X) : SelectedFlowA1 P D T X₀ W X :=
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  ⟨h.init_meas, h.init_distinct, h.brownian, h.indep, h.flow.elim Or.inl fun h&#x27; =&gt; Or.inr (Or.inl h&#x27;)⟩
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>/-- Assumption A.1 for a sequence of realizations: for every `N ≥ 1`. -/
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>def SelectedFlows (S : MainData d) (R : ∀ N, Realization d N) : Prop :=
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  ∀ N : ℕ, 1 ≤ N → SelectedFlowA1 (R N).P (S.dyn N) S.T (R N).X₀ (R N).W (R N).X
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-! ### Assumption A.3 -/
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>/-- Assumption A.3 `M:B:ass:mf-reg` (TeX L10201-10203) at the derivative index `r`
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>(`r ≥ r(m) = m + 3` for the largest index `m` used, `B:ass:mf-reg`; the theorems display `r`):
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>for each `N` the datum is `μ°`, `μ_{β_N}` solves the mean-field equation with viscosity `β_N⁻¹`
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>(`HRS.IsMeanFieldSolution`, including the weak formulation `B:eq:mf-weak` and the continuity into
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>`𝒫(𝕋^d)`), is `(r,Λ)`-regular in the sense of `B:eq:mf-regularity` *including* the proviso for
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>`d-1 ≤ s &lt; d` (`HRS.PDE.IsRegularMFProviso`), and `∂_t μ_{β_N} ∈ C([0,T]; C^0_b)` uniformly in `N`
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>(the time derivative exists on `[0,T]` (one-sided at the endpoints), is jointly continuous, and is
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>bounded by a constant `B` independent of `N`). -/
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>structure MeanFieldRegularity (S : MainData d) (r : ℕ) (Λ : ℝ) : Prop where
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  solution : ∀ N : ℕ, 1 ≤ N → IsMeanFieldSolution (S.dyn N) S.T (S.ρ N)
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  datum : ∀ N : ℕ, 1 ≤ N → withDensityReal (S.ρ N 0) = S.μ0
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  regular : ∀ N : ℕ, 1 ≤ N → PDE.IsRegularMFProviso S.s r Λ S.T (S.ρ N)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  time_derivative : ∃ (B : ℝ) (ρt : ℕ → ℝ → Torus d → ℝ), ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (∀ t ∈ Set.Icc (0 : ℝ) S.T, ∀ x : Torus d,
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      HasDerivWithinAt (fun u =&gt; S.ρ N u x) (ρt N t x) (Set.Icc (0 : ℝ) S.T) t) ∧
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    ContinuousOn (fun p : ℝ × Torus d =&gt; ρt N p.1 p.2) (Set.Icc (0 : ℝ) S.T ×ˢ Set.univ) ∧
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    ∀ t ∈ Set.Icc (0 : ℝ) S.T, ∀ x : Torus d, |ρt N t x| ≤ B
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>/-! ### Assumption A.4 (initial fluctuation, statistics level) -/
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>/-- Assumption A.4 `M:B:ass:init` (TeX L10207-10218).  The finite family of terminal tests and
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>times of the conclusion enters through the sets `Ψ N` of *transported terminal tests* (the
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>finite-dimensional span in L10208; for the pair `(φ,t)` the transported test is `U_N^{0,t}φ`,
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>see `transportedTests`), and the coupling `(X_N^0, η°)` (the realization `R`) may depend on this
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>family.  Data: `m₀ ∈ {1,…,m_*}` (`Y_0 = Y_0&#x27; = H^{m₀}`, norm `sobolevNorm m₀`), `C_in ≥ 1`,
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>`ε_N ↓ 0` (hence `ε_N ≥ 0`).  `η°` is a random real-linear functional on `Y_0`, one functional of
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>fixed law (`fixed_law`); only the coupling depends on `N`.
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>* (I1) `E|⟨ψ,κ_N Ξ_N^0⟩ - ⟨ψ,η°⟩| ≤ ε_N ‖ψ‖_{Y_0}` for `ψ ∈ span (Ψ N)` (with `ψ ∈ Y_0`),
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  `Ξ_N^0 = μ_N^0 - μ°`;
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>* (I2) `E|⟨ψ,κ_N Ξ_N^0⟩|² + E|⟨ψ,η°⟩|² ≤ C_in² ‖ψ‖²_{Y_0&#x27;}` for every real `ψ ∈ Y_0`
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  (**Technical hypothesis**: restricted to continuous `ψ`, because for an `H^{m₀}` class without a
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  continuous representative the pairing with an empirical measure is not defined);
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>* (I3) `X_N^0` and `η°` are independent of the Brownian motions (jointly: `(X_N^0, η°) ⫫ (W_i)_i`).
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>Expectations are `lintegral`s of `ofReal`. -/
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>structure InitialFluctuation (S : MainData d) (R : ∀ N, Realization d N) (m₀ : ℕ) (Cin : ℝ)
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    (ε : ℕ → ℝ) (Ψ : ℕ → Set (Torus d → ℝ)) : Prop where
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  m₀_pos : 1 ≤ m₀
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  m₀_le : m₀ ≤ PDE.mStar d
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  Cin_ge : 1 ≤ Cin
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  eps_anti : Antitone ε
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  eps_tendsto : Tendsto ε atTop (𝓝 0)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  family_finite : ∀ N, (Ψ N).Finite
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  linear : ∀ N : ℕ, ∀ ω, ∀ ψ χ : Torus d → ℝ, ∀ c : ℝ, MemSobolev (m₀ : ℝ) ψ → MemSobolev (m₀ : ℝ) χ →
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    (R N).η ω (c • ψ + χ) = c * (R N).η ω ψ + (R N).η ω χ
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  η_meas : ∀ N : ℕ, ∀ ψ : Torus d → ℝ, Measurable fun ω =&gt; (R N).η ω ψ
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  /-- A.4 fixes *one* random functional `η°` (L10208: &quot;there is a random real-linear functional `η°`&quot;;
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  only the coupling with `X_N^0` depends on `N` and on the family): its law does not depend on `N`. -/
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  fixed_law : ∃ νη : Measure ((Torus d → ℝ) → ℝ), ∀ N : ℕ, 1 ≤ N → law (R N).P (R N).η = νη
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  I1 : ∀ N : ℕ, 1 ≤ N → ∀ ψ ∈ Submodule.span ℝ (Ψ N), MemSobolev (m₀ : ℝ) ψ →
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    ∫⁻ ω, ENNReal.ofReal |S.κ N * (pair (empirical ((R N).X₀ ω)) ψ - pair S.μ0 ψ) - (R N).η ω ψ|
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        ∂(R N).P ≤
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      ENNReal.ofReal (ε N * sobolevNorm (m₀ : ℝ) ψ)
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  I2 : ∀ N : ℕ, 1 ≤ N → ∀ ψ : Torus d → ℝ, MemSobolev (m₀ : ℝ) ψ → Continuous ψ →
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    ∫⁻ ω, ENNReal.ofReal ((S.κ N * (pair (empirical ((R N).X₀ ω)) ψ - pair S.μ0 ψ)) ^ 2)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>        ∂(R N).P +
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      ∫⁻ ω, ENNReal.ofReal (((R N).η ω ψ) ^ 2) ∂(R N).P ≤
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    ENNReal.ofReal (Cin ^ 2 * sobolevNorm (m₀ : ℝ) ψ ^ 2)
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  I3 : ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    IndepFun (fun ω =&gt; ((R N).X₀ ω, (R N).η ω)) (fun ω =&gt; fun t =&gt; (R N).W t ω) (R N).P
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>/-! ### Assumption A.5 (initial fluctuation, field level) -/
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>/-- Assumption A.5 `M:B:ass:init-field` (TeX L10221-10232), &quot;in addition to A.4&quot; (the same coupling
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>`(X_N^0, η°)`), with `Γ = γ` an index: on `𝕋^d`, `η°` is `H^{-Γ}`-valued (`ηF`, compatible with the
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>functional `η` on mean-zero `H^Γ` tests, zero-mass convention of `NegSobolev`) and
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>`E‖κ_N Ξ_N^0 - η°‖_{H^{-Γ}} ≤ ε_N^f` (`ε_N^f ≥ 0`), `η°` of fixed law `νin`, `E‖κ_N Ξ_N^0‖² + E‖η°‖² ≤ C_in²`
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>(norms in `NegSobolev d Γ`; expectations as `lintegral`s). -/
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>structure InitialFluctuationField (S : MainData d) (R : ∀ N, Realization d N) (Γ : ℕ) (Cin : ℝ)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    (εf : ℕ → ℝ) (ηF : ∀ N, (R N).Ω → NegSobolev d (Γ : ℝ))
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    (νin : Measure (NegSobolev d (Γ : ℝ))) : Prop where
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  ηF_meas : ∀ N, Measurable (ηF N)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  /-- `η°` is one random field: it has the fixed law `νin`, independent of `N` (L10208, L10285). -/
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  law_eq : ∀ N : ℕ, 1 ≤ N → law (R N).P (ηF N) = νin
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  /-- the errors `ε_N^f` are nonnegative (they bound an expectation of a norm). -/
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  εf_nonneg : ∀ N : ℕ, 1 ≤ N → 0 ≤ εf N
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  compat : ∀ N : ℕ, ∀ ω, ∀ ψ : Torus d → ℝ, MemSobolev (Γ : ℝ) ψ → Torus.mean ψ = 0 →
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (R N).η ω ψ = NegSobolev.eval (ηF N ω) ψ
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  first_moment : ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    ∫⁻ ω, ‖S.κ N • NegSobolev.ofMeasureDiff (Γ : ℝ) (empirical ((R N).X₀ ω)) S.μ0 - ηF N ω‖ₑ
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        ∂(R N).P ≤ ENNReal.ofReal (εf N)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  second_moment : ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    ∫⁻ ω, ‖S.κ N • NegSobolev.ofMeasureDiff (Γ : ℝ) (empirical ((R N).X₀ ω)) S.μ0‖ₑ ^ 2
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>        ∂(R N).P +
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      ∫⁻ ω, ‖ηF N ω‖ₑ ^ 2 ∂(R N).P ≤ ENNReal.ofReal (Cin ^ 2)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>/-! ### Assumptions A.6, A.7 (modulated-energy smallness) -/
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>/-- `C₀` is a valid heat-kernel completion constant with coercivity constant `C` for the torus
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>Riesz energy: the conclusion of Proposition 3.34 (`HRS.periodic_coercivity`, TeX L2879-2897) holds
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>with `(C₀, C)`: `F_N(X,μ) + o_N(Λ) ≥ 0` and the linear-statistic bound, for all `Λ ≥ 1`, `N ≥ 2`,
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>densities `μ ≤ Λ`, collision-free `X`.  This is &quot;`C₀` as in `H:eq:energy-completion`&quot; (TeX L546-555,
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>with the `Λ`-dependent correction `B:eq:hrs-coercivity-exact-correction`); `C₀` and `C` depend only
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>on `d, s`, so the constants of the theorems may depend on them. -/
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>def IsCoercivityPair (d : ℕ) (s C₀ C : ℝ) : Prop :=
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  0 ≤ C₀ ∧ 0 &lt; C ∧
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    ∀ (Λ : ℝ), 1 ≤ Λ → ∀ (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    ∀ ρ : Torus d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ Λ) →
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    ∀ X : Config d N, X ∉ collisionSet d N →
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>      0 ≤ rieszEnergy d s X (withDensityReal ρ) + oNΛ d s C₀ Λ N ∧
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>      ∀ (ψ : Torus d → ℝ) (L : ℝ), 0 ≤ L → KernelGrad.IsLipschitz L ψ →
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>        HasFiniteHomSobolev (((d : ℝ) - s) / 2) ψ →
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        |∫ x, ψ x ∂(empirical X) - ∫ x, ψ x ∂(withDensityReal ρ)| ≤
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>          C * smearScale d N Λ * L +
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>            C * homSobolev (((d : ℝ) - s) / 2) ψ *
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>              Real.sqrt (rieszEnergy d s X (withDensityReal ρ) + oNΛ d s C₀ Λ N)
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>/-- Such a pair exists for every `d ≥ 1`, `0 ≤ s &lt; d` (this is `HRS.periodic_coercivity`). -/
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>theorem exists_coercivityPair (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    ∃ C₀ C : ℝ, IsCoercivityPair d s C₀ C := by
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  obtain ⟨C₀, C, hC₀, hC, h⟩ := periodic_coercivity hd hs0 hsd
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  exact ⟨C₀, C, hC₀, hC, h⟩
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>/-- Assumption A.6 `M:B:ass:MF` (TeX L10235-10247): with `𝔬_N(Λ) = HRS.oNΛ d s C₀ Λ N` (a completion
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>constant `C₀` with coercivity constant `Cc`, `IsCoercivityPair`, recorded by `completion`; `C₀, Cc`
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>depend only on `d, s`, so the constants of the theorems may depend on them) and `Λ` from A.3, there is a
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>sequence `𝔈_N &gt; 0` with
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>`sup_{t ≤ T} E[F_N(X_N^t, μ_{β_N}^t) + 𝔬_N] ≤ 𝔈_N` and `σ_N 𝔈_N → 0`.
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>(Expectation: `lintegral` of `ofReal` of `HRS.correctedEnergy`, which is a.s. nonnegative by the
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>coercivity bound.) -/
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>structure EnergySmallness (S : MainData d) (R : ∀ N, Realization d N) (C₀ Cc Λ : ℝ)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    (𝔈 : ℕ → ℝ) : Prop where
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  completion : IsCoercivityPair d S.s C₀ Cc
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  pos : ∀ N : ℕ, 1 ≤ N → 0 &lt; 𝔈 N
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  bound : ∀ N : ℕ, 1 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) S.T,
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    ∫⁻ ω, ENNReal.ofReal
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>        (correctedEnergy (S.dyn N) C₀ Λ (S.ρ N) ((R N).X (Real.toNNReal t) ω) t) ∂(R N).P ≤
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>      ENNReal.ofReal (𝔈 N)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  small : Tendsto (fun N =&gt; S.sigma N * 𝔈 N) atTop (𝓝 0)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>/-- Assumption A.7 `M:B:ass:MF2` (TeX L10249-10259), the second-moment strengthening (only for the
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>`W₂` variants): `sup_{t ≤ T} E[(F_N(X_N^t, μ_{β_N}^t) + 𝔬_N)²] ≤ (𝔈&#x27;_N)²`, `σ_N 𝔈&#x27;_N → 0`, and (I1)
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>of A.4 holds in `L²`: `E|⟨ψ,κ_N Ξ_N^0⟩ - ⟨ψ,η°⟩|² ≤ (ε_N^{(2)})² ‖ψ‖²_{Y_0}` (for `ψ` in the same
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>class as (I1): the span of the transported tests `Ψ N`, `ψ ∈ Y_0 = H^{m₀}`). -/
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>structure EnergySmallness2 (S : MainData d) (R : ∀ N, Realization d N) (C₀ Λ : ℝ) (m₀ : ℕ)
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    (Ψ : ℕ → Set (Torus d → ℝ)) (𝔈&#x27; ε2 : ℕ → ℝ) : Prop where
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  /-- `𝔈&#x27;_N` and `ε_N^{(2)}` are nonnegative (they bound norms of random variables; without this the
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  `ofReal`-clipped bounds below could hold with negative values). -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  𝔈&#x27;_nonneg : ∀ N : ℕ, 1 ≤ N → 0 ≤ 𝔈&#x27; N
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  ε2_nonneg : ∀ N : ℕ, 1 ≤ N → 0 ≤ ε2 N
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  bound : ∀ N : ℕ, 1 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) S.T,
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    ∫⁻ ω, ENNReal.ofReal
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>        ((correctedEnergy (S.dyn N) C₀ Λ (S.ρ N) ((R N).X (Real.toNNReal t) ω) t) ^ 2)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>        ∂(R N).P ≤ ENNReal.ofReal ((𝔈&#x27; N) ^ 2)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  small : Tendsto (fun N =&gt; S.sigma N * 𝔈&#x27; N) atTop (𝓝 0)
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  I1_L2 : ∀ N : ℕ, 1 ≤ N → ∀ ψ ∈ Submodule.span ℝ (Ψ N), MemSobolev (m₀ : ℝ) ψ →
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    ∫⁻ ω, ENNReal.ofReal
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>        ((S.κ N * (pair (empirical ((R N).X₀ ω)) ψ - pair S.μ0 ψ) - (R N).η ω ψ) ^ 2)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>        ∂(R N).P ≤
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>      ENNReal.ofReal ((ε2 N) ^ 2 * sobolevNorm (m₀ : ℝ) ψ ^ 2)
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>/-! ### The common package of the torus theorems -/
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>/-- The hypotheses shared by the torus theorems A.8-A.11: A.1, A.2 (regime `Rg`, `ν₀`), A.3 at
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>`r = m + 3` with `‖μ‖_{C^r} ≤ Λ`, the bounds `|M| ≤ MB` (entrywise, `HRS.PDE.MatBound`) and
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>`V ∈ C^{m+3}`, `‖V‖_{C^{m+3}} ≤ VB` (TeX B:sec:conv-confinement, L10074-10076; &quot;the confinement is
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>used through the same derivative level&quot;), and A.6 with `Λ`.  Here `m` is the adjoint index
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>(`m = m_*` in A.8; `m = γ` in A.9; `m = γ+2` in A.11, i.e. `r = m_*+3, γ+3, γ+5`).
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>The field `filtered` is the strong-solution adaptedness of A.1 (a Brownian filtration carrying `W` to which `X` is
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>adapted, `IsFilteredSolution`), which the Itô/duality identity behind every torus theorem needs and `SelectedFlowA1`
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>(measurability only, ISSUES D1) does not record; it mirrors `RdStanding.filtered`.  Statement repair, ISSUES.md
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>entries &quot;5.14 `criterion_comparison`…&quot; and &quot;N:thm:dynamic …&quot;, final entry &quot;Filtered strong solutions …&quot;; `SelectedFlowA1`
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>already has `indep : IndepFun X₀ W`, so only the filtration is added. -/
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>structure TorusStanding (S : MainData d) (R : ∀ N, Realization d N) (Rg : PDE.Regime)
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>    (ν₀ MB Λ VB : ℝ) (m : ℕ) (C₀ Cc : ℝ) (𝔈 : ℕ → ℝ) : Prop where
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  flow : SelectedFlows S R
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  regime : S.RegimeHolds Rg ν₀
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  mean_field : MeanFieldRegularity S (m + 3) Λ
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  matrix_bound : PDE.MatBound MB S.M
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  potential : PDE.VHyp m VB S.V
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  energy : EnergySmallness S R C₀ Cc Λ 𝔈
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  /-- Strong-solution adaptedness of the selected flows (A.1, &quot;strong solution&quot;; ISSUES.md, filtered-solution repairs). -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  filtered : ∀ N : ℕ, 1 ≤ N → ∃ (ℱ : MeasureTheory.Filtration ℝ (R N).mΩ)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    (W&#x27; : ℝ≥0 → (R N).Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    IsFilteredSolution (R N).P ℱ W&#x27; (R N).W (R N).X
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>/-! ### Convergence of the coefficients (`B:eq:deltaN`) -/
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>/-- The limiting coefficient quadruple `(β_∞, μ_{β_∞}, A, 2/β_*)` of TeX L10285-10290 (`invβ = β_∞⁻¹`,
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>`invβstar = β_*⁻¹`, so the limiting noise covariance is `2 β_*⁻¹ ∫ ...`). -/
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>structure LimitCoeffs (d : ℕ) where
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  invβ : ℝ
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  hinvβ : 0 ≤ invβ
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  ρ : ℝ → Torus d → ℝ
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  A : ℝ
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  hA : 0 ≤ A
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  invβstar : ℝ
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  hinvβstar : 0 ≤ invβstar
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>/-- The limiting dynamics data. -/
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>def LimitCoeffs.dyn (L : LimitCoeffs d) (S : MainData d) : DynData d :=
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  ⟨S.s, S.M, S.V, L.invβ, S.hs0, S.hsd, L.hinvβ⟩
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>/-- The full coefficient discrepancy `Δ_N^{(m)}` of `B:eq:deltaN` (TeX L10412-10418):
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>`|β_N⁻¹ - β_∞⁻¹| + |2σ_N²/(Nβ_N) - 2/β_*| + |A_N - A| + sup_{r ≤ T} ‖μ_{β_N}^r - μ_{β_∞}^r‖_{𝒞^{m+2}}`
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>with the coefficient norm `𝒞^{m+2}` of Proposition 3.15 (`Torus.cbNorm (m+2)`, as in
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>`HRS.PDE.propagator_stability`). -/
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>def MainData.coeffDiscrepancy (S : MainData d) (L : LimitCoeffs d) (m N : ℕ) : ℝ :=
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  |S.invβ N - L.invβ| + |2 * S.qN N - 2 * L.invβstar| + |S.AN N - L.A| +
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    ⨆ r : Set.Icc (0 : ℝ) S.T, Torus.cbNorm (m + 2) (S.ρ N r - L.ρ r)
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>/-- &quot;Assume common adjoint regimes and constants and `Δ_N^{(m)} → 0`&quot; (`B:cor:true-limit`,
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>TeX L10420-10421): the limit trajectory `μ_{β_∞}` solves the mean-field equation with viscosity
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>`β_∞⁻¹` and datum `μ°`, and the adjoint hypotheses of Proposition 3.9 (`HRS.PDE.AdjointData`: same
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>regime `Rg`, same `ν₀, MB, Λ, VB`, same `M, V`) hold at the level `lvl` for the limit and for every
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>`N`; and `Δ_N^{(m)} → 0`.  (The level `lvl` of the common adjoint regime is not specified by the TeX:
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>the theorems use `lvl = m` (A.9) or `lvl = m + 2` (A.11), the level of their own regularity
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>hypothesis.) -/
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>structure CoeffConvergence (S : MainData d) (L : LimitCoeffs d) (Rg : PDE.Regime)
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    (ν₀ MB Λ VB : ℝ) (lvl m : ℕ) : Prop where
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  limit_solution : IsMeanFieldSolution (L.dyn S) S.T L.ρ
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  limit_datum : withDensityReal (L.ρ 0) = S.μ0
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  limit_adjoint : PDE.AdjointData S.s lvl Rg MB Λ VB (L.dyn S) ν₀ S.T L.ρ
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  seq_adjoint : ∀ N : ℕ, 1 ≤ N → PDE.AdjointData S.s lvl Rg MB Λ VB (S.dyn N) ν₀ S.T (S.ρ N)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  tendsto : Tendsto (fun N =&gt; S.coeffDiscrepancy L m N) atTop (𝓝 0)
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>end Main
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>end HRS
+</span></code></pre></main></body></html>

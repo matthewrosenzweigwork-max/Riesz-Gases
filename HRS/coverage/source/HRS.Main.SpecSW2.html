@@ -1,0 +1,170 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.SpecSW2 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.SpecSW2</code></h1><p><a href="../../lean/HRS/Main/SpecSW2.lean">Open the unaltered Lean file</a> · 169 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.EnergyR2Q
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Energy.WeakReference
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Statements SPECSW2: torus gradient clause of Lemma C.6, pinned/cavity clause of Lemma 5.6
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Both statements are `sorry`-proved specifications (packet SPECSW2); the sources are
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Lemma C.6 `M:B:lem:sqrt-lipschitz` (TeX L12311-12313), gradient clause on the torus;
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* Lemma 5.6 `M:N:lem:weak` (TeX L6156-6172), the sentence &quot;These bounds also hold after one pin and
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  for the cavity law retaining pair coefficient `τβ/N` and one-body field `τβ q*μ`&quot;, which the
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  existing `HRS.weak_reference_estimates` (HRS/Energy/WeakReference.lean) omits.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open MeasureTheory
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open scoped ENNReal
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>noncomputable section
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.Main.SpecSW2
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>/-! ## Lemma C.6, gradient-norm clause on the torus -/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>section Sqrt
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>/-- **Lemma C.6 `M:B:lem:sqrt-lipschitz`, gradient clause on `𝕋^d`** (TeX L12311-12313: &quot;If
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>`0 ≤ a ∈ C^{1,1}(𝕋^d)`, then `√a` is Lipschitz with `‖∇√a‖_{L^∞} ≤ √(‖∇^{⊗2}a‖_{L^∞}/2)`&quot;).
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>The Lipschitz clause is `HRS.PDE.R2Aux.sqrt_isLipschitz` (torus) and `HRS.sqrt_lipschitz` (Euclidean);
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>this theorem states the remaining claim `‖∇√a‖_{L^∞} ≤ √(L/2)`.  The hypotheses are exactly those of
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>`sqrt_isLipschitz`: `L` is a real number with `0 ≤ L`, `a ≥ 0` everywhere, and `IsC11 L a` (`a ∈ C¹`
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>with `∇a` `L`-Lipschitz on the lift, i.e. `‖∇^{⊗2}a‖_{L^∞} ≤ L`; the source quantity `‖∇^{⊗2}a‖_∞` is
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>the smallest such `L`, so quantifying over all admissible `L` is equivalent and no hypothesis is
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>added).  `L` and `a` are quantified before the conclusion, `0 ≤ L` is the only range restriction (it
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>is forced for `IsC11 L a` to be meaningful through `Real.toNNReal`, and is needed for `√(L/2)`).
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>Representation of `∇√a`.  `√a` is only Lipschitz, not differentiable at the zeros of `a`, so the
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>gradient is the almost-everywhere gradient of the periodic lift `f = lift √a` on `ℝ^d` (Rademacher),
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>which for Lipschitz `f` coincides with the weak gradient.  The conclusion has three conjuncts:
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>(i) at *every* point where `f` is differentiable, `‖∇f(x)‖ ≤ √(L/2)` (operator norm of `fderiv`, equal
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>to the Euclidean norm of the gradient); (ii) `f` is differentiable almost everywhere; (iii) the
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>essential supremum of `‖fderiv f‖` w.r.t. Lebesgue measure on `ℝ^d` is `≤ √(L/2)`, i.e. the
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>`L^∞` bound of the source (the lift is periodic, so a.e. on `ℝ^d` is a.e. on `𝕋^d`).
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>Junk-value check.  `fderiv` is `0` where `f` is not differentiable, so (iii) alone could hold
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>vacuously on the non-differentiability set; conjunct (ii) shows that set is null, hence (iii) is the
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>genuine `L^∞` norm of the a.e. gradient, and (i) is stated only under `DifferentiableAt`.  No division
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>(`L / 2` has a numeral denominator), `Real.sqrt` is applied to the nonnegative `a x` and `L / 2`
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>(`L = 0` gives `a` constant and the bound `0`, which is correct), no measure map, no Bochner or lower
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>integral, no `limUnder`, `d : ℕ` arbitrary (`d = 0` is trivial and true), `Type` levels are
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>irrelevant. `eLpNormEssSup` is in `ℝ≥0∞` and the comparison uses `ENNReal.ofReal` of a nonnegative
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>real. -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>theorem torus_sqrt_gradient_le {a : Torus d → ℝ} {L : ℝ} (hL : 0 ≤ L) (ha : ∀ x, 0 ≤ a x)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (hC11 : PDE.IsC11 L a) :
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    (∀ x : Euc d, DifferentiableAt ℝ (Torus.lift fun y =&gt; Real.sqrt (a y)) x →
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        ‖fderiv ℝ (Torus.lift fun y =&gt; Real.sqrt (a y)) x‖ ≤ Real.sqrt (L / 2)) ∧
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (∀ᵐ x : Euc d ∂volume, DifferentiableAt ℝ (Torus.lift fun y =&gt; Real.sqrt (a y)) x) ∧
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    eLpNormEssSup (fun x =&gt; fderiv ℝ (Torus.lift fun y =&gt; Real.sqrt (a y)) x) volume
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      ≤ ENNReal.ofReal (Real.sqrt (L / 2)) := by
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  sorry
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>end Sqrt
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>/-! ## Lemma 5.6, pinned and cavity clause -/
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>section Weak
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>variable {d : ℕ}
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- Unnormalised density, with respect to `μ^{⊗n}`, of the free coordinates of
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>`ℝ_{N,τ}` with `N = n + 1` after pinning coordinate `p` at the value `y`: the weight
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>`pairWeight q (n+1) b μ` of the full ensemble (`b = τβ`, so `pairWeight = exp(-τβ N F_N^q)`)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>evaluated at the configuration obtained by inserting `y` at position `p` into the free
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>configuration `Z`.  Its normalised version is the conditional law of the other `n` coordinates given
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>the pin, and by `N:eq:weak-spec` (TeX L6177-6180) it equals, up to a constant factor, the specification
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>with one-body field `τβ q*μ - (τβ/N) q(·,y)` and pair coefficient `τβ/N`. -/
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>def pinnedWeight (q : Torus d → Torus d → ℝ) (μ : Measure (Torus d)) (b : ℝ) (n : ℕ)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (p : Fin (n + 1)) (y : Torus d) (Z : Config d n) : ℝ≥0∞ :=
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  pairWeight q (n + 1) b μ (Fin.insertNth (α := fun _ =&gt; Torus d) p y Z)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- Unnormalised density, with respect to `μ^{⊗n}`, of the **cavity law** (TeX L6202-6204,
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>&quot;deleting one particle, while retaining the same denominator `N` in the interaction&quot;, and L6206-6209):
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>`n` coordinates, pair coefficient `b/N` and one-body field `b · (q*μ)`, i.e.
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>`exp(b ∑ᵢ ∫ q(Zᵢ,y) μ(dy) - (b/N) ∑_{i&lt;j} q(Zᵢ,Zⱼ))` (the pair sum is written `½ ∑_{i≠j}`, as in
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>`pairWeight`).  Here `N` is a separate parameter (in the theorem `N = n + 1`), `b = τβ`.
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>`∫ q(z,y) μ(dy)` is a Bochner integral; under the row bound of the theorem it is the honest integral of
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>a nonnegative integrable function. -/
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>def cavityWeight (q : Torus d → Torus d → ℝ) (μ : Measure (Torus d)) (b : ℝ) (N : ℕ) {n : ℕ}
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (Z : Config d n) : ℝ≥0∞ :=
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  ENNReal.ofReal (Real.exp (b * ∑ i, ∫ y, q (Z i) y ∂μ
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    - (b / N) * ((1 / 2) * ∑ i, ∑ j ∈ Finset.univ.erase i, q (Z i) (Z j))))
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-- The two Dobrushin-type conclusions of Lemma 5.6 for a weight `W` on `n` coordinates:
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>the one-coordinate conditional laws `siteKernel μ W i x` are bounded by `C μ`, and there are
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>interdependence coefficients `c i j ∈ [0, κ]` with row and column sums `&lt; 1/2` such that changing the
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>`j`-th coordinate of the conditioning configuration changes the `i`-th conditional law, evaluated on any
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>measurable set, by at most `c i j` (for `i ≠ j`; the diagonal coefficients are not constrained and may
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>be taken `0`).  `κ` will be `C τ β a / N`. -/
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>def WeakConditionalBounds (μ : Measure (Torus d)) [IsProbabilityMeasure μ] {n : ℕ}
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    (W : Config d n → ℝ≥0∞) (C κ : ℝ) : Prop :=
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  (∀ (i : Fin n) (x : Config d n), External.siteKernel μ W i x ≤ ENNReal.ofReal C • μ) ∧
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  ∃ c : Fin n → Fin n → ℝ, (∀ i j, 0 ≤ c i j ∧ c i j ≤ κ) ∧
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    (∀ i, ∑ j, c i j &lt; 1 / 2) ∧ (∀ j, ∑ i, c i j &lt; 1 / 2) ∧
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    ∀ i j : Fin n, i ≠ j → ∀ x y : Config d n, (∀ k, k ≠ j → x k = y k) →
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      ∀ S : Set (Torus d), MeasurableSet S →
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        |(External.siteKernel μ W i x).real S - (External.siteKernel μ W i y).real S| ≤ c i j
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>/-- **Lemma 5.6 `M:N:lem:weak`, the pinned and cavity clause** (TeX L6156-6172: &quot;These bounds also hold
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>after one pin and for the cavity law retaining pair coefficient `τβ/N` and one-body field `τβ q*μ`&quot;;
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>the proof, TeX L6174-6269, states at L6204 that &quot;these conclusions are uniform in the pin&quot;).  &quot;These bounds&quot; are
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>the first two sentences of the lemma: the one-coordinate conditional densities are bounded by `Cμ`, the
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>interdependence coefficients are at most `C τ β a / N`, and the row and column sums are below `1/2`.
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>The other clauses (`N:eq:weak-marginal`, `N:eq:weak-pi`) concern the unpinned law only and are in
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>`HRS.weak_reference_estimates`.
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>Parameters.  Everything before `∃ a₀ C` and the hypotheses on `ρ, q, a` are verbatim those of
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>`HRS.weak_reference_estimates`; `a₀` and `C` are chosen after `(d, s, c_*, β_±, c₀, Λ, A)` and before
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>`ρ, q, a, N, β, τ`, and in particular before the pin position `p` and pin value `y`, which are
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>quantified last (uniformity in the pin).  Because every conclusion is monotone in `C` (the row/column
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>sums are `&lt; 1/2` for a witness `c` independent of `C`) and in `a₀`, the constants of this theorem and of
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>`weak_reference_estimates` can be combined by taking the maximum of the `C`&#x27;s and the minimum of the
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>`a₀`&#x27;s.  `N = n + 1` with `n ≥ 1` (that is, `2 ≤ N` as in `weak_reference_estimates`); the pinned ensemble
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>has `n = N - 1` free coordinates and the pin is inserted at any position `p : Fin N` (`pinnedWeight`,
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>whose normalised law is the conditional law of the other coordinates, derived from `pairWeight` itself,
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>not from a transcribed formula); the cavity ensemble has the same `n = N - 1` free coordinates, the pair
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>coefficient `τβ/N` with the original denominator `N = n + 1`, and the one-body field `τβ q*μ`
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>(`cavityWeight`).  The coefficient bound is `C τ β a / (n+1)` and the conditional density bound is `C μ`,
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>exactly as in the unpinned statement; the &quot;row and column sums below `1/2`&quot; are stated as a witness
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>matrix `c` of coefficients (`WeakConditionalBounds`) instead of the proxy `C τ β a &lt; 1/2` used in the
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>unpinned Lean statement.
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>Junk-value check.  `1/2` and `a / (n+1)` have nonzero denominators (`n ≥ 1`).  `siteKernel μ W i` is a
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>`Kernel.withDensity`, which is `0` for a non-measurable density; here the density is
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>`z ↦ W (update x i z) * (∫⁻ W (update x i ·) dμ)⁻¹`, and `W` is measurable (`q` measurable, and the
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>row integral `x ↦ ∫ q(x,y) dμ(y)` of a measurable nonnegative kernel is measurable), the normaliser is
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>positive (the weights are `ofReal exp &gt; 0`) and finite (the exponent is bounded above, using `q ≥ 0`
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>and the row bound), so the kernel is the true conditional law, not a junk value.  The row integral in
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>`cavityWeight` is a Bochner integral of a nonnegative function with `∫⁻ ofReal q ≤ ofReal a &lt; ∞`
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>(hypothesis `hrow`), hence integrable.  No `Measure.map` of a non-measurable map occurs (the
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>bounds are about the kernels, not marginals), no lower integral, no `limUnder`.  `τ = 0` is allowed:
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>all weights are then constant, every kernel equals `μ`, and the bounds hold with `c = 0`.
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>`β ∈ [βm, βp]` with `βm &gt; 0` (so `β &gt; 0`).  `Type` universe: all spaces are `Torus d`.
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>`IsProbabilityMeasure (withDensityReal ρ)` is a hypothesis (as in the unpinned statement), which
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>makes `siteKernel` available. -/
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>theorem weak_reference_pinned_cavity (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    (cstar : ℝ) (hw : ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + cstar)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    (βm βp : ℝ) (hβm : 0 &lt; βm) (c₀ : ℝ) (hc₀ : 0 &lt; c₀) (Λ : ℕ → ℝ) (A : ℝ) :
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    ∃ a₀ C : ℝ, 0 &lt; a₀ ∧
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      ∀ ρ : Torus d → ℝ, IsProbDensity ρ → ∀ [IsProbabilityMeasure (withDensityReal ρ)],
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        Torus.IsSmooth ρ → (∀ x, c₀ ≤ ρ x) →
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        (∀ k : ℕ, Torus.cbNorm k ρ ≤ Λ k) →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      ∀ q : Torus d → Torus d → ℝ, Measurable (Function.uncurry q) → (∀ x y, q x y = q y x) →
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>        (∀ x y, 0 ≤ q x y) → (∀ x y, q x y ≤ A * (periodicRiesz d s (x - y) + cstar)) →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      ∀ a : ℝ, 0 ≤ a → a &lt; a₀ →
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        (∀ x, ∫⁻ y, ENNReal.ofReal (q x y) ∂(withDensityReal ρ) ≤ ENNReal.ofReal a) →
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      ∀ n : ℕ, 1 ≤ n → ∀ β ∈ Set.Icc βm βp, ∀ τ ∈ Set.Icc (0 : ℝ) 1,
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        (∀ (p : Fin (n + 1)) (y : Torus d),
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          WeakConditionalBounds (withDensityReal ρ)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>            (pinnedWeight q (withDensityReal ρ) (τ * β) n p y) C (C * τ * β * a / ((n + 1 : ℕ) : ℝ))) ∧
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        WeakConditionalBounds (withDensityReal ρ)
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>          (cavityWeight q (withDensityReal ρ) (τ * β) (n + 1) (n := n)) C
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>          (C * τ * β * a / ((n + 1 : ℕ) : ℝ)) := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  sorry
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>end Weak
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>end HRS.Main.SpecSW2
+</span></code></pre></main></body></html>

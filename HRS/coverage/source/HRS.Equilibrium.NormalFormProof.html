@@ -1,0 +1,170 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.NormalFormProof · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.NormalFormProof</code></h1><p><a href="../../lean/HRS/Equilibrium/NormalFormProof.lean">Open the unaltered Lean file</a> · 169 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.NormalFormProof — packet Q84e: assembly of Proposition 4.16 (`normal_form`)
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>`normal_form_proof` has the statement of the frozen `HRS.normal_form` (PairCorrection.lean),
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>checked by the final `example`.  Route (source lines 4936-4971):
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* integrability conjuncts: `Q84d.q84d_quadStat_integrable`, `q84d_Fstat_integrable`,
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>  `q84d_errStat_integrable`;
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* the identity with the actual stationary centring: the algebraic lifted generator identity
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  `Q84e.q84e_gen_alg` (finite-particle corrections), the Poisson equation in the form
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  `B_x ψ + B_y ψ + 𝒥ψ = -H_f` (`Q84e.q84e_poisson_red`, using `μ(Bψ(·,y)) = 0`), the deleted-sum
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  expansion `Q84e.q84e_quad_alg`, stationarity `q84d_stationarity`, centred in
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `Q84e.q84e_identity_centered`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* the `L²` bound: `pair_moments_proof` on `ψ`, on the modified kernels `Jt, Gt, Bt`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  (`Q84e.q84e_modified_kernels_unif`) and `q84d_zeta_bound`, with `Q84e.q84e_err_L2` and
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `Q84e.q84e_arith`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>-/
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>import HRS.Equilibrium.TripleCanonical
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>import HRS.Equilibrium.Q84dStationary
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>import HRS.Equilibrium.PairMoments
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>import HRS.Equilibrium.Q84eAuxI
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>import HRS.Equilibrium.Q84eAuxM
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>noncomputable section
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>namespace HRS
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>theorem normal_form_proof (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (V : Torus d → ℝ) (hV : Torus.IsSmooth V) (ρ : Torus d → ℝ)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (hρ : IsThermalDensity (periodicRiesz d s) V β ρ) (hρs : SmoothPosDensity ρ) :
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    ∃ C : ℝ, ∀ (f : Torus d → ℝ) (K₁ : ℝ) (ψ : Torus d → Torus d → ℝ), Torus.IsSmooth f →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      IsPairCorrector d s V β ρ f K₁ ψ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        Integrable (quadStat (hTransport d s f) (withDensityReal ρ))
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            (canonicalGibbs (periodicRiesz d s) V N β) ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        Integrable (Fstat (N := N) ψ) (canonicalGibbs (periodicRiesz d s) V N β) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        Integrable (errStat d s ρ (N := N) ψ) (canonicalGibbs (periodicRiesz d s) V N β) ∧
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>        (∀ X : Config d N, X ∉ collisionSet d N →
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>          Real.sqrt N / 2 * centeredUnder (canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>              (quadStat (hTransport d s f) (withDensityReal ρ)) X =
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>            -particleGen d s V β (Fstat ψ) X +
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>              centeredUnder (canonicalGibbs (periodicRiesz d s) V N β) (errStat d s ρ ψ) X -
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>              (2 / (N : ℝ)) * (Real.sqrt N * centeredUnder (canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>                (fun Y : Config d N =&gt; (1 / (N : ℝ)) * ∑ i, aCoef d s ρ f (Y i)) X)) ∧
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>        eLpNorm (centeredUnder (canonicalGibbs (periodicRiesz d s) V N β) (Fstat ψ)) 2
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>              (canonicalGibbs (periodicRiesz d s) V N β) +
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>            (∫⁻ X, ∑ i, ‖configGrad (Fstat ψ) X i‖ₑ ^ 2
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>              ∂(canonicalGibbs (periodicRiesz d s) V N β)) ^ (1 / 2 : ℝ) +
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>            eLpNorm (centeredUnder (canonicalGibbs (periodicRiesz d s) V N β) (errStat d s ρ ψ)) 2
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>              (canonicalGibbs (periodicRiesz d s) V N β) +
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>            ENNReal.ofReal (1 / (N : ℝ)) *
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>              eLpNorm (fun X : Config d N =&gt; Real.sqrt N *
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>                  centeredUnder (canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>                    (fun Y : Config d N =&gt; (1 / (N : ℝ)) * ∑ i, aCoef d s ρ f (Y i)) X) 2
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>                (canonicalGibbs (periodicRiesz d s) V N β) ≤
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>          ENNReal.ofReal (C * (K₁ + posSeminorm (8 * d + 80) f) * (N : ℝ) ^ (-(1 / 2 : ℝ))) := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨C₀, hPM1, hPM2, hPM3, hPM4⟩ := pair_moments_proof hd hcrit β hβ V hV ρ hρ hρs
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨Cu, hCu0, hCu⟩ := Q84e.q84e_modified_kernels_unif hd hcrit β hβ V hV ρ hρ hρs
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨Cz, hCz0, hCz⟩ := Q84d.q84d_zeta_bound hd hcrit β hβ V hV ρ hρ hρs
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  obtain ⟨C3, hC3⟩ := triple_canonical_proof hd hcrit β hβ V hV ρ hρ hρs
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  set c0 : ℝ := Real.sqrt (max C₀ 0) with hc0def
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hc0 : 0 ≤ c0 := Real.sqrt_nonneg _
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hc0sq : c0 ^ 2 = max C₀ 0 := Real.sq_sqrt (le_max_right _ _)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  refine ⟨4 * c0 + 3 * c0 * Cu + Cz, fun f K₁ ψ hf hψ N hN =&gt; ?_⟩
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hNp : (0 : ℝ) &lt; N := by exact_mod_cast hN1
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  haveI := Q84d.q84d_isProb hd hcrit hV hβ hN1 (N := N)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  set P := canonicalGibbs (periodicRiesz d s) V N β with hP
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hK₁ := Q84d.q84d_K_nonneg hd hcrit hψ
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hD := Q84d.q84d_posSeminorm_nonneg (8 * d + 80) f
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  refine ⟨Q84d.q84d_quadStat_integrable hd hcrit β hβ V hV ρ hρ hρs f hf N hN,
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    Q84d.q84d_Fstat_integrable hd hcrit β hβ V hV ρ hρ hρs f K₁ ψ hf hψ N hN,
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    Q84d.q84d_errStat_integrable hd hcrit β hβ V hV ρ hρ hρs f K₁ ψ hf hψ N hN,
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    Q84e.q84e_identity_centered hd hcrit hβ hV hρ hρs hf hψ hN, ?_⟩
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  -- the kernels
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨-, hGcan, -, -, -⟩ := hC3 f K₁ ψ hf hψ
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  obtain ⟨Jt, Bt, Gt, ⟨hJm, hJs, hJc, hJb⟩, ⟨hBm, hBs, hBb⟩, ⟨hGm, hGs, hGc, hGb⟩, hae⟩ :=
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    hCu f K₁ ψ hf hψ hGcan
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  -- variance bounds
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hlog := Q84e.q84e_logEN_pos hN1
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have v1 := hPM1 K₁ ψ hψ.measurable hψ.symm hψ.canonical hψ.size N hN
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have v2 := hPM2 K₁ Jt hJm hJs hJc hJb N hN
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have v3 := hPM3 (Cu * K₁) Bt hBm hBs hBb N hN
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have v4 := hPM4 (Cu * K₁) Gt hGm hGs hGc hGb N hN
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hmax : ∀ x : ℝ, 0 ≤ x → C₀ * x ≤ c0 ^ 2 * x := fun x hx =&gt;
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    mul_le_mul_of_nonneg_right (by rw [hc0sq]; exact le_max_left _ _) hx
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  set a₁ : ℝ := c0 ^ 2 * K₁ ^ 2 / N with ha₁
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have ha₁0 : 0 ≤ a₁ := by positivity
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have w1 : evariance (Fstat ψ) P + ∫⁻ X, ∑ i, ‖configGrad (Fstat ψ) X i‖ₑ ^ 2 ∂P ≤
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      ENNReal.ofReal a₁ := by
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    refine v1.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    rw [ha₁]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    refine div_le_div_of_nonneg_right ?_ hNp.le
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have := hmax (K₁ ^ 2) (sq_nonneg _)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    linarith
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hFψm : AEStronglyMeasurable (Fstat (N := N) ψ) P :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    (Q84e.q84e_measurable_Fstat hψ.measurable).aestronglyMeasurable
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have T1 : eLpNorm (centeredUnder P (Fstat ψ)) 2 P ≤ ENNReal.ofReal (Real.sqrt a₁) :=
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    Q84e.q84e_eLp_center_le P hFψm a₁ ha₁0 (le_trans le_self_add w1)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have T2 : (∫⁻ X, ∑ i, ‖configGrad (Fstat ψ) X i‖ₑ ^ 2 ∂P) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      ENNReal.ofReal (Real.sqrt a₁) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    rw [Real.sqrt_eq_rpow, ← ENNReal.ofReal_rpow_of_nonneg ha₁0 (by norm_num)]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    exact ENNReal.rpow_le_rpow (le_trans le_add_self w1) (by norm_num)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  -- the error statistic
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  set aJ : ℝ := c0 ^ 2 * K₁ ^ 2 * logEN N / N with haJ
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  set aT : ℝ := c0 ^ 2 * (Cu * K₁) ^ 2 * logEN N ^ 2 / (N : ℝ) ^ 2 with haT
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  set aB : ℝ := c0 ^ 2 * (Cu * K₁) ^ 2 / N with haB
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have haJ0 : 0 ≤ aJ := by positivity
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have haT0 : 0 ≤ aT := by positivity
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have haB0 : 0 ≤ aB := by positivity
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have wJ : evariance (Fstat Jt) P ≤ ENNReal.ofReal aJ := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    refine v2.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    rw [haJ]
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    refine div_le_div_of_nonneg_right ?_ hNp.le
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have := hmax (K₁ ^ 2 * logEN N) (by positivity)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    linarith
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  have wT : evariance (fun X : Config d N =&gt; (N : ℝ) ^ (-(5 / 2 : ℝ)) * tripleSum Gt X) P ≤
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      ENNReal.ofReal aT := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    refine v4.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    rw [haT]
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    refine div_le_div_of_nonneg_right ?_ (by positivity)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    have := hmax ((Cu * K₁) ^ 2 * logEN N ^ 2) (by positivity)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    linarith
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  have wB : evariance (fun X : Config d N =&gt; (N : ℝ) ^ (-(5 / 2 : ℝ)) * pairSumOrdered Bt X) P ≤
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      ENNReal.ofReal aB := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    refine v3.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    rw [haB]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    refine div_le_div_of_nonneg_right ?_ hNp.le
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    have := hmax ((Cu * K₁) ^ 2) (sq_nonneg _)
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    linarith
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  have T3 : eLpNorm (centeredUnder P (errStat d s ρ ψ)) 2 P ≤
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      ENNReal.ofReal (|2 / (N : ℝ)| * Real.sqrt aJ + Real.sqrt aT + Real.sqrt aB) :=
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    Q84e.q84e_err_L2 P (E := errStat d s ρ (N := N) ψ) (FJ := Fstat Jt)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (T := fun X : Config d N =&gt; (N : ℝ) ^ (-(5 / 2 : ℝ)) * tripleSum Gt X)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      (B := fun X : Config d N =&gt; (N : ℝ) ^ (-(5 / 2 : ℝ)) * pairSumOrdered Bt X)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      (c1 := 2 / (N : ℝ)) haJ0 haT0 haB0 (hae N hN)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      (Q84e.q84e_measurable_Fstat hJm).aestronglyMeasurable
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      (Q84e.q84e_measurable_scaledTriple hGm _).aestronglyMeasurable
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      (Q84e.q84e_measurable_scaledPair hBm _).aestronglyMeasurable wJ wT wB
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have T4 := hCz f hf N hN
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  -- arithmetic
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have harith := Q84e.q84e_arith hN1 hc0 hK₁ hCu0 hD hCz0
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  calc _ ≤ ENNReal.ofReal (Real.sqrt a₁) + ENNReal.ofReal (Real.sqrt a₁) +
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>        ENNReal.ofReal (|2 / (N : ℝ)| * Real.sqrt aJ + Real.sqrt aT + Real.sqrt aB) +
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        ENNReal.ofReal (Cz * posSeminorm (8 * d + 80) f * (N : ℝ) ^ (-(1 / 2 : ℝ))) := by
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        gcongr
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    _ = ENNReal.ofReal (Real.sqrt a₁ + Real.sqrt a₁ +
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>          (|2 / (N : ℝ)| * Real.sqrt aJ + Real.sqrt aT + Real.sqrt aB) +
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>          Cz * posSeminorm (8 * d + 80) f * (N : ℝ) ^ (-(1 / 2 : ℝ))) := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        have hz : 0 ≤ Cz * posSeminorm (8 * d + 80) f * (N : ℝ) ^ (-(1 / 2 : ℝ)) :=
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>          mul_nonneg (mul_nonneg hCz0 hD) (Real.rpow_nonneg hNp.le _)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>        have hsum : 0 ≤ |2 / (N : ℝ)| * Real.sqrt aJ + Real.sqrt aT + Real.sqrt aB := by positivity
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        rw [← ENNReal.ofReal_add (by positivity) (by positivity),
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          ← ENNReal.ofReal_add (by positivity) hsum, ← ENNReal.ofReal_add (by positivity) hz]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    _ ≤ _ := ENNReal.ofReal_le_ofReal harith
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>end HRS
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>namespace HRS
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>example := (@normal_form_proof : type_of% @HRS.normal_form)
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>end HRS
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>end
+</span></code></pre></main></body></html>

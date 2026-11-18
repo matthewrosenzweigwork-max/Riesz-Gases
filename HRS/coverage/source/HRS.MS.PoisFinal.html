@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.PoisFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.PoisFinal</code></h1><p><a href="../../lean/HRS/MS/PoisFinal.lean">Open the unaltered Lean file</a> · 117 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.PoisResAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Thermal
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># POIS-FINAL: the three Poisson rows from the master theorem `pois_resolvent`
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* `affine_poisson_proof : type_of% @HRS.Whole.affine_poisson` (S4.2),
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* `affine_poisson_higher_proof : type_of% @HRS.Whole.affine_poisson_higher` (S4.3),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* `affine_poisson_deriv_proof : type_of% @HRS.Whole.affine_poisson_deriv` (S4.8b).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>All three are read off `HRS.MS.PoisRes.pois_resolvent` (the resolvent integral `χ = ∫_0^∞ P_t r dt`).
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>For S4.2/S4.3 the data `r ∈ C_b^m` is used with `D = cbNorm m r` (derivatives of order `1..m`) and
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`D&#x27; = cbNorm 2 r` (orders `≤ 2`); the master theorem provides the low-order bounds for the same `χ`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>The hypothesis `Integrable r μ` of the frozen statements is not needed (it is automatic).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>`d ≥ 1` is not needed either (the proof of the master theorem treats `d = 0` uniformly).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>Helper lemmas carry the prefix `rf_`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>-/
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open MeasureTheory Set Filter Topology
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open scoped NNReal ContDiff
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS HRS.Whole
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>noncomputable section
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>namespace HRS.MS.PoisFinal
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>variable {d : ℕ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem rf_cb_nonneg {k : ℕ} (r : Euc d → ℝ) : 0 ≤ cbNorm k r :=
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  Finset.sum_nonneg fun j _ =&gt; Real.iSup_nonneg fun z =&gt; norm_nonneg _
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>theorem rf_cb_le {k : ℕ} {r : Euc d → ℝ} (h : MemCb k r) {j : ℕ} (hj : j ≤ k) (y : Euc d) :
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    ‖iteratedFDeriv ℝ j r y‖ ≤ cbNorm k r := by
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  unfold cbNorm
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  calc ‖iteratedFDeriv ℝ j r y‖ ≤ ⨆ z, ‖iteratedFDeriv ℝ j r z‖ := le_ciSup (h.2 j hj) y
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    _ ≤ _ := Finset.single_le_sum (f := fun j =&gt; ⨆ z : Euc d, ‖iteratedFDeriv ℝ j r z‖)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        (fun _ _ =&gt; Real.iSup_nonneg fun z =&gt; norm_nonneg _) (Finset.mem_range.2 (by omega))
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>theorem rf_memCb_two {m : ℕ} (hm : 2 ≤ m) {r : Euc d → ℝ} (h : MemCb m r) : MemCb 2 r :=
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  ⟨h.1.of_le (by exact_mod_cast hm), fun j hj =&gt; h.2 j (hj.trans hm)⟩
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>theorem rf_hasCb_two {m : ℕ} (hm : 2 ≤ m) {Mb : ℝ} {B : Euc d → Euc d} (h : HasCbBound m Mb B) :
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    HasCbBound 2 Mb B :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  ⟨h.1.of_le (by exact_mod_cast hm), fun j hj x =&gt; h.2 j (hj.trans hm) x⟩
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- the `IsPoissonSolution` conclusions from the master theorem data at level `2`. -/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem rf_isSol {q : ℝ} {B : Euc d → Euc d} {μ : Measure (Euc d)} {r : Euc d → ℝ} {χ : Euc d → ℝ}
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    {C2 Cl2 : ℝ} (hr : MemCb 2 r) (h2 : ContDiff ℝ 2 χ) (hint : Integrable χ μ)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (hmean : ∫ x, χ x ∂μ = 0) (heq : ∀ x, poissonOp (fun x =&gt; -q • x + B x) χ x = r x)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    (hder : ∀ j : ℕ, 1 ≤ j → j ≤ 2 → ∀ x, ‖iteratedFDeriv ℝ j χ x‖ ≤ C2 * cbNorm 2 r)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (hlog : ∀ x, |χ x| ≤ Cl2 * (cbNorm 2 r + cbNorm 2 r) * (1 + Real.log (2 + ‖x‖))) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    IsPoissonSolution (fun x =&gt; -q • x + B x) μ r (2 * |Cl2| + 2 * |C2|) χ := by
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hcb := rf_cb_nonneg (k := 2) r
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  refine ⟨h2, hint, hmean, heq, fun x =&gt; ?_, fun x y =&gt; ?_⟩
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  · refine (hlog x).trans ?_
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    have hl : 0 ≤ 1 + Real.log (2 + ‖x‖) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      have := Real.log_nonneg (show (1 : ℝ) ≤ 2 + ‖x‖ by linarith [norm_nonneg x])
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      linarith
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    have : Cl2 * (cbNorm 2 r + cbNorm 2 r) ≤ (2 * |Cl2| + 2 * |C2|) * cbNorm 2 r := by
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      nlinarith [le_abs_self Cl2, abs_nonneg C2, mul_nonneg hcb (abs_nonneg Cl2),
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        mul_nonneg hcb (abs_nonneg C2)]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    nlinarith [mul_le_mul_of_nonneg_right this hl]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  · have h1 : ‖gradient χ x‖ = ‖iteratedFDeriv ℝ 1 χ x‖ := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      rw [norm_iteratedFDeriv_one]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      unfold gradient
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      exact (InnerProductSpace.toDual ℝ (Euc d)).symm.norm_map _
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    rw [h1]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    have a1 := hder 1 le_rfl (by norm_num) x
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    have a2 := hder 2 (by norm_num) le_rfl y
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    nlinarith [le_abs_self C2, abs_nonneg Cl2, mul_nonneg hcb (abs_nonneg Cl2),
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      mul_nonneg hcb (abs_nonneg C2), mul_le_mul_of_nonneg_right (le_abs_self C2) hcb]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>/-- **S4.2** `affine_poisson`. -/
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>theorem affine_poisson_proof : type_of% @HRS.Whole.affine_poisson := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  intro d hd q Mb m₂ hq
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  obtain ⟨Cm, Cl, C2, Cl2, h⟩ := HRS.MS.PoisRes.pois_resolvent (d := d) q Mb m₂ hq 2 le_rfl
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  refine ⟨2 * |Cl2| + 2 * |C2|, fun B hB μ hμ hμ2 hm2 r hr _ hcen =&gt; ?_⟩
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hD : ∀ j : ℕ, 1 ≤ j → j ≤ 2 → ∀ x, ‖iteratedFDeriv ℝ j r x‖ ≤ cbNorm 2 r :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    fun j h1 h2 x =&gt; rf_cb_le hr h2 x
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨χ, h1, h2, h3, h4, -, -, h7⟩ := h B hB μ hμ hμ2 hm2 r hr.1 (cbNorm 2 r) hD hcen
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  obtain ⟨g1, g2⟩ := h7 (cbNorm 2 r) hD
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  exact ⟨χ, rf_isSol hr h1 h2 h3 h4 g1 (g2 (cbNorm 2 r) (fun x =&gt; rf_cb_le hr (Nat.zero_le _) x |&gt;
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    fun h =&gt; by simpa using h))⟩
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>/-- **S4.3** `affine_poisson_higher`. -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>theorem affine_poisson_higher_proof : type_of% @HRS.Whole.affine_poisson_higher := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  intro d hd q Mb m₂ hq m hm
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  obtain ⟨Cm, Cl, C2, Cl2, h⟩ := HRS.MS.PoisRes.pois_resolvent (d := d) q Mb m₂ hq m hm
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  refine ⟨2 * |Cl2| + 2 * |C2|, (m : ℝ) * |Cm|, fun B hB μ hμ hμ2 hm2 r hr _ hcen =&gt; ?_⟩
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hr2 := rf_memCb_two hm hr
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hD : ∀ j : ℕ, 1 ≤ j → j ≤ m → ∀ x, ‖iteratedFDeriv ℝ j r x‖ ≤ cbNorm m r :=
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    fun j h1 h2 x =&gt; rf_cb_le hr h2 x
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hD2 : ∀ j : ℕ, 1 ≤ j → j ≤ 2 → ∀ x, ‖iteratedFDeriv ℝ j r x‖ ≤ cbNorm 2 r :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    fun j h1 h2 x =&gt; rf_cb_le hr2 h2 x
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  obtain ⟨χ, h1, h2, h3, h4, h5, -, h7⟩ := h B hB μ hμ hμ2 hm2 r hr.1 (cbNorm m r) hD hcen
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  obtain ⟨g1, g2⟩ := h7 (cbNorm 2 r) hD2
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hM0 : ∀ x, ‖r x‖ ≤ cbNorm 2 r := fun x =&gt; by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have := rf_cb_le hr2 (Nat.zero_le _) x
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    simpa using this
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  refine ⟨χ, rf_isSol hr2 (h1.of_le (by exact_mod_cast hm)) h2 h3 h4 g1 (g2 _ hM0), h1, fun x =&gt; ?_⟩
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hcb := rf_cb_nonneg (k := m) r
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hb : ∀ j : Fin m, ‖iteratedFDeriv ℝ ((j : ℕ) + 1) χ (x j)‖ ≤ |Cm| * cbNorm m r := fun j =&gt;
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (h5 ((j : ℕ) + 1) (by omega) (by omega) (x j)).trans
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (mul_le_mul_of_nonneg_right (le_abs_self _) hcb)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  calc ∑ j : Fin m, ‖iteratedFDeriv ℝ ((j : ℕ) + 1) χ (x j)‖ ≤ ∑ _j : Fin m, |Cm| * cbNorm m r :=
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>        Finset.sum_le_sum fun j _ =&gt; hb j
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    _ = (m : ℝ) * |Cm| * cbNorm m r := by simp; ring
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>/-- **S4.8b** `affine_poisson_deriv`. -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>theorem affine_poisson_deriv_proof : type_of% @HRS.Whole.affine_poisson_deriv := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  intro d hd q Mb m₂ hq m hm
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  obtain ⟨Cm, Cl, C2, Cl2, h⟩ := HRS.MS.PoisRes.pois_resolvent (d := d) q Mb m₂ hq m hm
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  refine ⟨Cm, fun B hB μ hμ hμ2 hm2 r hr D hD hcen =&gt; ?_⟩
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  obtain ⟨χ, h1, h2, h3, h4, h5, -⟩ := h B hB μ hμ hμ2 hm2 r hr D hD hcen
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  exact ⟨χ, h1, h2, h3, h4, h5⟩
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>end HRS.MS.PoisFinal
+</span></code></pre></main></body></html>

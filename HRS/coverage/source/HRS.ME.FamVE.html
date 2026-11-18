@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.FamVE · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.FamVE</code></h1><p><a href="../../lean/HRS/ME/FamVE.lean">Open the unaltered Lean file</a> · 100 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.ME.FamV (packet V4b): upper bound of `critical_family_sharpness`
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>`rate_W2_pointwise_upper`: one constant `C` with `W₂(rateLaw, rateGaussian) ≤ C N^{-1/2}` for every `θ ∈ [0,R]`, every thermal density
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>`ρθ` of `V_θ` and every `N ≥ 2`.  Proof: for given `θ` choose a stationary Gibbs flow (`HRS.MD.EQLawFlow.eq_flow_exists_proof`) and a stationary
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Gaussian field (`HRS.Main.stationaryField_exists`) on the window `[0,1]`; the path bound `rate_family_path_bound` (V2) bounds the `W₂` distance of their
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>path laws by `C₀ N^{-1/2}`; the evaluation map `rateEval` (V3a) has operator norm `K` independent of `θ`, carries the path laws to `rateLaw` (V3a) and
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`rateGaussian` (V3b), and does not increase `W₂` by more than the factor `K` (`HRS.Main.wassersteinE_map_clm_le`).
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`critical_family_sharpness_upper` integrates the pointwise bound over `[0,R]`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.ME.FamVB
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.ME.FamVC
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>import HRS.ME.FamVD
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>import HRS.ME.RetProj
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>import HRS.ME.FamVFinal
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.ME.FamV
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>theorem rate_W2_pointwise_upper {d : ℕ} (hd : 2 ≤ d) (hs0 : 0 ≤ (d : ℝ) / 2) (hsd : (d : ℝ) / 2 &lt; d)
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (β : ℝ) (hβ : 0 &lt; β) (k : Lattice d) (R : ℝ) :
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ θ ∈ Set.Icc (0 : ℝ) R, ∀ ρθ : Torus d → ℝ,
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>      IsThermalDensity (periodicRiesz d ((d : ℝ) / 2)) (rateV k β θ) β ρθ →
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>      ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>        wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ) (Main.rateGaussian d ((d : ℝ) / 2) k β ρθ) ≤
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>          ENNReal.ofReal (C * (N : ℝ) ^ (-(1 : ℝ) / 2)) := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  set m : ℝ := 24 * (d : ℝ) + 240 with hmdef
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hm : 24 * (d : ℝ) + 240 ≤ m := le_rfl
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hm2 : (d : ℝ) &lt; 2 * m := by rw [hmdef]; nlinarith
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  have hmmax : max ((d : ℝ) + 1) ((d : ℝ) / 2 + 2) &lt; m := by
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    rw [hmdef]; refine max_lt ?_ ?_ &lt;;&gt; nlinarith
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  obtain ⟨C₀, hC₀, h⟩ := rate_family_path_bound hd hs0 hsd β hβ k R m hm 1 one_pos
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  set L := rateEval d m 1 zero_le_one k with hL
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  refine ⟨(‖L‖ + 1) * C₀, by positivity, fun θ hθ ρθ hρθ N hN =&gt; ?_⟩
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hV : Torus.IsSmooth (rateV k β θ) := rateV_isSmooth k β θ
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  obtain ⟨Ω, _, P, _, X₀, W, X, hX⟩ :=
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    HRS.MD.EQLawFlow.eq_flow_exists_proof hd hs0 hsd (rateV k β θ) hV hβ hN (0 + 1) (by norm_num)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  obtain ⟨Ω&#x27;, _, P&#x27;, _, Z, hZ⟩ :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    Main.stationaryField_exists hd hs0 hsd hβ (rateV k β θ) hV ρθ hρθ m hmmax
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hX&#x27; : HRS.LZ.IsStationaryGibbsFlow P ((d : ℝ) / 2) hs0 hsd (rateV k β θ) β hβ 1 X₀ W X := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    rwa [zero_add] at hX
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hW := h θ hθ ρθ hρθ N hN P X₀ W X hX&#x27;.flow hX&#x27;.filtered hX&#x27;.init P&#x27; Z hZ
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hz : AEMeasurable (Main.windowZeta m 1 0 P X) P :=
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    HRS.MD.EQInterp.windowZeta_aemeasurable hd hs0 hsd (rateV k β θ) hV hβ hN le_rfl zero_le_one P hX hm2
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hp : AEMeasurable (Main.windowPath m 1 0 Z) P&#x27; :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    HRS.ME.Ret.aemeasurable_windowPath_Icc P&#x27; Z hZ.meas
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      (by filter_upwards [hZ.cont] with ω hω using hω.mono Set.Icc_subset_Ici_self)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  haveI : IsProbabilityMeasure (law P (Main.windowZeta m 1 0 P X)) :=
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (Measure.isProbabilityMeasure_map_iff hz).2 inferInstance
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  haveI : IsProbabilityMeasure (law P&#x27; (Main.windowPath m 1 0 Z)) :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (Measure.isProbabilityMeasure_map_iff hp).2 inferInstance
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have h1 := rate_zeta_law hd hs0 hsd hβ k θ hN hm2 zero_le_one P hX
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have h2 := rate_gauss_law hd hs0 hsd hβ k (rateV k β θ) ρθ hV hρθ zero_le_one P&#x27; Z hZ
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  rw [← h1, ← h2]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  refine (Main.wassersteinE_map_clm_le L 2 (by norm_num) _ _).trans ?_
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  calc ENNReal.ofReal ‖L‖ * wassersteinE 2 (law P (Main.windowZeta m 1 0 P X)) (law P&#x27; (Main.windowPath m 1 0 Z))
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      ≤ ENNReal.ofReal ‖L‖ * ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) := by gcongr
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    _ = ENNReal.ofReal (‖L‖ * (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2))) :=
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        (ENNReal.ofReal_mul (norm_nonneg _)).symm
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    _ ≤ ENNReal.ofReal ((‖L‖ + 1) * C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        apply ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        have : 0 ≤ C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2) := by positivity
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>        nlinarith [norm_nonneg L]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>theorem critical_family_sharpness_upper {d : ℕ} (hd : 2 ≤ d) (hs0 : 0 ≤ (d : ℝ) / 2) (hsd : (d : ℝ) / 2 &lt; d)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (β : ℝ) (hβ : 0 &lt; β) (k : Lattice d) :
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ ρ : ℝ → Torus d → ℝ,
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      (∀ θ, IsThermalDensity (periodicRiesz d ((d : ℝ) / 2)) (rateV k β θ) β (ρ θ)) →
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        ∫⁻ θ in Set.Icc (0 : ℝ) (16 * (1 + β * rieszCoeff d ((d : ℝ) / 2) k)),
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>            wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>              (Main.rateGaussian d ((d : ℝ) / 2) k β (ρ θ)) ≤
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          ENNReal.ofReal (C * (N : ℝ) ^ (-(1 : ℝ) / 2)) := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  set R : ℝ := 16 * (1 + β * rieszCoeff d ((d : ℝ) / 2) k) with hR
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨C₀, hC₀, h⟩ := rate_W2_pointwise_upper hd hs0 hsd β hβ k R
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  refine ⟨C₀ * (max R 0 + 1), by positivity, fun ρ hρ N hN =&gt; ?_⟩
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hpt : ∀ θ ∈ Set.Icc (0 : ℝ) R, wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      (Main.rateGaussian d ((d : ℝ) / 2) k β (ρ θ)) ≤ ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    fun θ hθ =&gt; h θ hθ (ρ θ) (hρ θ) N hN
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  calc ∫⁻ θ in Set.Icc (0 : ℝ) R, wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>          (Main.rateGaussian d ((d : ℝ) / 2) k β (ρ θ))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      ≤ ∫⁻ θ in Set.Icc (0 : ℝ) R, ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) :=
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>        setLIntegral_mono&#x27; measurableSet_Icc hpt
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    _ = ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) * volume (Set.Icc (0 : ℝ) R) := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        rw [setLIntegral_const]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    _ ≤ ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2)) * ENNReal.ofReal (max R 0 + 1) := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>        gcongr
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>        rw [Real.volume_Icc]
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        apply ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        linarith [le_max_left R 0, le_max_right R 0]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    _ = ENNReal.ofReal (C₀ * (N : ℝ) ^ (-(1 : ℝ) / 2) * (max R 0 + 1)) :=
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        (ENNReal.ofReal_mul (by positivity)).symm
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    _ = ENNReal.ofReal (C₀ * (max R 0 + 1) * (N : ℝ) ^ (-(1 : ℝ) / 2)) := by ring_nf
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>end HRS.ME.FamV
+</span></code></pre></main></body></html>

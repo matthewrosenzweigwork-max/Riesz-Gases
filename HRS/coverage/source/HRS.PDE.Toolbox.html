@@ -1,0 +1,393 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.Toolbox · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.Toolbox</code></h1><p><a href="../../lean/HRS/PDE/Toolbox.lean">Open the unaltered Lean file</a> · 392 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.ForwardEq
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.KernelInputsD1
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Analysis.Category
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.PDE.Toolbox.Quadratic
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.PDE.Toolbox.CoeffBounds
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.PDE.Toolbox.Product
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.PDE.Toolbox.Friedrichs
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.PDE.Toolbox.Symbol
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>import HRS.PDE.Toolbox.SameFunction
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>import HRS.PDE.Toolbox.Weighted
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.PDE.Toolbox.Levy
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>/-!
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a># Torus PDE layer IV: Appendix C auxiliary lemmas (torus versions) and the kernel inputs of the
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>regime-R2 estimates
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>Sources (HRS periodic main paper, Appendix C `B:app:aux`, lines 12221–12325):
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* Lemma C.1 `B:lem:coefficient-bounds` (12224–12226);
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* Lemma C.3 `B:lem:quadratic-toolbox` (12253–12268), items (i)–(v);
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* Lemma C.4 `lem:periodic-same-function` (12276–12284);
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* Lemma C.5 `B:lem:product-toolbox` (12298–12305), items (i)–(iii);
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* Lemma C.6 `B:lem:sqrt-lipschitz` (12311–12313) is `HRS.sqrt_lipschitz` (ANAL-01);
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* Lemma C.7 `B:lem:friedrichs` (12319–12321);
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* Lemma C.2 `B:lem:mollified-kernels` (12235–12237) is package KERN-01, not stated here.
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>## Scope and representation (SPEC_NOTES §1, §4)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>* C.3 is stated in the source &quot;on `𝕋^d` or `ℝ^d`&quot;; **only the torus versions are specified here**;
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  the `ℝ^d` versions belong to the whole-space packages and are recorded as not covered.
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* A Fourier multiplier `K` with symbol `𝔪` acts on functions through `coeffOf`; its quadratic form
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  is `symbolForm 𝔪 u v = Re ∑_k 𝔪(k) û(k) \overline{v̂(k)}` (meaningful under the stated summability,
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  which is part of every conclusion).  `multiplierForm` of `HRS/Kernel/Riesz.lean` (real basis) is
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  the same form (`symbolForm_eq_multiplierForm`).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>* C.4 defines `⟨κ*(aw), w⟩` for a non-integrable odd kernel by symmetric truncation; the statement
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  is given in that form (symmetrized double integral + convergence of the truncations).  The
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  identification of this real-space pairing with the Fourier-side pairing for `κ = v·∇g` is the
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  **required kernel fact** `rieszGrad_pairing_symmetrized` (extends KERN-01).
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>* All real suprema (`cbNorm`, `supNorm`, `holderSeminorm`) are applied only under hypotheses
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  (`IsCk`, `IsLipschitz`) that make them honest; on the compact torus a `C^k` function has bounded
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  derivatives.
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>-/
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>noncomputable section
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>open scoped ENNReal NNReal BigOperators ComplexConjugate
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>namespace HRS.PDE
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>variable {d : ℕ}
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>/-! ### Function-level forms and function classes -/
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- `B(u,v) = ⟨Ku, v⟩_{L²} = Re ∑_k 𝔪(k) û(k) \overline{v̂(k)}` for a real multiplier. -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>def symbolForm (𝔪 : Lattice d → ℝ) (u v : Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  (bilinForm 𝔪 (coeffOf u) (coeffOf v)).re
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>/-- The quadratic form `∑_k 𝔪(k)|û(k)|²` is finite. -/
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>def SymbolFormFinite (𝔪 : Lattice d → ℝ) (u : Torus d → ℝ) : Prop :=
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  Summable fun k =&gt; 𝔪 k * ‖coeffOf u k‖ ^ 2
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- `‖w‖²_{L²(𝕋^d)}`. -/
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>def l2NormSq (w : Torus d → ℝ) : ℝ := ∫ x, w x ^ 2
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>/-- `u ∈ C^{1,1}_b(𝕋^d)` with Lipschitz constant `L` of the gradient. -/
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>def IsC11 (L : ℝ) (u : Torus d → ℝ) : Prop :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  Torus.IsCk 1 u ∧ LipschitzWith (Real.toNNReal L) (fun x =&gt; fderiv ℝ (Torus.lift u) x)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- `C^k` functions of two torus variables, through the lift to `ℝ^d × ℝ^d`. -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>def lift2 (R : Torus d → Torus d → ℝ) : Euc d × Euc d → ℝ := fun p =&gt; R (Torus.mk p.1) (Torus.mk p.2)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- `R ∈ C^k(𝕋^d × 𝕋^d)`. -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>def IsCk2 (k : ℕ) (R : Torus d → Torus d → ℝ) : Prop := ContDiff ℝ k (lift2 R)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>/-- The `C^k` norm (sum over orders) of a function of two torus variables. -/
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>def cbNorm2 (k : ℕ) (R : Torus d → Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  ∑ j ∈ Finset.range (k + 1), ⨆ p : Euc d × Euc d, ‖iteratedFDeriv ℝ j (lift2 R) p‖
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>/-- The symbol class of Lemma C.3: `𝔪` is the restriction to `ℤ^d` of a real, even, nonnegative
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>function on `ℝ^d`, smooth away from `0` and homogeneous of degree `θ` there, with `𝔪(0) = 0`
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>(lines 12254–12255). -/
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>structure IsHomogSymbol (θ : ℝ) (𝔪 : Lattice d → ℝ) : Prop where
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  exists_ext : ∃ m₀ : Euc d → ℝ,
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    ContDiffOn ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) m₀ {ξ | ξ ≠ 0} ∧ (∀ ξ, m₀ (-ξ) = m₀ ξ) ∧ (∀ ξ, 0 ≤ m₀ ξ) ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      (∀ c : ℝ, 0 &lt; c → ∀ ξ, m₀ (c • ξ) = c ^ θ * m₀ ξ) ∧ (∀ k : Lattice d, k ≠ 0 → 𝔪 k = m₀ (Lattice.toEuc k))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  zero : 𝔪 0 = 0
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>/-- The Lévy-kernel representation of Lemma C.3(ii) (lines 12257–12261): an even kernel `𝔨`,
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>smooth away from `0`, with `|𝔨(z)| ≤ C(|z|^{-d-θ} + 1)`, such that
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>`∫ 𝔨(z)(1 - cos 2πk·z) dz = 𝔪(k)` (absolutely convergent), the principal-value formula
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>`Ku(x) = lim_{ε→0} ∫_{|z|&gt;ε} 𝔨(z)(u(x) - u(x-z)) dz` for `u ∈ C^{1,1}_b` (pointwise, where `Ku`
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>is the function with coefficients `𝔪 û`), and the bilinear identity
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>`B(u,v) = ½ ∬ 𝔨(z) δ_z u(x) δ_z v(x) dz dx` (absolutely convergent) for Lipschitz `u, v`. -/
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>structure IsLevyKernel (θ : ℝ) (𝔪 : Lattice d → ℝ) (𝔨 : Torus d → ℝ) : Prop where
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  even : ∀ z, 𝔨 (-z) = 𝔨 z
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  smooth : Torus.IsSmoothOffZero 𝔨
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  bound : ∃ C : ℝ, ∀ z : Torus d, z ≠ 0 → |𝔨 z| ≤ C * (Torus.tdist z 0 ^ (-(d : ℝ) - θ) + 1)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  symbol : ∀ k : Lattice d, Integrable (fun z =&gt; 𝔨 z * (1 - Torus.cosMode k z)) ∧
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    ∫ z, 𝔨 z * (1 - Torus.cosMode k z) = 𝔪 k
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  pv : ∀ (L : ℝ) (u : Torus d → ℝ), IsC11 L u → ∃ Ku : Torus d → ℝ,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    MemLp Ku 2 volume ∧ coeffOf Ku = (fun k =&gt; ((𝔪 k : ℝ) : ℂ) * coeffOf u k) ∧
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    ∀ x, Tendsto (fun ε : ℝ =&gt; ∫ z in {z | ε &lt; Torus.tdist z 0}, 𝔨 z * (u x - u (x - z)))
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      (𝓝[&gt;] 0) (𝓝 (Ku x))
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  bilinear : ∀ (Lu Lv : ℝ) (u v : Torus d → ℝ), Torus.IsLipschitz Lu u → Torus.IsLipschitz Lv v →
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    Integrable (fun p : Torus d × Torus d =&gt; 𝔨 p.2 * (u p.1 - u (p.1 - p.2)) * (v p.1 - v (p.1 - p.2))) ∧
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    symbolForm 𝔪 u v =
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      (1 / 2) * ∫ p : Torus d × Torus d, 𝔨 p.2 * (u p.1 - u (p.1 - p.2)) * (v p.1 - v (p.1 - p.2))
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>/-! ### Lemma C.1 -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>/-- Lemma C.1 `B:lem:coefficient-bounds` (lines 12224–12226), first assertion: for `μ ∈ 𝒫(𝕋^d)` with
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>`‖μ‖_{C^{m+3}} ≤ Λ` and `V ∈ C^{m+3}` with `‖V‖_{C^{m+3}} ≤ VB`, the drift `b = M∇g*μ - ∇V`
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>(cancellation convention) obeys `B:eq:coeff-bounds` (line 1862):
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>`‖b‖_{C^{m+1}} + sup_{|q|=1} ‖D_q μ‖_{C^{m+1}} + ‖μ‖_{C^{m+3}} ≤ C = C(d,s,m,|M|,Λ,‖V‖_{C^{m+3}})`. -/
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>theorem coefficient_bounds (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    (MB Λ VB : ℝ) :
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    ∃ C : ℝ, ∀ (M : Matrix (Fin d) (Fin d) ℝ) (_ : MatBound MB M) (V : Torus d → ℝ)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      (_ : VHyp m VB V) (μ : Torus d → ℝ) (_ : IsProbDensity μ) (_ : Torus.IsCk (m + 3) μ)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      (_ : Torus.cbNorm (m + 3) μ ≤ Λ),
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      Torus.IsCk (m + 1) (fun x =&gt; Torus.matVec M (convGradConv (periodicRieszGrad d s) μ x) - Torus.grad V x) ∧
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      Torus.cbNorm (m + 1) (fun x =&gt; Torus.matVec M (convGradConv (periodicRieszGrad d s) μ x) - Torus.grad V x) +
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        (⨆ q : {q : Euc d // ‖q‖ = 1}, Torus.cbNorm (m + 1) (fun x =&gt; inner ℝ q.1 (Torus.grad μ x))) +
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        Torus.cbNorm (m + 3) μ ≤ C := by
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  exact coefficient_bounds_aux hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>/-- Lemma C.1, second assertion: for two such densities,
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>`‖∇g*(μ₁-μ₂)‖_{C^{m+1}_b} ≤ C ‖μ₁-μ₂‖_{C^{m+2}}`. -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>theorem coefficient_bounds_diff (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (Λ : ℝ) :
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    ∃ C : ℝ, ∀ (μ₁ μ₂ : Torus d → ℝ) (_ : IsProbDensity μ₁) (_ : IsProbDensity μ₂)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      (_ : Torus.IsCk (m + 3) μ₁) (_ : Torus.IsCk (m + 3) μ₂)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      (_ : Torus.cbNorm (m + 3) μ₁ ≤ Λ) (_ : Torus.cbNorm (m + 3) μ₂ ≤ Λ),
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      Torus.IsCk (m + 1) (convGradConv (periodicRieszGrad d s) (μ₁ - μ₂)) ∧
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      Torus.cbNorm (m + 1) (convGradConv (periodicRieszGrad d s) (μ₁ - μ₂)) ≤ C * Torus.cbNorm (m + 2) (μ₁ - μ₂) := by
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  exact coefficient_bounds_diff_aux hd s hs0 hsd m Λ
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-! ### Lemma C.3 (torus version) -/
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>/-- The symbols `𝔪_l` of `B:eq:Kl-def` (lines 1831–1834) belong to the symbol class of Lemma C.3
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>with `θ = s + 2 - d ∈ (0,2)` (for `d - 2 &lt; s &lt; d` and the standing assumption `0 ≤ s`, which is
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>implied by `d - 2 &lt; s` when `d ≥ 2`; for `d = 1` and `s &lt; 0` the constant `c_{1,s}` is negative). -/
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>theorem symbolK_isHomogSymbol (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs1 : (d : ℝ) - 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    (q : Euc d) : IsHomogSymbol (thetaOrder d s) (symbolK d s q) := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  refine ⟨⟨SymAux.symExt d s q, SymAux.symExt_contDiffOn d s q, SymAux.symExt_neg d s q,
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    SymAux.symExt_nonneg hd hs0 hsd q, fun c hc ξ =&gt; SymAux.symExt_smul d s q c hc ξ,
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    fun k hk =&gt; SymAux.symExt_eq d s q k hk⟩, SymAux.symbolK_zero d s q⟩
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>/-- The complex coefficient form agrees with the real-basis `multiplierForm` of
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>`HRS/Kernel/Riesz.lean` for `L²` functions with finite form. -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>theorem symbolForm_eq_multiplierForm (𝔪 : Lattice d → ℝ) (h0 : 𝔪 0 = 0)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (heven : ∀ k, 𝔪 (-k) = 𝔪 k) (u v : Torus d → ℝ) (hu : MemLp u 2 volume) (hv : MemLp v 2 volume)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (hfu : SymbolFormFinite 𝔪 u) (hfv : SymbolFormFinite 𝔪 v) :
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    symbolForm 𝔪 u v = multiplierForm 𝔪 u v := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  unfold symbolForm bilinForm multiplierForm SymbolFormFinite at *
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  simp only [coeffOf_eq_fcoefC] at *
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  exact SymAux.form_eq_multiplier 𝔪 h0 heven (hu.integrable one_le_two) (hv.integrable one_le_two)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    hfu hfv
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>/-- Lemma C.3(i) (line 12256): for a symbol of the class with `θ ∈ (0,2)`, `B` is symmetric,
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>positive semidefinite, and `B(u,u) ≤ C ‖u‖²_{H^{θ/2}}` (all forms finite for `u, v ∈ H^{θ/2}`). -/
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>theorem quadratic_toolbox_basic (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2) (𝔪 : Lattice d → ℝ)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    (h𝔪 : IsHomogSymbol θ 𝔪) :
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    ∃ C : ℝ, ∀ u v : Torus d → ℝ, MemSobolev (θ / 2) u → MemSobolev (θ / 2) v →
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      SymbolFormFinite 𝔪 u ∧ SymbolFormFinite 𝔪 v ∧
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      Summable (fun k =&gt; ((𝔪 k : ℝ) : ℂ) * (coeffOf u k * conj (coeffOf v k))) ∧
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      symbolForm 𝔪 u v = symbolForm 𝔪 v u ∧ 0 ≤ symbolForm 𝔪 u u ∧
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      symbolForm 𝔪 u u ≤ C * sobolevNorm (θ / 2) u ^ 2 := by
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  obtain ⟨m₀, hsm, -, hnn, hhom, hext⟩ := h𝔪.exists_ext
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  obtain ⟨A, hA⟩ := symbol_bound θ hθ0 𝔪 m₀ hsm hnn hhom hext h𝔪.zero
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  refine ⟨A, fun u v hu hv =&gt; ?_⟩
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  obtain ⟨h1, h2, h3, h4, h5, h6, -⟩ := quad_core θ 𝔪 A hA u v hu hv
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  exact ⟨h1, h2, h3, h4, h5, h6⟩
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>/-- Lemma C.3(ii) (lines 12257–12261), torus version: the Lévy kernel `𝔨` exists
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>(`IsLevyKernel`: even, smooth off `0`, bound `C(|z|^{-d-θ}+1)`, `∫𝔨(1-cos 2πk·z) = 𝔪(k)`,
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>principal-value formula for `C^{1,1}_b` functions, bilinear identity for Lipschitz functions). -/
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>theorem quadratic_toolbox_kernel (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    (𝔪 : Lattice d → ℝ) (h𝔪 : IsHomogSymbol θ 𝔪) :
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    ∃ 𝔨 : Torus d → ℝ, IsLevyKernel θ 𝔪 𝔨 := by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  obtain ⟨m₀, hsm, he, -, hhom, hext⟩ := h𝔪.exists_ext
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have hd0 : 0 &lt; d := by omega
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hm := LevyAux.measurable_levyK (θ := θ) hd0 hθ0 hsm
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hev := LevyAux.levyK_even (θ := θ) he
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hI := LevyAux.levyK_integrable_sq hd0 hθ0 hθ2 hsm
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  have hsy := LevyAux.levyK_symbol 𝔪 hd0 hθ0 hθ2 hsm he hhom hext h𝔪.zero
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  refine ⟨LevyAux.levyK θ m₀, ?_⟩
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  exact
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    { even := hev
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      smooth := LevyAux.levyK_smooth hd0 θ hsm
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      bound := LevyAux.levyK_bound hd0 hθ0 hsm
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      symbol := hsy
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      pv := fun L u hu =&gt; LevyAux.levy_pv hm hev hI 𝔪 (fun k =&gt; (hsy k).2) hu.1 hu.2
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      bilinear := fun Lu Lv u v hu hv =&gt;
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        LevyAux.levy_bilinear hm hI 𝔪 (fun k =&gt; (hsy k).2) hu hv }
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>/-- Lemma C.3(iii) (lines 12262–12264), weighted symmetrization: for `0 ≤ a ∈ C^{1,1}_b` with
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>`m = √a` (Lipschitz by C.6) and Lipschitz `w`,
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>`B(aw,w) = B(mw,mw) + E`, `E = -½ ∬ 𝔨(z) w(x) w(x-z) (δ_z m(x))² dz dx`, and
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>`|E| ≤ C (‖∇m‖²_∞ + ‖m‖²_∞) ‖w‖²_{L²}` with `C` depending on the kernel only. -/
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>theorem quadratic_toolbox_weighted (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    (𝔪 : Lattice d → ℝ) (h𝔪 : IsHomogSymbol θ 𝔪) (𝔨 : Torus d → ℝ) (h𝔨 : IsLevyKernel θ 𝔪 𝔨) :
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    ∃ C : ℝ, ∀ (L La Lm Lw : ℝ) (a w : Torus d → ℝ), (∀ x, 0 ≤ a x) → IsC11 L a →
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      Torus.IsLipschitz La a → Torus.IsLipschitz Lm (fun x =&gt; Real.sqrt (a x)) →
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      Torus.IsLipschitz Lw w →
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      let m := fun x =&gt; Real.sqrt (a x)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      let E := symbolForm 𝔪 (fun x =&gt; a x * w x) w - symbolForm 𝔪 (fun x =&gt; m x * w x) (fun x =&gt; m x * w x)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      Integrable (fun p : Torus d × Torus d =&gt; 𝔨 p.2 * w p.1 * w (p.1 - p.2) * (m p.1 - m (p.1 - p.2)) ^ 2) ∧
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      E = -(1 / 2) * ∫ p : Torus d × Torus d, 𝔨 p.2 * w p.1 * w (p.1 - p.2) * (m p.1 - m (p.1 - p.2)) ^ 2 ∧
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      |E| ≤ C * (Lm ^ 2 + Torus.supNorm m ^ 2) * l2NormSq w := by
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  obtain ⟨C, -, hC⟩ := WeightAux.weighted_core (by omega : 1 ≤ d) hθ2
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    (LocInt.measurable_of_smoothOffZero h𝔨.smooth) h𝔨.bound
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  refine ⟨C, ?_⟩
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  intro L La Lm Lw a w ha0 _ _ hLm hLw m E
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  exact hC (symbolForm 𝔪) (fun Lu Lv u v hu hv =&gt; h𝔨.bilinear Lu Lv u v hu hv) Lm Lw
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    (fun x =&gt; Real.sqrt (a x)) w a hLm hLw (fun x =&gt; (Real.sq_sqrt (ha0 x)).symm)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>/-- For a symbol of the class, the quadratic form is nonnegative on the diagonal
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>(`𝔪 ≥ 0`, so `symbolForm 𝔪 u u = ∑_k 𝔪(k)|û(k)|² ≥ 0`, the series being `0` if not summable). -/
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>theorem symbolForm_self_nonneg {θ : ℝ} (𝔪 : Lattice d → ℝ) (h𝔪 : IsHomogSymbol θ 𝔪)
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    (u : Torus d → ℝ) : 0 ≤ symbolForm 𝔪 u u := by
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  obtain ⟨m₀, -, -, hnn, -, hext⟩ := h𝔪.exists_ext
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  have h0 : ∀ k, 0 ≤ 𝔪 k := fun k =&gt; by
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    by_cases hk : k = 0
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    · rw [hk, h𝔪.zero]
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    · rw [hext k hk]; exact hnn _
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  unfold symbolForm bilinForm
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have : ∀ k, ((𝔪 k : ℝ) : ℂ) * (coeffOf u k * conj (coeffOf u k)) =
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      ((𝔪 k * ‖coeffOf u k‖ ^ 2 : ℝ) : ℂ) := by
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    intro k
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    rw [Complex.mul_conj, Complex.normSq_eq_norm_sq]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    push_cast; ring
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  simp_rw [this]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  rw [← Complex.ofReal_tsum, Complex.ofReal_re]
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  exact tsum_nonneg fun k =&gt; mul_nonneg (h0 k) (sq_nonneg _)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>/-- Lemma C.3(iv) (line 12265), weighted comparison: if moreover `a ≥ λ₀ &gt; 0`, then
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>`B(w,w) ≤ λ₀⁻¹ B(mw,mw) + C(1+λ₀⁻¹)(‖√a‖²_{C^{0,1}} + ‖√(a/λ₀-1)‖²_{C^{0,1}} + 1) ‖w‖²_{L²}`. -/
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>theorem quadratic_toolbox_compare (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    (𝔪 : Lattice d → ℝ) (h𝔪 : IsHomogSymbol θ 𝔪) :
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    ∃ C : ℝ, ∀ (L lam0 Lm Lm&#x27; Lw : ℝ) (a w : Torus d → ℝ), 0 &lt; lam0 → (∀ x, lam0 ≤ a x) → IsC11 L a →
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>      Torus.IsLipschitz Lm (fun x =&gt; Real.sqrt (a x)) →
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      Torus.IsLipschitz Lm&#x27; (fun x =&gt; Real.sqrt (a x / lam0 - 1)) → Torus.IsLipschitz Lw w →
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>      let m := fun x =&gt; Real.sqrt (a x)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      symbolForm 𝔪 w w ≤ lam0⁻¹ * symbolForm 𝔪 (fun x =&gt; m x * w x) (fun x =&gt; m x * w x) +
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        C * (1 + lam0⁻¹) * (Torus.c01Norm m ^ 2 +
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>          Torus.c01Norm (fun x =&gt; Real.sqrt (a x / lam0 - 1)) ^ 2 + 1) * l2NormSq w := by
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  obtain ⟨𝔨, h𝔨⟩ := quadratic_toolbox_kernel hd θ hθ0 hθ2 𝔪 h𝔪
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  obtain ⟨C, -, hC⟩ := WeightAux.compare_core (by omega : 1 ≤ d) hθ2
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    (LocInt.measurable_of_smoothOffZero h𝔨.smooth) h𝔨.bound
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>  refine ⟨C, ?_⟩
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  intro L lam0 Lm Lm&#x27; Lw a w hl hla _ hLm hLm&#x27; hLw m
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  exact hC (symbolForm 𝔪) (fun Lu Lv u v hu hv =&gt; h𝔨.bilinear Lu Lv u v hu hv)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    (symbolForm_self_nonneg 𝔪 h𝔪) lam0 Lm Lm&#x27; Lw a w hl hla hLm hLm&#x27; hLw
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>/-- Lemma C.3(v) (line 12266), Cauchy–Schwarz for the form. -/
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>theorem quadratic_toolbox_cauchySchwarz (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2) (𝔪 : Lattice d → ℝ)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    (h𝔪 : IsHomogSymbol θ 𝔪) (u v : Torus d → ℝ) (hu : MemSobolev (θ / 2) u)
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    (hv : MemSobolev (θ / 2) v) :
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    |symbolForm 𝔪 u v| ≤ Real.sqrt (symbolForm 𝔪 u u) * Real.sqrt (symbolForm 𝔪 v v) := by
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  obtain ⟨m₀, hsm, -, hnn, hhom, hext⟩ := h𝔪.exists_ext
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  obtain ⟨A, hA⟩ := symbol_bound θ hθ0 𝔪 m₀ hsm hnn hhom hext h𝔪.zero
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  exact (quad_core θ 𝔪 A hA u v hu hv).2.2.2.2.2.2
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>/-! ### Lemma C.4 (same-function symmetrization on the torus) -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>/-- Lemma C.4 `lem:periodic-same-function` (lines 12276–12284): for `κ` odd, smooth away from zero,
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>with `|κ(z)| ≤ K₀(1 + |z|^{-s-1})`, `s &lt; d`, `a ∈ C^{0,1}(𝕋^d)` and `w ∈ L²(𝕋^d)`, the symmetrized
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>pairing `⟨κ*(aw), w⟩ := ½ ∬ κ(x-y) w(x) w(y)(a(y) - a(x)) dx dy` is absolutely convergent, is the
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>limit of the symmetric truncations `∬_{|x-y|&gt;ε} κ(x-y) a(y) w(y) w(x)` (which define the pairing
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>when the force is not integrable, lines 12290–12292), and
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>`|⟨κ*(aw), w⟩| ≤ C K₀ ‖a‖_{C^{0,1}} ‖w‖²_{L²}` with `C = C(d,s)`. -/
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>theorem periodic_same_function (hd : 1 ≤ d) (s : ℝ) (hsd : s &lt; d) :
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    ∃ C : ℝ, ∀ (κ : Torus d → ℝ) (K₀ : ℝ), (∀ z, κ (-z) = -κ z) → Torus.IsSmoothOffZero κ →
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>      (∀ z : Torus d, z ≠ 0 → |κ z| ≤ K₀ * (1 + Torus.tdist z 0 ^ (-s - 1))) →
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>      ∀ (La : ℝ) (a w : Torus d → ℝ), Torus.IsLipschitz La a → MemLp w 2 volume →
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>      Integrable (fun p : Torus d × Torus d =&gt; κ (p.1 - p.2) * w p.1 * w p.2 * (a p.2 - a p.1)) ∧
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>      (∀ ε : ℝ, 0 &lt; ε →
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>        Integrable (fun p : Torus d × Torus d =&gt;
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>          if ε &lt; Torus.tdist p.1 p.2 then κ (p.1 - p.2) * a p.2 * w p.2 * w p.1 else 0)) ∧
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      Tendsto (fun ε : ℝ =&gt; ∫ p : Torus d × Torus d,
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>          if ε &lt; Torus.tdist p.1 p.2 then κ (p.1 - p.2) * a p.2 * w p.2 * w p.1 else 0)
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>        (𝓝[&gt;] 0)
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>        (𝓝 ((1 / 2) * ∫ p : Torus d × Torus d, κ (p.1 - p.2) * w p.1 * w p.2 * (a p.2 - a p.1))) ∧
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      |(1 / 2) * ∫ p : Torus d × Torus d, κ (p.1 - p.2) * w p.1 * w p.2 * (a p.2 - a p.1)| ≤
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>        C * K₀ * Torus.c01Norm a * l2NormSq w := by
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  exact SameFn.main hd s hsd
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>/-- **Required kernel fact** (serves the regime-R2 estimates (iii), (v) of Prop 3.13 and Prop 3.14,
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>lines 1919–1926, 1951).  For the odd kernel `κ = v·∇g` (`v ∈ ℝ^d`; `κ = D_l g` for `v = q_l`,
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>`κ_j = ∑_i A_{ij}∂_i g` for `v = A_{·j}`), Lipschitz `a` and a real trigonometric polynomial `w`,
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>the Fourier-side pairing `Re ∑_k (2πi v·k) ĝ(k) (aw)^(k) \overline{ŵ(k)}` equals the symmetrized
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>real-space pairing of Lemma C.4.  Extends KERN-01 (`periodicRiesz_fourierCoeff`,
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>`periodicRiesz_grad_bound`). -/
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>theorem rieszGrad_pairing_symmetrized (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (v : Euc d)
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    (La : ℝ) (a : Torus d → ℝ) (ha : Torus.IsLipschitz La a) (n : ℕ) (w : Torus d → ℝ)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    (hw : Torus.IsCk 1 w) (hwtrig : IsTrigPoly n (coeffOf w)) :
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (∑&#x27; k, ((2 * Real.pi * Complex.I * (inner ℝ v (Lattice.toEuc k) : ℂ)) * ((rieszCoeff d s k : ℝ) : ℂ)) *
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>        (coeffOf (fun x =&gt; a x * w x) k * conj (coeffOf w k))).re =
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>      (1 / 2) * ∫ p : Torus d × Torus d,
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>        inner ℝ v (periodicRieszGrad d s (p.1 - p.2)) * w p.1 * w p.2 * (a p.2 - a p.1) := by
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  rcases Nat.lt_or_ge d 2 with h | h
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  · exact KernelGradD1.rieszGrad_pairing_symmetrized (by omega) s hs0 hsd v La a ha n w hw hwtrig
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  · exact KernelGrad.rieszGrad_pairing_symmetrized h s hs0 hsd v La a ha n w hw hwtrig
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>/-! ### Lemma C.5 (product bounds on `𝕋^d`) -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>/-- Lemma C.5(i) (line 12301): `‖au‖_{H^{-1}} ≤ C ‖a‖_{C¹_b} ‖u‖_{H^{-1}}`, at the level of coefficient
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>sequences (`u ∈ H^{-1}` a distribution; the product is the absolutely convergent coefficient
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>convolution). -/
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>theorem product_toolbox_dual (hd : 1 ≤ d) :
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    ∃ C : ℝ, ∀ (a : Torus d → ℝ), Torus.IsCk 1 a → ∀ u : Coeff d, MemHs (-1) u →
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      (∀ k, Summable fun j =&gt; coeffOf a (k - j) * u j) ∧
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      MemHs (-1) (mulCoeff (coeffOf a) u) ∧
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      hsNorm (-1) (mulCoeff (coeffOf a) u) ≤ C * Torus.cbNorm 1 a * hsNorm (-1) u := by
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  refine ⟨prodConstH1 d, fun a ha u hu =&gt; ⟨summable_mulCoeff_dual ha hu, ?_⟩⟩
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  exact product_dual_aux ha hu
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>/-- Lemma C.5(ii) (line 12302): for `σ ∈ [0,1]`, `‖au‖_{H^σ} ≤ C ‖a‖_{C^{0,1}_b} ‖u‖_{H^σ}`. -/
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>theorem product_toolbox_frac (hd : 1 ≤ d) (σ : ℝ) (hσ0 : 0 ≤ σ) (hσ1 : σ ≤ 1) :
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    ∃ C : ℝ, ∀ (La : ℝ) (a : Torus d → ℝ), Torus.IsLipschitz La a →
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>      ∀ u : Torus d → ℝ, MemSobolev σ u →
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>        MemSobolev σ (fun x =&gt; a x * u x) ∧
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>        sobolevNorm σ (fun x =&gt; a x * u x) ≤ C * Torus.c01Norm a * sobolevNorm σ u := by
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  obtain ⟨C, -, hC⟩ := ProdAux.real_product_bound hd σ hσ0 hσ1
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  refine ⟨C, fun La a ha u hu =&gt; ?_⟩
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  exact hC a _ _ (ProdAux.prodHyp_of_lipschitz ha) u hu
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>/-- Lemma C.5(iii) (line 12303): for `σ ≥ 0`, `‖au‖_{H^σ} ≤ C_σ ‖a‖_{C^{⌈σ⌉}_b} ‖u‖_{H^σ}`. -/
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>theorem product_toolbox_frac_high (hd : 1 ≤ d) (σ : ℝ) (hσ0 : 0 ≤ σ) :
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    ∃ C : ℝ, ∀ (a : Torus d → ℝ), Torus.IsCk ⌈σ⌉₊ a →
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>      ∀ u : Torus d → ℝ, MemSobolev σ u →
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>        MemSobolev σ (fun x =&gt; a x * u x) ∧
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>        sobolevNorm σ (fun x =&gt; a x * u x) ≤ C * Torus.cbNorm ⌈σ⌉₊ a * sobolevNorm σ u := by
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  obtain ⟨C, -, hC⟩ := ProdAux.real_product_bound_high hd σ hσ0
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  exact ⟨C, fun a ha u hu =&gt; hC a ha u hu⟩
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>/-! ### Lemma C.7 (Friedrichs commutators) -/
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>/-- A Friedrichs cutoff `χ₁ ∈ C_c^∞(ℝ^d;[0,1])`, radial, `≡ 1` on `B(0,1)`, supported in `B(0,2)`
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>(Step 1 of the proof of Prop 3.9, line 1957). -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>structure IsFriedrichsCutoff (χ : Euc d → ℝ) : Prop where
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  smooth : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) χ
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  range : ∀ ξ, 0 ≤ χ ξ ∧ χ ξ ≤ 1
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  radial : ∀ ξ η : Euc d, ‖ξ‖ = ‖η‖ → χ ξ = χ η
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  one : ∀ ξ, ‖ξ‖ ≤ 1 → χ ξ = 1
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  support : ∀ ξ, 2 ≤ ‖ξ‖ → χ ξ = 0
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>/-- The mollifier `J_ε = χ₁(εD)²` (Fourier multiplier `χ₁(εk)²`), on coefficient sequences. -/
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>def mollify (χ : Euc d → ℝ) (ε : ℝ) (c : Coeff d) : Coeff d :=
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  fun k =&gt; ((χ (ε • Lattice.toEuc k) ^ 2 : ℝ) : ℂ) * c k
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>/-- The commutator `[J_ε, a]u = J_ε(au) - a J_ε u` (coefficients). -/
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>def mollifyCommutator (χ : Euc d → ℝ) (ε : ℝ) (a : Torus d → ℝ) (u : Coeff d) : Coeff d :=
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  mollify χ ε (mulCoeff (coeffOf a) u) - mulCoeff (coeffOf a) (mollify χ ε u)
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>/-- The transport commutator `[J_ε, b·∇]u = J_ε(b·∇u) - b·∇(J_ε u)` (coefficients; `b·∇u` is the
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>distribution `∑_j b_j ∂_j u` for `u ∈ L²`). -/
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>def mollifyTransportCommutator (χ : Euc d → ℝ) (ε : ℝ) (b : Fin d → Torus d → ℝ) (u : Coeff d) :
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>    Coeff d :=
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  mollify χ ε (fun k =&gt; ∑ j, mulCoeff (coeffOf (b j)) (derivCoeff j u) k) -
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>    fun k =&gt; ∑ j, mulCoeff (coeffOf (b j)) (derivCoeff j (mollify χ ε u)) k
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>/-- Lemma C.7 `B:lem:friedrichs` (lines 12319–12321), torus version with `J_ε = χ₁(εD)²`:
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>for `a ∈ C¹_b`, `u ∈ L²`, `ε ∈ (0,1]`:
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>`‖[J_ε,a]u‖_{L²} ≤ C ε ‖∇a‖_∞ ‖u‖_{L²}` and `‖[J_ε,a]u‖_{H^σ} ≤ C ε^{1-σ} ‖a‖_{C¹} ‖u‖_{L²}` for
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>`σ ∈ [0,1]`. -/
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>theorem friedrichs_commutator (hd : 1 ≤ d) (χ : Euc d → ℝ) (hχ : IsFriedrichsCutoff χ) :
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    ∃ C : ℝ, ∀ (a : Torus d → ℝ), Torus.IsCk 1 a → ∀ (u : Coeff d), MemHs 0 u →
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>      ∀ ε : ℝ, 0 &lt; ε → ε ≤ 1 →
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>        MemHs 1 (mollifyCommutator χ ε a u) ∧
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>        hsNorm 0 (mollifyCommutator χ ε a u) ≤
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>          C * ε * (⨆ x : Euc d, ‖fderiv ℝ (Torus.lift a) x‖) * hsNorm 0 u ∧
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>        ∀ σ : ℝ, 0 ≤ σ → σ ≤ 1 →
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>          hsNorm σ (mollifyCommutator χ ε a u) ≤ C * ε ^ (1 - σ) * Torus.cbNorm 1 a * hsNorm 0 u := by
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  obtain ⟨C, -, hC⟩ := Fried.friedrichs_main (d := d)
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    (χ := χ) ⟨hχ.smooth, hχ.range, hχ.one, hχ.support⟩
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  exact ⟨C, hC⟩
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>/-- Lemma C.7, transport commutator: for `b ∈ C¹_b` vector-valued and `u ∈ L²`,
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>`‖[J_ε, b·∇]u‖_{L²} ≤ C ‖∇b‖_∞ ‖u‖_{L²}` uniformly in `ε ∈ (0,1]`, and
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>`[J_ε, b·∇]u → 0` in `L²` as `ε → 0` for each fixed `u`. -/
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>theorem friedrichs_transport_commutator (hd : 1 ≤ d) (χ : Euc d → ℝ) (hχ : IsFriedrichsCutoff χ) :
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    ∃ C : ℝ, ∀ (b : Fin d → Torus d → ℝ), (∀ j, Torus.IsCk 1 (b j)) → ∀ (u : Coeff d), MemHs 0 u →
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>      (∀ ε : ℝ, 0 &lt; ε → ε ≤ 1 →
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>        MemHs 0 (mollifyTransportCommutator χ ε b u) ∧
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>        hsNorm 0 (mollifyTransportCommutator χ ε b u) ≤
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>          C * (∑ j, ⨆ x : Euc d, ‖fderiv ℝ (Torus.lift (b j)) x‖) * hsNorm 0 u) ∧
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      Tendsto (fun ε =&gt; hsNorm 0 (mollifyTransportCommutator χ ε b u)) (𝓝[&gt;] 0) (𝓝 0) := by
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  obtain ⟨C, hC⟩ := Fried.friedrichs_transport_main (d := d)
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    (χ := χ) ⟨hχ.smooth, hχ.range, hχ.one, hχ.support⟩
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  exact ⟨C, hC⟩
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>end HRS.PDE
+</span></code></pre></main></body></html>

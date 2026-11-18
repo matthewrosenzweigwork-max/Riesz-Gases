@@ -1,0 +1,389 @@
+import HRS.MS.R2GenInitAux5
+import HRS.MS.R2WinErrTie
+
+/-!
+# S10.5 tie: `r2_window_general_initial` from `r2_window_orbits`, the entropy / moment propagation and the window comparison
+
+`r2_window_general_initial_of_inputs` proves the frozen `HRS.Whole.r2_window_general_initial` from
+
+* `h103`, `hcls`, `hphi`, `hobs`, `hdyn` : the inputs of `r2_window_errors_of_inputs` (S10.4);
+* `hent : S105Entropy` : `sup_t H(f_N^t | Q_N^t) ≤ C (H_{N,0} + Nδ_N)` for the class (clause (1) of `mov_entropy`, S L4640-4650);
+* `hmom : S105Moment` : the normalized second moment is `≤ C (1 + B_N/N)` uniformly in time (Donsker-Varadhan against `(μ^t)^{⊗N}`, S L8470-8473);
+* `hcmp : S105Compare` : the window comparison theorem (the polar / smooth comparisons of the primary paper applied to the feature
+  martingale, followed by the reconstruction map; the window analogue of `general_paths`): the laws of `Ξ_{N,b}` and `Y_{N,b}` are at distance
+  `≤ C (ε_b + F + W)` (smooth) and `≤ C (ε_b + F + √W)` (`W_1`), where `ε_b` is the coupling cost at start `b`, `F` bounds `E sup‖D_b‖`
+  and `W` bounds `E ∫_0^{b+T}‖C_r - C̄_r‖₁`.
+The parts of the proof that are done here: the forcing bound with `δ_N -> B_N/N`, the covariance bound with `E_N = C_E(o_N + B_N/N)`,
+`M₂ = C(1+B_N/N)`, and the bookkeeping of the constants.
+-/
+
+noncomputable section
+
+open MeasureTheory Filter Topology
+open scoped ENNReal NNReal BigOperators ContDiff
+
+namespace HRS.MS.R2GenInit
+
+open HRS.Whole HRS.Whole.AppendixA HRS.MS.R2WinErr
+
+/-- Clause (1) of `mov_entropy` for the class `IsR2WindowTrajectory` (see the module docstring). -/
+def S105Entropy (d : ℕ) (s a β εstar c₁ C₁ : ℝ) : Prop :=
+  ∃ Cent : ℝ, 0 ≤ Cent ∧ ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ρ : ℝ → Euc d → ℝ,
+    IsR2WindowTrajectory d s a β ρβ εstar c₁ C₁ ρ → ∀ N : ℕ, 2 ≤ N → GibbsEntropyContraction d s a β N →
+    ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+      (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+    IsR2Realization d s a β P X₀ W X →
+    relEntropy (HRS.law P X₀) (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ 0))) < ⊤ →
+    ∀ t : ℝ, 0 ≤ t → relEntropy (P.map (X t.toNNReal))
+      (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ t))) ≤
+      ENNReal.ofReal (Cent * ((relEntropy (HRS.law P X₀)
+        (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ 0)))).toReal + N * deltaN d s N))
+
+/-- The uniform second-moment bound `C (1 + B_N/N)`. -/
+def S105Moment (d : ℕ) (s a β εstar c₁ C₁ : ℝ) : Prop :=
+  ∃ Cm : ℝ, 0 ≤ Cm ∧ ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ρ : ℝ → Euc d → ℝ,
+    IsR2WindowTrajectory d s a β ρβ εstar c₁ C₁ ρ → ∀ N : ℕ, 2 ≤ N → GibbsEntropyContraction d s a β N →
+    ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+      (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+    IsR2Realization d s a β P X₀ W X →
+    relEntropy (HRS.law P X₀) (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ 0))) < ⊤ →
+    ∀ t : ℝ, 0 ≤ t → ∫⁻ ζ, ENNReal.ofReal (movSecondMoment (X t.toNNReal ζ)) ∂P ≤
+      ENNReal.ofReal (Cm * (1 + (1 + (relEntropy (HRS.law P X₀)
+        (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ 0)))).toReal + N * deltaN d s N) / N))
+
+/-- The window comparison theorem (see the module docstring): given a bound `F` for the forcing remainder and a bound `W` for the covariance
+error (as in `r2_window_errors`), the laws of the particle window `Ξ_{N,b}` and of the linear window `Y_{N,b}` are within
+`C (ε_b + F + W)` (smooth) and `C (ε_b + F + √W)` (`W_1`), `ε_b` the coupling cost at start `b`. -/
+def S105Compare (d : ℕ) (s a β T εstar c₁ C₁ : ℝ) : Prop :=
+  ∃ CTc : ℝ, 0 ≤ CTc ∧ ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ρ : ℝ → Euc d → ℝ,
+    IsR2WindowTrajectory d s a β ρβ εstar c₁ C₁ ρ → ∀ N : ℕ, 2 ≤ N → GibbsEntropyContraction d s a β N →
+    ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+      (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+    IsR2Realization d s a β P X₀ W X →
+    relEntropy (HRS.law P X₀) (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β
+      (HRS.Whole.withDensityReal (ρ 0))) < ⊤ →
+    ∀ η₀ : Ω → (Euc d → ℝ) → ℝ, ProbabilityTheory.IndepFun (fun ζ => (X₀ ζ, η₀ ζ)) (fun ζ t => W t ζ) P →
+    ∀ Y : ℝ → Ω → OscDual d (wholeSpaceIndex d),
+    (∀ T' : ℝ, IsLinearFluctuationSolutionW P ((quadraticGradientDyn d s a β).coeff ρ)
+      (wholeSpaceIndex d) β⁻¹ T' η₀ Y) →
+    (∀ b : ℝ, 0 ≤ b → ∀ᵐ ζ ∂P, Continuous fun u : Set.Icc (0 : ℝ) T =>
+      r2InitCouplingFun ((quadraticGradientDyn d s a β).coeff ρ) (wholeSpaceIndex d)
+        (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ u) →
+    ∀ b : ℝ, 0 ≤ b → ∀ F Wt : ℝ≥0∞,
+      (∫⁻ ζ, ⨆ u ∈ Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =>
+          -(Real.sqrt N / 2) * ∫ r in Set.Icc (0 : ℝ) (b + u),
+            r2CommForcingMov ((quadraticGradientDyn d s a β).coeff ρ) s (wholeSpaceIndex d) ρ X α
+              (b + u) r ζ) ∂P ≤ F) →
+      (∃ Bt : ℝ → Ω → (KSpace d (wholeSpaceIndex d) T →L[ℝ] KSpace d (wholeSpaceIndex d) T →L[ℝ] ℝ),
+        (∀ r ∈ Set.Icc (0 : ℝ) (b + T), ∀ ζ u v, Bt r ζ u v =
+          featureForm (wholeSpaceIndex d) T β⁻¹
+            (fun (i : Fin d) (x : Euc d) => r2WindowFeature ((quadraticGradientDyn d s a β).coeff ρ)
+              (wholeSpaceIndex d) T (gradComp i) b r x) (HRS.Whole.empirical (X r.toNNReal ζ)) u v -
+          featureForm (wholeSpaceIndex d) T β⁻¹
+            (fun (i : Fin d) (x : Euc d) => r2WindowFeature ((quadraticGradientDyn d s a β).coeff ρ)
+              (wholeSpaceIndex d) T (gradComp i) b r x) (HRS.Whole.withDensityReal (ρ r)) u v) ∧
+        ∫⁻ ζ, (∫⁻ r in Set.Icc (0 : ℝ) (b + T), ENNReal.ofReal (traceNormForm (Bt r ζ))) ∂P ≤ Wt) →
+      AEMeasurable (flucPathW (wholeSpaceIndex d) T b (Real.sqrt N) X ρ) P ∧
+      AEMeasurable (processWindow (wholeSpaceIndex d) T b Y) P ∧
+      ENNReal.ofReal (smoothDist 2 (HRS.law P (flucPathW (wholeSpaceIndex d) T b (Real.sqrt N) X ρ))
+          (HRS.law P (processWindow (wholeSpaceIndex d) T b Y))) ≤
+        ENNReal.ofReal CTc * ((∫⁻ ζ, ENNReal.ofReal
+          ‖r2InitCouplingPath ((quadraticGradientDyn d s a β).coeff ρ) (wholeSpaceIndex d) T
+            (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ‖ ∂P) + F + Wt) ∧
+      wassersteinE 1 (HRS.law P (flucPathW (wholeSpaceIndex d) T b (Real.sqrt N) X ρ))
+          (HRS.law P (processWindow (wholeSpaceIndex d) T b Y)) ≤
+        ENNReal.ofReal CTc * ((∫⁻ ζ, ENNReal.ofReal
+          ‖r2InitCouplingPath ((quadraticGradientDyn d s a β).coeff ρ) (wholeSpaceIndex d) T
+            (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ‖ ∂P) + F + Wt ^ (1 / 2 : ℝ))
+
+set_option maxHeartbeats 1600000 in
+theorem r2_window_general_initial_of_inputs
+    (h103 : type_of% @HRS.Whole.r2_window_orbits)
+    (hcls : ∀ {d : ℕ}, 2 ≤ d → ∀ (s : ℝ), 0 ≤ s → s < d → ∀ (a β : ℝ), 0 < a → 0 < β →
+      ∀ (εstar c₁ C₁ : ℝ), 0 < εstar → S104ClassInput d s a β εstar c₁ C₁)
+    (hphi : ∀ {d : ℕ}, 2 ≤ d → S104Phi d)
+    (hobs : ∀ {d : ℕ}, 2 ≤ d → ∀ (s a β T : ℝ) (ρβ : Euc d → ℝ) (ρ : ℝ → Euc d → ℝ) (εstar c₁ C₁ : ℝ),
+      IsThermalEquilibrium d s a β ρβ → IsR2WindowTrajectory d s a β ρβ εstar c₁ C₁ ρ →
+      ∀ (b r : ℝ), 0 ≤ r → ∀ (a' : Fin d) (α : MultiIndex d) (x : Euc d),
+        AEStronglyMeasurable (fun u : ℝ => if r < b + u then gradComp a' (propagatorW
+          ((quadraticGradientDyn d s a β).coeff ρ) r (b + u) (generatorW
+            ((quadraticGradientDyn d s a β).coeff ρ) (b + u)
+            (oscTestFun ((wholeSpaceIndex d : ℕ) : ℝ) α))) x else 0)
+          (volume.restrict (Set.Icc (0 : ℝ) T)))
+    (hdyn : ∀ {d : ℕ}, 2 ≤ d → ∀ (s a β T : ℝ) (ρβ : Euc d → ℝ) (ρ : ℝ → Euc d → ℝ) (εstar c₁ C₁ : ℝ),
+      IsThermalEquilibrium d s a β ρβ → IsR2WindowTrajectory d s a β ρβ εstar c₁ C₁ ρ →
+      ∀ (N : ℕ), 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+        IsR2Realization d s a β P X₀ W X → ∀ b C₀ : ℝ, 0 ≤ b → S104RealInput d s a β T ρ N P X b C₀)
+    (hent : ∀ {d : ℕ}, 2 ≤ d → ∀ (s a β εstar c₁ C₁ : ℝ), S105Entropy d s a β εstar c₁ C₁)
+    (hmom : ∀ {d : ℕ}, 2 ≤ d → ∀ (s a β εstar c₁ C₁ : ℝ), S105Moment d s a β εstar c₁ C₁)
+    (hcmp : ∀ {d : ℕ}, 2 ≤ d → ∀ (s a β T εstar c₁ C₁ : ℝ), S105Compare d s a β T εstar c₁ C₁) :
+    type_of% @HRS.Whole.r2_window_general_initial := by
+  intro d hd s hs0 hs a β ha hβ T hT c₁ C₁
+  have hd1 : 1 ≤ d := by omega
+  have hsd : s < (d : ℝ) := by
+    have : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+    linarith
+  obtain ⟨εstar, hε, Cs0, cdec, hcdec, hsum, hmain⟩ :=
+    h103 hd s hs0 hsd a β ha hβ T hT c₁ C₁
+  obtain ⟨M, L, Mom, C₀c, hC₀c, hcl⟩ := hcls hd s hs0 hsd a β ha hβ εstar c₁ C₁ hε
+  obtain ⟨Cphi, hCphi0, hphi'⟩ := hphi hd
+  obtain ⟨C₀min, hpA⟩ := s105_partA hd1 s hs0 hsd M
+  obtain ⟨Cent, hCent0, hentF⟩ := hent hd s a β εstar c₁ C₁
+  obtain ⟨Cm, hCm0, hmomF⟩ := hmom hd s a β εstar c₁ C₁
+  obtain ⟨CTc, hCTc0, hcmpF⟩ := hcmp hd s a β T εstar c₁ C₁
+  obtain ⟨Cen, hCen0, hEn⟩ := s105_energy_moment hd s hs0 hsd M L β hβ
+  obtain ⟨Cc, hCc0, hpB⟩ := s105_partB hd s hs0 hsd M L β hβ
+  set C₀ : ℝ := max (max C₀min C₀c) 0 with hC₀
+  have hC₀ge1 : C₀min ≤ C₀ := (le_max_left _ _).trans (le_max_left _ _)
+  have hC₀ge2 : C₀c ≤ C₀ := (le_max_right _ _).trans (le_max_left _ _)
+  have hC₀0 : 0 ≤ C₀ := le_max_right _ _
+  set Cs : ℝ := max Cs0 Cphi with hCs
+  have hCs0 : 0 ≤ Cs := hCphi0.trans (le_max_right _ _)
+  set k : ℕ := 4 * d + 42 with hk
+  have hb0 : ∀ α : MultiIndex d, 0 ≤ s104_b d α := s104_b_nonneg
+  have hbS : Summable (s104_b d) := hsum
+  set bsum : ℝ := ∑' α, s104_b d α with hbsum
+  set Kc : ℝ := (2 + (d : ℝ) ^ k * Real.sqrt T) * (Cs * bsum) with hKc
+  set Mom' : ℝ := max Mom 0 with hMom'
+  obtain ⟨CTa, hCTa0, hCTa⟩ := hpA C₀ hC₀ge1 T cdec β⁻¹ (Kc ^ 2) hcdec hT.le
+    (inv_nonneg.2 hβ.le) (sq_nonneg _)
+  set CE : ℝ := max 1 (Cen * (Cent + 1)) with hCE
+  set K1 : ℝ := 1 + Mom' + Cm with hK1def
+  set CF : ℝ := Cc * Cs * (Cent + 1) * (1 / cdec + T + T * (1 / cdec)) * bsum / 2 with hCF
+  set CW : ℝ := CTa * K1 with hCW
+  set Cmax : ℝ := max (max (max CF CW) (Real.sqrt CW)) 1 with hCmax
+  refine ⟨εstar, hε, C₀, ?_, CE, CTc * Cmax, ?_⟩
+  · intro ρβ hρβ ρ htraj N hN t ht X hX
+    have := (hcl ρβ hρβ ρ htraj).2.1 N hN t ht X hX
+    have h2 := s104_oN_mono d s hC₀ge2 N
+    linarith
+  intro ρβ hρβ ρ htraj N hN hGib
+  set C : WholeCoeff d := (quadraticGradientDyn d s a β).coeff ρ with hC
+  set m : ℝ := ((wholeSpaceIndex d : ℕ) : ℝ) with hm
+  intro Ω _ P _ X₀ W X hreal hfin η₀ hind Y hY hcont
+  intro BN EN wEnt εN
+  intro b hb
+  obtain ⟨hρ, hcomp, hjm⟩ := hcl ρβ hρβ ρ htraj
+  obtain ⟨ℱ, W', hfilt⟩ := hreal.filtered
+  have hXm : ∀ r : ℝ, Measurable (X r.toNNReal) := fun r => (hreal.solution (b + T)).adapted _
+  obtain ⟨hevol, M0, M1, M2⟩ := hdyn hd s a β T ρβ ρ εstar c₁ C₁ hρβ htraj N hN P X₀ W X hreal b C₀ hb
+  have horb : ∀ α : MultiIndex d,
+      (∀ t : ℝ, 0 ≤ t → R2OrbitGrad C k t (oscTestFun m α) (Cs * s104_b d α) cdec) ∧
+      (∀ t : ℝ, 0 ≤ t → R2OrbitGrad C k t (generatorW C t (oscTestFun m α)) (Cs * s104_b d α) cdec) := by
+    intro α
+    have hm' := hmain ρβ hρβ ρ htraj α
+    dsimp only at hm'
+    have hle : Cs0 * s104_b d α ≤ Cs * s104_b d α :=
+      mul_le_mul_of_nonneg_right (le_max_left _ _) (s104_b_nonneg α)
+    exact ⟨fun t ht => s104_R2OrbitGrad_mono _ (hm'.1 t ht).2.1 hle,
+      fun t ht => s104_R2OrbitGrad_mono _ (hm'.1 t ht).2.2.2.1 hle⟩
+  have hmS : mStar d - 1 ≤ k := by
+    unfold mStar; omega
+  have hfeat : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), ∀ a' : Fin d,
+      ContDiff ℝ k (fun x => r2WindowFeature C m T (gradComp a') b r x) ∧ ∀ j ≤ k, ∀ x,
+        ‖iteratedFDeriv ℝ j (fun x => r2WindowFeature C m T (gradComp a') b r x) x‖ ≤
+          Kc * s104_theta cdec b r := by
+    intro r hr a'
+    exact s104_window_feature hd1 C k m T cdec Cs hT.le hcdec.le hCs0 (s104_b d) hb0 hbS
+      (fun α => (horb α).1) (fun α => (horb α).2)
+      (fun α a'' => ⟨(hphi' α a'').1, fun j hj x => ((hphi' α a'').2 j hj x).trans
+        (mul_le_mul_of_nonneg_right (le_max_right _ _) (s104_b_nonneg α))⟩) hb hr.1 a'
+      (fun α x => hobs hd s a β T ρβ ρ εstar c₁ C₁ hρβ htraj b r hr.1 a' α x)
+  -- the entropy and the constants
+  have hN0 : (0 : ℝ) < N := by exact_mod_cast (by omega : 0 < N)
+  have hδ : 0 ≤ deltaN d s N := HRS.MS.S53.s53_deltaN_nonneg s (by omega)
+  have hoN0 := s104_oN_nonneg d s C₀ hC₀0 N
+  set h0 : ℝ := (relEntropy (HRS.law P X₀) (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β
+    (HRS.Whole.withDensityReal (ρ 0)))).toReal with hh0
+  have hh00 : 0 ≤ h0 := ENNReal.toReal_nonneg
+  have hBN : BN = 1 + h0 + N * deltaN d s N := rfl
+  have hNδ : 0 ≤ (N : ℝ) * deltaN d s N := mul_nonneg hN0.le hδ
+  have hBN1 : 1 ≤ BN := by rw [hBN]; linarith
+  have hBN0 : 0 ≤ BN / N := by positivity
+  have hδBN : deltaN d s N ≤ BN / N := by
+    rw [le_div_iff₀ hN0]; rw [hBN]; nlinarith
+  set Hb : ℝ := Cent * BN with hHb
+  have hHb0 : 0 ≤ Hb := by positivity
+  have hH : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), relEntropy (P.map (X r.toNNReal))
+      (HRS.Whole.modulatedGibbs (HRS.Whole.rieszKernel d s) N β (HRS.Whole.withDensityReal (ρ r))) ≤
+        ENNReal.ofReal Hb := fun r hr =>
+    (hentF ρβ hρβ ρ htraj N hN hGib P X₀ W X hreal hfin r hr.1).trans
+      (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left (by rw [hBN]; linarith) hCent0))
+  -- the forcing remainder
+  have hρB : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), HRS.Whole.IsProbDensity (ρ r) ∧ (∀ x, ρ r x ≤ M) ∧
+      (s = 0 → HasLogMoment (HRS.Whole.withDensityReal (ρ r)) L) := fun r hr => by
+    obtain ⟨h1, h2, -, -, h5⟩ := hρ r hr.1
+    exact ⟨h1, h2, h5⟩
+  have hres := hpB C ρ m T b cdec Cs k (by omega) hcdec hCs0 hT.le hb (s104_b d) hb0 hbS
+    (fun α => (horb α).1) (fun α => (horb α).2) N hN Hb hHb0 P X hρB (fun r hr => hXm r) hH
+    hevol M0 M1 M2
+  have hsN : 0 < Real.sqrt N := Real.sqrt_pos.2 hN0
+  have hkey : Real.sqrt N * (BN / N) = BN / Real.sqrt N := by
+    have h2 := Real.sq_sqrt hN0.le
+    field_simp
+    nlinarith
+  set Fb : ℝ≥0∞ := ENNReal.ofReal (CF * (BN / Real.sqrt N)) with hFb
+  have hF : (∫⁻ ζ, ⨆ u ∈ Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =>
+      -(Real.sqrt N / 2) * ∫ r in Set.Icc (0 : ℝ) (b + u),
+        r2CommForcingMov C s m ρ X α (b + u) r ζ) ∂P) ≤ Fb := by
+    refine hres.trans (ENNReal.ofReal_le_ofReal ?_)
+    have hΛ0 : 0 ≤ 1 / cdec + T + T * (1 / cdec) := by positivity
+    have hbs0 : 0 ≤ bsum := tsum_nonneg hb0
+    have h1 : Hb / N + deltaN d s N ≤ (Cent + 1) * (BN / N) := by
+      rw [hHb]; nlinarith [hδBN, mul_div_assoc Cent BN (N : ℝ)]
+    have h2 : (Real.sqrt N / 2) * ((Cc * (Hb / N + deltaN d s N)) * Cs) *
+        (1 / cdec + T + T * (1 / cdec)) * bsum ≤
+        (Real.sqrt N / 2) * ((Cc * ((Cent + 1) * (BN / N))) * Cs) *
+        (1 / cdec + T + T * (1 / cdec)) * bsum := by
+      gcongr
+    refine h2.trans (le_of_eq ?_)
+    rw [hCF]
+    have : (Real.sqrt N / 2) * ((Cc * ((Cent + 1) * (BN / N))) * Cs) *
+        (1 / cdec + T + T * (1 / cdec)) * bsum =
+        (Cc * Cs * (Cent + 1) * (1 / cdec + T + T * (1 / cdec)) * bsum / 2) * (Real.sqrt N * (BN / N)) := by
+      ring
+    rw [this, hkey]
+  -- the covariance error
+  set Mq : ℝ := Cm * (1 + BN / N) + Mom' with hMq
+  have hMq0 : 0 ≤ Mq := by positivity
+  have hEN0 : 0 ≤ EN := by
+    show 0 ≤ CE * (HRS.oN d s C₀ N + BN / N)
+    exact mul_nonneg ((zero_le_one).trans (le_max_left _ _)) (add_nonneg hoN0 hBN0)
+  have hinj : ∀ᵐ ζ ∂P, ∀ r ∈ Set.Icc (0 : ℝ) (b + T), Function.Injective (X r.toNNReal ζ) := by
+    filter_upwards [(hreal.solution (b + T)).no_collision] with ζ hζ r hr
+    refine s104_injective_of_not_collision (hζ r.toNNReal ?_)
+    rw [Real.coe_toNNReal r hr.1]; exact hr.2
+  have hE : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), ∫⁻ ζ, ENNReal.ofReal (rieszModulatedEnergy d s
+      (X r.toNNReal ζ) (HRS.Whole.withDensityReal (ρ r)) + HRS.oN d s C₀ N) ∂P ≤ ENNReal.ofReal EN := by
+    intro r hr
+    obtain ⟨hprob, hMr, -, -, hlog⟩ := hρ r hr.1
+    haveI : IsProbabilityMeasure (P.map (X r.toNNReal)) :=
+      ⟨by rw [Measure.map_apply (hXm r) MeasurableSet.univ]; simp⟩
+    rw [← lintegral_map (s104_energy_meas N s C₀ (ρ r) hprob).ennreal_ofReal (hXm r)]
+    refine (hEn (ρ r) hprob hMr hlog N hN (P.map (X r.toNNReal)) inferInstance Hb hHb0 (hH r hr) C₀
+      hC₀0).trans (ENNReal.ofReal_le_ofReal ?_)
+    show Cen * (Hb / N + deltaN d s N) + HRS.oN d s C₀ N ≤ CE * (HRS.oN d s C₀ N + BN / N)
+    have h1 : Hb / N + deltaN d s N ≤ (Cent + 1) * (BN / N) := by
+      rw [hHb]; nlinarith [hδBN, mul_div_assoc Cent BN (N : ℝ)]
+    have h2 : Cen * (Hb / N + deltaN d s N) ≤ CE * (BN / N) :=
+      (mul_le_mul_of_nonneg_left h1 hCen0).trans (by
+        rw [← mul_assoc]
+        exact mul_le_mul_of_nonneg_right (le_max_right _ _) hBN0)
+    have h3 : HRS.oN d s C₀ N ≤ CE * HRS.oN d s C₀ N :=
+      le_mul_of_one_le_left hoN0 (le_max_left _ _)
+    nlinarith
+  have hM : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), ∫⁻ ζ, ENNReal.ofReal
+      (secondMomentOf (HRS.Whole.empirical (X r.toNNReal ζ))) ∂P ≤ ENNReal.ofReal Mq := by
+    intro r hr
+    have h5 := hmomF ρβ hρβ ρ htraj N hN hGib P X₀ W X hreal hfin r hr.1
+    simp_rw [s104_secondMoment_eq (by omega : 0 < N)]
+    refine h5.trans (ENNReal.ofReal_le_ofReal ?_)
+    rw [hMq]; have : 0 ≤ Mom' := le_max_right _ _
+    show Cm * (1 + BN / N) ≤ _
+    linarith
+  have hρ' : ∀ r ∈ Set.Icc (0 : ℝ) (b + T), HRS.Whole.IsProbDensity (ρ r) ∧ (∀ x, ρ r x ≤ M) ∧
+      Integrable (fun x => ‖x‖ ^ 2 * ρ r x) ∧ secondMomentOf (HRS.Whole.withDensityReal (ρ r)) ≤ Mq :=
+    fun r hr => by
+      obtain ⟨h1, h2, h3, h4, -⟩ := hρ r hr.1
+      refine ⟨h1, h2, h3, h4.trans ?_⟩
+      have : 0 ≤ Cm * (1 + BN / N) := by positivity
+      have h5 : Mom ≤ Mom' := le_max_left _ _
+      rw [hMq]; linarith
+  have hAE := s104_energy_aemeas P ℱ X hfilt.progressive s C₀ ρ (T' := b + T) (by linarith)
+    (fun r hr => (hρ r hr.1).1) (hjm (b + T) (by linarith))
+  have hAM := HRS.MS.GenPath.s56_mm_aemeas (by omega : 0 < N) P ℱ X hfilt.progressive
+    (T := b + T) (by linarith)
+  obtain ⟨Bt, hBt, hbound⟩ := hCTa m b hb N hN P X ρ EN Mq hEN0 hMq0 hρ' hinj hAE hAM hE hM
+    (fun r a' x => r2WindowFeature C m T (gradComp a') b r x) (fun r => Kc * s104_theta cdec b r)
+    (fun r hr a' => (hfeat r hr a').1.of_le (by exact_mod_cast hmS))
+    (fun r hr a' j hj x => (hfeat r hr a').2 j (hj.trans hmS) x)
+    (fun r hr => by rw [mul_pow, ← s104_theta2_eq])
+  have hwEnt0 : 0 ≤ wEnt := by
+    show 0 ≤ generalLocalizationRate d EN (BN / N) N
+    unfold generalLocalizationRate
+    haveI : Nonempty {R : ℝ // 1 ≤ R} := ⟨⟨1, le_rfl⟩⟩
+    refine le_ciInf fun R => ?_
+    have : 0 < R.1 := by linarith [R.2]
+    positivity
+  have hK1 : 1 ≤ K1 := by rw [hK1def]; have : 0 ≤ Mom' := le_max_right _ _; linarith
+  have hglr : generalLocalizationRate d EN Mq N ≤ K1 * wEnt := by
+    refine s105_glr_mono d N EN Mq (BN / N) K1 hEN0 hMq0 hBN0 hK1 ?_
+    have : 0 ≤ Mom' := le_max_right _ _
+    rw [hMq, hK1def]
+    nlinarith [mul_nonneg hCm0 hBN0, mul_nonneg this hBN0]
+  set Wt : ℝ≥0∞ := ENNReal.ofReal (CW * wEnt) with hWt
+  have hW : (∫⁻ ζ, (∫⁻ r in Set.Icc (0 : ℝ) (b + T),
+      ENNReal.ofReal (traceNormForm (Bt r ζ))) ∂P) ≤ Wt := by
+    refine hbound.trans (ENNReal.ofReal_le_ofReal ?_)
+    rw [hCW]
+    calc CTa * generalLocalizationRate d EN Mq N ≤ CTa * (K1 * wEnt) :=
+          mul_le_mul_of_nonneg_left hglr hCTa0
+      _ = CTa * K1 * wEnt := by ring
+  obtain ⟨hA1, hA2, hsm, hw1⟩ := hcmpF ρβ hρβ ρ htraj N hN hGib P X₀ W X hreal hfin η₀ hind Y hY hcont
+    b hb Fb Wt hF ⟨Bt, hBt, hW⟩
+  have hεle : (∫⁻ ζ, ENNReal.ofReal ‖r2InitCouplingPath C m T (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ‖ ∂P)
+      ≤ εN :=
+    le_iSup (fun b' : {b' : ℝ // 0 ≤ b'} => ∫⁻ ζ, ENNReal.ofReal
+      ‖r2InitCouplingPath C m T (HRS.Whole.withDensityReal (ρ 0)) b'.1 X₀ η₀ ζ‖ ∂P) ⟨b, hb⟩
+  set x : ℝ := BN / Real.sqrt N with hx
+  have hx0 : 0 ≤ x := by positivity
+  have hCmax1 : 1 ≤ Cmax := le_max_right _ _
+  have hCF' : CF ≤ Cmax := (le_max_left _ _).trans ((le_max_left _ _).trans (le_max_left _ _))
+  have hCW' : Real.sqrt CW ≤ Cmax := (le_max_right _ _).trans (le_max_left _ _)
+  have hCW0 : 0 ≤ CW := mul_nonneg hCTa0 (by linarith)
+  have hCWle : CW ≤ Cmax := (le_max_right _ _).trans ((le_max_left _ _).trans (le_max_left _ _))
+  have hCmax0 : 0 ≤ Cmax := by linarith
+  have key : ∀ (c1 c2 u v : ℝ), 0 ≤ u → 0 ≤ v → c1 ≤ Cmax → c2 ≤ Cmax →
+      ENNReal.ofReal (c1 * u) + ENNReal.ofReal (c2 * v) ≤ ENNReal.ofReal Cmax * ENNReal.ofReal (u + v) := by
+    intro c1 c2 u v hu hv h1 h2
+    calc ENNReal.ofReal (c1 * u) + ENNReal.ofReal (c2 * v)
+        ≤ ENNReal.ofReal (Cmax * u) + ENNReal.ofReal (Cmax * v) :=
+          add_le_add (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right h1 hu))
+            (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right h2 hv))
+      _ = ENNReal.ofReal Cmax * ENNReal.ofReal (u + v) := by
+          rw [← ENNReal.ofReal_add (by positivity) (by positivity), ← ENNReal.ofReal_mul hCmax0]
+          congr 1; ring
+  have hε1 : εN ≤ ENNReal.ofReal Cmax * εN :=
+    le_mul_of_one_le_left zero_le (ENNReal.one_le_ofReal.2 hCmax1)
+  have hCT : ENNReal.ofReal (CTc * Cmax) = ENNReal.ofReal CTc * ENNReal.ofReal Cmax :=
+    ENNReal.ofReal_mul hCTc0
+  refine ⟨hA1, hA2, ?_, ?_⟩
+  · -- smooth distance
+    refine hsm.trans ?_
+    have hFW : Fb + Wt ≤ ENNReal.ofReal Cmax * ENNReal.ofReal (x + wEnt) :=
+      key CF CW x wEnt hx0 hwEnt0 hCF' hCWle
+    calc ENNReal.ofReal CTc * ((∫⁻ ζ, ENNReal.ofReal ‖r2InitCouplingPath C m T
+            (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ‖ ∂P) + Fb + Wt)
+        ≤ ENNReal.ofReal CTc * (εN + ENNReal.ofReal Cmax * ENNReal.ofReal (x + wEnt)) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [add_assoc]
+          exact add_le_add hεle hFW
+      _ ≤ ENNReal.ofReal CTc * (ENNReal.ofReal Cmax * (εN + ENNReal.ofReal (x + wEnt))) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [mul_add]
+          exact add_le_add hε1 le_rfl
+      _ = ENNReal.ofReal (CTc * Cmax) * (εN + ENNReal.ofReal (x + wEnt)) := by
+          rw [hCT, mul_assoc]
+  · -- W_1
+    refine hw1.trans ?_
+    have hWt12 : Wt ^ (1 / 2 : ℝ) = ENNReal.ofReal (Real.sqrt CW * Real.sqrt wEnt) := by
+      rw [hWt, ENNReal.ofReal_rpow_of_nonneg (mul_nonneg hCW0 hwEnt0) (by norm_num),
+        ← Real.sqrt_eq_rpow, Real.sqrt_mul hCW0]
+    have hFW : Fb + Wt ^ (1 / 2 : ℝ) ≤ ENNReal.ofReal Cmax * ENNReal.ofReal (x + Real.sqrt wEnt) := by
+      rw [hWt12]
+      exact key CF (Real.sqrt CW) x (Real.sqrt wEnt) hx0 (Real.sqrt_nonneg _) hCF' hCW'
+    calc ENNReal.ofReal CTc * ((∫⁻ ζ, ENNReal.ofReal ‖r2InitCouplingPath C m T
+            (HRS.Whole.withDensityReal (ρ 0)) b X₀ η₀ ζ‖ ∂P) + Fb + Wt ^ (1 / 2 : ℝ))
+        ≤ ENNReal.ofReal CTc * (εN + ENNReal.ofReal Cmax * ENNReal.ofReal (x + Real.sqrt wEnt)) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [add_assoc]
+          exact add_le_add hεle hFW
+      _ ≤ ENNReal.ofReal CTc * (ENNReal.ofReal Cmax * (εN + ENNReal.ofReal (x + Real.sqrt wEnt))) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [mul_add]
+          exact add_le_add hε1 le_rfl
+      _ = ENNReal.ofReal (CTc * Cmax) * (εN + ENNReal.ofReal (x + Real.sqrt wEnt)) := by
+          rw [hCT, mul_assoc]
+
+end HRS.MS.R2GenInit

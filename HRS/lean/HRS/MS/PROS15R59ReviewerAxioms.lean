@@ -1,0 +1,8 @@
+import HRS.MS.PROS15dPhysicalRieszSpanE24
+set_option autoImplicit false
+#print axioms HRS.MS.R26T3.s15d_finite_scalar_linear_gaussian
+#print axioms HRS.MS.R26T3.s15d_physical_finite_span_tilted_gaussian
+#print axioms HRS.MS.R26T3.s15d_physical_riesz_finite_spatial_span_gaussian
+#check HRS.MS.R26T3.s15d_finite_scalar_linear_gaussian
+#check HRS.MS.R26T3.s15d_physical_finite_span_tilted_gaussian
+#check HRS.MS.R26T3.s15d_physical_riesz_finite_spatial_span_gaussian

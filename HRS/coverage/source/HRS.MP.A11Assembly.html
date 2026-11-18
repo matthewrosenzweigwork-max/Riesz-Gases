@@ -1,0 +1,221 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.A11Assembly · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.A11Assembly</code></h1><p><a href="../../lean/HRS/MP/A11Assembly.lean">Open the unaltered Lean file</a> · 220 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MP.FidiAssembly
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.FlucPath
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MP.FixedTimeTight
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MP.KolmChentsov
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MP.RemainderSup
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.MP.DualDecomp
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.MP.InitModulus
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.Main.GFB1Aux1
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>import HRS.MP.TightAssemble
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>import HRS.MP.GlueFidi
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.MP.InitAssemble
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.MP.MartModulus
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>import HRS.MP.MartExist
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal BigOperators MeasureTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>/-! ### assembly -/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.MP.A11
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS HRS.Main HRS.Whole.AppendixALemmas HRS.MP.FidiAssembly
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>variable {d : ℕ}
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>local notation &quot;q₀&quot; =&gt; ((qT d : ℕ) : ℝ)
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>/-- The propagators of the Fourier modes lie in `H^{q_T}` for `t ∈ [0,T]`. -/
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem a11_hU {Rg : PDE.Regime} {ν₀ MB Λ VB C₀ Cc : ℝ} {𝔈 : ℕ → ℝ} (S : MainData d)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (R : ∀ N, Realization d N)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (hS : TorusStanding S R Rg ν₀ MB Λ VB (gammaIdx d + 2) C₀ Cc 𝔈) {N : ℕ} (hN : 1 ≤ N) {t : ℝ}
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (ht : t ∈ Set.Icc (0 : ℝ) S.T) (k : NonzeroLattice d) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    HRS.MemSobolev ((qT d : ℕ) : ℝ) (propagator (S.dyn N) (S.ρ N) 0 t (Torus.realMode k)) := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hA := HRS.Main.A9.a9_adjointData (show PDE.mStar d ≤ gammaIdx d + 2 by unfold gammaIdx; omega)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    hS hN
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  exact HRS.MP.InitAsm.mia_memq S.hd S.hs0 S.hsd (S.dyn N) (S.ρ N) hA ht
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (HRS.StaticLimitAux.isSmooth_realMode&#x27; k)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- The remainder `ℝ_N = σ_NΞ_N - 𝓘_{N,emp} - 𝕄_N` (set to `0` off `[0,T]`) is a representative of the
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>remainder functional. -/
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>theorem a11_remT {Rg : PDE.Regime} {ν₀ MB Λ VB C₀ Cc : ℝ} {𝔈 : ℕ → ℝ} (S : MainData d)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (R : ∀ N, Realization d N)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hS : TorusStanding S R Rg ν₀ MB Λ VB (gammaIdx d + 2) C₀ Cc 𝔈) {N : ℕ} (hN : 2 ≤ N)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (ℱ : Filtration ℝ (R N).mΩ) (W&#x27; : ℝ≥0 → (R N).Ω → (Fin N × Fin d) → ℝ)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (hF : IsFilteredSolution (R N).P ℱ W&#x27; (R N).W (R N).X)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (Mq : ℝ → (R N).Ω → NegSobolev d ((qT d : ℕ) : ℝ))
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (hMq : IsStochConvT (R N).P ℱ W&#x27; (S.dyn N) (S.ρ N) (S.sigma N) ((qT d : ℕ) : ℝ) S.T (R N).X Mq) :
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    IsRemainderT (R N).P (S.dyn N) (S.ρ N) (S.sigma N) ((qT d : ℕ) : ℝ) S.T (R N).X
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      (fun t ζ =&gt; if t ∈ Set.Icc (0 : ℝ) S.T then S.sigma N • NegSobolev.ofMeasureDiff ((qT d : ℕ) : ℝ)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>          (empirical ((R N).X (Real.toNNReal t) ζ)) (withDensityReal (S.ρ N t)) -
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>        transportedEmpT S R (qT d) N t ζ - Mq t ζ else 0) := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hSm : TorusStanding S R Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    A9.a9_standing_mono (by unfold gammaIdx; omega) hS
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  obtain ⟨-, hq2⟩ := HRS.MP.InitMod.mim_gamma_bounds (d := d)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  refine ⟨fun t =&gt; ?_, fun t ht φ hφ hφ0 =&gt; ?_⟩
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  · by_cases ht : t ∈ Set.Icc (0 : ℝ) S.T
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    · simp only [if_pos ht]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      exact (((HRS.MP.FixedTimeTight.mpt_fluc_measurable hSm (by omega) _ (by linarith) t)).sub
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        (HRS.MP.InitAsm.mia_emp_measurable S R N t (hS.flow N (by omega)).init_meas
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>          (fun k =&gt; a11_hU S R hS (by omega) ht k))).sub (hMq.1 t)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    · simp only [if_neg ht]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      exact measurable_const
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  · simp only [if_pos ht]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    filter_upwards [HRS.MP.DualDec.mdd_eval_decomp S R hS hN ℱ W&#x27; hF ht φ hφ hφ0,
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      hMq.2 t ht φ hφ hφ0] with ζ h1 h2
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    rw [HRS.GF.gf_eval_sub_proof _ _ hφ, HRS.GF.gf_eval_sub_proof _ _ hφ, h1, h2]
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    ring
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>theorem main_torus_path_proof (s : ℝ) :
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    ∃ C₀min : ℝ, ∀ (Rg : PDE.Regime) (ν₀ MB Λ T VB Cin : ℝ) (C₀ Cc : ℝ), C₀min ≤ C₀ →
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    ∀ (S : MainData d) (hs : S.s = s) (hT : S.T = T)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (R : ∀ N, Realization d N) (𝔈 : ℕ → ℝ)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (hstand : TorusStanding S R Rg ν₀ MB Λ VB (gammaIdx d + 2) C₀ Cc 𝔈)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (m₀ : ℕ) (ε : ℕ → ℝ) (hinit : InitialFluctuation S R m₀ Cin ε (fun _ =&gt; ∅))
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (εf : ℕ → ℝ) (ηF : ∀ N, (R N).Ω → NegSobolev d (gammaIdx d : ℝ))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    (νin : Measure (NegSobolev d (gammaIdx d : ℝ)))
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (hfield : InitialFluctuationField S R (gammaIdx d) Cin εf ηF νin)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (L : LimitCoeffs d)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    (hcoef : CoeffConvergence S L Rg ν₀ MB Λ VB (gammaIdx d + 2) (gammaIdx d))
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    (hεf : Tendsto εf atTop (𝓝 0)),
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (∀ N : ℕ, 1 ≤ N → ∀ᵐ ω ∂(R N).P,
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      Continuous fun t : Set.Icc (0 : ℝ) T =&gt;
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        S.sigma N • NegSobolev.ofMeasureDiff ((gammaIdx d + 2 : ℕ) : ℝ)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>          (empirical ((R N).X (Real.toNNReal t) ω)) (withDensityReal (S.ρ N t))) ∧
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      (Y₀ : Ω&#x27; → NegSobolev d ((gammaIdx d + 2 : ℕ) : ℝ))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      (Y : ℝ → Ω&#x27; → NegSobolev d ((gammaIdx d + 2 : ℕ) : ℝ)),
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      Measurable Y₀ →
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      law P&#x27; Y₀ = νin.map (NegSobolev.embed ((gammaIdx d + 2 : ℕ) : ℝ)) →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      IsLinearFluctuationSolution P&#x27; (L.dyn S) L.ρ ((gammaIdx d + 2 : ℕ) : ℝ) L.invβstar T
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        (fun ω =&gt; L.A • Y₀ ω) Y →
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      ConvergesInLaw
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>        (fun N =&gt; law (R N).P
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>          (flucPath ((gammaIdx d + 2 : ℕ) : ℝ) T (S.sigma N) (R N).X (S.ρ N)))
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        (law P&#x27; (toPath ((gammaIdx d + 2 : ℕ) : ℝ) T Y)) := by
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  classical
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  obtain ⟨C1, hfix⟩ := HRS.MP.FixedTimeTight.mpt_fixed_time_tight_torus (d := d) s
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  obtain ⟨C2, hfid⟩ := HRS.MP.FidiAssembly.path_fidi_smooth_proof (d := d) s
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  obtain ⟨C3, hrem⟩ := HRS.MP.RemSup.path_remainder_torus_perN (d := d) s
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  refine ⟨max C1 (max C2 C3), ?_⟩
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  intro Rg ν₀ MB Λ T VB Cin C₀ Cc hC S hs hT R 𝔈 hstand m₀ ε hinit εf ηF νin hfield L hcoef hεf
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hC1 : C1 ≤ C₀ := le_trans (le_max_left _ _) hC
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hC2 : C2 ≤ C₀ := le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hC
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hC3 : C3 ≤ C₀ := le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) hC
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hSγ : TorusStanding S R Rg ν₀ MB Λ VB (gammaIdx d) C₀ Cc 𝔈 :=
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    A9.a9_standing_mono (by omega) hstand
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hSm : TorusStanding S R Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 :=
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    A9.a9_standing_mono (by unfold gammaIdx; omega) hstand
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  obtain ⟨-, hq2⟩ := HRS.MP.InitMod.mim_gamma_bounds (d := d)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  subst hs hT
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hq2&#x27; : (d : ℝ) &lt; 2 * ((gammaIdx d + 2 : ℕ) : ℝ) := hq2
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  refine ⟨fun N hN =&gt; (HRS.MP.FlucPath.mpf_fluc_cont_meas hSm hN _ hq2&#x27;).1, ?_⟩
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  intro Ω&#x27; _ P&#x27; _ Y₀ Y hY₀ hlawY hY
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  obtain ⟨νbar, hνb⟩ := S.invβ_bdd
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have hT0 : 0 &lt; S.T := S.hT
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  -- the Brownian filtrations
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hFex : ∀ N : ℕ, ∃ (ℱ : Filtration ℝ (R N).mΩ)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      (W&#x27; : ℝ≥0 → (R N).Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      1 ≤ N → IsFilteredSolution (R N).P ℱ W&#x27; (R N).W (R N).X := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    intro N
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    by_cases hN : 1 ≤ N
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    · obtain ⟨ℱ, W&#x27;, h⟩ := hstand.filtered N hN
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      exact ⟨ℱ, W&#x27;, fun _ =&gt; h⟩
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    · exact ⟨{ seq := fun _ =&gt; (R N).mΩ, mono&#x27; := fun _ _ _ =&gt; le_rfl, le&#x27; := fun _ =&gt; le_rfl },
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        fun _ _ _ =&gt; 0, fun h =&gt; absurd h hN⟩
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  choose ℱ W&#x27; hF using hFex
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  -- the thermal stochastic convolution and its continuous version
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  obtain ⟨Mq, hMq⟩ := HRS.MP.MartExist.mex_Mq_exists S R hstand ℱ W&#x27; hF
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  obtain ⟨CM, hCM⟩ := HRS.MP.MartMod.path_martingale_modulus_torus_moment (d := d) S.s Rg ν₀ MB Λ
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    S.T VB C₀ Cc νbar
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hmomM := hCM S rfl rfl hνb R 𝔈 hstand ℱ W&#x27; hF Mq hMq
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  obtain ⟨Mc, hMc⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (E := NegSobolev d ((qT d : ℕ) : ℝ)) S.T hT0 (fun N =&gt; (R N).P) Mq
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    (fun N hN t =&gt; (hMq N hN).1 t) 4 1 CM (by norm_num) (by norm_num)
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    (fun N hN s&#x27; hs&#x27; t ht =&gt; by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      have h := hmomM N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      have e1 : ∀ x : ℝ≥0∞, x ^ (4 : ℝ) = x ^ 4 := fun x =&gt; by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        simpa using ENNReal.rpow_natCast x 4
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      have e2 : |t - s&#x27;| ^ ((1 : ℝ) + 1) = |t - s&#x27;| ^ 2 := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>        rw [show ((1 : ℝ) + 1) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      simp only [e1, e2]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      exact h)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  -- the transported empirical initial field and its continuous version
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  obtain ⟨CI, hCI⟩ := HRS.MP.InitAsm.path_initial_modulus_torus_proof (d := d) S.s Rg ν₀ MB Λ S.T VB Cin C₀ Cc νbar
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  obtain ⟨Ic, hIc⟩ := (hCI S rfl rfl hνb R 𝔈 hstand m₀ ε (fun _ =&gt; ∅) hinit εf ηF νin hfield).2.2.1
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  -- the three-term decomposition
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  let Zf : ∀ N, ℝ → (R N).Ω → NegSobolev d q₀ := fun N t ζ =&gt; S.sigma N •
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    NegSobolev.ofMeasureDiff q₀ (empirical ((R N).X (Real.toNNReal t) ζ)) (withDensityReal (S.ρ N t))
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have hZmeas : ∀ N : ℕ, 1 ≤ N → ∀ t, Measurable (Zf N t) := fun N hN t =&gt;
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    HRS.MP.FixedTimeTight.mpt_fluc_measurable hSm hN q₀ (by linarith) t
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hZcont : ∀ N : ℕ, 1 ≤ N → ∀ᵐ ζ ∂(R N).P, Continuous fun t : Set.Icc (0 : ℝ) S.T =&gt; Zf N t ζ :=
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    fun N hN =&gt; (HRS.MP.FlucPath.mpf_fluc_cont_meas hSm hN q₀ hq2).1
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hZpath : ∀ N : ℕ, 1 ≤ N → AEMeasurable (fun ζ =&gt; contPathOf S.T (fun t =&gt; Zf N t ζ)) (R N).P :=
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    fun N hN =&gt; (HRS.MP.FlucPath.mpf_fluc_cont_meas hSm hN q₀ hq2).2
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  let Rm : ∀ N, ℝ → (R N).Ω → NegSobolev d q₀ := fun N t ζ =&gt;
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    if t ∈ Set.Icc (0 : ℝ) S.T then Zf N t ζ - transportedEmpT S R (qT d) N t ζ - Mq N t ζ else 0
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  let Rc : ∀ N, ℝ → (R N).Ω → NegSobolev d q₀ := fun N t ζ =&gt; Zf N t ζ - Ic N t ζ - Mc N t ζ
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  have hHas : ∀ N : ℕ, 1 ≤ N → HasContVersion S.T (R N).P (Rm N) (Rc N) := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    intro N hN
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    refine ⟨fun t ht =&gt; ?_, ?_⟩
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    · filter_upwards [hIc.1 N hN t ht, hMc.1 N hN t ht] with ζ h1 h2
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>      simp only [Rc, Rm, if_pos ht, h1, h2]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    · filter_upwards [hZcont N hN, hIc.2.1 N hN, hMc.2.1 N hN] with ζ h1 h2 h3
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      exact (continuousOn_iff_continuous_restrict.2 ((h1.sub h2).sub h3))
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  obtain ⟨C, hCrem⟩ := hrem Rg ν₀ MB Λ S.T VB C₀ Cc hC3
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hsup : ∀ N : ℕ, 2 ≤ N → ∫⁻ ζ, ⨆ t ∈ Set.Icc (0 : ℝ) S.T, ‖Zf N t ζ - Ic N t ζ - Mc N t ζ‖ₑ ∂(R N).P ≤
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      ENNReal.ofReal (C * S.T * S.sigma N * 𝔈 N) := fun N hN =&gt;
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    hCrem S rfl rfl R 𝔈 hSγ N hN (Rm N) (Rc N)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      (a11_remT S R hstand hN (ℱ N) (W&#x27; N) (hF N (by omega)) (Mq N) (hMq N (by omega)))
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      (hHas N (by omega))
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  -- tightness of the path laws (shifted by one: `N = n + 1 ≥ 2`)
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have hc : Tendsto (fun n : ℕ =&gt; C * S.T * S.sigma (n + 1) * 𝔈 (n + 1)) atTop (𝓝 0) := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    have h := (hstand.energy.small.comp (tendsto_add_atTop_nat 1)).const_mul (C * S.T)
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    simp only [mul_zero] at h
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    refine h.congr fun n =&gt; ?_
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    simp [mul_assoc]
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have hshift : ∀ (F : ℕ → (ℝ → ℝ≥0∞)), True := fun _ =&gt; trivial
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hItight : ∀ ε : ℝ, 0 &lt; ε → Tendsto (fun δ : ℝ =&gt;
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>      ⨆ n : ℕ, ⨆ (_ : 1 ≤ n), (R (n + 1)).P {ζ | ENNReal.ofReal ε &lt;
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        omegaE (fun t =&gt; Ic (n + 1) t ζ) S.T δ}) (𝓝[&gt;] 0) (𝓝 0) := fun ε hε =&gt;
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds (hIc.2.2.2.1 ε hε)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      (fun δ =&gt; zero_le) (fun δ =&gt; iSup_le fun n =&gt; iSup_le fun hn =&gt;
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        le_iSup₂_of_le (n + 1) (by omega) le_rfl)
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hMtight : ∀ ε : ℝ, 0 &lt; ε → Tendsto (fun δ : ℝ =&gt;
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      ⨆ n : ℕ, ⨆ (_ : 1 ≤ n), (R (n + 1)).P {ζ | ENNReal.ofReal ε &lt;
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>        omegaE (fun t =&gt; Mc (n + 1) t ζ) S.T δ}) (𝓝[&gt;] 0) (𝓝 0) := fun ε hε =&gt;
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds (hMc.2.2.2.1 ε hε)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      (fun δ =&gt; zero_le) (fun δ =&gt; iSup_le fun n =&gt; iSup_le fun hn =&gt;
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>        le_iSup₂_of_le (n + 1) (by omega) le_rfl)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hfixN := fun t (ht : t ∈ Set.Icc (0 : ℝ) S.T) =&gt;
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    hfix Rg ν₀ MB Λ S.T VB Cin C₀ Cc hC1 S rfl rfl R 𝔈 hstand m₀ ε hinit εf ηF νin hfield t ht
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have htightc := HRS.MP.TightAsm.mta_tight (E := NegSobolev d q₀) S.T hT0
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (Ω := fun n =&gt; (R (n + 1)).Ω) (fun n =&gt; (R (n + 1)).P) (fun n t ζ =&gt; Zf (n + 1) t ζ)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (fun n =&gt; Ic (n + 1)) (fun n =&gt; Mc (n + 1))
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (fun n hn t =&gt; hZmeas (n + 1) (by omega) t) (fun n hn =&gt; hZcont (n + 1) (by omega))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (fun n hn =&gt; hZpath (n + 1) (by omega)) hItight hMtight
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    (fun n =&gt; C * S.T * S.sigma (n + 1) * 𝔈 (n + 1)) hc
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    (fun n hn =&gt; hsup (n + 1) (by omega))
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    (fun t ht =&gt; (hfixN t ht).subset (by rintro _ ⟨n, hn, rfl⟩; exact ⟨n + 1, by omega, rfl⟩))
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have htight : IsTightMeasureSet (Set.range fun n : ℕ =&gt; (R (n + 2)).P.map
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      (flucPath q₀ S.T (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)))) :=
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    htightc.subset (by rintro _ ⟨n, rfl⟩; exact ⟨n + 1, by omega, rfl⟩)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  -- finite-dimensional convergence and conclusion
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  have hΦ : ∀ n : ℕ, AEMeasurable (fun ζ =&gt; flucPath q₀ S.T (S.sigma (n + 2)) (R (n + 2)).X
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      (S.ρ (n + 2)) ζ) (R (n + 2)).P := fun n =&gt;
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    (HRS.MP.FlucPath.mpf_fluc_cont_meas hSm (by omega) q₀ hq2).2
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  have hΨ := HRS.MP.FlucPath.mpf_toPath_aemeasurable hY
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have hfidi := HRS.MP.GlueFidi.mgf_fidi S R hstand P&#x27; _ _ _ _ Y hY (fun p ts hts φ hφ =&gt;
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    hfid Rg ν₀ MB Λ S.T VB Cin C₀ Cc hC2 S rfl rfl R 𝔈 hstand p ts φ hts hφ m₀ ε hinit εf ηF νin
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      hfield L hcoef hεf P&#x27; Y₀ Y hY₀ hlawY hY)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  have hconv := HRS.AdjK.adjk_convergence_of_tight_fidi_proof q₀ S.T hT0.le
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    (fun n =&gt; (R (n + 2)).P)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    (fun n ζ =&gt; flucPath q₀ S.T (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)) ζ) P&#x27;
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    (toPath q₀ S.T Y) hΦ hΨ htight hfidi
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  exact HRS.MP.GlueFidi.mgf_final (fun N =&gt; (R N).P) P&#x27;
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    (fun N ζ =&gt; flucPath q₀ S.T (S.sigma N) (R N).X (S.ρ N) ζ) (toPath q₀ S.T Y) hconv
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>end HRS.MP.A11
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>/-- Relocation check: the proof above proves the frozen statement of Theorem A.11 verbatim. -/
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>example := (@HRS.MP.A11.main_torus_path_proof : type_of% @HRS.Main.main_torus_path)
+</span></code></pre></main></body></html>

@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.ConventionHolder · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.ConventionHolder</code></h1><p><a href="../../lean/HRS/PDE/ConventionHolder.lean">Open the unaltered Lean file</a> · 72 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.KernelInputsD1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.MeanFieldHolder
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># The cancellation convention `B:eq:nabla-g-convolution` in its printed Hölder form
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Statements only (every theorem ends in `sorry`); relocated from `HRS/SA/Drafts/SAD2.lean` after the independent review
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>recorded in `docs/ISSUES.md` and subsequent approval.  Row `M:prose:L10036-10126` (TeX L10089-10101).  `HRS.IsRegularMF`,
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`HRS.PDE.IsRegularMFProviso` and `HRS.convGradConv` already exist; what was missing is the literal two-integral
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>form with the Euclidean ball cutoff and the printed well-definedness and agreement-with-distributional-convolution clauses
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>for Hölder densities.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>-/
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>noncomputable section
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal BigOperators RealInnerProductSpace
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>variable {d : ℕ}
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open HRS.Torus in
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>/-- The force `∇g * μ` of `B:eq:nabla-g-convolution` (M L10091-10093) **literally as printed**:
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>two separate integrals, the increment integral over the Euclidean ball `|x-y| ≤ 1/4` (here
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>`tdist x y`, the norm of the centred representative of `x-y`) and the far-field integral over
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>`|x-y| &gt; 1/4` against `dμ(y) = ρ(y) dy`.  (`HRS.convGradConv` is the same thing with the sup-norm
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>cube `‖x-y‖ ≤ 1/4` and a single integral.) -/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>def convGradHolder (G : Torus d → Euc d) (ρ : Torus d → ℝ) (x : Torus d) : Euc d :=
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  (∫ y, if Torus.tdist x y ≤ 1 / 4 then (ρ y - ρ x) • G (x - y) else 0) +
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    ∫ y, if 1 / 4 &lt; Torus.tdist x y then ρ y • G (x - y) else 0
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>/-- **The cube convention equals the printed ball convention** (M L10091-10096, &quot;the subtracted
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>constant contributes zero by oddness&quot;).  For a measurable odd kernel `G` with the order
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>`|z|^{-s-1}` bound (`KernelGrad.GoodKernel`), a bounded measurable density `ρ`, and a point `x` at
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>which the near-field increment integral of the printed formula converges, the printed two-integral
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>formula equals `HRS.convGradConv`.  The convergence hypothesis is necessary: otherwise the printed
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>first integral is the junk `0`. -/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>theorem convGradConv_eq_convGradHolder {s C : ℝ} {G : Torus d → Euc d}
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hG : KernelGrad.GoodKernel d s C G) {ρ : Torus d → ℝ} (hρm : Measurable ρ)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (hρb : ∃ B, ∀ y, |ρ y| ≤ B) (x : Torus d)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hint : Integrable (fun y =&gt; if Torus.tdist x y ≤ 1 / 4 then (ρ y - ρ x) • G (x - y) else 0)) :
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    convGradConv G ρ x = convGradHolder G ρ x := by
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  sorry
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- **Well-definedness for Hölder densities** (M L10089-10097: &quot;defined for `μ ∈ C^{0,α}`,
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>`α &gt; s+1-d` ... Near the origin, the Hölder increment makes the integrand locally integrable
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>precisely when `α &gt; s+1-d`&quot;; sufficiency direction).  For `0 ≤ s &lt; d`, `0 &lt; α ≤ 1`,
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>`α &gt; s+1-d` and `ρ ∈ C^{0,α}` the integrand of the cancellation convolution is integrable, so
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>the Bochner integral in `convGradConv` is not a junk value.  (Hölder is with respect to the
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>torus norm, as in `MFHolder.Hol0`.) -/
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>theorem integrable_convGradConv_integrand_of_holder {s α : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    (hsd : s &lt; d) (hα0 : 0 &lt; α) (hα1 : α ≤ 1) (hα : s + 1 - d &lt; α) {ρ : Torus d → ℝ}
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (hρ : PDE.MFHolder.Hol0 α ρ) (x : Torus d) :
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    Integrable (fun y =&gt; if ‖x - y‖ ≤ 1 / 4 then (ρ y - ρ x) • periodicRieszGrad d s (x - y)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      else ρ y • periodicRieszGrad d s (x - y)) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  sorry
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- **Agreement with distributional convolution for Hölder densities** (M L10098-10101: &quot;The
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>formula is therefore well defined and agrees with distributional convolution&quot;).  For
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>`0 ≤ s &lt; d`, `0 &lt; α ≤ 1`, `α &gt; s+1-d` and `ρ ∈ C^{0,α}`, the Fourier coefficients of the `i`-th
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>component of `∇g * ρ` (cancellation convention) are `2πi k_i ĝ(k) ρ̂(k)` (`PDE.gradRieszCoeff`).
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>This extends `PDE.convGradConv_coeff_of_one_le` from `ρ ∈ C¹` to the Hölder class actually used
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>in the printed definition (needed for `s ≥ d-1`, where `C¹` is stronger than the source). -/
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>theorem convGradConv_coeff_of_holder {s α : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (hα0 : 0 &lt; α) (hα1 : α ≤ 1) (hα : s + 1 - d &lt; α) {ρ : Torus d → ℝ}
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    (hρ : PDE.MFHolder.Hol0 α ρ) (i : Fin d) :
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    PDE.coeffOf (fun x =&gt; convGradConv (periodicRieszGrad d s) ρ x i) =
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      PDE.gradRieszCoeff d s i (PDE.coeffOf ρ) := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  sorry
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>end HRS
+</span></code></pre></main></body></html>

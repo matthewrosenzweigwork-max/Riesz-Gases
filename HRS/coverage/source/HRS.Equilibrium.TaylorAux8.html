@@ -1,0 +1,159 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.TaylorAux8 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.TaylorAux8</code></h1><p><a href="../../lean/HRS/Equilibrium/TaylorAux8.lean">Open the unaltered Lean file</a> · 158 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.TaylorAux8 — Lemma 4.7 `M:R:lem:Taylor` (packet TAYLOR)
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>`integrated_taylor_remainder_proof` restates `HRS.integrated_taylor_remainder` verbatim (the
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>statement lives in `PoleCavity.lean`, which cannot import this file: the proof uses Lemma 4.4 in its
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>proved form `product_moment_transfer_proof`, downstream of `PoleCavity.lean`).
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Proof route (TeX lines 4307-4350), with `N = ν⁸`, `H = 2ν⁵`, `M = ν³`:
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>1. pointwise: `H(v) ≤ H(v_H) + (v - v_H)`, `H(v_H) ≤ e^K v_H²` (`taylor_pointwise`);
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>   hence the remainder is `≤ B₁(Y) + λ ∑_{j≠i} T_{H,x}(y_j)`;
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>2. `‖B₁‖_{L^{2q}(μ^n)} ≤ C Θ(N,H) ≤ C ν^{-5}`: Jensen in `y` and the bounded-summand Bernstein
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>   inequality for `v_{Y,H}(y)` (`taylor_B1_bound`, `taylor_field_moment`);
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>3. `‖λ ∑ T(y_j)‖_{L^{2q}(μ^n)} ≤ C ν^{-5}`: cap `T` at `M = ν³`, Bernstein for the capped part,
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>   Minkowski and the `6q`-th moment (Young&#x27;s inequality) for the remainder (`taylor_sum_bound`);
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>4. transfer (Lemma 4.4 with loss `N^{1/16}`): `‖·‖_{L²(P)} ≤ C N^{1/16} ν^{-5} = C N^{-9/16}`.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>-/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>import HRS.Equilibrium.PoleCavity
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>import HRS.Equilibrium.ProductTransfer
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>import HRS.Equilibrium.TaylorAux7
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open MeasureTheory
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open scoped ENNReal
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>set_option linter.style.longLine false
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>noncomputable section
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>namespace HRS
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>open HRS.TaylorAux
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>theorem taylor_rpow_ids (N : ℕ) (hN : 1 ≤ N) :
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    ((N : ℝ) ^ ((1 : ℝ) / 16)) ^ 2 * (((taylorNu N) ^ 5)⁻¹) ^ 2 = (N : ℝ) ^ (-(9 / 8 : ℝ)) := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have e1 : ((N : ℝ) ^ ((1 : ℝ) / 16)) ^ 2 = (N : ℝ) ^ ((1 : ℝ) / 8) := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    rw [← Real.rpow_natCast, ← Real.rpow_mul hN0.le]; norm_num
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  have e2 : (((taylorNu N) ^ 5)⁻¹) ^ 2 = (N : ℝ) ^ (-(5 / 4 : ℝ)) := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    have : (taylorNu N) ^ 5 = (N : ℝ) ^ ((5 : ℝ) / 8) := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      unfold taylorNu
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      rw [← Real.rpow_natCast, ← Real.rpow_mul hN0.le]; norm_num
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    rw [this, ← Real.rpow_neg hN0.le, ← Real.rpow_natCast, ← Real.rpow_mul hN0.le]
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    norm_num
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  rw [e1, e2, ← Real.rpow_add hN0]
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  norm_num
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem integrated_taylor_remainder_proof {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (β : ℝ) (hβ : 0 &lt; β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ x : Torus d, ∀ t ∈ Set.Icc (0 : ℝ) 1,
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      ∀ t&#x27; ∈ Set.Icc (0 : ℝ) 1, ∀ i : Fin (N - 1),
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      ∀ f ∈ ({fun _ =&gt; 1,
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>          fun y =&gt; Real.exp (-(t * (β / N)) * gPlus d s c (x - y)),
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>          fun y =&gt; gPlus d s c (x - y) * Real.exp (-(t * (β / N)) * gPlus d s c (x - y))} :
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>            Set (Torus d → ℝ)),
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        ∫⁻ Y, (∫⁻ y, ENNReal.ofReal (f y * taylorH (cavityField d s c β ρ N i Y y))
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>              ∂(withDensityReal ρ)) ^ 2 ∂(critPole d s c β ρ N x t&#x27;) ≤
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>          ENNReal.ofReal (C * (N : ℝ) ^ (-(9 / 8 : ℝ))) := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hμ := PoleCavityAux.isProbabilityMeasure_mu hρ
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  obtain ⟨hs0, hsd⟩ := PoleCavityAux.hs_aux hd hcrit
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨q, hq2, C0, hC0⟩ := product_moment_transfer_proof hd hcrit β hβ ρ hρ c hc (1 / 16) (by norm_num)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨K, hK0, hKl⟩ := taylor_field_lower hd hcrit β hβ ρ hρ c hc
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨Cb, hCb0, hCb⟩ := taylor_Lp_total hd hcrit β hβ ρ hρ c hc q (by omega) hK0
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  refine ⟨(max C0 0 * Cb) ^ 2, fun N hN x t ht t&#x27; ht&#x27; i f hf =&gt; ?_⟩
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  set ν : ℝ := taylorNu N with hν
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hν1 : 1 ≤ ν := one_le_taylorNu N (by omega)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hν0 : 0 &lt; ν := by linarith
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  set H : ℝ := 2 * ν ^ 5 with hHdef
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hH : 2 ≤ H := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have : 1 ≤ ν ^ 5 := one_le_pow₀ hν1
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    rw [hHdef]; linarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hp0 : (0 : ℝ) &lt; ((2 * q : ℕ) : ℝ) := by exact_mod_cast (by omega : 0 &lt; 2 * q)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  set P : Measure (Config d (N - 1)) := critPole d s c β ρ N x t&#x27; with hP
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  set Pm : Measure (Config d (N - 1)) := Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ with hPm
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  -- general claim for a dominating test `φ`
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have key : ∀ φ ∈ ({fun _ =&gt; 1, fun y =&gt; gPlus d s c (x - y)} : Set (Torus d → ℝ)),
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      ∀ g : Torus d → ℝ, (∀ y, g y ≤ φ y) →
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      ∫⁻ Y, (∫⁻ y, ENNReal.ofReal (g y * taylorH (cavityField d s c β ρ N i Y y))
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>              ∂(withDensityReal ρ)) ^ 2 ∂P ≤
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        ENNReal.ofReal ((max C0 0 * Cb) ^ 2 * (N : ℝ) ^ (-(9 / 8 : ℝ))) := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    intro φ hφ g hgφ
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have hφm : Measurable φ := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      rcases hφ with rfl | rfl
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      · exact measurable_const
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      · exact (PoleCavityAux.measurable_gPlus hd hs0 hsd c (s := s)).comp
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>          (measurable_const.sub measurable_id)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    have hφ0 : ∀ y, 0 ≤ φ y := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      rcases hφ with rfl | rfl
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      · intro y; exact zero_le_one
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      · intro y; exact hc _
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    set B : (Config d (N - 1)) → ℝ≥0∞ := fun Y =&gt; (∫⁻ y, ENNReal.ofReal (φ y) *
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>        ENNReal.ofReal (Real.exp K * taylorFieldH d s c β ρ N i H Y y ^ 2) ∂(withDensityReal ρ)) +
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        ENNReal.ofReal (β / N) * ∑ j ∈ Finset.univ.erase i,
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>          taylorT (withDensityReal ρ) φ (taylorG d s c H) (Y j) with hB
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hBm : Measurable B := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      refine Measurable.add ?_ ?_
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      · refine Measurable.lintegral_prod_right&#x27; (f := fun p : Config d (N - 1) × Torus d =&gt;
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          ENNReal.ofReal (φ p.2) * ENNReal.ofReal (Real.exp K * taylorFieldH d s c β ρ N i H p.1 p.2 ^ 2)) ?_
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        exact (hφm.comp measurable_snd).ennreal_ofReal.mul
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          ((measurable_const.mul
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            ((taylor_measurable_fieldH hd hcrit β ρ c (N := N) (N - 1) i H).pow_const 2)).ennreal_ofReal)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      · exact (Finset.measurable_sum _ fun j _ =&gt;
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>          (taylor_measurable_T hφm (measurable_taylorG hd hs0 hsd c H (s := s))).comp
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>            (measurable_pi_apply j)).const_mul _
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    have hpt : ∀ Y, ∫⁻ y, ENNReal.ofReal (g y * taylorH (cavityField d s c β ρ N i Y y))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        ∂(withDensityReal ρ) ≤ B Y := fun Y =&gt;
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      taylor_pointwise hd hcrit β hβ ρ hρ c hc hK0 hKl N H hH i φ g hφm hφ0 hgφ Y
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have hLp := hCb N hN i x φ hφ
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    -- the `L^{2q}(Pm)` bound on `B`
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have hb : ∫⁻ a, B a ^ (2 * q) ∂Pm ≤ (ENNReal.ofReal (Cb * (ν ^ 5)⁻¹)) ^ (2 * q) := by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      have h1 := taylorLp_rpow hp0 B (P := Pm)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      have h2 : taylorLp Pm ((2 * q : ℕ) : ℝ) B ≤ ENNReal.ofReal (Cb * (ν ^ 5)⁻¹) := hLp
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      have h3 := ENNReal.rpow_le_rpow h2 hp0.le
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      rw [h1] at h3
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      simp only [ENNReal.rpow_natCast] at h3
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      exact h3
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have hwrap := taylor_transfer_wrap P Pm q (by omega) (ENNReal.ofReal (C0 * (N : ℝ) ^ ((1 : ℝ) / 16)))
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      (fun Y hY =&gt; (hC0 N hN).2 x t&#x27; ht&#x27; Y hY) B hBm _ hb
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    calc ∫⁻ Y, (∫⁻ y, ENNReal.ofReal (g y * taylorH (cavityField d s c β ρ N i Y y))
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>              ∂(withDensityReal ρ)) ^ 2 ∂P ≤ ∫⁻ Y, B Y ^ 2 ∂P :=
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          lintegral_mono fun Y =&gt; pow_le_pow_left&#x27; (hpt Y) 2
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      _ ≤ (ENNReal.ofReal (C0 * (N : ℝ) ^ ((1 : ℝ) / 16)) * ENNReal.ofReal (Cb * (ν ^ 5)⁻¹)) ^ 2 := hwrap
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      _ ≤ (ENNReal.ofReal (max C0 0 * (N : ℝ) ^ ((1 : ℝ) / 16)) * ENNReal.ofReal (Cb * (ν ^ 5)⁻¹)) ^ 2 := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          refine pow_le_pow_left&#x27; (mul_le_mul&#x27; ?_ le_rfl) 2
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>          exact ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>            (mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.rpow_nonneg hN0.le _))
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      _ = ENNReal.ofReal ((max C0 0 * (N : ℝ) ^ ((1 : ℝ) / 16) * (Cb * (ν ^ 5)⁻¹)) ^ 2) := by
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>          rw [← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_pow (by positivity)]
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      _ = ENNReal.ofReal ((max C0 0 * Cb) ^ 2 * (N : ℝ) ^ (-(9 / 8 : ℝ))) := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>          congr 1
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>          rw [← taylor_rpow_ids N (by omega)]
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          ring
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hmem1 : (fun _ =&gt; (1 : ℝ)) ∈ ({fun _ =&gt; 1, fun y =&gt; gPlus d s c (x - y)} : Set (Torus d → ℝ)) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    simp
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have hmem2 : (fun y =&gt; gPlus d s c (x - y)) ∈
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>      ({fun _ =&gt; 1, fun y =&gt; gPlus d s c (x - y)} : Set (Torus d → ℝ)) := by simp
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  have hE : ∀ y, Real.exp (-(t * (β / N)) * gPlus d s c (x - y)) ≤ 1 := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    intro y
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    rw [Real.exp_le_one_iff]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    have : 0 ≤ t * (β / N) := mul_nonneg ht.1 (by positivity)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    have := hc (x - y)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    have : 0 ≤ gPlus d s c (x - y) := this
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    nlinarith
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hf
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  rcases hf with rfl | rfl | rfl
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  · exact key _ hmem1 _ fun y =&gt; le_rfl
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  · exact key _ hmem1 _ fun y =&gt; hE y
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  · refine key _ hmem2 _ fun y =&gt; ?_
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    have h0 : 0 ≤ gPlus d s c (x - y) := hc _
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    have := Real.exp_pos (-(t * (β / N)) * gPlus d s c (x - y))
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    calc gPlus d s c (x - y) * Real.exp (-(t * (β / N)) * gPlus d s c (x - y))
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        ≤ gPlus d s c (x - y) * 1 := mul_le_mul_of_nonneg_left (hE y) h0
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      _ = _ := mul_one _
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>example := (@integrated_taylor_remainder_proof : type_of% @integrated_taylor_remainder)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>end HRS
+</span></code></pre></main></body></html>

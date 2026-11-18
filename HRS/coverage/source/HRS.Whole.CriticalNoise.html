@@ -1,0 +1,587 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.CriticalNoise · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.CriticalNoise</code></h1><p><a href="../../lean/HRS/Whole/CriticalNoise.lean">Open the unaltered Lean file</a> · 586 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Critical
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Weighted adjoint decay, chart localisation, and the noise couplings of the critical
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>stationary path estimate (spec packet SPEC-W3): Sections S8.3-S8.8
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Source: HRS whole-space supplement (S), Section S8 (`S:sec:critical`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* S8.3 `S:Q:lem:weighted-adjoint` (S lines 6439-6450): polynomially weighted adjoint decay and the
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  pair inverse in the quadratic whole-space model.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* S8.4 `S:R:lem:charts` (S lines 6529-6541): charts adapted to the quadratic weight.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* S8.5 `S:R:lem:feature-decay` (S lines 6562-6574): spatial decay of the adjoint noise features.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S8.6 `S:R:prop:finite-noise` (S lines 6598-6608): the finite-horizon noise coupling.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* S8.7 `S:R:lem:spectral` (S lines 6653-6670): a spectral space for the noise.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* S8.8 `S:R:lem:return-map` (S lines 6745-6756): return from the auxiliary space.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>## Scope and representation decisions (common)
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* **Model.** &quot;The quadratic whole-space model&quot; / &quot;either stationary model&quot; is, in every statement of
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  this file, the critical (`s = d/2`) quadratic model of S8.1: `d ≥ 2`, `V = a|x|²/2`,
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  `μ = μ_β` any `IsThermalEquilibrium d (d/2) a β ρβ`, `ν = β⁻¹`, particles stationary
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  (`IsCanonicalRealization`).  The *torus* alternatives (&quot;in either stationary model&quot;, S lines 6599,
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  6653; &quot;the same ... holds on the torus&quot;, S line 6563) are **not stated**: the periodic noise/orbit
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  machinery (periodic `𝒦`-space, features, `A`, `L` on `𝕋^d`) has no Lean counterpart yet.
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>* `U_t = e^{t𝒜}` of S8.3 is the unique extension `U` of the semigroup of the projected generator
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  `𝒜 = P_μ ℒ` (`IsWeightedSemigroup`, characterised on `C_c^∞` by the classical backward solution of
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  `-∂_r u = 𝒜 u`, `projGeneratorW`).  Spatial gradients and zero-mass pairings do not see the
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  additive constants that separate it from the classical adjoint solution of `ℒ`
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  (`propagatorW`, `S:R:eq:backward-expression` S lines 6555-6559, 6552).
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* The noise features `Γ_{r,a}(x) ∈ 𝒦_H = H¹([0,H];ℓ²) ⊕ ℓ²` are the existing `gradFeature`
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  (Orbits.lean, S5.2); &quot;adapted coupling&quot; statements use the output pattern of
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `HRS.hilbert_polar_coupling` (Corollary A.23): `IsAdaptedGaussianCoupling` (a measure preserving
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  enlargement `Ω&#x27; → Ω` with enlarged filtration, a cylindrical Brownian motion `B` independent of
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  `ℱ₀`, both the empirical martingale `∫ S dB` and a deterministic-covariance Gaussian martingale
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  `∫ Sb dB`).  The reconstruction `𝒯M` is `reconstructPath` (S5.2).
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>* `ℓ²`-valued objects are `OscDual d m` (coordinates indexed by `MultiIndex d`) for the Hermite
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  features, and `SeqL2` (`ℓ²(ℕ)`) for the auxiliary space `ℋ_τ` (the coordinates
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  `e^{-τω_ℓ/2} z(e_ℓ)`; the `ℋ_τ` norm is then the `ℓ²` norm).
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>* The linear-variance input `R:eq:linear-input` (M line 4187) is `LinearInputBounds`.
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>-/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>noncomputable section
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>namespace HRS.Whole
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>variable {d : ℕ}
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>instance instSepSeqL2 : TopologicalSpace.SeparableSpace SeqL2 :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  HRS.StaticLimitAux.separable_lp (ι := ℕ)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>instance instSCSeqL2 : SecondCountableTopology SeqL2 :=
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  UniformSpace.secondCountable_of_separable _
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-! ### Linear input and adapted couplings (shared definitions) -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- The linear-variance input `R:eq:linear-input` (M line 4187, `S:R:prop:finite-noise` S line 6599)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>for a configuration `Y` under `P` and the reference `μ`, with constant `C`: `dm_N/dμ ≤ C`,
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>`‖dm_N/dμ - 1‖_{L²(μ)} ≤ Cδ_N` (`HasMarginalDensityBounds`, `m_N` the law of the first
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>particle) and `Var[μ_N(f)] ≤ C N⁻¹ ‖f‖²_{L²(μ)}` (`ℝ≥0∞`-valued variance). -/
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>def LinearInputBounds (d : ℕ) (s : ℝ) (N : ℕ) (μ : Measure (Euc d)) (C : ℝ) {Ω : Type}
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    [MeasurableSpace Ω] (P : Measure Ω) (Y : Ω → EucConfig d N) : Prop :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  HasMarginalDensityBounds (firstMarginal (law P Y)) μ C (C * deltaN d s N) ∧
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  ∀ f : Euc d → ℝ, MemLp f 2 μ →
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    evariance (fun ζ =&gt; linStat f (Y ζ)) P ≤ ENNReal.ofReal (C / N * ∫ x, f x ^ 2 ∂μ)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- The data of an adapted coupling of an empirical `H`-valued martingale with a Gaussian martingale
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>of deterministic covariance, on a horizon `T` (the output pattern of `HRS.hilbert_polar_coupling`,
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>Corollary A.23, S lines 10631-10650): a measure preserving enlargement `π : Ω&#x27; → Ω` carrying a
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>filtration `ℱ&#x27;` that contains the pulled-back `ℱ`; an `H`-cylindrical Brownian motion `B` for `ℱ&#x27;`
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>independent of the (pulled-back) initial σ-field `ℱ₀`; the empirical martingale `M = ∫ Φ dW` is the
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>Itô integral `∫ S dB` of the square roots `S_r` of its covariance forms `Σ_r = ΦΦ*`; and the Gaussian
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>martingale `G = ∫ Sb dB` has deterministic covariance density `Cdet` (`Sb_r` the square roots). -/
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>structure IsAdaptedGaussianCoupling {Ω : Type} {mΩ : MeasurableSpace Ω} (P : Measure Ω)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (ℱ : Filtration ℝ mΩ) {H : Type} [NormedAddCommGroup H] [InnerProductSpace ℝ H]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    {κ : Type} (Φ : ℝ → Ω → κ → H) (M : ℝ → Ω → H) (T : ℝ)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (Cdet : ℝ → H →L[ℝ] H →L[ℝ] ℝ) {Ω&#x27; : Type} {mΩ&#x27; : MeasurableSpace Ω&#x27;} (P&#x27; : Measure Ω&#x27;)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (π : Ω&#x27; → Ω) (ℱ&#x27; : Filtration ℝ mΩ&#x27;) {ι : Type} [Countable ι] (e : HilbertBasis ι ℝ H)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (B : ℝ≥0 → Ω&#x27; → ι → ℝ) (S : ℝ → Ω → H →L[ℝ] H) (Sb : ℝ → H →L[ℝ] H) (G : ℝ → Ω&#x27; → H) :
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    Prop where
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  prob : IsProbabilityMeasure P&#x27;
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  preserving : MeasurePreserving π P&#x27; P
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  filtration : ∀ τ, (ℱ τ).comap π ≤ ℱ&#x27; τ
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  brownian : IsCylindricalBrownian P&#x27; ℱ&#x27; B
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  indep : Indep ((ℱ 0).comap π) (cylindricalPathSigma B) P&#x27;
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  sqrtS : ∀ r ∈ Set.Icc 0 T, ∀ z, IsSqrtOfForm (S r z) (hsCovForm (Φ r z))
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  empirical : IsHilbertItoIntegral P&#x27; ℱ&#x27; B (fun r w j =&gt; if r ≤ T then S r (π w) (e j) else 0)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (fun τ w =&gt; M (min τ T) (π w))
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  sqrtSb : ∀ r ∈ Set.Icc 0 T, IsSqrtOfForm (Sb r) (Cdet r)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  gaussian : IsHilbertItoIntegral P&#x27; ℱ&#x27; B (fun r _ j =&gt; if r ≤ T then Sb r (e j) else 0) G
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-! ### S8.3 `S:Q:lem:weighted-adjoint` (S lines 6439-6450) -/
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>section WeightedAdjoint
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>/-- The space `C_M`: continuous `f` with `⟨x⟩^{-M} f(x) → 0` at infinity (S line 6439). -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>def MemCM (M : ℝ) (f : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  Continuous f ∧ Tendsto (fun x =&gt; f x / jbracket x ^ M) (cocompact (Euc d)) (𝓝 0)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- The space `C_M^j`: `C^j` functions all of whose partial derivatives of order `≤ j` satisfy
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>`⟨x⟩^{-M} ∂^α f(x) → 0` at infinity.  Its norm is `weightedSupE j (-M)`. -/
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>def MemCMj (M : ℝ) (j : ℕ) (f : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  ContDiff ℝ j f ∧ ∀ i ≤ j, ∀ idx : Fin i → Fin d,
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    Tendsto (fun x =&gt; partialDeriv idx f x / jbracket x ^ M) (cocompact (Euc d)) (𝓝 0)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>/-- The projected generator `𝒜 f = P_μ ℒ f = ℒ f - μ(ℒ f)` (`S:R:eq:backward-expression`; M line 4713:
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>`𝒜 f = P[Bf + Jf]`). -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def projGeneratorW (C : WholeCoeff d) (μ : Measure (Euc d)) (r : ℝ) (g : Euc d → ℝ)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (x : Euc d) : ℝ :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  generatorW C r g x - ∫ y, generatorW C r g y ∂μ
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-- A classical backward solution `-∂_r f = G_r f`, `f(t) = φ`, for a general generator `G` (the same
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>conditions as the repaired `IsClassicalAdjointW`, whose generator is `generatorW C`; in particular `∂_r f` is only of linear growth, `|G_r f_r(x)| ≤ B(1+|x|)`). -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>structure IsAdjointSolutionG (G : ℝ → (Euc d → ℝ) → Euc d → ℝ) (t : ℝ) (φ : Euc d → ℝ)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    (f : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  c2 : ∀ r ∈ Set.Icc 0 t, ContDiff ℝ 2 (f r)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  bdd : ∀ j ≤ 2, ∃ B : ℝ, ∀ r ∈ Set.Icc 0 t, ∀ x, ‖iteratedFDeriv ℝ j (f r) x‖ ≤ B
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  cont_c2 : ∀ j ≤ 2, Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt;
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    iteratedFDeriv ℝ j (f p.1) p.2
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  terminal : f t = φ
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  time_deriv : ∀ x : Euc d, ∀ r ∈ Set.Ioo 0 t, HasDerivAt (fun r&#x27; =&gt; f r&#x27; x) (-(G r (f r) x)) r
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  cont_time_deriv : Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt; G p.1 (f p.1) p.2
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  bdd_time_deriv : ∃ B : ℝ, ∀ r ∈ Set.Icc 0 t, ∀ x, |G r (f r) x| ≤ B * (1 + ‖x‖)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>/-- `U` is the extension to `C_M` of the semigroup `U_t = e^{t𝒜}` of the projected generator of the
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>(time independent) coefficients `C` with invariant measure `μ` (S line 6440 &quot;The semigroup extends to
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>`C_M`&quot;): for `t ≥ 0`, `U_t` is a linear operator on `C_M` into `C_M`, bounded uniformly on bounded
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>time intervals, `U_0 = id`, `U_{t+s} = U_tU_s`, and on `C_c^∞` it is the classical backward solution
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>of `-∂_r u = 𝒜 u` with terminal datum `φ`, evaluated at `0` (this fixes it uniquely, `C_c` being
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>dense in `C_M`). -/
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>structure IsWeightedSemigroup (C : WholeCoeff d) (μ : Measure (Euc d)) (M : ℝ)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    (U : ℝ → (Euc d → ℝ) → Euc d → ℝ) : Prop where
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  maps : ∀ t, 0 ≤ t → ∀ f, MemCM M f → MemCM M (U t f)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  add : ∀ t, 0 ≤ t → ∀ f g, MemCM M f → MemCM M g → U t (f + g) = U t f + U t g
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  smul : ∀ t, 0 ≤ t → ∀ (c : ℝ) f, MemCM M f → U t (c • f) = c • U t f
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  bdd : ∀ T, 0 ≤ T → ∃ K : ℝ, ∀ t ∈ Set.Icc 0 T, ∀ f, MemCM M f →
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    weightedSupE 0 (-M) (U t f) ≤ ENNReal.ofReal K * weightedSupE 0 (-M) f
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  zero : ∀ f, MemCM M f → U 0 f = f
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  semigroup : ∀ t s, 0 ≤ t → 0 ≤ s → ∀ f, MemCM M f → U (t + s) f = U t (U s f)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  classical : ∀ t, 0 ≤ t → ∀ φ : Euc d → ℝ, ContDiff ℝ ∞ φ → HasCompactSupport φ →
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    ∃ f, IsAdjointSolutionG (projGeneratorW C μ) t φ f ∧ U t φ = f 0
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>/-- The weighted space of kernels `R(x,y)`: `C^j` in both variables with
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>`⟨x⟩^{-M}⟨y⟩^{-M} ‖D^iR(x,y)‖ → 0` at infinity of `ℝ^d × ℝ^d`, `i ≤ j` (weight `⟨x⟩^M⟨y⟩^M`,
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>derivatives in both variables). -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>def MemCMpair (M : ℝ) (j : ℕ) (R : Euc d → Euc d → ℝ) : Prop :=
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  ContDiff ℝ j (Function.uncurry R) ∧ ∀ i ≤ j,
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    Tendsto (fun z : Euc d × Euc d =&gt;
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      jbracket z.1 ^ (-M) * jbracket z.2 ^ (-M) * ‖iteratedFDeriv ℝ i (Function.uncurry R) z‖)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      (cocompact (Euc d × Euc d)) (𝓝 0)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>/-- The norm `sup_{i≤j} sup_{x,y} ⟨x⟩^{-M}⟨y⟩^{-M}‖D^iR(x,y)‖` of `MemCMpair`, in `ℝ≥0∞`. -/
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>def pairNormE (M : ℝ) (j : ℕ) (R : Euc d → Euc d → ℝ) : ℝ≥0∞ :=
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  ⨆ i : Fin (j + 1), ⨆ z : Euc d × Euc d,
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    ENNReal.ofReal (jbracket z.1 ^ (-M) * jbracket z.2 ^ (-M) *
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      ‖iteratedFDeriv ℝ i (Function.uncurry R) z‖)
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>/-- Doubly centered kernels: `∫R(x,y)dμ(x) = 0` for every `y` and `∫R(x,y)dμ(y) = 0` for every `x`
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>(`P_xP_yR = R`). -/
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>def IsDoublyCentered (μ : Measure (Euc d)) (R : Euc d → Euc d → ℝ) : Prop :=
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  (∀ y, ∫ x, R x y ∂μ = 0) ∧ ∀ x, ∫ y, R x y ∂μ = 0
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-- The tensor semigroup `(U_t^xU_t^yR)(x,y) = (U_t[x&#x27; ↦ (U_tR(x&#x27;,·))(y)])(x)`. -/
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>def tensorU (U : ℝ → (Euc d → ℝ) → Euc d → ℝ) (t : ℝ) (R : Euc d → Euc d → ℝ) (x y : Euc d) : ℝ :=
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  U t (fun x&#x27; =&gt; U t (R x&#x27;) y) x
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>/-- The pair inverse `Ψ_R(x,y) = ∫_0^∞ (U_t^xU_t^yR)(x,y) dt` (`S:Q:eq:smooth-pair-inverse`). -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>def pairInverseW (U : ℝ → (Euc d → ℝ) → Euc d → ℝ) (R : Euc d → Euc d → ℝ) (x y : Euc d) : ℝ :=
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  ∫ t in Set.Ioi (0 : ℝ), tensorU U t R x y
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-- Lemma S8.3 (S:Q:lem:weighted-adjoint, TeX S L6439-6450) (S lines 6439-6450, `S:Q:eq:weighted-decay`,
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>`S:Q:eq:smooth-pair-inverse`), in the quadratic whole-space model (`d ≥ 2`, `s = d/2`, `V = a|x|²/2`,
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>`μ = μ_β`, `𝒜 = P_μℒ`, `ℒ = generatorW (critCoeff …)`), for every `M &gt; 0`:
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>(1) the semigroup `U_t` extends to `C_M` (`IsWeightedSemigroup`); and for such an extension
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>(2) `‖U_tP‖_{C_M→C_M} ≤ Ce^{-ct}` and `‖U_tP‖_{C_M→C_M^j} ≤ C_je^{-ct}` for `t ≥ 1` (`C, c, C_j`
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>depend on `M`, and `j` for `C_j`), `P = P_μ` the centering; (3) `U_t` preserves `C_M^j` with bounded
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>norm on bounded time intervals; (4) the tensor semigroup on doubly centered kernels has the analogous
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>bounds with weight `⟨x⟩^M⟨y⟩^M` and derivatives in both variables (stated with a common rate `c` and
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>the same shape: `‖·‖_{M,0} ≤ Ce^{-ct}‖·‖_{M,0}`, `‖·‖_{M,j} ≤ C_je^{-ct}‖·‖_{M,0}`); (5) for a smooth
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>doubly centered kernel `R` of polynomial growth (`|D^kR(x,y)| ≤ C_k⟨x⟩^K⟨y⟩^K`, `K &lt; M`) the pair
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>inverse converges for every `x, y`, is `C^j` with derivatives through order `j` bounded by `C⟨x⟩^M⟨y⟩^M`, and
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>satisfies `-(𝒜_x+𝒜_y)Ψ_R = R`.
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>AMBIGUITY: the source writes &quot;(t ≥ 1)&quot; after the display containing both inequalities of
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>`S:Q:eq:weighted-decay`; it is applied to both.  &quot;Analogous bounds&quot; for the tensor semigroup (4) is
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>read with the same exponential rate form; &quot;every fixed number of weighted derivatives possessed by
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>`R`&quot; (5) is read for each `j ≥ 2` with `R ∈ C^j`, weighted bounds through order `j`, and `Ψ_R ∈ C^j` (S8.2&#x27;s proof, S L6334-6336, applies it to a remainder with only 8 derivatives; `j ≥ 2` is needed for `𝒜_x`, `𝒜_y`).  The statement is for the critical exponent `s = d/2` of
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>S8.1 (the model of this section; the proof uses only `s + 1 &lt; d` for `d &gt; 2` and the principal-value
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>reading at `d = 2`).  `ν = β⁻¹`. -/
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>theorem weighted_adjoint_decay (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (ρβ : Euc d → ℝ) (hρ : IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ) (M : ℝ) (hM : 0 &lt; M) :
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (∃ U, IsWeightedSemigroup (critCoeff d a β ρβ) (withDensityReal ρβ) M U) ∧
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    ∀ U, IsWeightedSemigroup (critCoeff d a β ρβ) (withDensityReal ρβ) M U →
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      (∃ Cd c : ℝ, 0 &lt; c ∧ ∀ t : ℝ, 1 ≤ t → ∀ f, MemCM M f →
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        weightedSupE 0 (-M) (U t (projMean (withDensityReal ρβ) f)) ≤
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>          ENNReal.ofReal (Cd * Real.exp (-c * t)) * weightedSupE 0 (-M) f) ∧
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>      (∀ j : ℕ, ∃ Cj c : ℝ, 0 &lt; c ∧ ∀ t : ℝ, 1 ≤ t → ∀ f, MemCM M f →
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>        MemCMj M j (U t (projMean (withDensityReal ρβ) f)) ∧
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>        weightedSupE j (-M) (U t (projMean (withDensityReal ρβ) f)) ≤
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>          ENNReal.ofReal (Cj * Real.exp (-c * t)) * weightedSupE 0 (-M) f) ∧
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      (∀ (j : ℕ) (T : ℝ), 0 ≤ T → ∃ K : ℝ, ∀ t ∈ Set.Icc 0 T, ∀ f, MemCMj M j f →
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>        MemCMj M j (U t f) ∧
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>        weightedSupE j (-M) (U t f) ≤ ENNReal.ofReal K * weightedSupE j (-M) f) ∧
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      (∃ Cd c : ℝ, 0 &lt; c ∧ ∀ t : ℝ, 1 ≤ t → ∀ R : Euc d → Euc d → ℝ, MemCMpair M 0 R →
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>        IsDoublyCentered (withDensityReal ρβ) R →
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>        pairNormE M 0 (tensorU U t R) ≤ ENNReal.ofReal (Cd * Real.exp (-c * t)) * pairNormE M 0 R) ∧
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      (∀ j : ℕ, ∃ Cj c : ℝ, 0 &lt; c ∧ ∀ t : ℝ, 1 ≤ t → ∀ R : Euc d → Euc d → ℝ, MemCMpair M 0 R →
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>        IsDoublyCentered (withDensityReal ρβ) R →
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>        MemCMpair M j (tensorU U t R) ∧
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>        pairNormE M j (tensorU U t R) ≤ ENNReal.ofReal (Cj * Real.exp (-c * t)) * pairNormE M 0 R) ∧
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>      ∀ j : ℕ, 2 ≤ j → ∀ R : Euc d → Euc d → ℝ, ContDiff ℝ j (Function.uncurry R) →
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>        IsDoublyCentered (withDensityReal ρβ) R →
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        (∃ K : ℝ, K &lt; M ∧ ∀ k : ℕ, k ≤ j → ∃ CR : ℝ, ∀ x y : Euc d,
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>          ‖iteratedFDeriv ℝ k (Function.uncurry R) (x, y)‖ ≤ CR * jbracket x ^ K * jbracket y ^ K) →
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>        (∀ x y, IntegrableOn (fun t =&gt; tensorU U t R x y) (Set.Ioi 0)) ∧
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        ContDiff ℝ j (Function.uncurry (pairInverseW U R)) ∧
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>        (∀ k : ℕ, k ≤ j → ∃ CΨ : ℝ, ∀ x y : Euc d,
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>          ‖iteratedFDeriv ℝ k (Function.uncurry (pairInverseW U R)) (x, y)‖ ≤
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>            CΨ * jbracket x ^ M * jbracket y ^ M) ∧
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>        ∀ x y : Euc d,
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>          -(projGeneratorW (critCoeff d a β ρβ) (withDensityReal ρβ) 0
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>              (fun x&#x27; =&gt; pairInverseW U R x&#x27; y) x +
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>            projGeneratorW (critCoeff d a β ρβ) (withDensityReal ρβ) 0
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>              (pairInverseW U R x) y) = R x y := by
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>  sorry
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>end WeightedAdjoint
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>/-! ### S8.4 `S:R:lem:charts` (S lines 6529-6541) -/
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>section Charts
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>/-- The fixed chart cube `[-1/2,1/2]^d`. -/
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>def chartCube (d : ℕ) : Set (Euc d) := {u | ∀ i, |u i| ≤ 1 / 2}
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>/-- Lemma S8.4 (S:R:lem:charts, TeX S L6529-6541) (S lines 6529-6541, `S:R:eq:chart-properties`,
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>`S:R:eq:chart-count`): for a density with the Gaussian comparison
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>`c e^{-q|x|²/2} ≤ ρ(x) ≤ C e^{-q|x|²/2}`, `q &gt; 0` (`S:R:eq:Gaussian-comparison`, S lines 6524-6527;
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>for the thermal density of S8.1 it is S3.4), there are countably many affine charts
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>`F_j(u) = x_j + A_ju` on the cube `Q = [-1/2,1/2]^d` and smooth `χ_j` with
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>`tsupport χ_j ⊂ F_j(int Q)` such that `∑_jχ_j² = 1`, `‖A_j‖ ≤ C_A`,
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>`c_A⟨x_j⟩⁻¹ ≤ |det A_j| ≤ C_A&#x27;⟨x_j⟩⁻¹`, `sup_u|∂^ℓ(χ_j∘F_j)| ≤ C_ℓ` (constants independent of `j`),
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>the images `F_j(Q)` have uniformly finite overlap, `c₁α_j ≤ ρ(F_j u)|det A_j| ≤ C₁α_j` on the whole
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>chart (`u ∈ Q`) with `α_j = ρ(x_j)|det A_j|`, and `∑_j⟨x_j⟩^{-2p} &lt; ∞` for `2p &gt; d+1`.
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>AMBIGUITY: &quot;on a fixed cube&quot; is not specified in the source (the unit cube with the origin at its
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>centre is used; a different fixed cube changes `A_j` by a fixed linear map).  The overlap is for
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>the images of `Q` itself (&quot;uniformly finite&quot;, S line 6532; the proof also asserts it for enlarged
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>cubes).  The charts are allowed to depend on `ρ` only through the density comparison; constants are
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>chosen after `ρ`. -/
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>theorem adapted_charts (hd : 2 ≤ d) (q c C : ℝ) (hq : 0 &lt; q) (hc : 0 &lt; c)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    (ρ : Euc d → ℝ) (hρ : ∀ x, c * Real.exp (-q * ‖x‖ ^ 2 / 2) ≤ ρ x ∧
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      ρ x ≤ C * Real.exp (-q * ‖x‖ ^ 2 / 2)) :
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    ∃ (ι : Type) (_ : Countable ι) (xc : ι → Euc d) (A : ι → Euc d →L[ℝ] Euc d)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>      (χ : ι → Euc d → ℝ),
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>      (∀ j, ContDiff ℝ ∞ (χ j) ∧
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>        tsupport (χ j) ⊆ (fun u =&gt; xc j + A j u) &#x27;&#x27; interior (chartCube d)) ∧
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>      (∀ x, Summable (fun j =&gt; χ j x ^ 2) ∧ ∑&#x27; j, χ j x ^ 2 = 1) ∧
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>      (∃ CA : ℝ, ∀ j, ‖A j‖ ≤ CA) ∧
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>      (∃ cdet Cdet : ℝ, 0 &lt; cdet ∧ ∀ j,
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>        cdet * jbracket (xc j) ^ (-1 : ℝ) ≤ |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)| ∧
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>        |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)| ≤ Cdet * jbracket (xc j) ^ (-1 : ℝ)) ∧
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>      (∀ l : ℕ, ∃ Cl : ℝ, ∀ j (u : Euc d),
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>        ‖iteratedFDeriv ℝ l (fun u&#x27; =&gt; χ j (xc j + A j u&#x27;)) u‖ ≤ Cl) ∧
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>      (∃ K : ℕ, ∀ x : Euc d,
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>        {j | x ∈ (fun u =&gt; xc j + A j u) &#x27;&#x27; chartCube d}.encard ≤ K) ∧
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      (∃ c₁ C₁ : ℝ, 0 &lt; c₁ ∧ ∀ j, ∀ u ∈ chartCube d,
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        c₁ * (ρ (xc j) * |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)|) ≤
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>          ρ (xc j + A j u) * |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)| ∧
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>        ρ (xc j + A j u) * |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)| ≤
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>          C₁ * (ρ (xc j) * |LinearMap.det (A j : Euc d →ₗ[ℝ] Euc d)|)) ∧
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>      ∀ p : ℝ, (d : ℝ) + 1 &lt; 2 * p → Summable (fun j =&gt; jbracket (xc j) ^ (-(2 * p))) := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  sorry
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>end Charts
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>/-! ### S8.5 `S:R:lem:feature-decay` (S lines 6562-6574) -/
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>section FeatureDecay
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>/-- The conditions under which the orbit feature `Γ_{r,·}(x)` of `orbitFeature` is genuinely an
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>element of `𝒦_T = H¹([0,T];ℓ²) ⊕ ℓ²` (no junk `0` from `ellVec` / `toLp`): the coordinates of
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>`D φ_α(x)` are in `ℓ²`, those of `D U(r,t) ℒ φ_α(x)` are in `ℓ²` for `r &lt; t ≤ T`, and `t ↦ (…)_α` is
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>in `L²([0,T];ℓ²)`. -/
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>def IsKFeature (C : WholeCoeff d) (m T : ℝ) (Dop : (Euc d → ℝ) → Euc d → ℝ) (r : ℝ) (x : Euc d) :
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    Prop :=
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  Memℓp (fun α : MultiIndex d =&gt; Dop (oscTestFun m α) x) 2 ∧
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  (∀ t ∈ Set.Ioc r T, Memℓp (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    Dop (propagatorW C r t (generatorW C t (oscTestFun m α))) x) 2) ∧
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  MemLp (fun t : ℝ =&gt; if r &lt; t then ellVec (d := d) m (fun α =&gt; Dop
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    (propagatorW C r t (generatorW C t (oscTestFun m α))) x) else 0) 2
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    (volume.restrict (Set.Icc (0 : ℝ) T))
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>/-- Lemma S8.5 (S:R:lem:feature-decay, TeX S L6562-6574) (S lines 6562-6574, `S:R:eq:orbit-feature-new`,
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>`S:R:eq:weighted-feature`): in the quadratic whole-space model (`s = d/2`, `d ≥ 2`, `μ = μ_β`),
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>`m ≥ 24d + 240` (the Hermite features `φ_j = λ_j^{-m/2}h_j`), a finite horizon `H &gt; 0`:
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>for `r ∈ [0,H]` and every gradient component `a`, the feature
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>`Γ_{r,a}(x) = ((t ↦ ∂_aU_{(t-r)_+}φ_j(x))_j, (∂_aφ_j(x))_j) ∈ 𝒦_H` (`gradFeature`) satisfies, for
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>`p = s + 2 = d/2 + 2` and every integer `0 ≤ ℓ ≤ d + 2`,
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>`sup_{r,x} ⟨x⟩^p ‖D_x^ℓ Γ_{r,a}(x)‖_{𝒦_H} ≤ C_H`.  `C_H` depends on `H` and the model parameters
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>(chosen before `ρβ`).  The classical adjoint evolutions of `φ_α` and `ℒφ_α` are asserted to exist
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>(so `propagatorW` is not junk), the feature is asserted to be a genuine element of `𝒦_H`
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>(`IsKFeature`) and `C^{d+2}` in `x`.  The torus assertion of the source (S line 6563, &quot;the same
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>finite-horizon bounded feature assertion holds on the torus, without the spatial weight&quot;) is not
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>stated (no periodic `𝒦`-space). -/
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>theorem feature_decay (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (Hz : ℝ) (hHz : 0 &lt; Hz) :
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    ∃ C : ℝ, ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      (∀ α : MultiIndex d, ∀ t ∈ Set.Icc 0 Hz,
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>        (∃ f, IsClassicalAdjointW (critCoeff d a β ρβ) t (oscTestFun m α) f) ∧
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        ∃ f, IsClassicalAdjointW (critCoeff d a β ρβ) t
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>          (generatorW (critCoeff d a β ρβ) t (oscTestFun m α)) f) ∧
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>      ∀ (i : Fin d), ∀ r ∈ Set.Icc 0 Hz,
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>        (∀ x, IsKFeature (critCoeff d a β ρβ) m Hz (gradComp i) r x) ∧
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        ContDiff ℝ ((d + 2 : ℕ) : WithTop ℕ∞)
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>          (fun x =&gt; gradFeature (critCoeff d a β ρβ) m Hz i r x) ∧
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>        ∀ x : Euc d, ∀ l : ℕ, l ≤ d + 2 →
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>          jbracket x ^ ((d : ℝ) / 2 + 2) *
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>            ‖iteratedFDeriv ℝ l (fun y =&gt; gradFeature (critCoeff d a β ρβ) m Hz i r y) x‖ ≤ C := by
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  sorry
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>end FeatureDecay
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>/-! ### S8.6 `S:R:prop:finite-noise` (S lines 6598-6608) -/
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>section FiniteNoise
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>/-- Proposition S8.6 (S:R:prop:finite-noise, TeX S L6598-6608) (S lines 6598-6608, `S:R:eq:finite-noise`): in the
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>stationary quadratic whole-space model (`s = d/2`, canonical stationary particles
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>`IsCanonicalRealization`, reference `μ = μ_β`), on a finite horizon `H &gt; 0`, suppose the actual
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>time marginals satisfy the linear input `R:eq:linear-input` (`LinearInputBounds`, constant `C_in`).
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>Let `Φ_r(i,a) = √(2/(Nβ)) Γ_{r,a}(x_i^r)` (`gradFeature`, the `𝒦_H`-valued integrand of the empirical
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>noise, `W` an `(ℱ_t)`-Brownian motion, `X` progressive) and `M = ∫ Φ dW` its Itô integral.  There is
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>an adapted coupling (`IsAdaptedGaussianCoupling`: enlargement, cylindrical Brownian motion `B`
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>independent of `ℱ₀`, a Gaussian martingale `G = ∫ Sb dB` of deterministic covariance density
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>`2β⁻¹∑_a∫ Γ_{r,a}⊗Γ_{r,a} dμ` (`featureForm`; the &quot;deterministic-intensity Gaussian noise&quot;, intensity
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>`μ`)) with
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>`(E sup_{t≤H} ‖𝒯M^t - 𝒯G^t‖²_{ℓ²})^{1/2} ≤ C_H(N^{-1/2} + δ_N)`, `𝒯` the reconstruction
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>`reconstructPath` (`S:R:eq:owning-maximal`, S5.2): `𝒯M^t` is the adjoint stochastic convolution of
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>the empirical noise and `𝒯G^t` that of the Gaussian noise.  `C_H` depends on `H`, the model and
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>`C_in` (quantified before the realization).  The integrand is asserted Hilbert-Schmidt
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>(`IsHSIntegrand`) and the bounded bilinear forms `Cdet_r` are asserted to exist (so the Itô integral
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>and the square roots are not vacuous).
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>Technical hypotheses: `N ≥ 2`; `X` progressive for `ℱ`; `W` cylindrical Brownian for `ℱ`.
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>Repair ED11 (2026-10-25, approved): the feature time is `max r 0` (for `r &lt; 0` the adjoint propagator is an unconstrained choice; values for `r ≥ 0` are unchanged).
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>Not stated: the torus alternative (S line 6599 &quot;in either stationary model&quot;, proof S line 6610). -/
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>theorem finite_noise (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (Hz : ℝ) (hHz : 0 &lt; Hz) (Cin : ℝ) :
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    ∃ C : ℝ, ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      ∀ {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>      ∀ ℱ : Filtration ℝ mΩ,
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>        IsCylindricalBrownian P ℱ (fun t z (ia : Fin N × Fin d) =&gt; W t z ia.1 ia.2) →
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>        (∀ i : Fin N, IsProgressive ℱ (fun r z =&gt; X (Real.toNNReal r) z i)) →
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>        (∀ t ∈ Set.Icc (0 : ℝ) Hz, LinearInputBounds d ((d : ℝ) / 2) N (withDensityReal ρβ) Cin P
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>          (X (Real.toNNReal t))) →
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>        let Φ : ℝ → Ω → (Fin N × Fin d) → KSpace d m Hz := fun r z ia =&gt;
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>          Real.sqrt (2 / (N * β)) •
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>            gradFeature (critCoeff d a β ρβ) m Hz ia.2 (max r 0) (X (Real.toNNReal r) z ia.1)
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>        IsHSIntegrand P ℱ Hz Φ ∧
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>        ∀ M : ℝ → Ω → KSpace d m Hz,
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>          IsHilbertItoIntegral P ℱ (fun t z (ia : Fin N × Fin d) =&gt; W t z ia.1 ia.2) Φ M →
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>          ∃ (Cdet : ℝ → KSpace d m Hz →L[ℝ] KSpace d m Hz →L[ℝ] ℝ),
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>            (∀ r ∈ Set.Icc 0 Hz, ∀ u v, Cdet r u v =
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>              featureForm m Hz β⁻¹ (fun i =&gt; gradFeature (critCoeff d a β ρβ) m Hz i r)
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>                (withDensityReal ρβ) u v) ∧
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>            ∃ (Ω&#x27; : Type) (mΩ&#x27; : MeasurableSpace Ω&#x27;) (P&#x27; : Measure Ω&#x27;) (π : Ω&#x27; → Ω)
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>              (ℱ&#x27; : Filtration ℝ mΩ&#x27;) (ι : Type) (_ : Countable ι)
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>              (e : HilbertBasis ι ℝ (KSpace d m Hz)) (B : ℝ≥0 → Ω&#x27; → ι → ℝ)
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>              (S : ℝ → Ω → KSpace d m Hz →L[ℝ] KSpace d m Hz)
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>              (Sb : ℝ → KSpace d m Hz →L[ℝ] KSpace d m Hz) (G : ℝ → Ω&#x27; → KSpace d m Hz),
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>              IsAdaptedGaussianCoupling P ℱ Φ M Hz Cdet P&#x27; π ℱ&#x27; e B S Sb G ∧
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>              (∫⁻ w&#x27;, (⨆ t : Set.Icc (0 : ℝ) Hz, ENNReal.ofReal
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>                  ‖reconstructPath m Hz (fun τ w =&gt; M τ (π w)) w&#x27; t -
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>                    reconstructPath m Hz G w&#x27; t‖) ^ 2 ∂P&#x27;) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>                ENNReal.ofReal (C * ((N : ℝ) ^ (-(1 / 2 : ℝ)) + deltaN d ((d : ℝ) / 2) N)) := by
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  sorry
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>end FiniteNoise
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>/-! ### S8.7 `S:R:lem:spectral` (S lines 6653-6670) -/
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>section Spectral
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>/-- `L e = -ρ⁻¹ div(ρ∇e) = -(Δe + ∇log ρ·∇e)` (S line 6668, `L = -ρ⁻¹Div(ρ∇)`; M line 4716),
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>for a positive smooth density `ρ`. -/
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>def weightedLaplacian (ρ : Euc d → ℝ) (e : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  -(Laplacian.laplacian e x + inner ℝ (gradient (fun y =&gt; Real.log (ρ y)) x) (gradient e x))
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>/-- The spectral data `(e_ℓ, ω_ℓ)` of `S:R:eq:spectral-data` (S lines 6655-6660), for the critical
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>quadratic model with thermal density `ρβ`, `μ = ρβ dx`, `ν = β⁻¹`, `A = νI + K_μ` (on `L²_0(μ)`,
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>`A⁻¹ = β R_{β,μ}`; M line 4716 &quot;`𝒜 = -AL` on centered `L²(μ)`&quot;), `L = weightedLaplacian`:
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>`e_ℓ` smooth real centered eigenfunctions, `ω_ℓ &gt; 0` increasing, `ALe_ℓ = ω_ℓe_ℓ`,
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>`⟨e_ℓ, A⁻¹e_j⟩ = δ_{ℓj}`, `∫∇e_ℓ·∇e_j dμ = ω_ℓδ_{ℓj}`, `ω_ℓ ≥ cℓ^{1/d}` (indices from `0`, so
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>`(ℓ+1)^{1/d}`).  Added well-definedness fields: the responses `A⁻¹e_j` exist, the gradient products
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>are `μ`-integrable, and (the proof&#x27;s &quot;orthonormal eigenbasis&quot;, S line 6676) the `e_ℓ` are complete in
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>`L²_0(μ)`: a centered `f ∈ L²(μ)` with `⟨f, A⁻¹e_ℓ⟩ = 0` for all `ℓ` vanishes. -/
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>structure IsSpectralData (d : ℕ) (β : ℝ) (ρβ : Euc d → ℝ) (e : ℕ → Euc d → ℝ) (om : ℕ → ℝ) :
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    Prop where
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  smooth : ∀ l, ContDiff ℝ ∞ (e l)
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  centered : ∀ l, MemL2Zero (withDensityReal ρβ) (e l)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  pos : ∀ l, 0 &lt; om l
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  mono : Monotone om
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  eigen : ∀ l, ∀ᵐ x ∂(withDensityReal ρβ),
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    β⁻¹ * weightedLaplacian ρβ (e l) x +
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      Kop (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) (weightedLaplacian ρβ (e l)) x =
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    om l * e l x
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  response : ∀ l, ∃ h, IsResponse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e l) h
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  orth : ∀ l j, β * l2Inner (withDensityReal ρβ) (e l)
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    (responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e j)) =
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>      if l = j then 1 else 0
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  grad_int : ∀ l j, Integrable (fun x =&gt; inner ℝ (gradient (e l) x) (gradient (e j) x))
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    (withDensityReal ρβ)
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>  grad_orth : ∀ l j, ∫ x, inner ℝ (gradient (e l) x) (gradient (e j) x) ∂(withDensityReal ρβ) =
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    if l = j then om l else 0
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  growth : ∃ c : ℝ, 0 &lt; c ∧ ∀ l : ℕ, c * ((l : ℝ) + 1) ^ (1 / (d : ℝ)) ≤ om l
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  complete : ∀ f : Euc d → ℝ, MemL2Zero (withDensityReal ρβ) f →
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    (∀ l, l2Inner (withDensityReal ρβ) f
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>      (responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e l)) = 0) →
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    f =ᵐ[withDensityReal ρβ] 0
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>/-- The diagonal semigroup `e^{-sω_ℓ}` on `ℓ²` (the convolution kernel `e^{-tω_ℓ}` of S line 6670). -/
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>def semiDiag (om : ℕ → ℝ) (s : ℝ) (z : SeqL2) : SeqL2 :=
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  SeqL2.ofSeq fun l =&gt; Real.exp (-s * om l) * SeqL2.coord z l
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>/-- Lemma S8.7 (S:R:lem:spectral, TeX S L6653-6670) (S lines 6653-6670, `S:R:eq:spectral-data`,
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>`S:R:eq:spectral-L4`, `S:R:eq:aux-space`), whole-space critical quadratic model:
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>there are smooth real centered eigenfunctions `e_ℓ` and positive `ω_ℓ` with the properties of
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>`IsSpectralData`; for some fixed `t₀ &gt; 0`, `‖∇e_ℓ‖_{L⁴(μ)} ≤ Ce^{t₀ω_ℓ}`; and for every
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>`τ &gt; 4t₀` (so &quot;choose `τ &gt; 4t₀`&quot;) in the auxiliary Hilbert space `ℋ_τ`
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>(`‖z‖²_{ℋ_τ} = ∑_ℓ e^{-τω_ℓ}|z(e_ℓ)|²`, here the `ℓ²` norm of the coordinates `e^{-τω_ℓ/2}z(e_ℓ)`),
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>the empirical current `M = ∫ Φ dW`, `Φ_r(i,a) = √(2/(Nβ))(e^{-τω_ℓ/2}∂_ae_ℓ(x_i^r))_ℓ`, is coupled
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>(`IsAdaptedGaussianCoupling`, on every horizon `T`) to the Gaussian current `G = ∫ Sb dB` with the
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>deterministic diagonal covariance `b_ℓ = 2νω_ℓe^{-τω_ℓ}` (`S:R:eq:spectral-current`) such that the
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>expected difference trace `E‖S_r - Sb_r‖²_{HS}` is at most `C(N^{-1} + δ_N²)` for every `r ∈ [0,T]`
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>(uniformly in time: `C` independent of `T`), and the convolution `D(t) = ∫_0^t e^{-(t-r)ω}(S_r - Sb_r)dB_r`
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>of the difference with the diagonal semigroup has `E‖D(t)‖²_{ℋ_τ} ≤ C(N^{-1} + δ_N²)` at every
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>time `t ∈ [0,T]`, independently of the elapsed time.
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>The stationarity/linear-input facts used by the source (`R:eq:linear-input`) hold in this model by
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>S3 and are not hypotheses.  `C` depends on the model, `τ`; it is chosen before `N` and the
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>realization.  The coordinate sequences `(e^{-τω_ℓ/2}∂_ae_ℓ(x))_ℓ` are asserted in `ℓ²` for `μ`-a.e. `x`. The empirical integrand is asserted Hilbert-Schmidt (`IsHSIntegrand`) on every horizon
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>(so the Itô integral exists) and the bounded bilinear forms `Cdet_r` of the Gaussian current are
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>asserted to exist.
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>Technical hypotheses: `N ≥ 2`; `X` progressive and `W` Brownian for `ℱ`.  Not stated: the torus
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>alternative. -/
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>theorem spectral_space (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (ρβ : Euc d → ℝ)
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    (hρ : IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ) :
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    ∃ (e : ℕ → Euc d → ℝ) (om : ℕ → ℝ), IsSpectralData d β ρβ e om ∧
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    ∃ t₀ : ℝ, 0 &lt; t₀ ∧
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>      (∃ C4 : ℝ, ∀ l, eLpNorm (fun x =&gt; ‖gradient (e l) x‖) 4 (withDensityReal ρβ) ≤
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>        ENNReal.ofReal (C4 * Real.exp (t₀ * om l))) ∧
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>      ∀ τ : ℝ, 4 * t₀ &lt; τ → ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>      ∀ {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>      ∀ ℱ : Filtration ℝ mΩ,
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>        IsCylindricalBrownian P ℱ (fun t z (ia : Fin N × Fin d) =&gt; W t z ia.1 ia.2) →
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>        (∀ i : Fin N, IsProgressive ℱ (fun r z =&gt; X (Real.toNNReal r) z i)) →
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>        let Φ : ℝ → Ω → (Fin N × Fin d) → SeqL2 := fun r z ia =&gt;
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>          Real.sqrt (2 / (N * β)) • SeqL2.ofSeq (fun l =&gt;
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>            Real.exp (-(τ * om l) / 2) * gradient (e l) (X (Real.toNNReal r) z ia.1) ia.2)
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>        (∀ᵐ x ∂(withDensityReal ρβ), ∀ i : Fin d, Memℓp (fun l =&gt; Real.exp (-(τ * om l) / 2) *
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>          gradient (e l) x i) 2) ∧
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>        (∀ T : ℝ, IsHSIntegrand P ℱ T Φ) ∧
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>        ∀ T : ℝ, 0 ≤ T → ∀ M : ℝ → Ω → SeqL2,
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>          IsHilbertItoIntegral P ℱ (fun t z (ia : Fin N × Fin d) =&gt; W t z ia.1 ia.2) Φ M →
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>          ∃ (Cdet : ℝ → SeqL2 →L[ℝ] SeqL2 →L[ℝ] ℝ),
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>            (∀ r ∈ Set.Icc 0 T, ∀ u v, Cdet r u v =
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>              ∑&#x27; l, 2 * β⁻¹ * om l * Real.exp (-τ * om l) * SeqL2.coord u l * SeqL2.coord v l) ∧
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>            ∃ (Ω&#x27; : Type) (mΩ&#x27; : MeasurableSpace Ω&#x27;) (P&#x27; : Measure Ω&#x27;) (π : Ω&#x27; → Ω)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>              (ℱ&#x27; : Filtration ℝ mΩ&#x27;) (ι : Type) (_ : Countable ι) (eb : HilbertBasis ι ℝ SeqL2)
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>              (B : ℝ≥0 → Ω&#x27; → ι → ℝ) (S : ℝ → Ω → SeqL2 →L[ℝ] SeqL2)
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>              (Sb : ℝ → SeqL2 →L[ℝ] SeqL2) (G : ℝ → Ω&#x27; → SeqL2),
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>              IsAdaptedGaussianCoupling P ℱ Φ M T Cdet P&#x27; π ℱ&#x27; eb B S Sb G ∧
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>              (∀ r ∈ Set.Icc 0 T, ∫⁻ w, ∑&#x27; j, ‖(S r (π w) - Sb r) (eb j)‖ₑ ^ 2 ∂P&#x27; ≤
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>                ENNReal.ofReal (C * ((N : ℝ)⁻¹ + deltaN d ((d : ℝ) / 2) N ^ 2))) ∧
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>              ∀ t ∈ Set.Icc 0 T, ∀ D : ℝ → Ω&#x27; → SeqL2,
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>                IsHilbertItoIntegral P&#x27; ℱ&#x27; B (fun r w j =&gt;
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>                  if r ≤ t then semiDiag om (t - r) ((S r (π w) - Sb r) (eb j)) else 0) D →
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>                ∫⁻ w, ‖D t w‖ₑ ^ 2 ∂P&#x27; ≤
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>                  ENNReal.ofReal (C * ((N : ℝ)⁻¹ + deltaN d ((d : ℝ) / 2) N ^ 2)) := by
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  sorry
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>end Spectral
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>/-! ### S8.8 `S:R:lem:return-map` (S lines 6745-6756) -/
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>section ReturnMap
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>/-- The return map `z ↦ (t ↦ (z(U_{b+t}φ_j))_j)` of `S:R:eq:return-map` (S lines 6745-6748), on the
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>auxiliary space `ℋ_τ` (coordinates `z&#x27;_ℓ = e^{-τω_ℓ/2}z(e_ℓ)`), made explicit by the spectral
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>expansion of the proof (S lines 6759-6761): `P_μφ_j = ∑_ℓ a_{jℓ}e_ℓ` with
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>`a_{jℓ} = ⟨P_μφ_j, A⁻¹e_ℓ⟩ = β⟨P_μφ_j, R_{β,μ}e_ℓ⟩`, and `U_te_ℓ = e^{-tω_ℓ}e_ℓ`
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>(`S:R:eq:spectral-semigroup`), so that
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>`z(U_{b+t}φ_j) = ∑_ℓ a_{jℓ} e^{-(b+t-τ/2)ω_ℓ} z&#x27;_ℓ`.  The `ℓ²` element is `ellVec` (indices `j ↔`
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>multi-indices `α`, `φ_α = oscTestFun m α`). -/
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>def returnMapW (d : ℕ) (β : ℝ) (ρβ : Euc d → ℝ) (e : ℕ → Euc d → ℝ) (om : ℕ → ℝ) (m τ b : ℝ)
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>    (z : SeqL2) (t : ℝ) : OscDual d m :=
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>  ellVec m fun α =&gt; ∑&#x27; l,
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>    (β * l2Inner (withDensityReal ρβ) (projMean (withDensityReal ρβ) (oscTestFun m α))
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      (responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e l))) *
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    Real.exp (-(b + t - τ / 2) * om l) * SeqL2.coord z l
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>/-- Lemma S8.8 (S:R:lem:return-map, TeX S L6745-6756) (S lines 6745-6756), first assertion: with spectral data as in
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>S8.7 (`IsSpectralData`, `‖∇e_ℓ‖_{L⁴} ≤ Ce^{t₀ω_ℓ}`), `τ &gt; 4t₀` and a fixed `b &gt; τ/2 + 1`, the return
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>map is bounded from `ℋ_τ` into `𝒳_{m,T} = C([0,T]; B_m)`: for every `z ∈ ℋ_τ` the coordinate
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>series converge and define elements of `ℓ² = B_m`, the path is continuous on `[0,T]`, and
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>`sup_{t≤T} ‖returnMap z (t)‖_{B_m} ≤ C‖z‖_{ℋ_τ}`; `C` depends on the data, `m ≥ 24d+240`, `T`. -/
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>theorem return_map_bounded (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (ρβ : Euc d → ℝ)
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    (hρ : IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ) (e : ℕ → Euc d → ℝ) (om : ℕ → ℝ)
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    (hdata : IsSpectralData d β ρβ e om) (t₀ : ℝ) (ht₀ : 0 &lt; t₀) (C4 : ℝ)
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    (hL4 : ∀ l, eLpNorm (fun x =&gt; ‖gradient (e l) x‖) 4 (withDensityReal ρβ) ≤
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      ENNReal.ofReal (C4 * Real.exp (t₀ * om l)))
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>    (τ : ℝ) (hτ : 4 * t₀ &lt; τ) (b : ℝ) (hb : τ / 2 + 1 &lt; b) (m : ℝ)
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>    ∃ C : ℝ, ∀ z : SeqL2,
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>      (∀ t ∈ Set.Icc 0 T, (∀ α : MultiIndex d, Summable fun l =&gt;
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>          (β * l2Inner (withDensityReal ρβ) (projMean (withDensityReal ρβ) (oscTestFun m α))
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>            (responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e l))) *
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>          Real.exp (-(b + t - τ / 2) * om l) * SeqL2.coord z l) ∧
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>        Memℓp (fun α : MultiIndex d =&gt; ∑&#x27; l,
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>          (β * l2Inner (withDensityReal ρβ) (projMean (withDensityReal ρβ) (oscTestFun m α))
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>            (responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β (e l))) *
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>          Real.exp (-(b + t - τ / 2) * om l) * SeqL2.coord z l) 2) ∧
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>      ContinuousOn (fun t =&gt; returnMapW d β ρβ e om m τ b z t) (Set.Icc 0 T) ∧
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>      ∀ t ∈ Set.Icc 0 T, ‖returnMapW d β ρβ e om m τ b z t‖ ≤ C * ‖z‖ := by
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>  sorry
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>/-- A centered Gaussian random functional on bounded smooth test functions with covariance form `C₀`
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>(the stationary Gaussian initial field `Z⁰`, evaluated on adjoint orbits `U_{a+t}φ_j ∉ Σ^m`, see
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>`IsLinearFluctuationSolutionW`): each `η(f)` is measurable and for every finite family
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>`φ_1,…,φ_p ∈ C_b²` the vector `(η(φ_a))_a` is a centered Gaussian with covariance
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>`(C₀(φ_a,φ_b))_{ab}`. -/
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>def IsGaussianFunctionalW {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;)
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    (η : Ω&#x27; → (Euc d → ℝ) → ℝ) (C₀ : (Euc d → ℝ) → (Euc d → ℝ) → ℝ) : Prop :=
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>  (∀ f, Measurable fun ζ =&gt; η ζ f) ∧
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  ∀ (p : ℕ) (φ : Fin p → Euc d → ℝ), (∀ i, MemCb 2 (φ i)) →
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    law P&#x27; (fun ζ =&gt; (WithLp.toLp 2 fun i =&gt; η ζ (φ i) : EuclideanSpace ℝ (Fin p))) =
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>      ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun i j =&gt; C₀ (φ i) (φ j))
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>/-- Lemma S8.8 (S:R:lem:return-map, TeX S L6745-6756) (S lines 6745-6756), second assertion
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>`S:R:eq:initial-decay`: in the critical quadratic model, `m ≥ 24d+240`, `T &gt; 0`: for stationary
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>initial fields with the variance bound `R:eq:linear-input` (`Var[μ_N⁰(f)] ≤ C_in N⁻¹‖f‖²_{L²(μ)}`, the
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>initial law being the canonical `P_{N,β}`, centering at its first marginal `m_N`), and for the
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>stationary Gaussian initial field (`IsGaussianFunctionalW`, covariance `⟨P_μφ, R_{β,μ}P_μψ⟩`),
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>`(E sup_{t≤T}∑_j|ζ_N⁰(U_{a+t}φ_j)|²)^{1/2} ≤ C_Te^{-ca}` and
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>`(E sup_{t≤T}∑_j|Z⁰(U_{a+t}φ_j)|²)^{1/2} ≤ C_Te^{-ca}` for `a ≥ 1`
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>(the Gaussian clause takes the supremum over RATIONAL times `t ∈ [0,T]`, with no continuity hypothesis (repair P6, 2026-10-20): finite-dimensional laws alone do not control the supremum over uncountably many `t` (`η` could be altered on a null set depending on `t`), the countable supremum of measurable functions is the process bound and equals the supremum over `[0,T]` for any version continuous along the adjoint orbits `t ↦ Z⁰(U_{a+t}φ_j)`. The source states the sum of the two; separate bounds with the same constant are equivalent up to
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>the factor `2`).  `ζ_N⁰ = √N(μ_N⁰ - m_N)`; `U_{a+t}φ_j` is the classical adjoint orbit (`propagatorW`
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>of the unprojected generator; it differs from the projected-semigroup orbit by a constant, which
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>`ζ_N⁰` and `Z⁰` (zero mass) do not see); existence of the adjoint orbits is asserted.  `C_T, c`
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>depend on the model, `T` and `C_in`, chosen before `a`, `N` and the fields. -/
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>theorem return_map_initial_decay (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) (Cin : ℝ) :
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>    ∃ CT c : ℝ, 0 &lt; c ∧ ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ →
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>      (∀ α : MultiIndex d, ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>        ∃ f, IsClassicalAdjointW (critCoeff d a β ρβ) t (oscTestFun m α) f) ∧
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>      ∀ a₁ : ℝ, 1 ≤ a₁ →
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>        (∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>          [IsProbabilityMeasure P] (X₀ : Ω → EucConfig d N),
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>          law P X₀ = canonicalGibbs (rieszKernel d ((d : ℝ) / 2)) (confinement a) N β →
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>          (∀ f : Euc d → ℝ, MemLp f 2 (withDensityReal ρβ) →
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>            evariance (fun ζ =&gt; linStat f (X₀ ζ)) P ≤
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>              ENNReal.ofReal (Cin / N * ∫ x, f x ^ 2 ∂(withDensityReal ρβ))) →
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>          (∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>              Real.sqrt N * (pair (empirical (X₀ ζ))
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>                  (propagatorW (critCoeff d a β ρβ) 0 (a₁ + t) (oscTestFun m α)) -
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>                ∫ x, propagatorW (critCoeff d a β ρβ) 0 (a₁ + t) (oscTestFun m α) x
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>                  ∂(firstMarginal (law P X₀))))) ^ 2 ∂P) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>            ENNReal.ofReal (CT * Real.exp (-c * a₁))) ∧
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>        ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>          (η : Ω&#x27; → (Euc d → ℝ) → ℝ),
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>          IsGaussianFunctionalW P&#x27; η
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>            (susceptibilityCov (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρβ) β) →
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>          (∫⁻ ζ&#x27;, (⨆ t : {t : ℝ // t ∈ Set.Icc (0 : ℝ) T ∧ ∃ q : ℚ, (q : ℝ) = t},
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>              l2NormE (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>              η ζ&#x27; (propagatorW (critCoeff d a β ρβ) 0 (a₁ + t.1) (oscTestFun m α)))) ^ 2 ∂P&#x27;) ^
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>              (1 / 2 : ℝ) ≤
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>            ENNReal.ofReal (CT * Real.exp (-c * a₁)) := by
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>  sorry
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>end ReturnMap
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>end HRS.Whole
+</span></code></pre></main></body></html>

@@ -1,0 +1,430 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Adjoint · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Adjoint</code></h1><p><a href="../../lean/HRS/Whole/Adjoint.lean">Open the unaltered Lean file</a> · 429 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Dynamics
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.ToolboxRd.Defs
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Whole-space adjoint estimates (package S-ADJ-01): Sections S4.10-S4.14 and S5.1
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Source: HRS whole-space supplement (S).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* S4.10 `W:r2:far-derivatives` (S lines 2961-2975), S4.11 `W:r2:local-decay` (3003-3019),
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  S4.12 `W:r2:adjoint-decay` (3066-3084), S4.13 `W:r2:fractional-decay` (3107-3120),
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  S4.14 `W:r2:sharp-all-sub` (3153-3166); the decay norm `W:r2:decay-norm` (2951-2953).
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* S5.1 `W:r2:ul-adjoint` (3204-3235), with the uniformly local norm (S lines 3192-3198).
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>## Representation decisions
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* Weighted sup norms (`W:r2:decay-norm`, `‖f‖_{k,b} = max_{|α|≤k} sup_x ⟨x⟩^{b+|α|}|∂^α f(x)|`) are
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `ℝ≥0∞`-valued (`decayNormE`; `∂^α f` as the iterated Fréchet derivative applied to coordinate
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  vectors), so that &quot;infinite norm&quot; is `⊤`, never a junk `0`; bounds read `‖·‖ ≤ C ‖·‖` in `ℝ≥0∞`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  Statements apply them to smooth functions, and assert the needed smoothness in the conclusion.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* The uniformly local norm `‖f‖_{H^r_ul} = sup_{z∈ℤ^d} ‖θ(·-z) f‖_{H^r(ℝ^d)}` (S lines 3192-3198) is
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  `ulNormE` (`ℝ≥0∞`, `⊤` when some `θ(·-z)f ∉ H^r`), with the Fourier definition of `H^r` of
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  `HRS.PDE.ToolboxRd` (`sobolevNormSq`); the cutoff `θ` is a fixed parameter satisfying
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  `IsUlCutoff` and the constants may depend on it (the norm changes by equivalent constants
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  with `θ`, S line 3197).  The supplement&#x27;s `H^m_uloc` (S line 9637, sup over `z ∈ ℝ^d`) of
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  S4.12/S4.14 is the same space with an equivalent norm.
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>* &quot;`|D|^α v ∈ L^p`&quot; for a function `v` with only algebraic decay is understood distributionally
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  (`IsFracDerivRep`: `∫ v |D|^α φ = ∫ w φ` for all Schwartz `φ`, `|D|^α φ = 𝓕⁻[(2π|ξ|)^α 𝓕φ]`);
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  the Fourier transform of `v` itself may not exist (`v ∉ L¹`), so Mathlib&#x27;s `fracGradPow` (junk
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  `0` for non-integrable `v`) would make S4.13 trivially true and is not used.
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* &quot;The whole-space uniformly local adjoint theorem applies, uniformly in `0 ≤ ν ≤ ν_*`, through
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  derivative order `j` in `C_b`&quot; (S4.12, S lines 3068-3070, and S5 hypotheses) is the predicate
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `UlAdjointInput`: for every smooth terminal test `φ` with finite `H^{j+1+⌈d/2⌉}_ul` norm
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  (the index used in the proof, S lines 3098-3101) the classical adjoint solution exists and
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  `‖U(r,t)φ‖_{C_b^j} ≤ K ‖φ‖_{H^{j+1+⌈d/2⌉}_ul}`, `K` independent of `ν` and of `r ≤ t ≤ T`.
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  This replaces the regime/theorem citations (`B:thm:adjoint-rd`, `B:thm:adjoint-lp`), which are
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  not formalized here.
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>-/
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>noncomputable section
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>open scoped ENNReal NNReal BigOperators ContDiff FourierTransform
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>namespace HRS.Whole
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>variable {d N : ℕ}
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>/-! ### Weighted norms -/
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>/-- `⟨x⟩ = (1+|x|²)^{1/2}`. -/
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>def jbracket (x : Euc d) : ℝ := Real.sqrt (1 + ‖x‖ ^ 2)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>/-- The partial derivative `∂_{i_1}⋯∂_{i_j} f(x) = D^j f(x)[e_{i_1},…,e_{i_j}]`. -/
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>def partialDeriv {j : ℕ} (i : Fin j → Fin d) (f : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  iteratedFDeriv ℝ j f x (fun l =&gt; EuclideanSpace.single (i l) 1)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-- `max_{|α|≤k} sup_x ⟨x⟩^{w(|α|)} |∂^α f(x)|` in `ℝ≥0∞` (derivatives of order `j ≤ k`,
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>all index tuples; a multi-index `α` with `|α| = j` is a symmetric class of index tuples). -/
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>def derivSupE (k : ℕ) (w : ℕ → ℝ) (f : Euc d → ℝ) : ℝ≥0∞ :=
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  ⨆ j : Fin (k + 1), ⨆ i : Fin (j : ℕ) → Fin d, ⨆ x : Euc d,
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    ENNReal.ofReal (jbracket x ^ w j * |partialDeriv i f x|)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>/-- The decay norm `‖f‖_{k,b} = max_{|α|≤k} sup_x ⟨x⟩^{b+|α|}|∂^α f(x)|`
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>(`W:r2:decay-norm`, S lines 2951-2953). -/
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>def decayNormE (k : ℕ) (b : ℝ) (f : Euc d → ℝ) : ℝ≥0∞ := derivSupE k (fun j =&gt; b + j) f
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>/-- `max_{|α|≤k} sup_x ⟨x⟩^{L}|∂^α f(x)|` (S lines 2962-2964: the weight exponent does not grow with
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>`|α|`). -/
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>def weightedSupE (k : ℕ) (L : ℝ) (f : Euc d → ℝ) : ℝ≥0∞ := derivSupE k (fun _ =&gt; L) f
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- `‖v‖_{k,b}` of a vector field, componentwise (&quot;a vector-valued function is treated
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>componentwise&quot;, S line 2955). -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>def decayNormVecE (k : ℕ) (b : ℝ) (v : Euc d → Euc d) : ℝ≥0∞ :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  ⨆ i : Fin d, decayNormE k b fun x =&gt; v x i
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-- `Σ_j ∂_j g * G_j` for a vector field `G` (the contracted convolution `Div g*G`, plain
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>Bochner integral; absolutely convergent when `s + 1 &lt; d` and `G` is bounded and integrable, which is
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>the case in S4.10 where `s ≤ d - 2`). -/
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>def divGConvPlain (d : ℕ) (s : ℝ) (G : Euc d → Euc d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  ∑ j : Fin d, ∫ y, rieszKernelGrad d s (x - y) j * G y j
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>/-- `∇g * h (x) = ∫ ∇g(x-y) h(y) dy` for a scalar `h` (plain Bochner integral). -/
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>def gradGConvPlain (d : ℕ) (s : ℝ) (h : Euc d → ℝ) (x : Euc d) : Euc d :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  ∫ y, h y • rieszKernelGrad d s (x - y)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>/-! ### The uniformly local scale -/
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>/-- A cutoff `θ ∈ C_c^∞` equal to `1` on `[-2,2]^d` (S lines 3191-3193). -/
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>def IsUlCutoff (θ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  ContDiff ℝ ∞ θ ∧ HasCompactSupport θ ∧ ∀ x : Euc d, (∀ i, |x i| ≤ 2) → θ x = 1
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>open Classical in
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>/-- `‖u‖_{H^r(ℝ^d)}` in `ℝ≥0∞` (`⊤` if `u ∉ H^r`). -/
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>def sobolevNormE (r : ℝ) (u : Euc d → ℝ) : ℝ≥0∞ :=
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  if HRS.PDE.ToolboxRd.MemSobolev r u then
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    ENNReal.ofReal (Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq r u)) else ⊤
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>/-- The lattice point `z ∈ ℤ^d ⊂ ℝ^d`. -/
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>def latticePt (z : Fin d → ℤ) : Euc d := WithLp.toLp 2 fun i =&gt; (z i : ℝ)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>/-- The cell centres `⌈√d⌉⁻¹ • ℤ^d`: the closed balls of radius `1` about them cover `ℝ^d` (every point is within
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>`√d / (2⌈√d⌉) ≤ 1/2` of a centre).  Statement repair `MH-REPAIRS-1` / `MS-ULOC-LAT` (docs/ISSUES.md): the closed unit
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>balls about `ℤ^d` cover `ℝ^d` only for `d ≤ 4`. -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>def cellPt (d : ℕ) (z : Fin d → ℤ) : Euc d := ((⌈Real.sqrt d⌉ : ℝ)⁻¹) • latticePt z
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>/-- `‖f‖_{H^r_ul} = sup_{z∈ℤ^d} ‖θ(·-z) f‖_{H^r(ℝ^d)}` (S lines 3195-3198), `r` a natural number. -/
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>def ulNormE (r : ℕ) (θ : Euc d → ℝ) (f : Euc d → ℝ) : ℝ≥0∞ :=
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  ⨆ z : Fin d → ℤ, sobolevNormE (r : ℝ) fun x =&gt; θ (x - latticePt z) * f x
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>/-- `C_c^∞` plus a constant. -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def IsCcInftyPlusConst (g : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  ∃ (h : Euc d → ℝ) (c : ℝ), ContDiff ℝ ∞ h ∧ HasCompactSupport h ∧ g = fun x =&gt; h x + c
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>/-- The closure of `C_c^∞` (constants adjoined) in the `H^k_ul` norm (S lines 3199-3201: &quot;we take
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>the closure of `C_c^∞` in this norm, and may adjoin the constants&quot;); the representative is taken
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>`C²` (for `k &gt; d/2 + 2` every element has a `C²` representative). -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>def UlClosure (k : ℕ) (θ : Euc d → ℝ) (f : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  ContDiff ℝ 2 f ∧ ∀ ε : ℝ, 0 &lt; ε → ∃ g, IsCcInftyPlusConst g ∧
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    ulNormE k θ (fun x =&gt; f x - g x) ≤ ENNReal.ofReal ε
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>/-- `u : [0,t] → H^k_ul` is a backward evolution with terminal datum `f` for the generator `C`
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>in the uniformly local scale: a classical adjoint solution (`IsClassicalAdjointW`) with values in
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>the closure `UlClosure k θ`, strongly continuous in the `H^k_ul` norm. -/
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>structure IsUlBackwardEvolution (θ : Euc d → ℝ) (k : ℕ) (C : WholeCoeff d) (t : ℝ)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (f : Euc d → ℝ) (u : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  classicalSol : IsClassicalAdjointW C t f u
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  mem : ∀ r ∈ Set.Icc 0 t, UlClosure k θ (u r)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  cont : ∀ r₀ ∈ Set.Icc 0 t, ∀ ε : ℝ, 0 &lt; ε → ∃ δ : ℝ, 0 &lt; δ ∧ ∀ r ∈ Set.Icc 0 t,
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    |r - r₀| &lt; δ → ulNormE k θ (fun x =&gt; u r x - u r₀ x) ≤ ENNReal.ofReal ε
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>/-- The adjoint input &quot;the whole-space uniformly local adjoint theorem applies through derivative
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>order `j` in `C_b`&quot; with constant `K` (see the module docstring): for `0 ≤ r ≤ t ≤ T` and every
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>`φ ∈ C^{j+1+⌈d/2⌉}` with finite `H^{j+1+⌈d/2⌉}_ul` norm the classical adjoint solution
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>(`IsClassicalAdjointW`, with the repaired growth condition on `∂_r f`, see there) exists and
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>`‖U(r,t)φ‖_{C_b^j} ≤ K ‖φ‖_{H^{j+1+⌈d/2⌉}_ul}`.  The data class is finitely smooth, not `C^∞`:
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>S5.5 (S L3914-3919) applies the adjoint estimate to `L_N^t φ_j`, which is only
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>`C^{k+6+⌈d/2⌉}` (the density `ρ` has finitely many derivatives).  The TeX (S L3199-3202, &quot;every
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>function to which the evolution is applied belongs to the closure of `C_c^∞` in `H^k_ul`&quot;) restricts
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>the data to that closure for strong continuity; for the *existence/bound* statement here the
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>`C^{j+1+⌈d/2⌉} ∩ H_ul` class is what is used (this contains the closure&#x27;s elements of that
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>smoothness). -/
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>def UlAdjointInput (θ : Euc d → ℝ) (C : WholeCoeff d) (T : ℝ) (j : ℕ) (K : ℝ) : Prop :=
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  ∀ r t : ℝ, 0 ≤ r → r ≤ t → t ≤ T → ∀ φ : Euc d → ℝ,
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    ContDiff ℝ ((j + 1 + ⌈(d : ℝ) / 2⌉₊ : ℕ) : WithTop ℕ∞) φ →
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    ulNormE (j + 1 + ⌈(d : ℝ) / 2⌉₊) θ φ &lt; ⊤ →
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    (∃ f, IsClassicalAdjointW C t φ f) ∧ MemCb j (propagatorW C r t φ) ∧
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      cbNorm j (propagatorW C r t φ) ≤ K * (ulNormE (j + 1 + ⌈(d : ℝ) / 2⌉₊) θ φ).toReal
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- The standing hypotheses of S4.12 (S lines 3066-3075) for one pair `(ν, ρ)`:
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>`0 ≤ s ≤ d-2`; `ν ∈ [0, ν_*]`; `Q` symmetric; `ρ_t` (`t ∈ [0,T]`) probability densities, `C^{k+1}`,
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>with `max_{|α|≤k+1} sup_x ⟨x⟩^L|∂^α ρ_t| ≤ Λ`, common exponent `L &gt; d + k + s + 4`; the adjoint input
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>through order `k+1` in `C_b` with constant `K`.  The generator is that of the dynamics with
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>`V(x) = xᵀQx/2 + c·x`, interaction matrix `M`, along `ρ`. -/
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>structure AdjointDecayHyp (θ : Euc d → ℝ) (s : ℝ) (M Q : Matrix (Fin d) (Fin d) ℝ) (c : Euc d)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    (T νstar : ℝ) (k : ℕ) (L Λ K : ℝ) (ν : ℝ) (ρ : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  s_range : 0 ≤ s ∧ s ≤ (d : ℝ) - 2
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  ν_range : 0 ≤ ν ∧ ν ≤ νstar
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  Q_symm : Q.IsSymm
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  L_range : (d : ℝ) + k + s + 4 &lt; L
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  density : ∀ t ∈ Set.Icc 0 T, IsProbDensity (ρ t) ∧ ContDiff ℝ (k + 1) (ρ t) ∧
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    weightedSupE (k + 1) L (ρ t) ≤ ENNReal.ofReal Λ
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  adjoint : UlAdjointInput θ ((⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ) T (k + 1) K
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  /-- Joint continuity of the interaction drift `(t,x) ↦ (∇g * ρ_t)(x)` on `[0,T] × ℝ^d` (needed
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  by S4.11; supplement repair P2). -/
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  drift_cont : ContinuousOn
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    (fun p : ℝ × Euc d =&gt; convGradConvW (rieszKernelGrad d s) (ρ p.1) p.2)
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    (Set.Icc 0 T ×ˢ Set.univ)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>/-- `Comm_N(v; X_N, μ) = ∬_{x≠y} (v(x)-v(y))·∇g(x-y) d(μ_N-μ)^{⊗2}` with the deleted particle
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>diagonal (M line 2819; S line 6411 `𝖢_N`); equal to `2 𝖥_N^{h_v}` (`S3.2`). -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>def commN (d : ℕ) (s : ℝ) (v : Euc d → Euc d) (X : EucConfig d N) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  centeredPairFunctional (commutatorKernel d s v) X μ
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-! ### S4.10 -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>/-- Lemma S4.10 (S:W:r2:far-derivatives, TeX S L2961-2975).  `d ≥ 2`, `0 ≤ s ≤ d - 2`, `k ≥ 0`,
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>`L &gt; d + k + s + 3`.  (a) If `h` is `C^k` (supplement repair P2: smoothness is not needed, and S4.12 applies
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>this to `ρ_t`, which is only `C^{k+1}`) and `A = max_{|α|≤k} sup_x ⟨x⟩^L |∂^α h(x)| &lt; ∞`, then
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>`∇g * h` is `C^k` and `‖∇g*h‖_{k,s+1} ≤ C A`.  (b) In particular, if `ρ ∈ C^k` has the displayed weighted
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>derivative bounds (`A_ρ ≤ Λρ`; only `C^k`, as fed by S4.12) and `f ∈ C_b^{k+1}`, then `div g*(ρ Mᵀ∇f)` is `C^k` and
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>`‖div g*(ρ Mᵀ∇f)‖_{k,s+1} ≤ C ‖f‖_{C_b^{k+1}}`; `C` depends on `d, s, k, L, M, Λρ`, on no
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>support radius.  Technical hypotheses: none (`k` is a natural number; `∇g*h` is the plain integral,
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>absolutely convergent as `s + 1 &lt; d`). -/
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>theorem far_derivatives (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s ≤ (d : ℝ) - 2) (k : ℕ)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    (L : ℝ) (hL : (d : ℝ) + k + s + 3 &lt; L) :
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    (∃ C : ℝ, ∀ h : Euc d → ℝ, ContDiff ℝ k h → weightedSupE k L h &lt; ⊤ →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      ContDiff ℝ k (gradGConvPlain d s h) ∧
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>        decayNormVecE k (s + 1) (gradGConvPlain d s h) ≤ ENNReal.ofReal C * weightedSupE k L h) ∧
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    ∀ (M : Matrix (Fin d) (Fin d) ℝ) (Λρ : ℝ), ∃ C : ℝ, ∀ ρ : Euc d → ℝ, ContDiff ℝ k ρ →
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      weightedSupE k L ρ ≤ ENNReal.ofReal Λρ → ∀ f : Euc d → ℝ, MemCb (k + 1) f →
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        ContDiff ℝ k (fun x =&gt; divGConvPlain d s
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>          (fun y =&gt; ρ y • Torus.matVec M.transpose (gradient f y)) x) ∧
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        decayNormE k (s + 1) (fun x =&gt; divGConvPlain d s
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>          (fun y =&gt; ρ y • Torus.matVec M.transpose (gradient f y)) x) ≤
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>          ENNReal.ofReal (C * cbNorm (k + 1) f) := by
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  sorry
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>/-! ### S4.11 -/
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>/-- A bounded classical backward solution on `[0,t]` of `∂_r u + ν_r Δu + b_r·∇u = 0`,
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>`u(t) = f` (the backward local evolution `P(r,t)f`, S lines 3004-3006, of the stochastic flow of
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>`dX = b dt + √(2ν) dW`; bounded classical solutions are unique). -/
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>structure IsLocalBackwardSolution (ν : ℝ → ℝ) (b : ℝ → Euc d → Euc d) (t : ℝ) (f : Euc d → ℝ)
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    (u : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  c2 : ∀ r ∈ Set.Icc 0 t, ContDiff ℝ 2 (u r)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  bdd : ∃ B : ℝ, ∀ r ∈ Set.Icc 0 t, ∀ x, |u r x| ≤ B
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  cont : Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt; u p.1 p.2
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  terminal : u t = f
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  time_deriv : ∀ x : Euc d, ∀ r ∈ Set.Ioo 0 t,
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    HasDerivAt (fun r&#x27; =&gt; u r&#x27; x)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      (-(ν r * Laplacian.laplacian (u r) x + inner ℝ (b r x) (gradient (u r) x))) r
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>/-- Lemma S4.11 (S:W:r2:local-decay, TeX S L3003-3019).  `Q` a fixed real matrix,
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>`b_t(x) = -Qx - c_t + B_t(x)` on `[0,T]` with `c_t ∈ ℝ^d` independent of `x` (S L3006: `c_t` is a
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>bounded *vector*; an `x`-dependent `c` would make the lemma false, e.g. `c(x) = min(|x₁|,1)e₁`
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>admits no `C²` solution), `c` bounded, `sup_t (‖B_t‖_{C_b^{k+1}} + ‖B_t‖_{k+1,s+1}) &lt; ∞` (each
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>bounded by `ΛB`).  The backward local evolution satisfies `‖P(r,t)f‖_{k,b} ≤ C_{T,k,b}‖f‖_{k,b}`,
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>`0 ≤ r ≤ t ≤ T`, for every `b &gt; 0`, uniformly in the viscosity `0 ≤ ν ≤ ν_*`; the viscosity may be
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>a continuous function `ν_r ∈ [0,ν_*]` of time (a constant is a special case).  The constant depends
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>on `d, s, Q, k, T, ν_*, b, Λc, ΛB` (quantified before `ν, c, B, f`).  Test functions `f` are `C^{max(k,2)}`
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>(supplement repair P2: the classical solution is `C²` up to `r = t` where `u t = f`; smoothness is not
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>needed) with finite `‖f‖_{k,b}`; existence of the solution is part of the conclusion, smoothness `C^k` of
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>`u_r` too.
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>Technical hypotheses: `0 ≤ s` (the section works with `0 ≤ s`; for `s ≤ -2` the bound fails);
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>`2 ≤ k` (repair 2026-10-21, approved by the author after independent review: the proof differentiates the stochastic flow twice under the expectation, which needs `D²f` controlled by `‖f‖_{k,b}`; for `k = 1` the statement is not refuted but needs Bismut–Elworthy–Li type regularity, and no consumer uses `k = 1`; `adjoint_decay` has `hk2 : 2 ≤ k`; the classical formulation also needs `u_r ∈ C²` and `B_t ∈ C^{k+1}`); continuity of
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>`t ↦ c_t` and joint continuity of `(t,x) ↦ B_t(x)` on `[0,T] × ℝ^d` (the drift of the flow is
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>continuous in `(τ,x)`, S lines 10052-10060). -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>theorem local_decay (hd : 2 ≤ d) (s : ℝ) (hs : 0 ≤ s) (Q : Matrix (Fin d) (Fin d) ℝ) (k : ℕ)
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (hk : 2 ≤ k) (T νstar bexp Λc ΛB : ℝ) (hb : 0 &lt; bexp) :
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    ∃ C : ℝ, ∀ (ν : ℝ → ℝ) (c : ℝ → Euc d) (B : ℝ → Euc d → Euc d), Continuous ν →
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      (∀ r, 0 ≤ ν r ∧ ν r ≤ νstar) →
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      ContinuousOn c (Set.Icc 0 T) →
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      ContinuousOn (fun p : ℝ × Euc d =&gt; B p.1 p.2) (Set.Icc 0 T ×ˢ Set.univ) →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      (∀ t ∈ Set.Icc 0 T, ‖c t‖ ≤ Λc) →
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      (∀ t ∈ Set.Icc 0 T, ContDiff ℝ (k + 1) (B t) ∧
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>        (∀ j ≤ k + 1, ∀ x, ‖iteratedFDeriv ℝ j (B t) x‖ ≤ ΛB) ∧
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>        decayNormVecE (k + 1) (s + 1) (B t) ≤ ENNReal.ofReal ΛB) →
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      ∀ t ∈ Set.Icc 0 T, ∀ f : Euc d → ℝ, ContDiff ℝ ((max k 2 : ℕ) : WithTop ℕ∞) f → decayNormE k bexp f &lt; ⊤ →
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        (∃ u, IsLocalBackwardSolution ν (fun r x =&gt; -(Torus.matVec Q x) - c r + B r x) t f u) ∧
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>        ∀ u, IsLocalBackwardSolution ν (fun r x =&gt; -(Torus.matVec Q x) - c r + B r x) t f u →
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>          ∀ r ∈ Set.Icc 0 t, ContDiff ℝ k (u r) ∧
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>            decayNormE k bexp (u r) ≤ ENNReal.ofReal C * decayNormE k bexp f := by
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  sorry
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>/-! ### S4.12 -/
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-- Proposition S4.12 (S:W:r2:adjoint-decay, TeX S L3066-3084).  Under `AdjointDecayHyp`
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>(`0 ≤ s ≤ d-2`, the uniformly local adjoint theorem through order `k+1` uniformly in `ν ∈ [0,ν_*]`,
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>uniform weighted bounds on the derivatives of `ρ_t` through order `k+1` with a common exponent
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>`L &gt; d + k + s + 4`, `V = xᵀQx/2 + c·x`, `Q` symmetric) the full adjoint evolution satisfies
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>`‖U(r,t)φ‖_{k,s+1} ≤ C_T(‖φ‖_{k,s+1} + ‖φ‖_{H^{k+2+⌈d/2⌉}_ul})`, `C_T` independent of the support of
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>`φ`, of `r, t` and of the viscosity in its interval.  The constant is quantified before the family
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>`(ν, ρ)` and depends only on `d, s, k, L, Λ, K, T, ν_*, M, Q, c` and the cutoff `θ`.  The matrix `M`
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>is arbitrary (S lines 3081-3083); `U(r,t)φ` is `propagatorW` (existence is part of the adjoint
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>input); smoothness `C^k` of `U(r,t)φ` is part of the conclusion.  Technical hypotheses: `φ` is
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>`C^{k+2+⌈d/2⌉}` with finite `H^{k+2+⌈d/2⌉}_ul` norm (so the adjoint solution exists and the `C^k`
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>conclusion is meaningful; the `H_ul` norm is finite in the bound&#x27;s right side anyway); `ρ_t ∈ C^{k+1}` (the weighted
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>derivative bounds on `ρ_t` presuppose these derivatives); `d ≥ 2`; `k ≥ 2` (supplement repair P2: for
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>`k = 1` the Duhamel source is only `C¹`; the consumers have `k &gt; 2`); joint continuity of the drift
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>`(t,x) ↦ ∇g*ρ_t(x)` (`AdjointDecayHyp.drift_cont`). -/
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>theorem adjoint_decay (hd : 2 ≤ d) (θ : Euc d → ℝ) (hθ : IsUlCutoff θ) (s : ℝ)
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    (M Q : Matrix (Fin d) (Fin d) ℝ) (c : Euc d) (T νstar : ℝ) (k : ℕ) (hk2 : 2 ≤ k)
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    (L Λ K : ℝ) :
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    ∃ C : ℝ, ∀ (ν : ℝ) (ρ : ℝ → Euc d → ℝ), AdjointDecayHyp θ s M Q c T νstar k L Λ K ν ρ →
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>      ∀ r t : ℝ, 0 ≤ r → r ≤ t → t ≤ T → ∀ φ : Euc d → ℝ,
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>        ContDiff ℝ ((k + 2 + ⌈(d : ℝ) / 2⌉₊ : ℕ) : WithTop ℕ∞) φ →
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>        ulNormE (k + 2 + ⌈(d : ℝ) / 2⌉₊) θ φ &lt; ⊤ →
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>        ContDiff ℝ k (propagatorW ((⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ) r t φ) ∧
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        decayNormE k (s + 1) (propagatorW ((⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ) r t φ) ≤
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>          ENNReal.ofReal C * (decayNormE k (s + 1) φ +
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>            ulNormE (k + 2 + ⌈(d : ℝ) / 2⌉₊) θ φ) := by
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  sorry
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>/-! ### S4.13 -/
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>/-- `w` represents the fractional derivative `|D|^α v` in the sense of distributions:
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>`∫ v · 𝓕⁻[(2π|ξ|)^α 𝓕φ] = ∫ w φ` for every Schwartz function `φ` (both integrals absolutely
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>convergent).  The multiplier `(2π|ξ|)^α` differs from `|ξ|^α` by a constant factor, absorbed in the
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>constants of the statements. -/
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>def IsFracDerivRep (α : ℝ) (v w : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  ∀ φ : SchwartzMap (Euc d) ℂ,
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    Integrable (fun x =&gt; ((v x : ℝ) : ℂ) *
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      (𝓕⁻ (fun ξ : Euc d =&gt; (((2 * Real.pi * ‖ξ‖) ^ α : ℝ) : ℂ) * 𝓕 (⇑φ) ξ)) x) ∧
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    Integrable (fun x =&gt; ((w x : ℝ) : ℂ) * φ x) ∧
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    ∫ x, ((v x : ℝ) : ℂ) *
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>        (𝓕⁻ (fun ξ : Euc d =&gt; (((2 * Real.pi * ‖ξ‖) ^ α : ℝ) : ℂ) * 𝓕 (⇑φ) ξ)) x =
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>      ∫ x, ((w x : ℝ) : ℂ) * φ x
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>/-- Lemma S4.13 (S:W:r2:fractional-decay, TeX S L3107-3120), first assertion
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>`W:r2:fractional-decay-bound`: `b &gt; 0`, `α &gt; 0`, `1 &lt; p &lt; ∞`, `k` an integer larger than `α`,
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>`b + α &gt; d/p`: for every smooth `v` (with finite `‖v‖_{k,b}`) `|D|^α v` (distributional) is in `L^p`
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>and `‖|D|^α v‖_{L^p} ≤ C‖v‖_{k,b}`.  Technical hypothesis: `v` is `C^k` (the norm `‖v‖_{k,b}` involves
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>its derivatives); `d ≥ 2` (standing). -/
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>theorem fractional_decay (hd : 2 ≤ d) (bexp α p : ℝ) (k : ℕ) (hb : 0 &lt; bexp) (hα : 0 &lt; α)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    (hp : 1 &lt; p) (hk : α &lt; k) (hbα : (d : ℝ) / p &lt; bexp + α) :
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    ∃ C : ℝ, ∀ v : Euc d → ℝ, ContDiff ℝ k v → decayNormE k bexp v &lt; ⊤ →
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>      ∃ w : Euc d → ℝ, IsFracDerivRep α v w ∧ MemLp w (ENNReal.ofReal p) volume ∧
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>        eLpNorm w (ENNReal.ofReal p) volume ≤ ENNReal.ofReal C * decayNormE k bexp v := by
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  sorry
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>/-- Lemma S4.13 (S:W:r2:fractional-decay, TeX S L3107-3120), second assertion
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>`W:r2:sharp-tail-bound` (S L3114-3118): for `a ∈ (d, d+2)`,
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>`k &gt; a/2 + 1` an integer and `s ≥ 0`,
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>`‖D²f‖_∞ + ‖|D|^{a/2}∇f‖_{L^{2d/(a-2)}} ≤ C‖f‖_{k,s+1}` (`∇f` componentwise, summed over the
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>components; `‖D²f‖_∞ = sup_x ‖D²f(x)‖` operator norm), for every smooth `f` with finite
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>`‖f‖_{k,s+1}`.  Technical hypothesis: `f` is `C^k`; `d ≥ 2` (standing). -/
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>theorem sharp_tail_bound (hd : 2 ≤ d) (a s : ℝ) (k : ℕ) (ha : (d : ℝ) &lt; a ∧ a &lt; (d : ℝ) + 2)
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    (hk : a / 2 + 1 &lt; k) (hs : 0 ≤ s) :
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    ∃ C : ℝ, ∀ f : Euc d → ℝ, ContDiff ℝ k f → decayNormE k (s + 1) f &lt; ⊤ →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      ∃ w : Fin d → Euc d → ℝ, (∀ i, IsFracDerivRep (a / 2) (fun x =&gt; gradient f x i) (w i)) ∧
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>        (∀ i, MemLp (w i) (ENNReal.ofReal (2 * d / (a - 2))) volume) ∧
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        (⨆ x : Euc d, ENNReal.ofReal ‖iteratedFDeriv ℝ 2 f x‖) +
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>          ∑ i, eLpNorm (w i) (ENNReal.ofReal (2 * d / (a - 2))) volume ≤
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>            ENNReal.ofReal C * decayNormE k (s + 1) f := by
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  sorry
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>/-! ### S4.14 -/
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>/-- Corollary S4.14 (S:W:r2:sharp-all-sub, TeX S L3153-3166).  For the trajectories and adjoints
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>of Proposition S4.12 (`AdjointDecayHyp`) and `0 ≤ s &lt; d - 2`, with `k &gt; (d+1)/2 + 1` an integer:
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>`|Comm_N(Mᵀ∇U(r,t)φ; X_N, ρ_r)| ≤ C_T(‖φ‖_{k,s+1} + ‖φ‖_{H^{k+2+⌈d/2⌉}_ul})(F_N(X_N,ρ_r) + o_N)`,
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>for every `N ≥ 2`, every pairwise distinct configuration `X_N`, `0 ≤ r ≤ t ≤ T` and smooth `φ` with
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>finite norms.  `o_N` is `oN d s C₀ N` with the heat-kernel completion `C₀` of the main paper
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>(`H:eq:energy-completion`), chosen once (`∃ C₀`) for the class; `C_T` independent of `φ`, `N`,
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>`X_N`, `r`, `t` and of the viscosity.  The density-moment, deleted-diagonal and logarithmic
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>hypotheses of the commutator inequality `B:eq:sharp-decaying-commutator` are implied by the weighted
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>bounds on `ρ` (bounded density with all moments) and by `X_N` pairwise distinct.  The proof uses the
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>external sharp commutator estimate (Hess-Childs-Rosenzweig) and S4.12, S4.13.
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>Technical hypotheses: `N ≥ 2`; `φ ∈ C^{k+2+⌈d/2⌉}` with `‖φ‖_{k,s+1} &lt; ∞` and `‖φ‖_{H^{k+2+⌈d/2⌉}_ul} &lt; ∞`
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>(the bound is meaningless otherwise; the right side uses the real values of these norms); `X_N`
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>pairwise distinct (the commutator is defined off the collision set). -/
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>theorem sharp_all_sub (hd : 2 ≤ d) (θ : Euc d → ℝ) (hθ : IsUlCutoff θ) (s : ℝ)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    (M Q : Matrix (Fin d) (Fin d) ℝ) (c : Euc d) (T νstar : ℝ) (k : ℕ) (L Λ K : ℝ)
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    (hs : s &lt; (d : ℝ) - 2) (hk : ((d : ℝ) + 1) / 2 + 1 &lt; k) :
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    ∃ C₀ C : ℝ, ∀ (ν : ℝ) (ρ : ℝ → Euc d → ℝ), AdjointDecayHyp θ s M Q c T νstar k L Λ K ν ρ →
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>      ∀ (N : ℕ), 2 ≤ N → ∀ X : EucConfig d N, Function.Injective X →
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>      ∀ r t : ℝ, 0 ≤ r → r ≤ t → t ≤ T → ∀ φ : Euc d → ℝ,
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>        ContDiff ℝ ((k + 2 + ⌈(d : ℝ) / 2⌉₊ : ℕ) : WithTop ℕ∞) φ →
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>        decayNormE k (s + 1) φ &lt; ⊤ → ulNormE (k + 2 + ⌈(d : ℝ) / 2⌉₊) θ φ &lt; ⊤ →
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>        |commN d s (fun x =&gt; Torus.matVec M.transpose
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>              (gradient (propagatorW ((⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ) r t φ) x))
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>            X (withDensityReal (ρ r))| ≤
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>          C * ((decayNormE k (s + 1) φ).toReal +
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>              (ulNormE (k + 2 + ⌈(d : ℝ) / 2⌉₊) θ φ).toReal) *
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>            (rieszModulatedEnergy d s X (withDensityReal (ρ r)) + oN d s C₀ N) := by
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>  sorry
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>/-! ### S5.1 -/
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>/-- The nonnegative Schwartz probability density hypothesis. -/
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>def IsSchwartzDensity (ρ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  IsProbDensity ρ ∧ ∃ ψ : SchwartzMap (Euc d) ℝ, ⇑ψ = ρ
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>/-- &quot;`c` smooth with all derivatives bounded&quot;. -/
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>def IsSmoothBounded (c : Euc d → Euc d) : Prop :=
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>  ContDiff ℝ ∞ c ∧ ∀ j : ℕ, ∃ B : ℝ, ∀ x, ‖iteratedFDeriv ℝ j c x‖ ≤ B
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>/-- The coefficients of the operator `L f = νΔf + (-Qx + c(x))·∇f + div g*(ρ∇f)`
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>(`W:r2:adjoint-operator`, S lines 3213-3215) in the form `νΔ + b·∇ - Div g*(ρ Mᵀ∇ ·)` with
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>`b = -Qx + c`, `ρ` time independent and `M` a fixed matrix (`M = -1` is the displayed `+div g*(ρ∇f)`;
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>&quot;signs or fixed matrices in the last term make no difference to this analytic assertion&quot;,
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>S line 3216). -/
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>def fixedViscosityCoeff (s : ℝ) (M Q : Matrix (Fin d) (Fin d) ℝ) (ν : ℝ) (c : Euc d → Euc d)
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    (ρ : Euc d → ℝ) : WholeCoeff d :=
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  ⟨s, M, ν, fun _ x =&gt; -(Torus.matVec Q x) + c x, fun _ =&gt; ρ⟩
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>/-- Lemma S5.1 (S:W:r2:ul-adjoint, TeX S L3204-3235), first part (L3204-3224): `d ≥ 2`, `0 ≤ s &lt; d`, `ν &gt; 0`,
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>`Q` a fixed matrix, `ρ` a nonnegative Schwartz probability density, `c` smooth with all derivatives
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>bounded, `M` any fixed matrix (the displayed operator is `M = -1`).  For every sufficiently large
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>integer `k` (`k ≥ k₀(d)`), every finite `T` the operator has a unique backward evolution on the
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>closure of `C_c^∞` (constants adjoined) in `H^k_ul`, and
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>`sup_{0≤t≤T}‖U_t f‖_{H^k_ul} ≤ C_{T,k}‖f‖_{H^k_ul}`.  Uniqueness is stated on `[0,t]` only (nothing
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>constrains `u r` for `r ∉ [0,t]`).  The solution notion is the repaired `IsClassicalAdjointW`
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>(growth condition on `∂_r f`, see `Dynamics.lean`: the source&#x27;s boundedness of `∂_r f` is
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>incompatible with the confining drift, a latent problem of the TeX), and the data are the
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>elements of the closure `UlClosure k θ` (S L3199-3202), as the TeX prescribes.  Here the evolution with terminal time `t` and
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>datum `f` is the family `u(r) = U_{t-r} f`, `IsUlBackwardEvolution` (existence and uniqueness are
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>asserted for every `t ∈ [0,T]`; the bound for every `r ∈ [0,t]`, in particular `u(0) = U_t f`).
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>`C_{T,k}` may depend on `ν⁻¹` and all the data.  Technical hypothesis: none. -/
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>theorem ul_adjoint_fixed_viscosity (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    (θ : Euc d → ℝ) (hθ : IsUlCutoff θ) :
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    ∃ k₀ : ℕ, ∀ k : ℕ, k₀ ≤ k → ∀ (T ν : ℝ) (Q M : Matrix (Fin d) (Fin d) ℝ) (ρ : Euc d → ℝ)
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>      (c : Euc d → Euc d), 0 ≤ T → 0 &lt; ν → IsSchwartzDensity ρ → IsSmoothBounded c →
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      ∃ C : ℝ, ∀ t ∈ Set.Icc 0 T, ∀ f : Euc d → ℝ, UlClosure k θ f →
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>        (∃ u, IsUlBackwardEvolution θ k (fixedViscosityCoeff s M Q ν c ρ) t f u) ∧
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>        (∀ u u&#x27;, IsUlBackwardEvolution θ k (fixedViscosityCoeff s M Q ν c ρ) t f u →
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>          IsUlBackwardEvolution θ k (fixedViscosityCoeff s M Q ν c ρ) t f u&#x27; →
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>          ∀ r ∈ Set.Icc 0 t, u r = u&#x27; r) ∧
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>        ∀ u, IsUlBackwardEvolution θ k (fixedViscosityCoeff s M Q ν c ρ) t f u →
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>          ∀ r ∈ Set.Icc 0 t, ulNormE k θ (u r) ≤ ENNReal.ofReal C * ulNormE k θ f := by
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  sorry
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>/-- Lemma S5.1 (S:W:r2:ul-adjoint, TeX S L3204-3235), second part (L3225-3235),
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>`W:r2:orbit-bounds`:
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>suppose in addition `c = -∇g*ρ` plus a Schwartz vector field (and `M = -1`, the displayed
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>operator, for which `c = -∇g*ρ` is the transport matched to the nonlocal term; the hypotheses of
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>the first part, `ν &gt; 0`, are retained).  For every integer `k` there is an integer `J` (the source
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>takes `J = 2k+2d+20`) such that, with `𝓗 = 1-Δ+|x|²` (`oscNorm J f = ‖𝓗^{J/2}f‖₂`),
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>`sup_{t≤T} ∑_{a=0}^3 ‖U_t L^a f‖_{C_b^k} ≤ C_{T,k}‖𝓗^{J/2} f‖₂` for every Schwartz `f`, and
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>`∂_t^a U_t f = U_t L^a f` (`a = 1,2,3`) in the `C_b^k` norm.  `U_t g` is the evolution of the first
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>part applied at an index `k₁ ≥ k₀` (`k₀` is an output of the statement, the &quot;sufficiently large&quot; threshold
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>of S5.1, quantified before the data: supplement repair P5) with `k₁ &gt; k + d/2` (`Sobolev embedding`, &quot;an index greater than
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>`k + d/2`&quot;, S lines 3282-3284); `U_t L^a f` is `u_a(0)` for the backward evolution `u_a` with terminal
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>time `t` and datum `L^a f`.  The family `F a t = U_t L^a f` is quantified (existence is part of the
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>conclusion). -/
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>theorem ul_adjoint_orbit_bounds (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    (θ : Euc d → ℝ) (hθ : IsUlCutoff θ) (k : ℕ) :
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>    ∃ k₀ J : ℕ, ∀ (k₁ : ℕ), k₀ ≤ k₁ → (k : ℝ) + (d : ℝ) / 2 &lt; k₁ →
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      ∀ (T ν : ℝ) (Q : Matrix (Fin d) (Fin d) ℝ) (ρ : Euc d → ℝ) (c : Euc d → Euc d),
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      0 ≤ T → 0 &lt; ν → IsSchwartzDensity ρ →
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>      (∃ σ : Euc d → Euc d, (∀ i, ∃ ψ : SchwartzMap (Euc d) ℝ, ⇑ψ = fun x =&gt; σ x i) ∧
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>        c = fun x =&gt; σ x - convGradConvW (rieszKernelGrad d s) ρ x) →
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>      ∃ C : ℝ, ∀ f : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>        let Cf := fixedViscosityCoeff s (-1) Q ν c ρ
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>        (∃ F : Fin 4 → ℝ → Euc d → ℝ, ∀ a : Fin 4, ∀ t ∈ Set.Icc 0 T, ∃ u,
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>          IsUlBackwardEvolution θ k₁ Cf t ((fun g x =&gt; generatorW Cf 0 g x)^[(a : ℕ)] ⇑f) u ∧
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>            F a t = u 0) ∧
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>        ∀ F : Fin 4 → ℝ → Euc d → ℝ, (∀ a : Fin 4, ∀ t ∈ Set.Icc 0 T, ∃ u,
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>          IsUlBackwardEvolution θ k₁ Cf t ((fun g x =&gt; generatorW Cf 0 g x)^[(a : ℕ)] ⇑f) u ∧
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>            F a t = u 0) →
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>          (∀ t ∈ Set.Icc 0 T, (∀ a, MemCb k (F a t)) ∧
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>            ∑ a : Fin 4, cbNorm k (F a t) ≤ C * oscNorm (J : ℝ) f) ∧
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>          ∀ (a : Fin 4) (ha3 : (a : ℕ) &lt; 3), ∀ t ∈ Set.Icc 0 T, ∀ ε : ℝ, 0 &lt; ε → ∃ δ : ℝ, 0 &lt; δ ∧
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>            ∀ h : ℝ, h ≠ 0 → |h| &lt; δ → t + h ∈ Set.Icc 0 T →
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>              ∀ j ≤ k, ∀ x : Euc d, ‖iteratedFDeriv ℝ j
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>                (fun y =&gt; h⁻¹ * (F a (t + h) y - F a t y) - F ⟨(a : ℕ) + 1, by omega⟩ t y) x‖ ≤ ε := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  sorry
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>end HRS.Whole
+</span></code></pre></main></body></html>

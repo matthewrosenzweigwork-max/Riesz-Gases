@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.ForwardEq · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.ForwardEq</code></h1><p><a href="../../lean/HRS/PDE/ForwardEq.lean">Open the unaltered Lean file</a> · 172 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.Convention
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Torus PDE layer III: the forward adjoint equation in Fourier form, its solution concept,
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>the coefficient hypothesis, and the adjoint regimes
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Sources (HRS periodic main paper, Section 3.2 `B:sec:adjoint-torus`, lines 1711–1738):
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* backward problem `B:eq:adjoint-backward` (1715–1717), forward problem after `F(τ) := f(t-τ)`
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  `B:eq:adjoint-forward` (1719–1721): `∂_τ F = νΔF + b^τ·∇F - 𝒢^τ[F]`, `F(0) = φ`, with
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  `ν = β⁻¹ ∈ [0,∞)`, `b^τ = M∇g*μ^{t-τ} - ∇V`, and `𝒢^τ[F] = Div g*(μ^{t-τ} M^*∇F)
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  = ∑_{i,j} M^*_{ij} ∂_i g*(μ^{t-τ} ∂_j F)` (`B:eq:G-def`, 1723–1725);
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* standing coefficient hypothesis `B:eq:coeff-hypothesis` (1727–1729):
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `μ ∈ C([0,T]; 𝒫(𝕋^d))`, `sup_{[0,T]} ‖μ^r‖_{C^{m+3}} ≤ Λ`, `V ∈ C^{m+3}`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* constants depend only on `(d, s, m, |M|, Λ, ‖V‖_{C^{m+3}})` and, where indicated, on `lam0`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  or `ν₀`; never on `t ∈ [0,T]`, `β`, or `φ` (1730);
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* `θ = s + 2 - d` (1732); Assumption A.2 `B:ass:regime` (10168–10180): regimes R1, R2a, R2b,
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  R2c, R3; `Λ_m` of `B:eq:LambdaM` (1745–1750).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>## Representation decisions (SPEC_NOTES §1–2)
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* All operators act on coefficient sequences through the multipliers of `HRS/PDE/Fourier.lean`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  (`forwardGen`).  For `F ∈ H^1` and `μ ∈ C^{m+3}` every term is an absolutely convergent
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  coefficient (`summable_mulCoeff`).
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* &quot;`F` solves `B:eq:adjoint-forward` in the distributional sense with `F(0) = φ`&quot; is represented
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  coefficientwise by the integrated equation `F̂(τ,k) = φc(k) + ∫_0^τ (𝓛^σ F(σ))^(k) dσ` for every
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  `k` and `τ ∈ [0,t]`, with the integrand integrable in `σ` (`IsForwardSolution`).  On the torus this
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  is equivalent to the distributional formulation (test with `η(τ) e_{-k}(x)`; trigonometric
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  polynomials are dense), see SPEC_NOTES §1.  `C_w([0,t];H^m)` and `C([0,t];H^{m&#x27;})` are the
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  predicates `WeakContinuousInHs`, `ContinuousInHs` of `Fourier.lean`.
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* The dependence on `|M|` and `‖V‖_{C^{m+3}}` is expressed through bounds (`MB`, `VB`), the regime
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  (including `lam0` in R2b) is a parameter placed before the constant, and `ν₀` (R3) is quantified
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  after it since its dependence is displayed in `Λ_m` (`Regime.lambdaM`).
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>-/
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>noncomputable section
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>open scoped ENNReal NNReal BigOperators ComplexConjugate
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>namespace HRS.PDE
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>variable {d : ℕ}
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>/-- The order `θ = s + 2 - d` of the nonlocal term (line 1732). -/
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>def thetaOrder (d : ℕ) (s : ℝ) : ℝ := s + 2 - d
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>/-! ### The forward generator in Fourier form -/
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- Coefficients of the `j`-th component of the drift `b = M∇g*ρ - ∇V` (line 1722):
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>`b̂_j(k) = ∑_i M_{ji} 2πi k_i ĝ(k) ρ̂(k) - 2πi k_j V̂(k)`. -/
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>def driftCoeff (D : DynData d) (ρ : Torus d → ℝ) (j : Fin d) : Coeff d :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  fun k =&gt; (∑ i : Fin d, ((D.M j i : ℝ) : ℂ) * gradRieszCoeff d D.s i (coeffOf ρ) k) -
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    derivCoeff j (coeffOf D.V) k
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>/-- Coefficients of the transport term `b·∇F = ∑_j b_j ∂_j F`. -/
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>def transportCoeff (D : DynData d) (ρ : Torus d → ℝ) (F : Coeff d) : Coeff d :=
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  fun k =&gt; ∑ j : Fin d, mulCoeff (driftCoeff D ρ j) (derivCoeff j F) k
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- Coefficients of the nonlocal term `𝒢[F] = ∑_{i,j} M^*_{ij} ∂_i g*(ρ ∂_j F)`, `M^* = Mᵀ`
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>(`B:eq:G-def`, lines 1723–1725): `∑_{i,j} M_{ji} · 2πi k_i ĝ(k) · (ρ ∂_jF)^(k)`. -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>def nonlocalCoeff (D : DynData d) (ρ : Torus d → ℝ) (F : Coeff d) : Coeff d :=
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  fun k =&gt; ∑ i : Fin d, ∑ j : Fin d, ((D.M j i : ℝ) : ℂ) *
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    gradRieszCoeff d D.s i (mulCoeff (coeffOf ρ) (derivCoeff j F)) k
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>/-- The forward generator `𝓛 F = νΔF + b·∇F - 𝒢[F]` of `B:eq:adjoint-forward` (line 1720) at a
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>frozen density `ρ` (`= μ^{t-τ}`), in Fourier form, `ν = D.invβ`. -/
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>def forwardGen (D : DynData d) (ρ : Torus d → ℝ) (F : Coeff d) : Coeff d :=
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  fun k =&gt; ((D.invβ : ℝ) : ℂ) * laplaceCoeff F k + transportCoeff D ρ F k - nonlocalCoeff D ρ F k
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>/-! ### The solution concept -/
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- `F` solves `B:eq:adjoint-forward` on `[0,t]` with datum `φc` and coefficient path
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>`σ ↦ μ^{t-σ}`, in the integrated coefficient form (distributional sense; SPEC_NOTES §1):
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>`F(τ) ∈ H^1` for `τ ∈ [0,t]`, and for every `k`,
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>`F̂(τ,k) = φc(k) + ∫_0^τ (𝓛^σ F(σ))^(k) dσ` with an integrable integrand. -/
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>structure IsForwardSolution (D : DynData d) (μ : ℝ → Torus d → ℝ) (t : ℝ) (φc : Coeff d)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (F : ℝ → Coeff d) : Prop where
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  h1 : ∀ τ ∈ Set.Icc 0 t, MemHs 1 (F τ)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  integrable : ∀ k, IntegrableOn (fun σ =&gt; forwardGen D (μ (t - σ)) (F σ) k) (Set.Icc 0 t)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  eq : ∀ k, ∀ τ ∈ Set.Icc 0 t,
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    F τ k = φc k + ∫ σ in (0 : ℝ)..τ, forwardGen D (μ (t - σ)) (F σ) k
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>open Classical in
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>/-- The forward solution operator at level `m`: the unique `F ∈ C_w([0,t];H^m)` solving the forward
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>equation with datum `φc` (Proposition 3.9), `0` if there is none.  `U^{r,t} φ` corresponds to
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>`propagatorCoeff D μ m t φc (t - r)`. -/
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>def propagatorCoeff (D : DynData d) (μ : ℝ → Torus d → ℝ) (m : ℝ) (t : ℝ) (φc : Coeff d) :
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    ℝ → Coeff d :=
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  if h : ∃ F, IsForwardSolution D μ t φc F ∧ WeakContinuousInHs m F t then h.choose
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  else fun _ =&gt; 0
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>/-! ### The coefficient hypothesis `B:eq:coeff-hypothesis` -/
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>/-- `B:eq:coeff-hypothesis` (lines 1727–1729) for the density path: `μ^r` is a probability density
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>of class `C^{m+3}` with `‖μ^r‖_{C^{m+3}} ≤ Λ` for `r ∈ [0,T]`, and `r ↦ μ^r` is continuous into
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>`𝒫(𝕋^d)` (weakly, i.e. against continuous tests).  (The source&#x27;s `C^{m+3}` norm is the max over
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>orders, `cbNorm` is the sum: equivalent up to the factor `m+4`, ISSUES §M3.)  The hypothesis on `V`
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>(`V ∈ C^{m+3}`) is carried separately by the theorems. -/
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>structure CoeffHyp (m : ℕ) (Λ T : ℝ) (μ : ℝ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  prob : ∀ r ∈ Set.Icc 0 T, IsProbDensity (μ r)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  smooth : ∀ r ∈ Set.Icc 0 T, Torus.IsCk (m + 3) (μ r)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  bound : ∀ r ∈ Set.Icc 0 T, Torus.cbNorm (m + 3) (μ r) ≤ Λ
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  cont : ∀ ψ : Torus d → ℝ, Continuous ψ →
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    ContinuousOn (fun r =&gt; ∫ x, ψ x * μ r x) (Set.Icc 0 T)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>/-- The hypotheses on `V` of `B:eq:coeff-hypothesis`: `V ∈ C^{m+3}` with `‖V‖_{C^{m+3}} ≤ VB`. -/
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>def VHyp (m : ℕ) (VB : ℝ) (V : Torus d → ℝ) : Prop :=
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  Torus.IsCk (m + 3) V ∧ Torus.cbNorm (m + 3) V ≤ VB
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>/-- Entrywise bound `|M_{ij}| ≤ MB` (the dependence on `|M|`). -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def MatBound (MB : ℝ) (M : Matrix (Fin d) (Fin d) ℝ) : Prop := ∀ i j, |M i j| ≤ MB
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>/-! ### Assumption A.2 `B:ass:regime` (lines 10168–10180) and `Λ_m` -/
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-- The adjoint regimes of Assumption A.2.  `R2b` carries its lower bound `lam0` (constants may
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>depend on it, line 1730); the `ν₀` of `R3` is a separate argument of `Regime.Holds`. -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>inductive Regime
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  | R1
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  | R2a
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  | R2b (lam0 : ℝ)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  | R2c
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  | R3
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>/-- The conditions of each regime (Assumption A.2, lines 10171–10178), for a single trajectory
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>`μ` on `[0,T]`, with `θ = s+2-d`:
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>* R1: `0 ≤ s ≤ d-2`, `M` arbitrary, `β ∈ (0,∞]` arbitrary;
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>* R2 (`d-2 &lt; s &lt; d`, `S = ½(M+Mᵀ) ≤ 0`, `β` arbitrary) and one of
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  R2a: `M` antisymmetric (`S = 0`); R2b: `inf_{[0,T]×𝕋^d} μ ≥ lam0 &gt; 0`; R2c: `s ≤ d-1` (`θ ≤ 1`),
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  no positivity condition;
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>* R3: `d-2 &lt; s &lt; d`, `M` arbitrary, `ν = β⁻¹ ≥ ν₀ &gt; 0`.
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>(`0 ≤ s &lt; d` is a standing hypothesis of the theorems.) -/
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>def Regime.Holds (R : Regime) (d : ℕ) (s : ℝ) (M : Matrix (Fin d) (Fin d) ℝ) (invβ ν₀ T : ℝ)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    (μ : ℝ → Torus d → ℝ) : Prop :=
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  match R with
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  | .R1 =&gt; s ≤ (d : ℝ) - 2
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  | .R2a =&gt; (d : ℝ) - 2 &lt; s ∧ Torus.symPart M = 0
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  | .R2b lam0 =&gt; (d : ℝ) - 2 &lt; s ∧ Torus.SymNonpos M ∧ 0 &lt; lam0 ∧
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      ∀ r ∈ Set.Icc 0 T, ∀ x, lam0 ≤ μ r x
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  | .R2c =&gt; (d : ℝ) - 2 &lt; s ∧ s ≤ (d : ℝ) - 1 ∧ Torus.SymNonpos M
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  | .R3 =&gt; (d : ℝ) - 2 &lt; s ∧ 0 &lt; ν₀ ∧ ν₀ ≤ invβ
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-- Whether the regime is one of the R2 cases (where the weighted dissipation of
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>`B:eq:energy-torus` is retained). -/
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>def Regime.IsR2 : Regime → Prop
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  | .R1 =&gt; False
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  | .R2a =&gt; True
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  | .R2b _ =&gt; True
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  | .R2c =&gt; True
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  | .R3 =&gt; False
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>instance (R : Regime) : Decidable R.IsR2 := by cases R &lt;;&gt; simp only [Regime.IsR2] &lt;;&gt; infer_instance
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>/-- `Λ_m` of `B:eq:LambdaM` (lines 1745–1750): `C` in regimes R1 and R2 (uniformly in
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>`β ∈ (0,∞]`), `C(1 + ν₀^{-θ/(2-θ)})` in regime R3. -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>def Regime.lambdaM (R : Regime) (C ν₀ θ : ℝ) : ℝ :=
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  match R with
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  | .R3 =&gt; C * (1 + ν₀ ^ (-(θ / (2 - θ))))
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  | _ =&gt; C
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>/-- The full hypothesis package of Proposition 3.9 for the data `(D, μ)` at level `m` on `[0,T]`
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>(everything after the constant quantifier): `D.s = s`, the entrywise bound on `M`, `V ∈ C^{m+3}`
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>with norm bound, the coefficient hypothesis, and the regime. -/
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>structure AdjointData (s : ℝ) (m : ℕ) (R : Regime) (MB Λ VB : ℝ) (D : DynData d) (ν₀ T : ℝ)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    (μ : ℝ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  hs : D.s = s
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  hM : MatBound MB D.M
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  hV : VHyp m VB D.V
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  hμ : CoeffHyp m Λ T μ
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  hT : 0 &lt; T
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  regime : R.Holds d s D.M D.invβ ν₀ T μ
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>end HRS.PDE
+</span></code></pre></main></body></html>

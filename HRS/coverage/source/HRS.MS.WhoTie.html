@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.WhoTie · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.WhoTie</code></h1><p><a href="../../lean/HRS/MS/WhoTie.lean">Open the unaltered Lean file</a> · 99 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.WhoAux10
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.WhoAux11
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MS.WhoAux12
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MS.UlOrbitAux2
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.Whole.Orbits
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>/-!
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a># S54 tie: `HRS.Whole.weighted_higher_order`
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`weighted_higher_order_proof` has exactly the type of the frozen statement (the frozen declaration is unproved; a warning is expected).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`k₀ = ⌊4 + d/2⌋ + 1`.  (a): the evolution `u` of level `k` is the evolution `u₀` of the large level `K` (existence at level `K`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`ul6_mono_level`, uniqueness at level `k`), and `u₀` obeys the a priori weighted bound `who_core`; (b): `who_B`; (c): `who_embed`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.MS.Who
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS HRS.Whole HRS.MS.Ul
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>theorem who_E_mul (X : ℝ) (hX : 0 ≤ X) (Y : ℝ≥0∞) :
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (ENNReal.ofReal X * Y) ^ (1 / 2 : ℝ) = ENNReal.ofReal (Real.sqrt X) * Y ^ (1 / 2 : ℝ) := by
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), ENNReal.ofReal_rpow_of_nonneg hX (by norm_num),
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    Real.sqrt_eq_rpow]
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>/-- from the `Nsq` bound to the frozen norm -/
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>theorem who_to_E {d : ℕ} (hd : 1 ≤ d) {r r&#x27; : ℕ} {P Cn : ℝ} (hCn : 0 ≤ Cn) {u f : Euc d → ℝ}
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (hf : ContDiff ℝ r&#x27; f) (h : Nsq r P u ≤ ENNReal.ofReal Cn * Nsq r&#x27; P f) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    weightedSobolevE r P u ≤ ENNReal.ofReal (Real.sqrt (Cn * (d : ℝ) ^ (r + r&#x27;))) * weightedSobolevE r&#x27; P f := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  rw [who_E_eq, who_E_eq, ← who_E_mul _ (by positivity)]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  calc Esq r P u ≤ ((d : ℝ≥0∞) ^ r) * Nsq r P u := who_Esq_le hd
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    _ ≤ ((d : ℝ≥0∞) ^ r) * (ENNReal.ofReal Cn * (((d : ℝ≥0∞) ^ r&#x27;) * Esq r&#x27; P f)) :=
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        mul_le_mul&#x27; le_rfl (h.trans (mul_le_mul&#x27; le_rfl (who_Nsq_le hd hf)))
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    _ = ENNReal.ofReal (Cn * (d : ℝ) ^ (r + r&#x27;)) * Esq r&#x27; P f := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        rw [ENNReal.ofReal_mul hCn, ENNReal.ofReal_pow (Nat.cast_nonneg _), ENNReal.ofReal_natCast, pow_add]
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        ring
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>theorem weighted_higher_order_proof : type_of% @HRS.Whole.weighted_higher_order := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  intro d hd s hs0 hsd θ hθ
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hs1 : s + 1 &lt; d := by linarith
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hsd&#x27; : s &lt; (d : ℝ) := by linarith
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  refine ⟨⌊(4 : ℝ) + (d : ℝ) / 2⌋₊ + 1, ?_⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  intro r P hP T ν Q M ρ c hT hν hρ hc
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨ψ, rfl⟩ := hρ.2
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hP0 : 0 ≤ P := by linarith [show (0 : ℝ) ≤ (d : ℝ) / 2 by positivity]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  intro Cf
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  refine ⟨?_, ?_, ?_⟩
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  · -- (a)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    obtain ⟨Cc, hCc0, hcore⟩ := who_core hd1 hs0 hs1 M ψ hc hP Q hν T r
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    refine ⟨Real.sqrt (Cc * (d : ℝ) ^ (2 * r)), ?_⟩
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    intro k hk t ht f hf hfc u hu r&#x27; hr&#x27;
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    have hk4 : (4 : ℝ) + (d : ℝ) / 2 &lt; k :=
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      (Nat.lt_floor_add_one _).trans_le (by exact_mod_cast hk)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    set K : ℕ := max k (⌊(r : ℝ) + 4 + (d : ℝ) / 2⌋₊ + 1) with hKdef
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have hKk : k ≤ K := le_max_left _ _
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    have hK1 : (r : ℝ) + 4 + (d : ℝ) / 2 &lt; K := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      have h1 : (r : ℝ) + 4 + (d : ℝ) / 2 &lt; ((⌊(r : ℝ) + 4 + (d : ℝ) / 2⌋₊ + 1 : ℕ) : ℝ) := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        push_cast; exact Nat.lt_floor_add_one _
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      exact h1.trans_le (Nat.cast_le.2 (le_max_right _ _))
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    have hK4 : (4 : ℝ) + (d : ℝ) / 2 &lt; K := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      have : (0 : ℝ) ≤ r := Nat.cast_nonneg r
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      linarith
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    have hKr : ((r + 3 : ℕ) : ℝ) + (d : ℝ) / 2 &lt; K := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      have : ((r + 3 : ℕ) : ℝ) = (r : ℝ) + 3 := by push_cast; ring
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      linarith
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    obtain ⟨C₁, hC₁⟩ := ul_evolution_exists hs0 hsd&#x27; θ hθ K hK4 T ν hT hν Q M ψ ⟨ψ, rfl⟩ c hc
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have hclos : UlClosure K θ f :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      ul4b_closure_of_ccc K θ ⟨f, 0, hf, hfc, by funext x; simp⟩
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    obtain ⟨u₀, hu₀, hb₀⟩ := hC₁ t ht f hclos
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have hu₀k := ul6_mono_level hKk hu₀
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    have heq := ul_evolution_unique hs0 hsd&#x27; θ hθ k hk4 ν hν Q M ψ ⟨ψ, rfl⟩ c hc ht.1 hu hu₀k
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    have hfin := ul0_ulNormE_lt_top_of_closure K θ hθ hclos
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    have hBu : ∀ σ ∈ Set.Icc (0 : ℝ) t, ulNormE K θ (u₀ σ) ≤ ENNReal.ofReal (C₁ * (ulNormE K θ f).toReal) := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      intro σ hσ
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      refine (hb₀ σ hσ).trans ?_
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      rw [ENNReal.ofReal_mul&#x27; ENNReal.toReal_nonneg, ENNReal.ofReal_toReal hfin.ne]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    obtain ⟨hcd, hN⟩ := hcore hθ hK4 hKr ht.1 ht.2 hf hfc hu₀ hBu r&#x27; hr&#x27;
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rw [heq r&#x27; hr&#x27;]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    refine ⟨hcd, ?_⟩
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    have := who_to_E hd1 hCc0 (contDiff_infty.1 hf r) hN
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    rwa [show r + r = 2 * r by ring] at this
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  · -- (b)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    obtain ⟨CB, hCB0, hB⟩ := who_B hd1 hs0 hs1 M ψ hc hP Q ν T r
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    refine ⟨Real.sqrt (CB * (d : ℝ) ^ (r + (r + 2))), ?_⟩
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    intro Φ hΦ t ht g hg hgc
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    obtain ⟨hcd, hN⟩ := hB hΦ t ht hg hgc
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    exact who_to_E hd1 hCB0 (contDiff_infty.1 hg (r + 2)) hN
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  · -- (c)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    intro α hα
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    obtain ⟨C, -, hC⟩ := who_embed hd1 hP0 r α hα
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    exact ⟨C, fun i x f hf =&gt; hC i x f hf⟩
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>end HRS.MS.Who
+</span></code></pre></main></body></html>

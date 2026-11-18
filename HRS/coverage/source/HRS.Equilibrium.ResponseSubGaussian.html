@@ -1,0 +1,562 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.ResponseSubGaussian · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.ResponseSubGaussian</code></h1><p><a href="../../lean/HRS/Equilibrium/ResponseSubGaussian.lean">Open the unaltered Lean file</a> · 561 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Equilibrium.ResponseVariance
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># HRS.Equilibrium.ResponseSubGaussian (packet Q32d): Lemma 4.19, `V:eq:response-subGaussian`
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Relocated proof of `HRS.response_subGaussian` (statement copied verbatim from `Response.lean`,
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>where its frozen placeholder stays).  Route: the proof sketch at the end of `ResponseVariance.lean`.
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Helper names carry the prefix `q32d_`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>noncomputable section
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>section Q32dAnalysis
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>/-- Chernoff upper tail for a probability measure. -/
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>theorem q32d_chernoff {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>    (Z : Ω → ℝ) (hint : ∀ t : ℝ, Integrable (fun ω =&gt; Real.exp (t * Z ω)) μ)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    (D : ℝ) (hD : 0 &lt; D) (x : ℝ) (hx : 0 ≤ x)
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    (hmgf : ∀ t : ℝ, 0 ≤ t → t ≤ x / D → ∫ ω, Real.exp (t * Z ω) ∂μ ≤ Real.exp (D * t ^ 2 / 2)) :
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    μ {ω | x &lt; Z ω} ≤ ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) := by
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have ht0 : 0 ≤ x / D := div_nonneg hx hD.le
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  have hmain : μ.real {ω | x ≤ Z ω} ≤ Real.exp (-(x / D) * x) * mgf Z μ (x / D) :=
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    measure_ge_le_exp_mul_mgf x ht0 (hint _)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  have hmgf&#x27; : mgf Z μ (x / D) ≤ Real.exp (D * (x / D) ^ 2 / 2) := hmgf _ ht0 le_rfl
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  have hexp : Real.exp (-(x / D) * x) * Real.exp (D * (x / D) ^ 2 / 2) =
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      Real.exp (-x ^ 2 / (2 * D)) := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    rw [← Real.exp_add]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    congr 1
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    field_simp
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    ring
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have hle : μ.real {ω | x &lt; Z ω} ≤ Real.exp (-x ^ 2 / (2 * D)) := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    calc μ.real {ω | x &lt; Z ω} ≤ μ.real {ω | x ≤ Z ω} :=
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>          measureReal_mono (μ := μ) (s₁ := {ω | x &lt; Z ω}) (s₂ := {ω | x ≤ Z ω})
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            (by intro ω hω; exact le_of_lt (show x &lt; Z ω from hω)) (measure_ne_top _ _)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      _ ≤ Real.exp (-(x / D) * x) * mgf Z μ (x / D) := hmain
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      _ ≤ Real.exp (-(x / D) * x) * Real.exp (D * (x / D) ^ 2 / 2) :=
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>          mul_le_mul_of_nonneg_left hmgf&#x27; (Real.exp_pos _).le
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      _ = Real.exp (-x ^ 2 / (2 * D)) := hexp
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  calc μ {ω | x &lt; Z ω} = ENNReal.ofReal (μ.real {ω | x &lt; Z ω}) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>        rw [measureReal_def, ENNReal.ofReal_toReal (measure_ne_top _ _)]
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    _ ≤ ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) := ENNReal.ofReal_le_ofReal hle
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>/-- Quadratic bound on `[0, T]` from a one-sided derivative bound (monotonicity of
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>`u ↦ D u²/2 - f u`). -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>theorem q32d_quad_nonneg (f f&#x27; : ℝ → ℝ) (D T : ℝ) (h0 : f 0 = 0)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (hf : ∀ u, 0 ≤ u → u ≤ T → HasDerivAt f (f&#x27; u) u)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (hb : ∀ u, 0 ≤ u → u ≤ T → f&#x27; u ≤ D * u) (t : ℝ) (ht0 : 0 ≤ t) (htT : t ≤ T) :
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    f t ≤ D * t ^ 2 / 2 := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hGd : ∀ u, 0 ≤ u → u ≤ T →
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      HasDerivAt (fun u =&gt; D * u ^ 2 / 2 - f u) (D * u - f&#x27; u) u := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    intro u h1 h2
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    have h := (((hasDerivAt_pow 2 u).const_mul D).div_const 2).sub (hf u h1 h2)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    convert h using 1
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    norm_num
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ring
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hmono : MonotoneOn (fun u =&gt; D * u ^ 2 / 2 - f u) (Set.Icc 0 t) := by
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    refine monotoneOn_of_hasDerivWithinAt_nonneg (convex_Icc 0 t) (f&#x27; := fun u =&gt; D * u - f&#x27; u)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      ?_ ?_ ?_
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    · intro u hu
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      exact (hGd u hu.1 (le_trans hu.2 htT)).continuousAt.continuousWithinAt
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    · intro u hu
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      rw [interior_Icc] at hu
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      exact (hGd u hu.1.le (le_trans hu.2.le htT)).hasDerivWithinAt
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    · intro u hu
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      rw [interior_Icc] at hu
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      have := hb u hu.1.le (le_trans hu.2.le htT)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      show 0 ≤ D * u - f&#x27; u
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      linarith
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have h := hmono ⟨le_refl 0, ht0⟩ ⟨ht0, le_refl t⟩ ht0
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  norm_num [h0] at h
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  linarith
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>/-- Two-sided version: `|f&#x27;| ≤ D |u|` on `[-T, T]` gives `f t ≤ D t²/2` for `|t| ≤ T`. -/
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>theorem q32d_quad_bound (f f&#x27; : ℝ → ℝ) (D T : ℝ) (h0 : f 0 = 0)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (hf : ∀ u, |u| ≤ T → HasDerivAt f (f&#x27; u) u)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (hb : ∀ u, |u| ≤ T → |f&#x27; u| ≤ D * |u|) (t : ℝ) (ht : |t| ≤ T) :
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    f t ≤ D * t ^ 2 / 2 := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  rcases le_total 0 t with ht0 | ht0
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  · have htT : t ≤ T := le_trans (le_abs_self t) ht
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    refine q32d_quad_nonneg f f&#x27; D T h0 (fun u h1 h2 =&gt; hf u ?_) (fun u h1 h2 =&gt; ?_) t ht0 htT
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    · rw [abs_of_nonneg h1]; exact h2
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    · have h3 := hb u (by rw [abs_of_nonneg h1]; exact h2)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      rw [abs_of_nonneg h1] at h3
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      exact le_trans (le_abs_self _) h3
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  · have hnt : -t ≤ T := le_trans (neg_le_abs t) ht
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have hg : ∀ u, 0 ≤ u → u ≤ T →
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>        HasDerivAt (fun u =&gt; f (-u)) (f&#x27; (-u) * (-1)) u := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      intro u h1 h2
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      have h := (hf (-u) (by rw [abs_neg, abs_of_nonneg h1]; exact h2)).comp u (hasDerivAt_neg u)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      exact h
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hbg : ∀ u, 0 ≤ u → u ≤ T → f&#x27; (-u) * (-1) ≤ D * u := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      intro u h1 h2
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      have h3 := hb (-u) (by rw [abs_neg, abs_of_nonneg h1]; exact h2)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      rw [abs_neg, abs_of_nonneg h1] at h3
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      have h4 := neg_le_abs (f&#x27; (-u))
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      linarith
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    have key := q32d_quad_nonneg (fun u =&gt; f (-u)) (fun u =&gt; f&#x27; (-u) * (-1)) D T
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      (by simpa using h0) hg hbg (-t) (by linarith) hnt
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    simpa using key
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>theorem q32d_exp_log (x y z : ℝ) (hx : 0 &lt; x) (hy : 0 &lt; y) :
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    Real.exp (Real.log x - Real.log y - z) = x / y * Real.exp (-z) := by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  rw [Real.exp_sub, Real.exp_sub, Real.exp_log hx, Real.exp_log hy, Real.exp_neg]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  ring
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>theorem q32d_alg (r N : ℝ) (hr : 0 &lt; r) (hrN : N = r * r) (t S M θ : ℝ) :
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    θ * S + t * (r * ((1 / N) * S - M)) = (θ + t / r) * S + -(t * r * M) := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  subst hrN
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  field_simp
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  ring
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>/-- Log-mgf tail input: `Ψ(t) = log A(θ + t/√N) - log A(θ) - t√N M(θ) ≤ D t²/2` for `|t| ≤ √N`,
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>when `A&#x27; = N M A` and `M&#x27; = V` with `|V| ≤ D` on the compact enlargement. -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>theorem q32d_psi (A M V : ℝ → ℝ) (N : ℕ) (hN : 0 &lt; N) (a b D : ℝ)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    (hA : ∀ u, 0 &lt; A u) (hAd : ∀ u, HasDerivAt A ((N : ℝ) * M u * A u) u)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    (hMd : ∀ u, HasDerivAt M (V u) u) (hV : ∀ u, a - 1 ≤ u → u ≤ b + 1 → |V u| ≤ D)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    (θ : ℝ) (hθa : a ≤ θ) (hθb : θ ≤ b) (t : ℝ) (ht : |t| ≤ Real.sqrt (N : ℝ)) :
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    Real.log (A (θ + t / Real.sqrt (N : ℝ))) - Real.log (A θ) - t * Real.sqrt (N : ℝ) * M θ ≤
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      D * t ^ 2 / 2 := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hr : 0 &lt; Real.sqrt (N : ℝ) := Real.sqrt_pos.2 hNpos
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hrN : (N : ℝ) = Real.sqrt (N : ℝ) * Real.sqrt (N : ℝ) := (Real.mul_self_sqrt hNpos.le).symm
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  generalize hr_def : Real.sqrt (N : ℝ) = r at hr hrN ht ⊢
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hlin : ∀ u : ℝ, HasDerivAt (fun u : ℝ =&gt; θ + u / r) (1 / r) u := fun u =&gt; by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    have h := ((hasDerivAt_id u).div_const r).const_add θ
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    simpa using h
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hcomp : ∀ u : ℝ, HasDerivAt (fun u : ℝ =&gt; A (θ + u / r))
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ((N : ℝ) * M (θ + u / r) * A (θ + u / r) * (1 / r)) u := fun u =&gt;
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    (hAd (θ + u / r)).comp u (hlin u)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  have hlog : ∀ u : ℝ, HasDerivAt (fun u : ℝ =&gt; Real.log (A (θ + u / r)))
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      ((N : ℝ) * M (θ + u / r) * (1 / r)) u := fun u =&gt; by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    have h := (hcomp u).log (hA _).ne&#x27;
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    convert h using 1
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    field_simp [(hA _).ne&#x27;]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hΨd : ∀ u : ℝ, HasDerivAt
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      (fun u : ℝ =&gt; Real.log (A (θ + u / r)) - Real.log (A θ) - u * r * M θ)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      ((N : ℝ) * M (θ + u / r) * (1 / r) - r * M θ) u := fun u =&gt; by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    have h := ((hlog u).sub_const (Real.log (A θ))).sub
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      (((hasDerivAt_id u).mul_const r).mul_const (M θ))
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    convert h using 1
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    · funext u&#x27;
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      simp [Pi.sub_apply]
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    · simp
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  have hfb : ∀ u : ℝ, |u| ≤ r →
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      |(N : ℝ) * M (θ + u / r) * (1 / r) - r * M θ| ≤ D * |u| := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    intro u hu
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have hur : |u / r| ≤ 1 := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      rw [abs_div, abs_of_pos hr, div_le_one hr]
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      exact hu
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    obtain ⟨h1, h2⟩ := abs_le.1 hur
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have hMV := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le (f := M) (f&#x27; := V)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      (s := Set.Icc (a - 1) (b + 1)) (C := D) (fun x _ =&gt; (hMd x).hasDerivWithinAt)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      (fun x hx =&gt; by rw [Real.norm_eq_abs]; exact hV x hx.1 hx.2) (convex_Icc _ _)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      (x := θ) (y := θ + u / r) ⟨by linarith, by linarith⟩ ⟨by linarith, by linarith⟩
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    rw [Real.norm_eq_abs, Real.norm_eq_abs, show θ + u / r - θ = u / r by ring] at hMV
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    have hfeq : (N : ℝ) * M (θ + u / r) * (1 / r) - r * M θ = r * (M (θ + u / r) - M θ) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      have h3 : (N : ℝ) * M (θ + u / r) * (1 / r) = r * M (θ + u / r) := by
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>        rw [mul_assoc, hrN]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>        field_simp
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      rw [h3]
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      ring
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    rw [hfeq, abs_mul, abs_of_pos hr]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    calc r * |M (θ + u / r) - M θ| ≤ r * (D * |u / r|) := mul_le_mul_of_nonneg_left hMV hr.le
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      _ = D * |u| := by
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>        rw [abs_div, abs_of_pos hr]
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>        field_simp
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have h0 : (fun u : ℝ =&gt; Real.log (A (θ + u / r)) - Real.log (A θ) - u * r * M θ) 0 = 0 := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    simp
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  exact q32d_quad_bound
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    (fun u : ℝ =&gt; Real.log (A (θ + u / r)) - Real.log (A θ) - u * r * M θ)
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    (fun u : ℝ =&gt; (N : ℝ) * M (θ + u / r) * (1 / r) - r * M θ) D r h0
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    (fun u _ =&gt; hΨd u) hfb t ht
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>theorem q32d_four (e : ℝ) (he : 0 ≤ e) :
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    ENNReal.ofReal e + ENNReal.ofReal e + (ENNReal.ofReal e + ENNReal.ofReal e) =
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      ENNReal.ofReal (4 * e) := by
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  rw [← ENNReal.ofReal_add he he, ← ENNReal.ofReal_add (add_nonneg he he) (add_nonneg he he)]
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  congr 1
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  ring
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>/-- Gaussian tails: the two one-sided bounds for `N(0, v)` with `v ≤ D`. -/
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>theorem q32d_gauss_tail (v : NNReal) (D : ℝ) (hD : 0 &lt; D) (hvD : (v : ℝ) ≤ D) (x : ℝ)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (hx : 0 ≤ x) :
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    gaussianReal 0 v {z | x &lt; z} ≤ ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) ∧
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      gaussianReal 0 v {z | x &lt; -z} ≤ ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hmgf : ∀ t : ℝ, ∫ z, Real.exp (t * z) ∂(gaussianReal 0 v) ≤ Real.exp (D * t ^ 2 / 2) := by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    intro t
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    have h := congrFun (mgf_id_gaussianReal (μ := 0) (v := v)) t
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    have h2 : ∫ z, Real.exp (t * z) ∂(gaussianReal 0 v) =
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        Real.exp (0 * t + (v : ℝ) * t ^ 2 / 2) := h
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    rw [h2]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    apply Real.exp_le_exp.2
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    have : (v : ℝ) * t ^ 2 ≤ D * t ^ 2 := mul_le_mul_of_nonneg_right hvD (sq_nonneg t)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    linarith
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  constructor
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  · exact q32d_chernoff (gaussianReal 0 v) (fun z =&gt; z)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      (fun t =&gt; integrable_exp_mul_gaussianReal t) D hD x hx (fun t _ _ =&gt; hmgf t)
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  · refine q32d_chernoff (gaussianReal 0 v) (fun z =&gt; -z) (fun t =&gt; ?_) D hD x hx
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      (fun t _ _ =&gt; ?_)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    · have h := integrable_exp_mul_gaussianReal (μ := 0) (v := v) (-t)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      simpa [mul_neg, neg_mul] using h
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    · have h := hmgf (-t)
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      simp only [neg_mul, mul_neg, neg_sq] at h ⊢
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      exact h
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>end Q32dAnalysis
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>section Q32dRate
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>theorem q32d_rateY_cont (k : Lattice d) (β θ : ℝ) (N : ℕ) :
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    Continuous (rateY d s k β N θ) := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  unfold rateY
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  exact continuous_const.mul ((continuous_const.mul (continuous_finset_sum _ fun i _ =&gt;
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    (Torus.continuous_cosMode k).comp (continuous_apply i))).sub continuous_const)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>theorem q32d_gibbs_eq (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    {β : ℝ} (hβ : 0 &lt; β) {N : ℕ} (k : Lattice d) (θ : ℝ) :
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    rateGibbs d s k β θ N =
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      (ENNReal.ofReal (∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X))⁻¹ •
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        (volume : Measure (Fin N → Torus d)).withDensity
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>          (fun X =&gt; ENNReal.ofReal (Real.exp (θ * respS k X) * respW gm β X)) :=
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  resp_rateGibbs_eq (periodicRiesz d s) gm hgm_ae k β θ hβ.ne&#x27;
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>/-- Expectation under the canonical law as a ratio of tilted integrals. -/
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>theorem q32d_expect (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    {β : ℝ} (hβ : 0 &lt; β) {N : ℕ} (k : Lattice d) (θ : ℝ) (f : (Fin N → Torus d) → ℝ) :
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    ∫ X, f X ∂(rateGibbs d s k β θ N) =
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      (∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>          ∂(volume : Measure (Fin N → Torus d)))⁻¹ *
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        ∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X * f X
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>          ∂(volume : Measure (Fin N → Torus d)) := by
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  have hDm : Measurable (fun X : Fin N → Torus d =&gt; Real.exp (θ * respS k X) * respW gm β X) :=
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    (Real.continuous_exp.measurable.comp (measurable_const.mul
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      (respS_continuous k N).measurable)).mul (respW_measurable gm hgm β)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  have hD0 : ∀ X : Fin N → Torus d, 0 ≤ Real.exp (θ * respS k X) * respW gm β X :=
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    fun X =&gt; (mul_pos (Real.exp_pos _) (respW_pos gm β X)).le
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  rw [q32d_gibbs_eq gm hgm hgm_ae hβ k θ]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  exact resp_integral_smul_withDensity _ _ hDm hD0 f
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>theorem q32d_isProb (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    (k : Lattice d) (θ : ℝ) : IsProbabilityMeasure (rateGibbs d s k β θ N) := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  have hint : Integrable (fun X : Fin N → Torus d =&gt; Real.exp (θ * respS k X) * respW gm β X)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      (volume : Measure (Fin N → Torus d)) := by
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    have e : (fun X : Fin N → Torus d =&gt; Real.exp (θ * respS k X) * respW gm β X) =
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>        (fun X =&gt; (respS k X ^ 0 * respW gm β X) * Real.exp (θ * respS k X)) :=
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>      funext fun X =&gt; by ring
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    rw [e]
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    exact resp_integrable_term k gm hgm β hβ hc hgc hN 0 θ
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hZ : 0 &lt; ∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>      ∂(volume : Measure (Fin N → Torus d)) := by
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    rw [← resp_respA_zero_eq]
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    exact resp_respA_zero_pos k gm hgm hβ hc hgc hN θ
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  refine ⟨?_⟩
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  rw [q32d_gibbs_eq gm hgm hgm_ae hβ k θ, Measure.smul_apply,
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ, smul_eq_mul]
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  rw [← ofReal_integral_eq_lintegral_ofReal hint
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    (Filter.Eventually.of_forall fun X =&gt; (mul_pos (Real.exp_pos _) (respW_pos gm β X)).le)]
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  exact ENNReal.inv_mul_cancel (ENNReal.ofReal_pos.2 hZ).ne&#x27; ENNReal.ofReal_ne_top
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>theorem q32d_mean_eq (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    (k : Lattice d) (θ : ℝ) :
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    rateMeanN d s k β N θ = respA k gm β N 1 θ / ((N : ℝ) * respA k gm β N 0 θ) := by
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  have hNne : (N : ℝ) ≠ 0 := hNr.ne&#x27;
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  have hDm : Measurable (fun X : Fin N → Torus d =&gt; Real.exp (θ * respS k X) * respW gm β X) :=
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    (Real.continuous_exp.measurable.comp (measurable_const.mul
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      (respS_continuous k N).measurable)).mul (respW_measurable gm hgm β)
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  have hDb : ∀ X : Fin N → Torus d,
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>      |Real.exp (θ * respS k X) * respW gm β X| ≤
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>        Real.exp (|θ| * N) * Real.exp (β * c * N) := by
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    intro X
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    rw [abs_mul, abs_of_pos (Real.exp_pos _), abs_of_pos (respW_pos gm β X)]
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    refine mul_le_mul ?_ (respW_bound gm hβ hc hgc hN X) (respW_pos gm β X).le (Real.exp_pos _).le
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    apply Real.exp_le_exp.2
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    calc θ * respS k X ≤ |θ * respS k X| := le_abs_self _
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>      _ = |θ| * |respS k X| := abs_mul _ _
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      _ ≤ |θ| * N := mul_le_mul_of_nonneg_left (respS_abs_le k X) (abs_nonneg _)
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  have hDperm : ∀ τ : Equiv.Perm (Fin N),
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>      ∀ᵐ X ∂(volume : Measure (Fin N → Torus d)),
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>        Real.exp (θ * respS k (fun j =&gt; X (τ j))) * respW gm β (fun j =&gt; X (τ j)) =
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>          Real.exp (θ * respS k X) * respW gm β X :=
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    fun τ =&gt; resp_D_perm (periodicRiesz d s) gm (fun x =&gt; periodicRiesz_neg x) hgm_ae k β θ τ
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  have hsumid := resp_integral_sum_cos k hN
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    (fun X =&gt; Real.exp (θ * respS k X) * respW gm β X) hDm
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    (Real.exp (|θ| * N) * Real.exp (β * c * N)) hDb hDperm
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  beta_reduce at hsumid
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  have hA1 : respA k gm β N 1 θ = ∫ X, respS k X * (Real.exp (θ * respS k X) * respW gm β X)
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>      ∂(volume : Measure (Fin N → Torus d)) := by
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    unfold respA
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    congr 1
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>    funext X
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>    ring
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  have hcos : ∫ X, Torus.cosMode k (X ⟨0, hN⟩) * (Real.exp (θ * respS k X) * respW gm β X)
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>      ∂(volume : Measure (Fin N → Torus d)) = respA k gm β N 1 θ / (N : ℝ) := by
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    rw [hA1, hsumid]
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    field_simp
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  have hZ : 0 &lt; respA k gm β N 0 θ := resp_respA_zero_pos k gm hgm hβ hc hgc hN θ
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  have hZ&#x27; : (∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      ∂(volume : Measure (Fin N → Torus d))) ≠ 0 := by
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    rw [← resp_respA_zero_eq]
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    exact hZ.ne&#x27;
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have hexp := q32d_expect gm hgm hgm_ae hβ k θ (fun X =&gt; Torus.cosMode k (X ⟨0, hN⟩))
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  beta_reduce at hexp
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have hcomm : ∫ X : Fin N → Torus d, Real.exp (θ * respS k X) * respW gm β X *
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>      Torus.cosMode k (X ⟨0, hN⟩) ∂(volume : Measure (Fin N → Torus d)) =
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>      ∫ X, Torus.cosMode k (X ⟨0, hN⟩) * (Real.exp (θ * respS k X) * respW gm β X)
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>        ∂(volume : Measure (Fin N → Torus d)) :=
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    integral_congr_ae (Filter.Eventually.of_forall fun X =&gt; by ring)
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  unfold rateMeanN
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  rw [resp_pair_firstMarginal hN _ (Torus.cosMode k) (Torus.continuous_cosMode k), hexp,
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    resp_respA_zero_eq, hcomm, hcos]
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  field_simp
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>theorem q32d_mean_abs_le (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    (k : Lattice d) (θ : ℝ) [IsProbabilityMeasure (rateGibbs d s k β θ N)] :
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    |rateMeanN d s k β N θ| ≤ 1 := by
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  unfold rateMeanN
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  rw [resp_pair_firstMarginal hN _ (Torus.cosMode k) (Torus.continuous_cosMode k)]
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  have h := norm_integral_le_of_norm_le_const (μ := rateGibbs d s k β θ N) (C := 1)
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    (f := fun X : Fin N → Torus d =&gt; Torus.cosMode k (X ⟨0, hN⟩))
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>    (Filter.Eventually.of_forall fun X =&gt; Torus.norm_cosMode_le k _)
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  simpa using h
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>theorem q32d_rateY_abs_le (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    (k : Lattice d) (θ : ℝ) [IsProbabilityMeasure (rateGibbs d s k β θ N)]
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    (X : Fin N → Torus d) : |rateY d s k β N θ X| ≤ 2 * Real.sqrt N := by
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  have hS : |(1 / (N : ℝ)) * respS k X| ≤ 1 := by
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    have h1 := respS_abs_le k X
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    rw [abs_mul, abs_of_pos (by positivity : (0 : ℝ) &lt; 1 / N)]
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    calc 1 / (N : ℝ) * |respS k X| ≤ 1 / N * N := mul_le_mul_of_nonneg_left h1 (by positivity)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      _ = 1 := by field_simp
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  have hM := q32d_mean_abs_le gm hgm hgm_ae hβ hc hgc hN k θ
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have hY : rateY d s k β N θ X =
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>      Real.sqrt N * ((1 / (N : ℝ)) * respS k X - rateMeanN d s k β N θ) := rfl
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  rw [hY, abs_mul, abs_of_nonneg (Real.sqrt_nonneg _)]
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  have htri : |(1 / (N : ℝ)) * respS k X - rateMeanN d s k β N θ| ≤ 2 := by
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    calc |(1 / (N : ℝ)) * respS k X - rateMeanN d s k β N θ|
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>        ≤ |(1 / (N : ℝ)) * respS k X| + |rateMeanN d s k β N θ| := abs_sub _ _
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>      _ ≤ 1 + 1 := add_le_add hS hM
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>      _ = 2 := by norm_num
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  calc Real.sqrt N * |(1 / (N : ℝ)) * respS k X - rateMeanN d s k β N θ| ≤ Real.sqrt N * 2 :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>        mul_le_mul_of_nonneg_left htri (Real.sqrt_nonneg _)
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    _ = 2 * Real.sqrt N := by ring
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>theorem q32d_Y_integrable (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    (k : Lattice d) (θ t : ℝ) [IsProbabilityMeasure (rateGibbs d s k β θ N)] :
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    Integrable (fun X : Fin N → Torus d =&gt; Real.exp (t * rateY d s k β N θ X))
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>      (rateGibbs d s k β θ N) := by
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>  refine Integrable.of_bound (C := Real.exp (|t| * (2 * Real.sqrt N))) ?_ ?_
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>  · exact (Real.continuous_exp.comp (continuous_const.mul
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>      (q32d_rateY_cont k β θ N))).aestronglyMeasurable
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  · refine Filter.Eventually.of_forall fun X =&gt; ?_
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>    rw [Real.norm_eq_abs, abs_of_pos (Real.exp_pos _)]
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    apply Real.exp_le_exp.2
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    calc t * rateY d s k β N θ X ≤ |t * rateY d s k β N θ X| := le_abs_self _
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>      _ = |t| * |rateY d s k β N θ X| := abs_mul _ _
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>      _ ≤ |t| * (2 * Real.sqrt N) :=
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>        mul_le_mul_of_nonneg_left (q32d_rateY_abs_le gm hgm hgm_ae hβ hc hgc hN k θ X)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>          (abs_nonneg _)
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>theorem q32d_mgf_identity (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    {β : ℝ} (hβ : 0 &lt; β) {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 0 &lt; N)
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    (k : Lattice d) (θ t : ℝ) :
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    ∫ X, Real.exp (t * rateY d s k β N θ X) ∂(rateGibbs d s k β θ N) =
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>      respA k gm β N 0 (θ + t / Real.sqrt N) / respA k gm β N 0 θ *
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>        Real.exp (-(t * Real.sqrt N * rateMeanN d s k β N θ)) := by
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>  have hr : 0 &lt; Real.sqrt (N : ℝ) := Real.sqrt_pos.2 hNr
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  have hrN : (N : ℝ) = Real.sqrt (N : ℝ) * Real.sqrt (N : ℝ) :=
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    (Real.mul_self_sqrt hNr.le).symm
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  rw [q32d_expect gm hgm hgm_ae hβ k θ (fun X =&gt; Real.exp (t * rateY d s k β N θ X))]
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>  beta_reduce
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>  have hpt : ∀ X : Fin N → Torus d,
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      Real.exp (θ * respS k X) * respW gm β X * Real.exp (t * rateY d s k β N θ X) =
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>        Real.exp (-(t * Real.sqrt N * rateMeanN d s k β N θ)) *
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>          (Real.exp ((θ + t / Real.sqrt N) * respS k X) * respW gm β X) := by
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    intro X
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    have key : θ * respS k X + t * rateY d s k β N θ X =
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        (θ + t / Real.sqrt N) * respS k X + -(t * Real.sqrt N * rateMeanN d s k β N θ) :=
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>      q32d_alg (Real.sqrt N) (N : ℝ) hr hrN t (respS k X) (rateMeanN d s k β N θ) θ
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    calc Real.exp (θ * respS k X) * respW gm β X * Real.exp (t * rateY d s k β N θ X)
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>        = Real.exp (θ * respS k X + t * rateY d s k β N θ X) * respW gm β X := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>          rw [Real.exp_add]; ring
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>      _ = Real.exp ((θ + t / Real.sqrt N) * respS k X +
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>            -(t * Real.sqrt N * rateMeanN d s k β N θ)) * respW gm β X := by rw [key]
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>      _ = _ := by rw [Real.exp_add]; ring
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  have hint : ∫ X : Fin N → Torus d,
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      Real.exp (θ * respS k X) * respW gm β X * Real.exp (t * rateY d s k β N θ X)
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>        ∂(volume : Measure (Fin N → Torus d)) =
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>      Real.exp (-(t * Real.sqrt N * rateMeanN d s k β N θ)) *
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>        ∫ X : Fin N → Torus d, Real.exp ((θ + t / Real.sqrt N) * respS k X) * respW gm β X
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>          ∂(volume : Measure (Fin N → Torus d)) := by
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>    rw [← integral_const_mul]
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>  rw [hint, resp_respA_zero_eq, resp_respA_zero_eq]
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>  ring
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>theorem q32d_mgf_bound (hd : 2 ≤ d) (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) {β : ℝ} (hβ : 0 &lt; β)
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    (k : Lattice d) (hk : k ≠ 0) (gm : Torus d → ℝ) (hgm : Measurable gm)
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    (hgm_ae : ∀ᵐ x ∂(volume : Measure (Torus d)), gm x = periodicRiesz d s x)
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    {c : ℝ} (hc : 0 ≤ c) (hgc : ∀ x, -c ≤ gm x) {N : ℕ} (hN : 2 ≤ N) (a b D : ℝ)
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    (hV : ∀ u, a - 1 ≤ u → u ≤ b + 1 → |rateVarN d s k β N u| ≤ D) (θ : ℝ) (hθa : a ≤ θ)
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    (hθb : θ ≤ b) (t : ℝ) (ht : |t| ≤ Real.sqrt N) :
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    ∫ X, Real.exp (t * rateY d s k β N θ X) ∂(rateGibbs d s k β θ N) ≤
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>      Real.exp (D * t ^ 2 / 2) := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  have hHa : ∀ u, 0 &lt; respA k gm β N 0 u := fun u =&gt;
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    resp_respA_zero_pos k gm hgm hβ hc hgc hN0 u
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  have hNr : (N : ℝ) ≠ 0 := by
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>    have : (0 : ℝ) &lt; N := by exact_mod_cast hN0
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    exact this.ne&#x27;
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  have hAd : ∀ u, HasDerivAt (fun t =&gt; respA k gm β N 0 t)
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>      ((N : ℝ) * rateMeanN d s k β N u * respA k gm β N 0 u) u := by
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    intro u
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    have h := resp_respA_hasDerivAt k gm hgm hβ hc hgc hN0 0 u
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    have e : respA k gm β N (0 + 1) u = (N : ℝ) * rateMeanN d s k β N u * respA k gm β N 0 u := by
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>      rw [zero_add, q32d_mean_eq gm hgm hgm_ae hβ hc hgc hN0 k u]
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>      have := (hHa u).ne&#x27;
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      field_simp
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    rw [e] at h
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    exact h
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  have hMd : ∀ u, HasDerivAt (rateMeanN d s k β N) (rateVarN d s k β N u) u :=
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    fun u =&gt; (finite_response_rates hd hs hsd β hβ k hk N hN).2.2.1 u
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>  have hpsi := q32d_psi (fun u =&gt; respA k gm β N 0 u) (rateMeanN d s k β N)
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>    (rateVarN d s k β N) N hN0 a b D hHa hAd hMd hV θ hθa hθb t ht
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  rw [q32d_mgf_identity gm hgm hgm_ae hβ hc hgc hN0 k θ t,
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    ← q32d_exp_log _ _ _ (hHa _) (hHa _)]
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>  exact Real.exp_le_exp.2 hpsi
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>end Q32dRate
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>section Rates
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>variable {d : ℕ}
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>variable {s : ℝ}
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>/-- Lemma 4.19, `V:eq:response-subGaussian` (source lines 5227-5233): for every compact
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>interval `I = [a, b]` there is `D_I ≥ 2` with
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>`P_{N,θ}(|Y_{N,θ}| &gt; x) + P(|G_θ| &gt; x) ≤ 4 e^{-x²/(2D_I)}` for `x ≥ 0`, `N ≥ 2`, `θ ∈ I`, where
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>`G_θ ∼ N(0, C_{β,μ_θ}(φ,φ))`. -/
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>theorem response_subGaussian_proof (hd : 2 ≤ d) (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) (β : ℝ)
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    (hρ : ∀ θ, IsThermalDensity (periodicRiesz d s) (rateV k β θ) β (ρ θ)) (a b : ℝ) :
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    ∃ D : ℝ, 2 ≤ D ∧ ∀ x : ℝ, 0 ≤ x → ∀ N : ℕ, 2 ≤ N → ∀ θ ∈ Set.Icc a b,
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>      rateGibbs d s k β θ N {X | x &lt; |rateY d s k β N θ X|} +
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>          gaussianReal 0 (susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>            (Torus.cosMode k) (Torus.cosMode k)).toNNReal {z | x &lt; |z|} ≤
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>        ENNReal.ofReal (4 * Real.exp (-x ^ 2 / (2 * D))) := by
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>    have h1 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    linarith
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  obtain ⟨gm, hgm, c, hc, hgc, hgm_ae⟩ := resp_good_kernel hd hs0 hsd
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  obtain ⟨C, hC⟩ := rateVarN_uniform_bound hd hs hsd β hβ k hk (a - 1) (b + 1)
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>  obtain ⟨D, hDdef⟩ : ∃ D : ℝ, D = max 2 (max C 1) := ⟨_, rfl⟩
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>  have hD2 : (2 : ℝ) ≤ D := by rw [hDdef]; exact le_max_left _ _
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>  have hDC : C ≤ D := by rw [hDdef]; exact le_trans (le_max_left _ _) (le_max_right _ _)
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>  have hD1 : (1 : ℝ) ≤ D := by
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>    rw [hDdef]; exact le_trans (le_max_right _ _) (le_max_right _ _)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  have hDpos : 0 &lt; D := by linarith
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  refine ⟨D, hD2, fun x hx N hN θ hθ =&gt; ?_⟩
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast hN0
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  haveI := q32d_isProb gm hgm hgm_ae hβ hc hgc hN0 k θ
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>  have hVb : ∀ u, a - 1 ≤ u → u ≤ b + 1 → |rateVarN d s k β N u| ≤ D := by
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>    intro u h1 h2
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    have hnn : 0 ≤ rateVarN d s k β N u := by
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>      unfold rateVarN
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>      exact integral_nonneg fun X =&gt; sq_nonneg _
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    rw [abs_of_nonneg hnn]
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    exact le_trans (hC N hN u ⟨h1, h2⟩) hDC
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  have hYint : ∀ t : ℝ, Integrable (fun X : Fin N → Torus d =&gt; Real.exp (t * rateY d s k β N θ X))
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      (rateGibbs d s k β θ N) := fun t =&gt;
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>    q32d_Y_integrable gm hgm hgm_ae hβ hc hgc hN0 k θ t
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>  have hYneg : ∀ t : ℝ, Integrable (fun X : Fin N → Torus d =&gt; Real.exp (t * -rateY d s k β N θ X))
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>      (rateGibbs d s k β θ N) := fun t =&gt;
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    (hYint (-t)).congr (Filter.Eventually.of_forall fun X =&gt; by
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>      congr 1
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>      ring)
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>  have hYt : ∀ t : ℝ, |t| ≤ Real.sqrt N →
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>      ∫ X, Real.exp (t * rateY d s k β N θ X) ∂(rateGibbs d s k β θ N) ≤
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>        Real.exp (D * t ^ 2 / 2) := fun t ht =&gt;
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    q32d_mgf_bound hd hs hsd hβ k hk gm hgm hgm_ae hc hgc hN a b D hVb θ hθ.1 hθ.2 t ht
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>  have hxD : x ≤ 2 * Real.sqrt N → x / D ≤ Real.sqrt N := fun hx2 =&gt; by
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    rw [div_le_iff₀ hDpos]
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    nlinarith [Real.sqrt_nonneg (N : ℝ)]
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  have hYpart : rateGibbs d s k β θ N {X | x &lt; |rateY d s k β N θ X|} ≤
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>      ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) + ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) := by
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    by_cases hx2 : x ≤ 2 * Real.sqrt N
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    · have hpos := q32d_chernoff (rateGibbs d s k β θ N) (fun X =&gt; rateY d s k β N θ X)
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>        (fun t =&gt; hYint t) D hDpos x hx (fun t ht0 htx =&gt; hYt t (by
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>          rw [abs_of_nonneg ht0]
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>          exact le_trans htx (hxD hx2)))
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>      have hneg := q32d_chernoff (rateGibbs d s k β θ N) (fun X =&gt; -rateY d s k β N θ X)
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>        (fun t =&gt; hYneg t) D hDpos x hx (fun t ht0 htx =&gt; by
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>          beta_reduce
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>          have h := hYt (-t) (by
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>            rw [abs_neg, abs_of_nonneg ht0]
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>            exact le_trans htx (hxD hx2))
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>          simp only [neg_mul, mul_neg, neg_sq] at h ⊢
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>          exact h)
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>      calc rateGibbs d s k β θ N {X | x &lt; |rateY d s k β N θ X|}
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>          ≤ rateGibbs d s k β θ N ({X | x &lt; rateY d s k β N θ X} ∪
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>              {X | x &lt; -rateY d s k β N θ X}) :=
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>            measure_mono (fun X (hX : x &lt; |rateY d s k β N θ X|) =&gt;
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>              (lt_abs.1 hX : x &lt; rateY d s k β N θ X ∨ x &lt; -rateY d s k β N θ X))
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>        _ ≤ _ := (measure_union_le _ _).trans (add_le_add hpos hneg)
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>    · have hempty : {X | x &lt; |rateY d s k β N θ X|} = ∅ := by
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>        ext X
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>        simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false, not_lt]
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>        have h := q32d_rateY_abs_le gm hgm hgm_ae hβ hc hgc hN0 k θ X
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>        push_neg at hx2
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>        linarith
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>      rw [hempty, measure_empty]
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      exact zero_le
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  have hsusc := susceptibilityCov_cosMode_le_one hd hs hsd β hβ k hk ρ hρ θ
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  have hvD : (((susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>      (Torus.cosMode k) (Torus.cosMode k)).toNNReal : NNReal) : ℝ) ≤ D := by
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    rw [Real.coe_toNNReal&#x27;]
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    exact max_le (le_trans hsusc hD1) hDpos.le
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>  obtain ⟨g1, g2⟩ := q32d_gauss_tail _ D hDpos hvD x hx
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>  have hGpart : gaussianReal 0 (susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>      (Torus.cosMode k) (Torus.cosMode k)).toNNReal {z | x &lt; |z|} ≤
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>      ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) + ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) := by
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    calc _ ≤ gaussianReal 0 (susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>          (Torus.cosMode k) (Torus.cosMode k)).toNNReal
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>          ({z | x &lt; z} ∪ {z | x &lt; -z}) := measure_mono (fun z (hz : x &lt; |z|) =&gt; (lt_abs.1 hz : x &lt; z ∨ x &lt; -z))
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      _ ≤ _ := (measure_union_le _ _).trans (add_le_add g1 g2)
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>  calc _ ≤ (ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) + ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))))
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>        + (ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D))) + ENNReal.ofReal (Real.exp (-x ^ 2 / (2 * D)))) :=
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>        add_le_add hYpart hGpart
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>    _ = ENNReal.ofReal (4 * Real.exp (-x ^ 2 / (2 * D))) :=
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>        q32d_four _ (Real.exp_pos _).le
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>end Rates
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>example := (@response_subGaussian_proof : type_of% @HRS.response_subGaussian)
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>end HRS
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>end
+</span></code></pre></main></body></html>

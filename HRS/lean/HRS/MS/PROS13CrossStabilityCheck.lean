@@ -1,0 +1,26 @@
+import HRS.MS.PROS13CrossLimitScale
+set_option autoImplicit false
+namespace HRS.MS.R26T3
+#check @pro_s13_generic_two_actual_quadratics_L2_bound
+#check @pro_s13_generic_actual_quadratic_unique
+#check @pro_s13_generic_finite_rank_add
+#check @pro_s13_tendstoL2_of_integral_sq
+#check @pro_s13_integral_sq_sum_limits
+#check @pro_s13_kernel_approximation_add
+#check @pro_s13_actual_quadratic_additive_approximation
+#check @pro_s13_actual_product_quadratic_exists
+#check @pro_s13_actual_product_quadratic_unique
+#check @pro_s13_actual_product_quadratic_add
+#check @pro_s13_actual_product_quadratic_scale
+#print axioms pro_s13_generic_two_actual_quadratics_L2_bound
+#print axioms pro_s13_generic_actual_quadratic_unique
+#print axioms pro_s13_generic_finite_rank_add
+#print axioms pro_s13_tendstoL2_of_integral_sq
+#print axioms pro_s13_integral_sq_sum_limits
+#print axioms pro_s13_kernel_approximation_add
+#print axioms pro_s13_actual_quadratic_additive_approximation
+#print axioms pro_s13_actual_product_quadratic_exists
+#print axioms pro_s13_actual_product_quadratic_unique
+#print axioms pro_s13_actual_product_quadratic_add
+#print axioms pro_s13_actual_product_quadratic_scale
+end HRS.MS.R26T3

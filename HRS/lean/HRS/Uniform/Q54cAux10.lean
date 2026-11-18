@@ -1,0 +1,184 @@
+import HRS.Uniform.Q54cAux9
+
+/-!
+# Q54c, part 10: `noise_gaussian`
+-/
+
+noncomputable section
+
+open MeasureTheory Filter Topology Finset ProbabilityTheory Complex
+open scoped ENNReal NNReal BigOperators Matrix RealInnerProductSpace
+
+namespace HRS.Uniform.Q54c
+
+open HRS HRS.Uniform.Q07c
+
+variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+  [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
+variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {P : Measure Ω} [IsProbabilityMeasure P]
+  {ℱ : Filtration ℝ mΩ}
+variable {G : ℝ → Ω → H} {C : ℝ → H →L[ℝ] H →L[ℝ] ℝ} {T : ℝ}
+
+/-- the coordinates of the pathwise noise vector -/
+def noiseVec (G : ℝ → Ω → H) {p : ℕ} (ts : Fin p → ℝ) (ys ys' : Fin p → ℝ → H) (ω : Ω) :
+    EuclideanSpace ℝ (Fin p) :=
+  WithLp.toLp 2 fun a => inner ℝ (G (ts a) ω) (ys a (ts a)) -
+    ∫ σ in Set.Icc 0 (ts a), inner ℝ (G σ ω) (ys' a σ)
+
+theorem charFun_vec_of_gauss {Z : Ω → ℝ} (hZ : Measurable Z) (v : ℝ) (h : P.map Z = gaussianLaw v)
+    {p : ℕ} (X : Ω → EuclideanSpace ℝ (Fin p)) (hXm : Measurable X) (x : EuclideanSpace ℝ (Fin p))
+    (hX : ∀ ω, inner ℝ (X ω) x = Z ω) :
+    charFun (P.map X) x = Complex.exp (-((∫ ω, Z ω ^ 2 ∂P : ℝ) : ℂ) / 2) := by
+  have e1 : charFun (P.map X) x = ∫ ω, Complex.exp ((Z ω : ℂ) * Complex.I) ∂P := by
+    rw [charFun_apply, integral_map hXm.aemeasurable]
+    · simp_rw [hX]
+    · exact (by fun_prop : Continuous fun y : EuclideanSpace ℝ (Fin p) =>
+        Complex.exp (inner ℝ y x * Complex.I)).aestronglyMeasurable
+  have e2 : ∫ ω, Complex.exp ((Z ω : ℂ) * Complex.I) ∂P =
+      ∫ z, Complex.exp ((z : ℂ) * Complex.I) ∂(P.map Z) := by
+    rw [integral_map hZ.aemeasurable]
+    exact (by fun_prop : Continuous fun z : ℝ => Complex.exp ((z : ℂ) * Complex.I)).aestronglyMeasurable
+  have e3 : ∫ z, Complex.exp ((z : ℂ) * Complex.I) ∂(P.map Z) = charFun (P.map Z) 1 := by
+    rw [charFun_apply]
+    simp
+  have e4 : (∫ ω, Z ω ^ 2 ∂P) = ((Real.toNNReal v : ℝ≥0) : ℝ) := by
+    have : ∫ ω, Z ω ^ 2 ∂P = ∫ z, z ^ 2 ∂(P.map Z) := by
+      rw [integral_map hZ.aemeasurable]
+      exact (continuous_pow 2).aestronglyMeasurable
+    rw [this, h]
+    unfold gaussianLaw
+    exact HRS.integral_sq_gaussianReal_zero _
+  rw [e1, e2, e3, e4, h]
+  unfold gaussianLaw
+  rw [charFun_gaussianReal]
+  congr 1
+  push_cast
+  ring
+
+
+theorem noise_gaussian (hG : IsHilbertMartingaleWithCovariation P ℱ T G (fun r _ => C r))
+    (hGc : ∀ ω, Continuous fun s => G s ω) (hGz : ∀ ω, G 0 ω = 0) (hT : 0 < T)
+    {p : ℕ} (ts : Fin p → ℝ) (hts : ∀ a, ts a ∈ Set.Icc 0 T) (ys ys' : Fin p → ℝ → H)
+    (hys : ∀ a, ∀ σ ∈ Set.Icc 0 (ts a), HasDerivWithinAt (ys a) (ys' a σ) (Set.Icc 0 (ts a)) σ)
+    (hys' : ∀ a, ContinuousOn (ys' a) (Set.Icc 0 (ts a))) :
+    P.map (noiseVec G ts ys ys') =
+      multivariateGaussian 0 (Matrix.of fun a b =>
+        ∫ σ in Set.Icc 0 (min (ts a) (ts b)), C σ (ys a σ) (ys b σ)) := by
+  classical
+  have hT0 : 0 ≤ T := hT.le
+  have hycont : ∀ a, ContinuousOn (ys a) (Set.Icc 0 (ts a)) := fun a σ hσ =>
+    (hys a σ hσ).continuousWithinAt
+  set yc : Fin p → ℝ → H := fun a => clampPath (ys a) (ts a) with hyc
+  have hycc : ∀ a, Continuous (yc a) := fun a => continuous_clampPath (hts a).1 (hycont a)
+  have hycy : ∀ a, ∀ σ ∈ Set.Icc 0 (ts a), yc a σ = ys a σ := by
+    intro a σ hσ
+    simp only [hyc, clampPath]
+    rw [min_eq_left hσ.2, max_eq_right hσ.1]
+  have hsame : ∀ a ω N, isum (fun σ => G σ ω) (ys a) T (ts a) N =
+      isum (fun σ => G σ ω) (yc a) T (ts a) N := fun a ω N =>
+    (isum_clamp (fun σ => G σ ω) (ys a) hT0 (hts a).1 N).symm
+  set XN : ℕ → Ω → EuclideanSpace ℝ (Fin p) := fun N ω =>
+    WithLp.toLp 2 fun a => isum (fun σ => G σ ω) (ys a) T (ts a) N with hXN
+  have hXNm : ∀ N, Measurable (XN N) := by
+    intro N
+    refine (PiLp.continuous_toLp 2 (fun _ : Fin p => ℝ)).measurable.comp ?_
+    exact measurable_pi_iff.2 fun a => measurable_isum hG (ys a) (ts a) N
+  have hlim : ∀ ω, Tendsto (fun N => XN N ω) atTop (𝓝 (noiseVec G ts ys ys' ω)) := by
+    intro ω
+    refine ((PiLp.continuous_toLp 2 (fun _ : Fin p => ℝ)).tendsto _).comp ?_
+    refine tendsto_pi_nhds.2 fun a => ?_
+    exact isum_tendsto hT0 (hts a) ((hGc ω).continuousOn) (hGz ω) (hys a) (hys' a)
+  obtain ⟨ω₀, hω₀tc, hω₀path⟩ : ∃ ω₀ : Ω, (∀ σ ∈ Set.Icc 0 T, IsTraceClassCov (C σ)) ∧
+      IntegrableOn (fun σ => traceNormForm (C σ)) (Set.Icc 0 T) := by
+    obtain ⟨ω, h1, h3⟩ := (hG.sigma_traceClass.and hG.sigma_pathint).exists
+    exact ⟨ω, h1, h3⟩
+  have hCm : ∀ u v : H, Measurable fun σ => C σ u v := fun u v =>
+    (hG.sigma_meas u v).comp (measurable_id.prodMk (measurable_const (a := ω₀)))
+  have hcov : ∀ a b, Tendsto (fun N : ℕ => ∫ ω, isum (fun σ => G σ ω) (ys a) T (ts a) N *
+      isum (fun σ => G σ ω) (ys b) T (ts b) N ∂P) atTop
+      (𝓝 (∫ σ in Set.Icc 0 (min (ts a) (ts b)), C σ (ys a σ) (ys b σ))) := by
+    intro a b
+    have hlim' := cov_sum_tendsto (T := T) (ta := ts a) (tb := ts b) hT (hts a) (hts b) (hycc a) (hycc b)
+      (C := C) (c := fun σ => traceNormForm (C σ)) (fun σ => traceNormForm_nonneg _)
+      (fun σ hσ u v => abs_apply_le_tn (hω₀tc σ hσ) u v) hω₀path hCm
+    have e1 : (fun N : ℕ => ∫ ω, isum (fun σ => G σ ω) (ys a) T (ts a) N *
+        isum (fun σ => G σ ω) (ys b) T (ts b) N ∂P) = fun N => ∑ i ∈ Finset.range (N + 1),
+          ∫ σ in Set.Ioc (gridPt T N i) (gridPt T N (i + 1)) ∩ Set.Iic (min (ts a) (ts b)),
+            C σ (yc a (min (gridPt T N i) (ts a))) (yc b (min (gridPt T N i) (ts b))) := by
+      funext N
+      simp_rw [hsame]
+      exact isum_cov hG hT0 (hts a) (hts b) (yc a) (yc b) N
+    rw [e1]
+    have e2 : ∫ σ in Set.Icc 0 (min (ts a) (ts b)), C σ (yc a σ) (yc b σ) =
+        ∫ σ in Set.Icc 0 (min (ts a) (ts b)), C σ (ys a σ) (ys b σ) :=
+      setIntegral_congr_fun measurableSet_Icc fun σ hσ => by
+        rw [hycy a σ ⟨hσ.1, hσ.2.trans (min_le_left _ _)⟩, hycy b σ ⟨hσ.1, hσ.2.trans (min_le_right _ _)⟩]
+    rw [← e2]
+    exact hlim'
+  -- the quadratic forms
+  set S : Matrix (Fin p) (Fin p) ℝ := Matrix.of fun a b =>
+    ∫ σ in Set.Icc 0 (min (ts a) (ts b)), C σ (ys a σ) (ys b σ) with hS
+  set Zx : ℕ → EuclideanSpace ℝ (Fin p) → Ω → ℝ := fun N x ω =>
+    ∑ a, x a * isum (fun σ => G σ ω) (ys a) T (ts a) N with hZx
+  set QN : ℕ → EuclideanSpace ℝ (Fin p) → ℝ := fun N x => ∫ ω, (Zx N x ω) ^ 2 ∂P with hQN
+  have hZm : ∀ N x, Measurable (Zx N x) := fun N x =>
+    Finset.measurable_sum _ fun a _ => (measurable_isum hG (ys a) (ts a) N).const_mul _
+  have hinner : ∀ N x ω, inner ℝ (XN N ω) x = Zx N x ω := by
+    intro N x ω
+    simp only [hXN, hZx, PiLp.inner_apply, WithLp.ofLp_toLp]
+    refine Finset.sum_congr rfl fun a _ => ?_
+    simp [mul_comm]
+  have hchar : ∀ N x, charFun (P.map (XN N)) x = Complex.exp (-(QN N x : ℂ) / 2) := by
+    intro N x
+    obtain ⟨v, hv⟩ := isum_comb_law hG hGc hGz hT0 ts hts ys N (fun a => x a)
+    exact charFun_vec_of_gauss (hZm N x) v hv (XN N) (hXNm N) x (hinner N x)
+  have hL2 : ∀ N a, MemLp (fun ω => isum (fun σ => G σ ω) (ys a) T (ts a) N) 2 P :=
+    fun N a => isum_memLp hG hT0 (hts a) (ys a) N
+  have hQexp : ∀ N x, QN N x = ∑ a, ∑ b, x a * x b *
+      ∫ ω, isum (fun σ => G σ ω) (ys a) T (ts a) N * isum (fun σ => G σ ω) (ys b) T (ts b) N ∂P := by
+    intro N x
+    simp only [hQN, hZx, sq, Finset.sum_mul_sum]
+    have hi : ∀ a b, Integrable (fun ω => x a * isum (fun σ => G σ ω) (ys a) T (ts a) N *
+        (x b * isum (fun σ => G σ ω) (ys b) T (ts b) N)) P := by
+      intro a b
+      have := ((hL2 N a).const_mul (x a)).integrable_mul ((hL2 N b).const_mul (x b))
+      exact this
+    rw [integral_finset_sum _ (fun a _ => integrable_finset_sum _ fun b _ => hi a b)]
+    refine Finset.sum_congr rfl fun a _ => ?_
+    rw [integral_finset_sum _ (fun b _ => hi a b)]
+    refine Finset.sum_congr rfl fun b _ => ?_
+    rw [← integral_const_mul]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun ω => ?_)
+    simp only []
+    ring
+  have hQ : ∀ x : EuclideanSpace ℝ (Fin p), Tendsto (fun N => QN N x) atTop (𝓝 (x ⬝ᵥ S *ᵥ x)) := by
+    intro x
+    simp_rw [hQexp]
+    have : x ⬝ᵥ S *ᵥ x = ∑ a, ∑ b, x a * x b * S a b := by
+      simp only [dotProduct, Matrix.mulVec, hS, Matrix.of_apply, Finset.mul_sum]
+      refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+      ring
+    rw [this]
+    refine tendsto_finset_sum _ fun a _ => tendsto_finset_sum _ fun b _ => ?_
+    exact (hcov a b).const_mul _
+  have hXm : Measurable (noiseVec G ts ys ys') :=
+    measurable_of_tendsto_metrizable hXNm (tendsto_pi_nhds.2 hlim)
+  have hchar_lim := charFun_limit P hXNm hlim (fun x => x ⬝ᵥ S *ᵥ x) QN hQ hchar
+  -- positive semidefiniteness
+  have hSsymm : ∀ a b, S a b = S b a := by
+    intro a b
+    simp only [hS, Matrix.of_apply]
+    rw [min_comm]
+    refine setIntegral_congr_fun measurableSet_Icc fun σ hσ => ?_
+    exact C_symm hG ⟨hσ.1, hσ.2.trans ((min_le_left _ _).trans (hts b).2)⟩ _ _
+  have hPSD : S.PosSemidef := by
+    rw [Matrix.posSemidef_iff_dotProduct_mulVec]
+    refine ⟨?_, fun x => ?_⟩
+    · ext a b
+      simp [Matrix.conjTranspose_apply, hSsymm a b]
+    · have := ge_of_tendsto (hQ (WithLp.toLp 2 x)) (Filter.Eventually.of_forall fun N =>
+        integral_nonneg fun ω => sq_nonneg _)
+      simpa using this
+  exact eq_multivariateGaussian P hXm hPSD hchar_lim
+
+end HRS.Uniform.Q54c

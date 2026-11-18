@@ -1,0 +1,211 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.FidiAssembly · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.FidiAssembly</code></h1><p><a href="../../lean/HRS/MP/FidiAssembly.lean">Open the unaltered Lean file</a> · 210 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MP.FidiF1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.FidiCov
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MP.FidiLaw
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Chunk F (`MP:`), Lemma S.A.26 (torus): finite-dimensional convergence for Theorem A.11
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Assembly of the packets F1 (coupling of the particle statistics to the surrogate built from the A.5 field),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>F2 (transfer of convergence in law along a vanishing smooth-test distance), F3 (convergence in law of the
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>surrogates on the field space), and F4 (the law of the statistics of a linear fluctuation solution).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>The statement is the frozen `HRS.Whole.AppendixALemmas.path_fidi_torus`, copied verbatim, with the
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>relocation check `example := (@path_fidi_torus_proof : type_of% @path_fidi_torus)` at the end.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open HRS HRS.Main HRS.Whole.AppendixA HRS.Whole.AppendixALemmas HRS.MP.FidiDefs HRS.MP.FidiF1
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  HRS.MP.FidiCov HRS.MP.FidiLaw
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open scoped ENNReal NNReal BigOperators MeasureTheory
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS.MP.FidiAssembly
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>open HRS.PDE HRS.A34 in
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- membership of the limit propagator of a smooth test in `H^{γ+2}` (level `q_T`). -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem fa_memq {s : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {Rg : PDE.Regime}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    {MB Λ VB ν₀ T : ℝ} (D : DynData d) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (hA : AdjointData s (gammaIdx d + 2) Rg MB Λ VB D ν₀ T ρ) {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    {φ : Torus d → ℝ} (hφ : Torus.IsSmooth φ) :
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    MemSobolev ((gammaIdx d + 2 : ℕ) : ℝ) (propagator D ρ 0 t φ) := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hJ : mStar d ≤ gammaIdx d + 2 := by unfold gammaIdx; omega
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hφc : Continuous φ := HRS.A33.a33_cont hφ
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hφm : MemSobolev ((gammaIdx d + 2 : ℕ) : ℝ) φ := HRS.A33.a33_memSob _ hφ
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  rcases ht.1.eq_or_lt with h0 | hpos
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  · subst h0
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    rw [a34_prop_zero hd (gammaIdx d + 2) hJ Rg s MB Λ VB ν₀ T D ρ hA hφc hφm]
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    exact hφm
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  · obtain ⟨K, K₂, -, -, hu⟩ := a34_unif hd s hs0 hsd (gammaIdx d + 2) hJ Rg MB Λ VB ν₀ T
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    obtain ⟨-, hr⟩ := hu D ρ hA ⟨hpos, ht.2⟩ hφc hφm
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    obtain ⟨h1, -, -⟩ := hr 0 ⟨le_rfl, hpos.le⟩
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    exact (h1 (gammaIdx d + 2) (by unfold gammaIdx; omega) le_rfl).1
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>open HRS.Main.A8P in
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>theorem path_fidi_smooth_proof (s : ℝ) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    ∃ C₀min : ℝ, ∀ (Rg : PDE.Regime) (ν₀ MB Λ T VB Cin : ℝ) (C₀ Cc : ℝ), C₀min ≤ C₀ →
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    ∀ (S : Main.MainData d) (hs : S.s = s) (hT : S.T = T)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (R : ∀ N, Main.Realization d N) (𝔈 : ℕ → ℝ)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (hstand : Main.TorusStanding S R Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) C₀ Cc 𝔈)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ) (hts : ∀ a, ts a ∈ Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (hφ : ∀ a, Torus.IsSmooth (φ a))
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (m₀ : ℕ) (ε : ℕ → ℝ) (hinit : Main.InitialFluctuation S R m₀ Cin ε (fun _ =&gt; ∅))
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    (εf : ℕ → ℝ) (ηF : ∀ N, (R N).Ω → NegSobolev d (Main.gammaIdx d : ℝ))
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (νin : Measure (NegSobolev d (Main.gammaIdx d : ℝ)))
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (hfield : Main.InitialFluctuationField S R (Main.gammaIdx d) Cin εf ηF νin)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (L : Main.LimitCoeffs d)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    (hcoef : Main.CoeffConvergence S L Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) (Main.gammaIdx d))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (hεf : Tendsto εf atTop (𝓝 0)),
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      (Y₀ : Ω&#x27; → NegSobolev d ((qT d : ℕ) : ℝ)) (Y : ℝ → Ω&#x27; → NegSobolev d ((qT d : ℕ) : ℝ)),
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      Measurable Y₀ → law P&#x27; Y₀ = νin.map (NegSobolev.embed ((qT d : ℕ) : ℝ)) →
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      HRS.IsLinearFluctuationSolution P&#x27; (L.dyn S) L.ρ ((qT d : ℕ) : ℝ) L.invβstar T
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>        (fun ζ =&gt; L.A • Y₀ ζ) Y →
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      Main.ConvergesInLaw
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        (fun N =&gt; Main.fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        (law P&#x27; (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; NegSobolev.eval (Y (ts a) ζ) (φ a) :
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>          EuclideanSpace ℝ (Fin p)))) := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  by_cases hok : 1 ≤ d ∧ 0 ≤ s ∧ s &lt; d
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  swap
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  · refine ⟨0, fun Rg ν₀ MB Λ T VB Cin C₀ Cc _ S hs =&gt; ?_⟩
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    exact absurd ⟨S.hd, hs ▸ S.hs0, hs ▸ S.hsd⟩ hok
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  obtain ⟨hd, hs0, hsd⟩ := hok
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  obtain ⟨C₀&#x27;, Cq, hC₀&#x27;, hCq, hcom⟩ := a8p_commSpec hd hs0 hsd
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  refine ⟨C₀&#x27;, fun Rg ν₀ MB Λ T VB Cin C₀ Cc hC S hs hT R 𝔈 hstand p ts φ hts hφ m₀ ε hinit εf ηF
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    νin hfield L hcoef hεf Ω&#x27; _ P&#x27; _ Y₀ Y hY₀ hlaw hY =&gt; ?_⟩
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  subst hs hT
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  obtain ⟨Ca, Λ₁, hCa, hspec⟩ := a8p_adjSpec hd S.s hs0 hsd Rg MB Λ VB ν₀
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  obtain ⟨Cp, hCp0, hCp⟩ := a8p_hom_prod hd hs0 hsd
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨cT, hcT0, hcT⟩ := a8p_transport_bound hd MB S.s hs0
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨K, hK0, hK⟩ := fi1_hIdiff hd S.s hs0 hsd Rg MB Λ VB ν₀ S.T
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hmS : PDE.mStar d ≤ gammaIdx d + 2 := by unfold gammaIdx; omega
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hSm : TorusStanding S R Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 := A9.a9_standing_mono hmS hstand
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hSg : TorusStanding S R Rg ν₀ MB Λ VB (gammaIdx d) C₀ Cc 𝔈 :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    A9.a9_standing_mono (by omega) hstand
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hsm : ∀ a, Torus.IsSmooth (φ a) := hφ
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  -- the constant comparing `H^γ` and `H^{m_*}` norms of the finitely many tests
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  obtain ⟨c, hc0, hc⟩ : ∃ c : ℝ, 0 ≤ c ∧ ∀ a, K * sobolevNorm (gammaIdx d : ℝ) (φ a) ≤
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      c * sobolevNorm (PDE.mStar d : ℝ) (φ a) := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    choose ca hca0 hca using fun a =&gt; fi1_smooth_sob (PDE.mStar d : ℝ) (gammaIdx d : ℝ) (hφ a)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    refine ⟨K * ∑ a, ca a, mul_nonneg hK0 (Finset.sum_nonneg fun a _ =&gt; hca0 a), fun a =&gt; ?_⟩
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have hle : ca a ≤ ∑ b, ca b := Finset.single_le_sum (fun b _ =&gt; hca0 b) (Finset.mem_univ a)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have h0 : 0 ≤ sobolevNorm (PDE.mStar d : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    calc K * sobolevNorm (gammaIdx d : ℝ) (φ a) ≤ K * (ca a * sobolevNorm (PDE.mStar d : ℝ) (φ a)) :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>          mul_le_mul_of_nonneg_left (hca a) hK0
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      _ ≤ K * ((∑ b, ca b) * sobolevNorm (PDE.mStar d : ℝ) (φ a)) := by gcongr
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      _ = _ := by ring
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  -- pointwise facts
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hφc : ∀ a, Continuous (φ a) := fun a =&gt; A33.a33_cont (hsm a)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hφm : ∀ a, MemSobolev (PDE.mStar d : ℝ) (φ a) := fun a =&gt; A33.a33_memSob _ (hsm a)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hts&#x27; : ∀ a, ts a ∈ Set.Icc (0 : ℝ) S.T := hts
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hP : A8Pack d S.s Rg MB Λ VB ν₀ C₀ Ca Λ₁ C₀&#x27; Cq Cp cT :=
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    ⟨hCa.le, hspec, hcom, hCq.le, hC, hCp0, hCp, hcT0, hcT⟩
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  set R&#x27; := etaF R (gammaIdx d) ηF with hR&#x27;
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hSR&#x27; : TorusStanding S R&#x27; Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 := fi1_standing _ ηF hSm
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  -- the rate
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hrate : Tendsto (fun N =&gt; masterRate d (c * εf N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      atTop (𝓝 0) :=
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    a8p_rate_tendsto S hd (fun N =&gt; c * εf N) 𝔈 (by simpa using hεf.const_mul c)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      hSm.energy.small (fun N hN =&gt; (hSm.energy.pos N hN).le)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  -- the coupling bound, `N ≥ 2`
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hbound : ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      smoothDist 2 (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>        (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) ts φ (R N).P (R&#x27; N).η) ≤
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      ((1 / 2) * Cq * cT * S.T + 1 + 4 * S.T * d * Ca ^ 2 + 2 * S.T * Cq * (2 * d * Ca ^ 2 + Cp)) *
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        ((∑ a, a8pK Λ₁ (ts a) (φ a)) + (∑ a, a8pK Λ₁ (ts a) (φ a)) ^ 2) *
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        masterRate d (c * εf N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    intro N hN2
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have hε := hfield.εf_nonneg N hN1
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    refine a8p_smooth_iota (R := R&#x27;) hspec hCa.le hSR&#x27; hN2 hcom hCq.le hC hCp0 hCp hcT0 hcT ts hts&#x27; φ hφc
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      hφm (a8p_nullContact hSm hN1) (fi1_eta_meas hfield N) (mul_nonneg hc0 hε) (fun a =&gt; ?_)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    refine (hK S rfl rfl R 𝔈 C₀ Cc hSg Cin εf ηF νin hfield N hN1 (ts a) (hts&#x27; a) (φ a) (hsm a)).trans ?_
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    have h1 := hc a
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    have h2 : sobolevNorm (PDE.mStar d : ℝ) (φ a) ≤ a8pK Λ₁ (ts a) (φ a) := by
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      have h0 : 0 ≤ sobolevNorm (PDE.mStar d : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      have : 1 ≤ Real.exp (|Λ₁| * ts a) := Real.one_le_exp (mul_nonneg (abs_nonneg _) (hts&#x27; a).1)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      unfold a8pK
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      nlinarith
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    calc εf N * (K * sobolevNorm (gammaIdx d : ℝ) (φ a))
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        ≤ εf N * (c * sobolevNorm (PDE.mStar d : ℝ) (φ a)) := mul_le_mul_of_nonneg_left h1 hε
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      _ ≤ εf N * (c * a8pK Λ₁ (ts a) (φ a)) :=
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left h2 hc0) hε
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      _ = c * εf N * a8pK Λ₁ (ts a) (φ a) := by ring
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  -- weak convergence of the surrogates (F3) and identification of the limit (F4)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have hsurr : ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>      surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) ts φ (R N).P (R&#x27; N).η =
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        fieldSurr (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) ts φ (gammaIdx d : ℝ) νin := fun N hN2 =&gt;
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    fi3c_surr_eq hfield (by omega) ts φ
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      (fun a =&gt; (fi3a_prop S L hcoef (hts&#x27; a) (hsm a)).1 N (by omega) |&gt;.1)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  haveI hνin : IsProbabilityMeasure νin := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    rw [← hfield.law_eq 1 le_rfl]; infer_instance
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  have hprop := fun a =&gt; fi3a_prop S L hcoef (hts&#x27; a) (hsm a)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hqN : ∀ N : ℕ, 1 ≤ N → 0 ≤ S.qN N := fun N hN =&gt;
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    (HRS.A34.a34_qScale_bounds (N := N) hN (S.hκ N) (S.hinvβ N)).1
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have hlim := fi3d_converges S L hcoef ts hts&#x27; φ hsm hprop
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (fun N hN =&gt; fi3b_psd (S.dyn N) (S.ρ N) (hcoef.seq_adjoint N hN) (hqN N hN) ts hts&#x27; φ hsm)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    (fi3b_psd (L.dyn S) L.ρ hcoef.limit_adjoint L.hinvβstar ts hts&#x27; φ hsm)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    (fi3b_cov S L hcoef ts hts&#x27; φ hsm) νin
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hid := fi4_identify S L rfl hcoef νin P&#x27; Y₀ Y hY₀ hlaw hY ts hts φ hsm
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (fun a =&gt; fa_memq hd hs0 hsd (L.dyn S) L.ρ hcoef.limit_adjoint (hts&#x27; a) (hsm a))
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hsd0 : Tendsto (fun N =&gt; smoothDist 2
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      (fieldSurr (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) ts φ (gammaIdx d : ℝ) νin)) atTop (𝓝 0) := by
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    have hup := hrate.const_mul
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      (((1 / 2) * Cq * cT * S.T + 1 + 4 * S.T * d * Ca ^ 2 + 2 * S.T * Cq * (2 * d * Ca ^ 2 + Cp)) *
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        ((∑ a, a8pK Λ₁ (ts a) (φ a)) + (∑ a, a8pK Λ₁ (ts a) (φ a)) ^ 2))
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    rw [mul_zero] at hup
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    refine squeeze_zero&#x27; (Eventually.of_forall fun N =&gt; smoothDist_nonneg _ _ _) ?_ hup
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    filter_upwards [eventually_ge_atTop 2] with N hN
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    rw [← hsurr N hN]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    exact hbound N hN
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  -- probability measures along the shifted sequence (`Measure.map` is always a probability measure)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  haveI h1 : ∀ n : ℕ, IsProbabilityMeasure
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      (fluctStatLaw (R (n + 2)).P (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)) ts φ) :=
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    fun n =&gt; inferInstanceAs (IsProbabilityMeasure ((R (n + 2)).P.map _))
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  haveI h2 : ∀ n : ℕ, IsProbabilityMeasure
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      (fieldSurr (S.dyn (n + 2)) (S.ρ (n + 2)) (S.AN (n + 2)) (S.qN (n + 2)) ts φ (gammaIdx d : ℝ) νin) :=
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    fun n =&gt; by unfold fieldSurr; infer_instance
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  haveI h3 : IsProbabilityMeasure
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      (fieldSurr (L.dyn S) L.ρ L.A L.invβstar ts φ (gammaIdx d : ℝ) νin) := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    unfold fieldSurr; infer_instance
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  rw [hid]
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  refine (A9.a9_conv_shift 2).2 ?_
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  exact fi2_transfer _ (fun n =&gt; fieldSurr (S.dyn (n + 2)) (S.ρ (n + 2)) (S.AN (n + 2))
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    (S.qN (n + 2)) ts φ (gammaIdx d : ℝ) νin) _ ((A9.a9_conv_shift 2).1 hlim)
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    (hsd0.comp (tendsto_add_atTop_nat 2))
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>theorem path_fidi_torus_proof (s : ℝ) :
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    ∃ C₀min : ℝ, ∀ (Rg : PDE.Regime) (ν₀ MB Λ T VB Cin : ℝ) (C₀ Cc : ℝ), C₀min ≤ C₀ →
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    ∀ (S : Main.MainData d) (hs : S.s = s) (hT : S.T = T)
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    (R : ∀ N, Main.Realization d N) (𝔈 : ℕ → ℝ)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    (hstand : Main.TorusStanding S R Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) C₀ Cc 𝔈)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ) (hts : ∀ a, ts a ∈ Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    (hφ : ∀ a, IsTrigPolyT (φ a))
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    (m₀ : ℕ) (ε : ℕ → ℝ) (hinit : Main.InitialFluctuation S R m₀ Cin ε (fun _ =&gt; ∅))
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (εf : ℕ → ℝ) (ηF : ∀ N, (R N).Ω → NegSobolev d (Main.gammaIdx d : ℝ))
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (νin : Measure (NegSobolev d (Main.gammaIdx d : ℝ)))
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    (hfield : Main.InitialFluctuationField S R (Main.gammaIdx d) Cin εf ηF νin)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    (L : Main.LimitCoeffs d)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (hcoef : Main.CoeffConvergence S L Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) (Main.gammaIdx d))
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (hεf : Tendsto εf atTop (𝓝 0)),
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      (Y₀ : Ω&#x27; → NegSobolev d ((qT d : ℕ) : ℝ)) (Y : ℝ → Ω&#x27; → NegSobolev d ((qT d : ℕ) : ℝ)),
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      Measurable Y₀ → law P&#x27; Y₀ = νin.map (NegSobolev.embed ((qT d : ℕ) : ℝ)) →
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      HRS.IsLinearFluctuationSolution P&#x27; (L.dyn S) L.ρ ((qT d : ℕ) : ℝ) L.invβstar T
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        (fun ζ =&gt; L.A • Y₀ ζ) Y →
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>      Main.ConvergesInLaw
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>        (fun N =&gt; Main.fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>        (law P&#x27; (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; NegSobolev.eval (Y (ts a) ζ) (φ a) :
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>          EuclideanSpace ℝ (Fin p)))) := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  obtain ⟨C₀min, h⟩ := path_fidi_smooth_proof (d := d) s
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  exact ⟨C₀min, fun Rg ν₀ MB Λ T VB Cin C₀ Cc hC S hs hT R 𝔈 hstand p ts φ hts hφ m₀ ε hinit εf ηF νin
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    hfield L hcoef hεf =&gt; h Rg ν₀ MB Λ T VB Cin C₀ Cc hC S hs hT R 𝔈 hstand p ts φ hts
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      (fun a =&gt; fi1_trig_smooth (hφ a)) m₀ ε hinit εf ηF νin hfield L hcoef hεf⟩
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>end HRS.MP.FidiAssembly
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>example := (@HRS.MP.FidiAssembly.path_fidi_torus_proof : type_of% @HRS.Whole.AppendixALemmas.path_fidi_torus)
+</span></code></pre></main></body></html>

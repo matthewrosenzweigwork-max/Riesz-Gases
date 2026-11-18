@@ -1,0 +1,434 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.PathFidiTie · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.PathFidiTie</code></h1><p><a href="../../lean/HRS/MS/PathFidiTie.lean">Open the unaltered Lean file</a> · 433 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.PathFidiAux7
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.AppendixALemmas2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MP.HNegInfra
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># SA26 packet P8: the tie `path_fidi_rd_proof` (S.A.26 on `ℝ^d`)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>The statement of `HRS.Whole.AppendixALemmas.path_fidi_rd`, proved from the packets `PathFidiAux1`-`7`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>noncomputable section
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS.MS.PathFidi
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open HRS HRS.Whole HRS.Whole.AppendixA HRS.Whole.AppendixALemmas
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>/-- **S.A.26 on `ℝ^d`**: `HRS.Whole.AppendixALemmas.path_fidi_rd` with the one extra hypothesis `AEMeasurable η₀ P&#x27;`
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>(the initial functional of the limit is a.e.-measurable).  Without it the identification `law Z = law U ∗ law G` of the
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>limit law has no proof: `Measure.map` of a non-a.e.-measurable map is a junk Dirac mass, not `0`, so `law P&#x27; η₀ = νη`
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>does not force `η₀` to be a.e.-measurable (compare the S.B.7 repair, `AEMeasurable η₁ P₁`). -/
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>theorem path_fidi_rd_aem_proof {d : ℕ} (s : ℝ) (fd : FieldDensityRd d s)
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (ν₀ MB Λ ΛV G₀ νbar T Cin m20 : ℝ)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) (Kad Kst : ℝ) :
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    ∃ C₀min : ℝ, ∀ C₀ : ℝ, C₀min ≤ C₀ →
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    ∀ (S : WholeMainData d), S.s = s → S.T = T → (∀ N, S.invβ N ≤ νbar) → fd.Holds S ν₀ →
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    ∀ (R : ∀ N, RealizationRd d N) (𝔈 : ℕ → ℝ),
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>      RdStanding S R MB Λ ΛV G₀ m20 (fd.Gamma + 5) (fd.Gamma + 5) C₀ 𝔈 →
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      ∀ m₂ : ℝ, 0 ≤ m₂ → PropagatedSecondMoment S R m₂ →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Euc d → ℝ), (∀ a, ts a ∈ Set.Icc (0 : ℝ) T) →
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>        (∀ a, ∃ ψ : SchwartzMap (Euc d) ℝ, ⇑ψ = φ a) →
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>      ∀ (m₀ : ℕ) (ε : ℕ → ℝ), InitialFluctuationRd S R χ m₀ Cin ε (fun _ =&gt; ∅) →
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      ∀ (εf : ℕ → ℝ) (Iemp I : ∀ N, ℝ → (R N).Ω → HNeg d (fd.Gamma : ℝ)),
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>        TransportedInitialFieldRd S R fd.Gamma Cin εf Iemp I →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        InitialFieldDist S R fd.Gamma εf Iemp I →
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∀ L : LimitCoeffsRd d, fd.HoldsAt S.s S.M L.invβ ν₀ →
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        CoeffConvergenceRd S L MB Λ ΛV G₀ νbar (fd.Gamma + 2) fd.Gamma →
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        EmpiricalInitialVectorConverges S R L ts φ →
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      ∀ K : ℝ, WeightedPathInput S (L.coeff S) (m₀ + 1) (fd.Gamma + 2) K →
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      FieldAdjointInputRd fd S Kad →
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>        AdjointInputOneD (fd.Gamma : ℝ) (mStar d) (L.coeff S) S.T Kad →
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>        AdjointStabilityInputRd S L (fd.Gamma + 2) (mStar d) fd.Gamma Kst →
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      Tendsto (fun N =&gt; εf N + S.sigma N * (𝔈 N + fd.eN N) + S.qN N * wN d N (𝔈 N) m₂) atTop (𝓝 0) →
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      TransportedConvergesFixedTime S R L (fd.Gamma + 2) →
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      ∀ νη : Measure ((Euc d → ℝ) → ℝ), (∀ N : ℕ, 1 ≤ N → law (R N).P (R N).η = νη) →
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>          (η₀ : Ω&#x27; → (Euc d → ℝ) → ℝ) (Y : ℝ → Ω&#x27; → HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)),
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>        law P&#x27; η₀ = νη →
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>        AEMeasurable η₀ P&#x27; →
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        IsAdjointDualityLimitW P&#x27; (L.coeff S) ((fd.Gamma + 2 : ℕ) : ℝ) L.A L.invβstar T η₀ Y →
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        HRS.Main.ConvergesInLaw
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>          (fun N =&gt; fluctStatLawRd (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>          (law P&#x27; (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; HNeg.pairing (φ a) (Y (ts a) ζ) :
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>            EuclideanSpace ℝ (Fin p)))) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  classical
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  by_cases hgood : 1 ≤ d ∧ 0 ≤ s ∧ s &lt; d
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  swap
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  · exact ⟨0, fun C₀ _ S hSs =&gt; absurd ⟨S.hd, hSs ▸ S.hs0, hSs ▸ S.hsd⟩ hgood⟩
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨hd, hs0, hsd⟩ := hgood
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨C₁B, hB5⟩ := sa26_B5 s fd ν₀ MB Λ ΛV G₀ Kad hd hs0 hsd
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨C₁e, hC₁e⟩ := sa26_energy_nonneg hd hs0 hsd Λ
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  obtain ⟨C₁c, CT, hCT0, hcov⟩ := sa26_cov_bound hd hs0 hsd χ hχ Λ
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  refine ⟨max (max C₁B C₁e) C₁c, ?_⟩
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  intro C₀ hC₀ S hSs hST hν hHolds R 𝔈 hS m₂ hm₂ hm2 p ts φ hts hφ m₀ ε hinit εf Ie I hTI hdist L
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    hHoldsAt hcoef hEmp K hW hFA hlimA hst hsmall hfix νη hνη Ω&#x27; mΩ&#x27; P&#x27; hP&#x27; η₀ Y hη₀ hη₀m hY
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  subst hST
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hΛ := sa26_Lam_pos hS
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hCB : C₁B ≤ C₀ := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hC₀
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hCe : C₁e ≤ C₀ := le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hC₀
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hCc : C₁c ≤ C₀ := le_trans (le_max_right _ _) hC₀
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hT0 : 0 ≤ S.T := S.hT.le
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  -- the tests
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  choose ψ hψ using hφ
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hΓ : ∀ a, IsSobolevTest ((fd.Gamma : ℕ) : ℝ) (φ a) := fun a =&gt; by
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    rw [← hψ a]; exact sa26_schwartz_sob (ψ a) fd.Gamma
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hΓ2 : ∀ a, IsSobolevTest (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a) := fun a =&gt; by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    rw [← hψ a]; exact sa26_schwartz_sob (ψ a) (fd.Gamma + 2)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hφc : ∀ a, Continuous (φ a) := fun a =&gt; by rw [← hψ a]; exact (ψ a).continuous
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  -- the commutator input
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  obtain ⟨K&#x27;, hK&#x27;0, hsel⟩ := hB5 C₀ hCB S hSs hHolds R 𝔈 m20 (fd.Gamma + 5) (fd.Gamma + 5) hS hFA
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  -- the uniform bounds of the orbits
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  set Bd : Fin p → ℝ := fun a =&gt; (d : ℝ) ^ mStar d * (Kad * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a))
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    with hBd
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hAdjN : ∀ N : ℕ, 1 ≤ N → ∀ a, ∀ r&#x27; ∈ Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      (∃ f, IsClassicalAdjointW (S.coeff N) (ts a) (φ a) f) ∧
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      ContDiff ℝ ((mStar d : ℕ) : WithTop ℕ∞) (propagatorW (S.coeff N) r&#x27; (ts a) (φ a)) ∧
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      0 ≤ Kad * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) ∧
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      ∀ l ≤ mStar d, ∀ x, ‖iteratedFDeriv ℝ l (propagatorW (S.coeff N) r&#x27; (ts a) (φ a)) x‖ ≤ Bd a :=
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    fun N hN a r&#x27; hr&#x27; =&gt; sa26_adj_bounds hd (hFA.deriv N hN) hr&#x27;.1 hr&#x27;.2 (hts a).2 (hΓ a)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hAdjL : ∀ a, ∀ r&#x27; ∈ Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      (∃ f, IsClassicalAdjointW (L.coeff S) (ts a) (φ a) f) ∧
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      ContDiff ℝ ((mStar d : ℕ) : WithTop ℕ∞) (propagatorW (L.coeff S) r&#x27; (ts a) (φ a)) ∧
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      0 ≤ Kad * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) ∧
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      ∀ l ≤ mStar d, ∀ x, ‖iteratedFDeriv ℝ l (propagatorW (L.coeff S) r&#x27; (ts a) (φ a)) x‖ ≤ Bd a :=
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    fun a r&#x27; hr&#x27; =&gt; sa26_adj_bounds hd hlimA hr&#x27;.1 hr&#x27;.2 (hts a).2 (hΓ a)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hBd0 : ∀ a, 0 ≤ Bd a := fun a =&gt;
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    mul_nonneg (by positivity) (hAdjN 1 le_rfl a 0 ⟨le_rfl, (hts a).1⟩).2.2.1
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hexN : ∀ N : ℕ, 1 ≤ N → ∀ a, ∃ f, IsClassicalAdjointW (S.coeff N) (ts a) (φ a) f :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    fun N hN a =&gt; (hAdjN N hN a 0 ⟨le_rfl, (hts a).1⟩).1
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hexL : ∀ a, ∃ f, IsClassicalAdjointW (L.coeff S) (ts a) (φ a) f :=
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    fun a =&gt; (hAdjL a 0 ⟨le_rfl, (hts a).1⟩).1
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hmS1 : 1 ≤ mStar d := by unfold mStar; omega
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  -- the smallness hypothesis
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  obtain ⟨hs1, hs2⟩ := sa26_small_split S fd.eN 𝔈 εf m₂ hm₂ (fun N =&gt; HRS.MP.RdRem.mrr_eN_nonneg fd N)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    (fun N hN =&gt; hS.energy.pos N hN) (fun N hN =&gt; hTI.εf_nonneg N hN) hsmall
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  -- the remainder constant
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  set CR : ℝ := ∑ a, (max K&#x27; 0 / 2 * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) * S.T) with hCR
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hCR0 : 0 ≤ CR := Finset.sum_nonneg fun a _ =&gt; by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have : 0 ≤ HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have := hT0
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    positivity
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  -- energy nonnegativity at the constants of the statement
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hnn : ∀ N : ℕ, 2 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) S.T, ∀ X : EucConfig d N, Function.Injective X →
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      0 ≤ rieszModulatedEnergy d S.s X (HRS.Whole.withDensityReal (S.ρ N t)) + oNΛ d S.s C₀ Λ N := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    intro N hN t ht X hX
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    rw [hSs]
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    exact hC₁e hΛ C₀ hCe N hN (S.ρ N t) ((hS.mean_field.solution N hN1).density t ht)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      (fun x =&gt; sa26_rho_le hS hN1 ht x) (fun _ =&gt; sa26_log_int hS hN1 ht) X
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      (fun ⟨i, j, hij, h⟩ =&gt; hij (hX h))
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  -- measurability of the statistics
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hZmAll : ∀ N : ℕ, 1 ≤ N → Measurable (fluctStatRd (S.sigma N) (R N).X (S.ρ N) ts φ) := fun N hN =&gt;
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    sa26_fluct_meas (by omega) _ (fun t =&gt; HRS.Whole.Q09A.selectedFlow_measurable (hS.flow N hN) t) _ ts φ hφc
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hcont0 : ∀ N : ℕ, 1 ≤ N → ∀ a, Continuous (propagatorW (S.coeff N) 0 (ts a) (φ a)) := fun N hN a =&gt;
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    ((HRS.MS.Fcau.propagatorW_isClassical (hexN N hN a)).c2 0 ⟨le_rfl, (hts a).1⟩).continuous
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  have hIemAll : ∀ N : ℕ, 1 ≤ N → Measurable (sa26_Iemp S N ts φ (R N).X) := fun N hN =&gt;
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    sa26_Iemp_meas (by omega) S ts φ (HRS.Whole.Q09A.selectedFlow_measurable (hS.flow N hN) 0) (hcont0 N hN)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  -- one particle number
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have hfixed : ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      smoothDist 2 (fluctStatLawRd (R N).P (S.sigma N) (R N).X (S.ρ N) ts φ)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        (law (R N).P (sa26_Iemp S N ts φ (R N).X) ∗
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          multivariateGaussian 0 (sa26_Sig (S.coeff N) (S.qN N) ts φ)) ≤
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      CR * (S.sigma N * (𝔈 N + fd.eN N)) +
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        (1 / 2 * (CT * S.T * (∑ a, Bd a) ^ 2)) * (S.qN N * wN d N (𝔈 N) m₂) := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    intro N hN
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    obtain ⟨ℱ, W&#x27;, hF⟩ := hS.filtered N
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    have hprog := hF.progressive
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    have hex := hexN N hN1
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    have hdec := sa26_decomp hS (r := fd.Gamma + 5) (mV := fd.Gamma + 5) (by omega) (by omega) hN1 ts φ hts hex hF
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    have hKp := fun a =&gt; sa26_K_progL2 hS ts φ hts hex hprog a
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    obtain ⟨hM, -⟩ := several_times_covariation (R N).P hF.brownian
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>      (fun a =&gt; sa26_K S N ts φ (R N).X a) hKp ts (fun a =&gt; (hts a).1) S.T (fun a =&gt; (hts a).2)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have hinj := sa26_flow_inj_all hT0 (hS.flow N hN1) hF
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    have hGc : ∀ a, ∀ r&#x27; ∈ Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        ContDiff ℝ ((mStar d : ℕ) : WithTop ℕ∞) (propagatorW (S.coeff N) r&#x27; (ts a) (φ a)) ∧
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          ∀ l ≤ mStar d, ∀ x, ‖iteratedFDeriv ℝ l (propagatorW (S.coeff N) r&#x27; (ts a) (φ a)) x‖ ≤ Bd a :=
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      fun a r&#x27; hr&#x27; =&gt; ⟨(hAdjN N hN1 a r&#x27; hr&#x27;).2.1, (hAdjN N hN1 a r&#x27; hr&#x27;).2.2.2⟩
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have hcovb := hcov C₀ hCc S hSs R 𝔈 MB ΛV G₀ m20 (fd.Gamma + 5) (fd.Gamma + 5) hS m₂ hm₂ hm2 N hN
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      ts φ hts Bd hBd0 hGc hex hprog hinj hM.sigma_meas
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    -- the density and the bounds for the deterministic covariance density
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    have hGb : ∀ a r x, ‖sa26_G S N ts φ a r x‖ ≤ ∑ c, Bd c := fun a r x =&gt;
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      (sa26_GC_norm_le (S.coeff N) ts φ a (hBd0 a)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        (fun r&#x27; hr&#x27; x&#x27; =&gt; (hAdjN N hN1 a r&#x27; hr&#x27;).2.2.2 1 hmS1 x&#x27;) r x).trans
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        (Finset.single_le_sum (f := Bd) (fun c _ =&gt; hBd0 c) (Finset.mem_univ a))
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    have hGm : ∀ a, Measurable fun q : ℝ × Euc d =&gt; sa26_G S N ts φ a q.1 q.2 := fun a =&gt;
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      sa26_G_meas ts φ a (hts a).1 (hex a)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    have hρm := HRS.MP.RdRem.mrr_rho_meas hS hN1
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    have hρd : ∀ r, HRS.Whole.IsProbDensity (S.ρ N (HRS.MP.RdRem.mrrClamp S.T r)) := fun r =&gt;
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      (hS.mean_field.solution N hN1).density _ (HRS.MP.RdRem.mrrClamp_mem hT0 r)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    have hq0 : 0 ≤ 2 * S.qN N := by have := sa26_qN_nonneg S N; positivity
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    have hsb := sa26_sigBar_isDet (ts := ts) (c := 2 * S.qN N) hGm hρm hGb (fun r x =&gt; (hρd r).nonneg x)
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      (fun r =&gt; sa26_probDensity_integrable (hρd r)) (fun r =&gt; (hρd r).integral_one.le) hq0 S.T
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    -- the pieces of the decomposition
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    have hZm := hZmAll N hN1
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    have hIem := hIemAll N hN1
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    have hIe0 : Measurable[ℱ 0] (sa26_Iemp S N ts φ (R N).X) :=
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      @sa26_Iemp_meas d (R N).Ω (ℱ 0) N hN0 S p ts φ (R N).X (HRS.Whole.Q09B.q09b_measurable_init hF 0)
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>        (hcont0 N hN1)
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    set Z := fluctStatRd (S.sigma N) (R N).X (S.ρ N) ts φ with hZdef
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    set M := vectorItoIntegral (R N).P ℱ W&#x27;
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      (fun a =&gt; killAfter (sa26_K S N ts φ (R N).X a) (ts a)) with hMdef
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    set Rr : (R N).Ω → EuclideanSpace ℝ (Fin p) := fun ζ =&gt; Z ζ - sa26_Iemp S N ts φ (R N).X ζ - M S.T ζ
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      with hRr
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    have hRae : ∀ᵐ ζ ∂(R N).P, Rr ζ = sa26_Rem S N ts φ (R N).X ζ := hdec.mono fun ζ h =&gt; by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      simp only [hRr]; rw [h]; abel
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    have hRAEm : AEStronglyMeasurable Rr (R N).P := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      have h1 : AEStronglyMeasurable (M S.T) (R N).P :=
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        (hM.sq_int S.T ⟨hT0, le_rfl⟩).aestronglyMeasurable
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>      exact (hZm.aestronglyMeasurable.sub hIem.aestronglyMeasurable).sub h1
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have hremA : ∀ a, ∫⁻ ζ, ENNReal.ofReal |S.sigma N * ∫ r in Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>        flucInteractionRd (S.dyn N) (propagatorW (S.coeff N) r (ts a) (φ a))
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>          ((R N).X (Real.toNNReal r) ζ) (S.ρ N r)| ∂(R N).P ≤
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        ENNReal.ofReal (S.sigma N * (max K&#x27; 0 / 2 * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) * S.T *
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>          (𝔈 N + fd.eN N))) := by
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      intro a
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      have h := sa26_rem_L1 hS (r := fd.Gamma + 5) (mV := fd.Gamma + 5) (by omega)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        (fun N =&gt; HRS.MP.RdRem.mrr_eN_nonneg fd N) hsel hnn hN (hts a) le_rfl (hΓ a)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      have hσ := HRS.MP.RdRem.mrr_sigma_nonneg S N
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      calc ∫⁻ ζ, ENNReal.ofReal |S.sigma N * ∫ r in Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>            flucInteractionRd (S.dyn N) (propagatorW (S.coeff N) r (ts a) (φ a))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>              ((R N).X (Real.toNNReal r) ζ) (S.ρ N r)| ∂(R N).P
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>          = ENNReal.ofReal (S.sigma N) * ∫⁻ ζ, ENNReal.ofReal |∫ r in Set.Icc (0 : ℝ) (ts a),
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>            flucInteractionRd (S.dyn N) (propagatorW (S.coeff N) r (ts a) (φ a))
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>              ((R N).X (Real.toNNReal r) ζ) (S.ρ N r)| ∂(R N).P := by
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>            rw [← lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>            refine lintegral_congr fun ζ =&gt; ?_
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>            rw [abs_mul, abs_of_nonneg hσ, ENNReal.ofReal_mul hσ]
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>        _ ≤ ENNReal.ofReal (S.sigma N) * ENNReal.ofReal (max K&#x27; 0 / 2 *
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>              HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) * S.T * (𝔈 N + fd.eN N)) :=
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>            mul_le_mul&#x27; le_rfl h
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>        _ = _ := (ENNReal.ofReal_mul hσ).symm
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    have hRlint : ∫⁻ ζ, ENNReal.ofReal ‖Rr ζ‖ ∂(R N).P ≤
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>        ENNReal.ofReal (CR * (S.sigma N * (𝔈 N + fd.eN N))) := by
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      have hcoordm : ∀ a, AEMeasurable (fun ζ =&gt; ENNReal.ofReal |Rr ζ a|) (R N).P := fun a =&gt;
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>        (((by fun_prop : Measurable fun v : EuclideanSpace ℝ (Fin p) =&gt; v a).comp_aemeasurable
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>          hRAEm.aemeasurable).abs.ennreal_ofReal)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      calc ∫⁻ ζ, ENNReal.ofReal ‖Rr ζ‖ ∂(R N).P
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>          ≤ ∫⁻ ζ, ∑ a, ENNReal.ofReal |Rr ζ a| ∂(R N).P :=
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>            lintegral_mono fun ζ =&gt; (ENNReal.ofReal_le_ofReal (sa26_norm_le_sum_abs _)).trans_eq
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>              (ENNReal.ofReal_sum_of_nonneg fun a _ =&gt; abs_nonneg _)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        _ = ∑ a, ∫⁻ ζ, ENNReal.ofReal |Rr ζ a| ∂(R N).P := lintegral_finset_sum&#x27; _ fun a _ =&gt; hcoordm a
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        _ ≤ ∑ a, ENNReal.ofReal (S.sigma N * (max K&#x27; 0 / 2 * HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) *
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>              S.T * (𝔈 N + fd.eN N))) := by
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>            refine Finset.sum_le_sum fun a _ =&gt; ?_
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>            refine le_trans (le_of_eq (lintegral_congr_ae (hRae.mono fun ζ h =&gt; ?_))) (hremA a)
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>            show ENNReal.ofReal |Rr ζ a| = _
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>            rw [h]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>            try rfl
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        _ = ENNReal.ofReal (CR * (S.sigma N * (𝔈 N + fd.eN N))) := by
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>            have hσ := HRS.MP.RdRem.mrr_sigma_nonneg S N
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>            have h𝔈 : 0 ≤ 𝔈 N + fd.eN N :=
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>              add_nonneg (hS.energy.pos N hN1).le (HRS.MP.RdRem.mrr_eN_nonneg fd N)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>            rw [← ENNReal.ofReal_sum_of_nonneg (fun a _ =&gt; by
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>              have : 0 ≤ HRS.Whole.sobolevNorm (fd.Gamma : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>              positivity)]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>            congr 1
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>            rw [hCR, Finset.sum_mul]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>            refine Finset.sum_congr rfl fun a _ =&gt; ?_
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>            ring
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    have hRint : Integrable Rr (R N).P := ⟨hRAEm, by
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      have : ∫⁻ ζ, ‖Rr ζ‖ₑ ∂(R N).P ≤ ENNReal.ofReal (CR * (S.sigma N * (𝔈 N + fd.eN N))) := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>        simpa [ofReal_norm_eq_enorm] using hRlint
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      exact lt_of_le_of_lt this ENNReal.ofReal_lt_top⟩
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    have hRI : ∫ ζ, ‖Rr ζ‖ ∂(R N).P ≤ CR * (S.sigma N * (𝔈 N + fd.eN N)) := by
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>      refine sa26_integral_le_lintegral (fun ζ =&gt; norm_nonneg _) hRAEm.norm ?_ hRlint
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>      have := HRS.MP.RdRem.mrr_sigma_nonneg S N
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      have h𝔈 : 0 ≤ 𝔈 N + fd.eN N :=
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        add_nonneg (hS.energy.pos N hN1).le (HRS.MP.RdRem.mrr_eN_nonneg fd N)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      positivity
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    have hLind := HRS.Main.A8P.a8p_smooth_abstract (R N).P ℱ S.T hT0 M
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      (killedCovMatrix (fun a =&gt; sa26_K S N ts φ (R N).X a) ts) hM
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      (sa26SigBar ts (sa26_G S N ts φ) (fun r&#x27; =&gt; S.ρ N (HRS.MP.RdRem.mrrClamp S.T r&#x27;))
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        (2 * S.qN N)) hsb (sa26_Iemp S N ts φ (R N).X) hIe0 (sa26_Iemp S N ts φ (R N).X) hIem Z Rr hRint
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>      (Eventually.of_forall fun ζ =&gt; by simp only [hRr]; abel) (by simp)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    have e : integratedCov S.T (sa26SigBar ts (sa26_G S N ts φ)
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>        (fun r&#x27; =&gt; S.ρ N (HRS.MP.RdRem.mrrClamp S.T r&#x27;)) (2 * S.qN N)) =
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>        sa26_Sig (S.coeff N) (S.qN N) ts φ := sa26_integratedCov_eq (S.coeff N) (S.qN N) ts φ hts
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    rw [e] at hLind
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    have h0 : ∫ ζ, ‖sa26_Iemp S N ts φ (R N).X ζ - sa26_Iemp S N ts φ (R N).X ζ‖ ∂(R N).P = 0 := by simp
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    rw [h0] at hLind
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    refine hLind.trans ?_
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    have := hcovb
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    nlinarith [hRI, hcovb]
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  -- ===== the passage to the limit =====
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have hmeasP : ∀ n : ℕ, 2 ≤ n + 2 := fun n =&gt; by omega
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hDt : Tendsto (fun N =&gt; coeffDiscrepancyRd S L fd.Gamma N) atTop (𝓝 0) := hcoef.tendsto
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have hfin : ∀ᶠ N : ℕ in atTop, coeffDiscrepancyRd S L fd.Gamma N ≠ ⊤ :=
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    (hDt.eventually (gt_mem_nhds ENNReal.zero_lt_top)).mono fun N h =&gt; h.ne
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  obtain ⟨Dl, hDl⟩ : ∃ Dl : ℕ → ℝ, ∀ N, Dl N = (coeffDiscrepancyRd S L fd.Gamma N).toReal :=
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    ⟨fun N =&gt; (coeffDiscrepancyRd S L fd.Gamma N).toReal, fun N =&gt; rfl⟩
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  obtain ⟨Ks, hKs⟩ : ∃ Ks : Fin p → ℝ, ∀ a,
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>      Ks a = max Kst 0 * HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a) :=
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    ⟨fun a =&gt; max Kst 0 * HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a), fun a =&gt; rfl⟩
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  have hDl0 : ∀ N, 0 ≤ Dl N := fun N =&gt; by rw [hDl N]; exact ENNReal.toReal_nonneg
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  have hKs0 : ∀ a, 0 ≤ Ks a := fun a =&gt; by
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    rw [hKs a]
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    have : 0 ≤ HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    exact mul_nonneg (le_max_right _ _) this
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  have hDlt : Tendsto Dl atTop (𝓝 0) := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    have := (ENNReal.tendsto_toReal ENNReal.zero_ne_top).comp hDt
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    have e : Dl = (ENNReal.toReal ∘ fun N =&gt; coeffDiscrepancyRd S L fd.Gamma N) := funext hDl
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    rw [e]
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    simpa using this
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  have hGN : ∀ N : ℕ, 1 ≤ N → ∀ a r x, ‖sa26_GC (S.coeff N) ts φ a r x‖ ≤ Bd a := fun N hN a r x =&gt;
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    sa26_GC_norm_le (S.coeff N) ts φ a (hBd0 a)
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      (fun r&#x27; hr&#x27; x&#x27; =&gt; (hAdjN N hN a r&#x27; hr&#x27;).2.2.2 1 hmS1 x&#x27;) r x
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  have hGL : ∀ a r x, ‖sa26_GC (L.coeff S) ts φ a r x‖ ≤ Bd a := fun a r x =&gt;
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    sa26_GC_norm_le (L.coeff S) ts φ a (hBd0 a)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      (fun r&#x27; hr&#x27; x&#x27; =&gt; (hAdjL a r&#x27; hr&#x27;).2.2.2 1 hmS1 x&#x27;) r x
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  have hGst : ∀ᶠ N : ℕ in atTop, ∀ a r x,
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      ‖sa26_GC (S.coeff N) ts φ a r x - sa26_GC (L.coeff S) ts φ a r x‖ ≤ Ks a * Dl N := by
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    filter_upwards [hfin, eventually_ge_atTop 1] with N hfN hN1 a r x
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    by_cases hr : r ∈ Set.Icc (0 : ℝ) (ts a)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    · obtain ⟨-, -, hmem, hle⟩ := hst N hN1 r (ts a) hr.1 hr.2 (hts a).2 (φ a) (hΓ2 a)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>      have hne : ENNReal.ofReal (Kst * HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a)) *
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>          coeffDiscrepancyRd S L fd.Gamma N ≠ ⊤ := ENNReal.mul_ne_top ENNReal.ofReal_ne_top hfN
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>      have hcb := (ENNReal.ofReal_le_iff_le_toReal hne).1 hle
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>      rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal&#x27;] at hcb
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>      have hn0 : 0 ≤ HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a) := Real.sqrt_nonneg _
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>      have hmx : max (Kst * HRS.Whole.sobolevNorm (((fd.Gamma + 2 : ℕ)) : ℝ) (φ a)) 0 ≤
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>          Ks a := by
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>        rw [hKs a]
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>        exact max_le (mul_le_mul_of_nonneg_right (le_max_left _ _) hn0)
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>          (mul_nonneg (le_max_right _ _) hn0)
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>      have hcN : ContDiff ℝ 1 (propagatorW (S.coeff N) r (ts a) (φ a)) :=
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>        ((hAdjN N hN1 a r hr).2.1).of_le (by exact_mod_cast hmS1)
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>      have hcL : ContDiff ℝ 1 (propagatorW (L.coeff S) r (ts a) (φ a)) :=
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>        ((hAdjL a r hr).2.1).of_le (by exact_mod_cast hmS1)
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>      have e : sa26_GC (S.coeff N) ts φ a r x - sa26_GC (L.coeff S) ts φ a r x =
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>          gradient (fun y =&gt; propagatorW (S.coeff N) r (ts a) (φ a) y -
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>            propagatorW (L.coeff S) r (ts a) (φ a) y) x := by
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>        simp only [sa26_GC, if_pos hr]
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>        exact (HRS.MS.Fcau.fcau_gradient_sub hcN hcL x).symm
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>      rw [e, sa26_norm_grad, hDl N]
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      refine (sa26_iter_one_le_cbNorm hmS1 hmem x).trans ?_
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      refine hcb.trans ?_
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      exact mul_le_mul_of_nonneg_right hmx ENNReal.toReal_nonneg
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    · simp only [sa26_GC, if_neg hr, sub_zero, norm_zero]
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      exact mul_nonneg (hKs0 a) (hDl0 N)
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  have hdensN : ∀ N : ℕ, 1 ≤ N → ∀ r ∈ Set.Icc (0 : ℝ) S.T, HRS.Whole.IsProbDensity ((S.coeff N).ρ r) :=
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    fun N hN r hr =&gt; (hS.mean_field.solution N hN).density r hr
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hdensL : ∀ r ∈ Set.Icc (0 : ℝ) S.T, HRS.Whole.IsProbDensity ((L.coeff S).ρ r) :=
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>    fun r hr =&gt; hcoef.limit_solution.density r hr
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  have hρtmN : ∀ N : ℕ, 1 ≤ N → Measurable fun q : ℝ × Euc d =&gt;
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>      (S.coeff N).ρ (HRS.MP.RdRem.mrrClamp S.T q.1) q.2 := fun N hN =&gt;
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    HRS.MP.RdRem.mrr_rho_meas hS hN
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  have hρtmL : Measurable fun q : ℝ × Euc d =&gt; (L.coeff S).ρ (HRS.MP.RdRem.mrrClamp S.T q.1) q.2 :=
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    hY.rho_meas.comp (((HRS.MP.RdRem.continuous_mrrClamp S.T).measurable.comp measurable_fst).prodMk
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>      measurable_snd)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  have hρst : ∀ᶠ N : ℕ in atTop, ∀ r ∈ Set.Icc (0 : ℝ) S.T, ∀ x,
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>      jbracket x ^ ((d : ℝ) + 3) * |(S.coeff N).ρ r x - (L.coeff S).ρ r x| ≤ Dl N := by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    filter_upwards [hfin] with N hfN r hr x
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    rw [hDl N]
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    exact (sa26_disc_parts S L fd.Gamma N hfN).2 r hr x
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  have hqst : ∀ᶠ N : ℕ in atTop, |S.qN N - L.invβstar| ≤ Dl N := by
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    filter_upwards [hfin] with N hfN
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    rw [hDl N]
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>    have h1 := (sa26_disc_parts S L fd.Gamma N hfN).1
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    have e : 2 * S.qN N - 2 * L.invβstar = 2 * (S.qN N - L.invβstar) := by ring
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    rw [e, abs_mul, abs_of_pos (by norm_num : (0 : ℝ) &lt; 2)] at h1
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    linarith [abs_nonneg (S.qN N - L.invβstar)]
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hSigT : Tendsto (fun N : ℕ =&gt; sa26_Sig (S.coeff N) (S.qN N) ts φ) atTop
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>      (𝓝 (sa26_Sig (L.coeff S) L.invβstar ts φ)) :=
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    sa26_Sig_tendsto S L S.hT.le ts φ hts hBd0 hKs0 hDl0 hDlt hexN hexL hGN hGL hGst hρst hqst
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>      hdensN hdensL hρtmN hρtmL
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  have hBu : ∀ c, Bd c ≤ ∑ c&#x27;, Bd c&#x27; := fun c =&gt;
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    Finset.single_le_sum (f := Bd) (fun c _ =&gt; hBd0 c) (Finset.mem_univ c)
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  have hpsdN : ∀ N : ℕ, 1 ≤ N → (sa26_Sig (S.coeff N) (S.qN N) ts φ).PosSemidef := fun N hN =&gt;
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    sa26_Sig_psd (S.coeff N) (sa26_qN_nonneg S N) S.hT.le ts φ hts (hexN N hN)
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>      (B := ∑ c&#x27;, Bd c&#x27;) (fun a r x =&gt; (hGN N hN a r x).trans (hBu a)) (hρtmN N hN) (hdensN N hN)
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  have hpsdL : (sa26_Sig (L.coeff S) L.invβstar ts φ).PosSemidef :=
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    sa26_Sig_psd (L.coeff S) L.hinvβstar S.hT.le ts φ hts hexL
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>      (B := ∑ c&#x27;, Bd c&#x27;) (fun a r x =&gt; (hGL a r x).trans (hBu a)) hρtmL hdensL
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  -- the limit vectors
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  set Z : Ω&#x27; → EuclideanSpace ℝ (Fin p) := fun ζ =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    HNeg.pairing (φ a) (Y (ts a) ζ) with hZdef
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  set U : Ω&#x27; → EuclideanSpace ℝ (Fin p) := fun ζ =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    L.A * η₀ ζ (propagatorW (L.coeff S) 0 (ts a) (φ a)) with hUdef
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  set G : Ω&#x27; → EuclideanSpace ℝ (Fin p) := fun ζ =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>    HNeg.pairing (φ a) (Y (ts a) ζ) - L.A * η₀ ζ (propagatorW (L.coeff S) 0 (ts a) (φ a)) with hGdef
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  have hZm : Measurable Z := (WithLp.measurable_toLp 2 _).comp (measurable_pi_iff.2 fun a =&gt;
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    (HRS.MP.HNegInfra.mhn_continuous_pairing (hΓ2 a)).measurable.comp (hY.meas (ts a)))
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  have hZG : ∀ ζ, Z ζ = U ζ + G ζ := fun ζ =&gt; by
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>    ext a
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    simp [hZdef, hUdef, hGdef]
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  -- the initial statistics
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  have hIeq : ∀ N : ℕ, 1 ≤ N → law (R N).P (sa26_Iemp S N ts φ (R N).X) =
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>      law (R N).P (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; S.AN N * (S.κ N *
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>        (HRS.Whole.pair (HRS.Whole.empirical ((R N).X₀ ζ)) (propagatorW (S.coeff N) 0 (ts a) (φ a)) -
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>          HRS.Whole.pair S.μ0 (propagatorW (S.coeff N) 0 (ts a) (φ a)))) : EuclideanSpace ℝ (Fin p))) := by
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    intro N hN
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    refine Measure.map_congr ?_
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    filter_upwards [sa26_init_ae (hS.flow N hN)] with ζ hζ
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    simp only [sa26_Iemp, hζ, hS.mean_field.datum N hN, sa26_sigma_eq, mul_assoc]
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>  have hEmp2 := (HRS.Main.A9.a9_conv_shift 2).1 (hEmp νη hνη P&#x27; η₀ hη₀ hη₀m)
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>  have hEmp3 : HRS.Main.ConvergesInLaw
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>      (fun n : ℕ =&gt; law (R (n + 2)).P (sa26_Iemp S (n + 2) ts φ (R (n + 2)).X)) (law P&#x27; U) := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    have e : (fun n : ℕ =&gt; law (R (n + 2)).P (sa26_Iemp S (n + 2) ts φ (R (n + 2)).X)) =
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>        (fun n : ℕ =&gt; law (R (n + 2)).P (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; S.AN (n + 2) * (S.κ (n + 2) *
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>          (HRS.Whole.pair (HRS.Whole.empirical ((R (n + 2)).X₀ ζ))
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>              (propagatorW (S.coeff (n + 2)) 0 (ts a) (φ a)) -
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>            HRS.Whole.pair S.μ0 (propagatorW (S.coeff (n + 2)) 0 (ts a) (φ a)))) :
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>              EuclideanSpace ℝ (Fin p)))) :=
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      funext fun n =&gt; hIeq (n + 2) (by omega)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    rw [e]
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    exact hEmp2
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  have hfU : Measurable (fun η : (Euc d → ℝ) → ℝ =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>      L.A * η (propagatorW (L.coeff S) 0 (ts a) (φ a)) : EuclideanSpace ℝ (Fin p))) :=
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    (WithLp.measurable_toLp 2 _).comp (measurable_pi_iff.2 fun a =&gt;
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      (measurable_pi_apply _).const_mul _)
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  have hUae : AEMeasurable U P&#x27; := hfU.comp_aemeasurable hη₀m
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>  have hIp : ∀ n : ℕ, IsProbabilityMeasure
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      (law (R (n + 2)).P (sa26_Iemp S (n + 2) ts φ (R (n + 2)).X)) := fun n =&gt; inferInstance
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  haveI := hIp
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>  obtain ⟨hind, hGlaw⟩ := hY.gaussian_part p ts φ hts hΓ2
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  have hindUG : IndepFun U G P&#x27; := hind.symm.comp hfU measurable_id
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  have hGae : AEMeasurable G P&#x27; := by
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    refine (hZm.aemeasurable.sub hUae).congr (Eventually.of_forall fun ζ =&gt; ?_)
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    rw [Pi.sub_apply, hZG ζ]
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>    abel
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  have hlimlaw : law P&#x27; Z = law P&#x27; U ∗ multivariateGaussian 0 (sa26_Sig (L.coeff S) L.invβstar ts φ) := by
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>    refine (sa26_identify P&#x27; U G Z hUae hGae hindUG hZG).trans ?_
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    exact congrArg (fun m =&gt; law P&#x27; U ∗ m) hGlaw
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>  -- Levy and transfer
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>  have hlev := sa26_levy
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    (fun n : ℕ =&gt; law (R (n + 2)).P (sa26_Iemp S (n + 2) ts φ (R (n + 2)).X)) (law P&#x27; U) hEmp3
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    (fun n =&gt; sa26_Sig (S.coeff (n + 2)) (S.qN (n + 2)) ts φ)
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    (sa26_Sig (L.coeff S) L.invβstar ts φ) (fun n =&gt; hpsdN (n + 2) (by omega)) hpsdL
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    ((tendsto_add_atTop_iff_nat 2).2 hSigT)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  have hsm0 : ∀ P Q : Measure (EuclideanSpace ℝ (Fin p)), 0 ≤ smoothDist 2 P Q := fun P Q =&gt; by
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    unfold smoothDist
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    exact Real.iSup_nonneg fun Φ =&gt; abs_nonneg _
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  have hsq : Tendsto (fun n : ℕ =&gt; CR * (S.sigma (n + 2) * (𝔈 (n + 2) + fd.eN (n + 2))) +
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      (1 / 2 * (CT * S.T * (∑ a, Bd a) ^ 2)) * (S.qN (n + 2) * wN d (n + 2) (𝔈 (n + 2)) m₂))
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      atTop (𝓝 0) := by
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    have h1 := (tendsto_add_atTop_iff_nat 2).2 hs1
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>    have h2 := (tendsto_add_atTop_iff_nat 2).2 hs2
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    have := (h1.const_mul CR).add (h2.const_mul (1 / 2 * (CT * S.T * (∑ a, Bd a) ^ 2)))
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>    simpa using this
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  have hsd : Tendsto (fun n : ℕ =&gt; smoothDist 2
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>      (fluctStatLawRd (R (n + 2)).P (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)) ts φ)
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>      (law (R (n + 2)).P (sa26_Iemp S (n + 2) ts φ (R (n + 2)).X) ∗
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>        multivariateGaussian 0 (sa26_Sig (S.coeff (n + 2)) (S.qN (n + 2)) ts φ))) atTop (𝓝 0) :=
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    squeeze_zero (fun n =&gt; hsm0 _ _) (fun n =&gt; hfixed (n + 2) (by omega)) hsq
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  haveI hμp : ∀ n : ℕ, IsProbabilityMeasure
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>      (fluctStatLawRd (R (n + 2)).P (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)) ts φ) := fun n =&gt; by
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    unfold fluctStatLawRd
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    infer_instance
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  have hfinal : HRS.Main.ConvergesInLaw
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>      (fun n : ℕ =&gt; fluctStatLawRd (R (n + 2)).P (S.sigma (n + 2)) (R (n + 2)).X (S.ρ (n + 2)) ts φ)
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>      (law P&#x27; Z) := by
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>    rw [hlimlaw]
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    exact HRS.MP.FidiF1.fi2_transfer _ _ _ hlev hsd
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  exact (HRS.Main.A9.a9_conv_shift 2).2 hfinal
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>/-- Tie to the repaired frozen statement (S.A.26 repair `AEMeasurable η₀ P&#x27;`, approved 2026-10-24). -/
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>example := (@path_fidi_rd_aem_proof : type_of% @HRS.Whole.AppendixALemmas.path_fidi_rd)
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>end HRS.MS.PathFidi
+</span></code></pre></main></body></html>

@@ -1,0 +1,554 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Thermal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Thermal</code></h1><p><a href="../../lean/HRS/Whole/Thermal.lean">Open the unaltered Lean file</a> · 553 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Static
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Prob.Gaussian
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Thermal fields and support-independent correctors (package S-STAT-01, part II): Section S4
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Source: HRS whole-space supplement (S), Section S4 (`S:sec:thermal-fields`), standing
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>hypotheses S lines 2043-2056: `d ≥ 2`, `a, β &gt; 0`, `V(x) = a|x|²/2`, `g(x) = |x|^{-s}`
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>(`0 &lt; s &lt; d`) or `-log|x|` (`s = 0`), `𝓗_N = ∑ V(x_i) + N⁻¹∑_{i&lt;j} g(x_i-x_j)`,
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`P_N = Z_N⁻¹ e^{-β𝓗_N} dX_N` (`W:eq:r2-quadratic-Gibbs`), &quot;the interaction has not been
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>divided by `s`&quot;; `μ = ρ dx` the thermal equilibrium measure, `m_N = P_N^{(1)}`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S4.1 `W:prop:r2-log-thermal` (S lines 2060-2085).
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* S4.2 `W:lem:r2-affine-Poisson` (2194-2211), S4.3 `W:cor:r2-higher-Poisson` (2327-2334).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* S4.4 `W:lem:r2-thermal-corrector` (2405-2420), operators S lines 2391-2403.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* S4.5 `W:thm:r2-quadratic-static-field` (2517-2550), `δ_N` `W:eq:r2-static-delta`
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  (2496-2502).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* S4.6 `W:cor:r2-quadratic-preparation-static` (2649-2669).
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* S4.7 `W:cor:r2-tilt-static` (2705-2745).
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* S4.8 `W:lem:r2-derivative-corrector` (2842-2861).
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* S4.9 `W:rem:r2-reflection-gap` (2918-2942): the quantitative claim is the one-body Poincaré
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  inequality `∫|∇f|² dμ ≥ c Var_μ(f)` for the logarithmic thermal measure and its compact
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  relative perturbations (stated below); the semigroup decay
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `‖e^{-tL_μ}f‖ ≤ C Lip(f) e^{-ct}(1+μ(|x|²))^{1/2}` and the spectral-support statement are
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  **not** stated (they need the diffusion semigroup `e^{-tL_μ}`, which has no Lean definition;
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  reported).
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>## Representation decisions
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* The thermal equilibrium measure is `thermalMeasure d s a β` of `Basic.lean`
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  (`IsThermalEquilibrium`, which covers `s = 0` with `rieszKernel d 0 = -log|x|`).
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>* &quot;Invariant probability measure of the diffusion with generator `Δ + b·∇`&quot; (S4.2) is the
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  infinitesimal invariance `∫ (Δφ + b·∇φ) dμ = 0` for `φ ∈ C_c^∞` (`IsInvariantMeasure`);
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  for a globally Lipschitz drift this is equivalent to invariance under the (nonexplosive)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  diffusion semigroup.
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>* `C_b^J` membership is `HRS.MemCb J` (`C^J` with bounded derivatives), so `HRS.cbNorm J` is
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  the honest sum of suprema.  `H^J(dx)` tests are smooth functions with square-integrable
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  derivatives through order `J` and norm `sobolevWNorm J 2` (smooth representatives).
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>* `ℓ²`-valued feature vectors live in `SeqL2 = lp (fun _ : ℕ =&gt; ℝ) 2`; the Gaussian `Z` is any
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  centered Gaussian law on `SeqL2` with the prescribed coordinate covariances
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  (`IsCenteredGaussianSeq`), its existence being a separate claim.  The metric
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  `d_{C_b²(ℓ²)}` is the project&#x27;s `HRS.smoothDist 2` (sum norm `‖F‖_∞+‖DF‖_∞+‖D²F‖_∞ ≤ 1`,
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  S line 2533).
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* Sums of suprema `∑_j ‖D^jχ‖_∞ ≤ C` are written as `∀ x : Fin _ → ℝ^d, ∑_j ‖D^jχ(x_j)‖ ≤ C`.
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>-/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>noncomputable section
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>namespace HRS.Whole
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>variable {d N : ℕ}
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>/-! ### S4.1 `W:prop:r2-log-thermal` (S lines 2060-2085) -/
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>section LogThermal
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>/-- Inverse stereographic projection `u(x) = (2x/(1+|x|²), (|x|²-1)/(1+|x|²)) ∈ S^d ⊂ ℝ^{d+1}`
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>(S lines 1567-1570). -/
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>def stereoInv (x : Euc d) : EuclideanSpace ℝ (Fin (d + 1)) :=
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  WithLp.toLp 2 (Fin.snoc (α := fun _ =&gt; ℝ) (fun i =&gt; 2 * x i / (1 + ‖x‖ ^ 2))
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    ((‖x‖ ^ 2 - 1) / (1 + ‖x‖ ^ 2)))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>/-- The surface measure of the unit sphere `S^d ⊂ ℝ^{d+1}`, pushed to the ambient space
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>(Mathlib&#x27;s `volume.toSphere`, a constant multiple of surface measure). -/
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>def sphereSurface (d : ℕ) : Measure (EuclideanSpace ℝ (Fin (d + 1))) :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  (volume : Measure (EuclideanSpace ℝ (Fin (d + 1)))).toSphere.map Subtype.val
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- Proposition S4.1 `W:prop:r2-log-thermal`, existence/uniqueness (S lines 2061-2067): for
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>`s = 0`, `d ≥ 2`, `a, β &gt; 0`, the logarithmic free energy `W:eq:euc-free-energy` with
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>`g = -log|x|` has a unique minimiser, which is a bounded thermal density (the `s = 0`
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>counterpart of `thermalDensity_spec`). -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>theorem logThermalDensity_spec (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (∃ ρ : Euc d → ℝ, IsThermalEquilibrium d 0 a β ρ ∧ ∃ C, ∀ x, ρ x ≤ C) ∧
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      (∀ ρ ρ&#x27; : Euc d → ℝ, IsFreeEnergyMinimizer (rieszKernel d 0) (confinement a) β ρ →
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>        IsFreeEnergyMinimizer (rieszKernel d 0) (confinement a) β ρ&#x27; → ρ =ᵐ[volume] ρ&#x27;) ∧
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      (∀ ρ : Euc d → ℝ, IsFreeEnergyMinimizer (rieszKernel d 0) (confinement a) β ρ →
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        ρ =ᵐ[volume] thermalDensity d 0 a β) := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  sorry
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- Proposition S4.1, bounds `W:eq:r2-log-thermal-bounds` (S lines 2068-2073):
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>`c(1+|x|²)^{β/2} e^{-βa|x|²/2} ≤ ρ(x) ≤ C(1+|x|²)^{β/2} e^{-βa|x|²/2}` (the thermal equation
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>itself is part of `IsThermalEquilibrium`). -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>theorem logThermal_bounds (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    ∃ c &gt; 0, ∃ C : ℝ, ∀ x,
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      c * (1 + ‖x‖ ^ 2) ^ (β / 2) * Real.exp (-β * a * ‖x‖ ^ 2 / 2) ≤ thermalDensity d 0 a β x ∧
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      thermalDensity d 0 a β x ≤ C * (1 + ‖x‖ ^ 2) ^ (β / 2) * Real.exp (-β * a * ‖x‖ ^ 2 / 2) := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  sorry
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>/-- Proposition S4.1, regularity (S lines 2074-2079): the density is a Schwartz function,
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>every derivative of `g*ρ` of positive order is bounded, and
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>`(g*ρ)(x) + ½ log(1+|x|²) ∈ C_b^k(ℝ^d)` for every `k ≥ 0` (`W:eq:r2-log-at-infinity`). -/
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>theorem logThermal_regularity (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (∃ f : SchwartzMap (Euc d) ℝ, ∀ x, f x = thermalDensity d 0 a β x) ∧
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    ContDiff ℝ ∞ (convMeasure (rieszKernel d 0) (thermalMeasure d 0 a β)) ∧
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (∀ k : ℕ, 1 ≤ k → ∃ C : ℝ, ∀ x,
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      ‖iteratedFDeriv ℝ k (convMeasure (rieszKernel d 0) (thermalMeasure d 0 a β)) x‖ ≤ C) ∧
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    ∀ k : ℕ, MemCb k fun x =&gt; convMeasure (rieszKernel d 0) (thermalMeasure d 0 a β) x +
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      (1 / 2) * Real.log (1 + ‖x‖ ^ 2) := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  sorry
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>/-- Proposition S4.1, pushforward (S lines 2080-2082): the image of `μ` under inverse
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>stereographic projection has a bounded density relative to surface measure on `S^d`
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>(hence, S lines 1513-1515 and 2120-2122, `μ` satisfies the hypothesis `W:eq:r2-log-density`
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>of Theorem S3.5). -/
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>theorem logThermal_stereographic (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    (∃ C : ℝ≥0, (thermalMeasure d 0 a β).map stereoInv ≤ C • sphereSurface d) ∧
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    ∃ A : ℝ, HasSphericalBound A (thermalDensity d 0 a β) := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  sorry
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>/-- Proposition S4.1, last sentence (S lines 2083-2084): the law `W:eq:r2-quadratic-Gibbs`
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>is exactly the modulated Gibbs law with reference `μ`, with the original deleted diagonal. -/
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>theorem logThermal_canonical (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (N : ℕ) :
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    canonicalGibbs (rieszKernel d 0) (confinement a) N β =
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      modulatedGibbs (rieszKernel d 0) N β (thermalMeasure d 0 a β) := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  sorry
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>end LogThermal
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>/-! ### S4.2 `W:lem:r2-affine-Poisson`, S4.3 `W:cor:r2-higher-Poisson` -/
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>section Poisson
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>/-- `μ` is an invariant probability measure of the diffusion with generator `Δ + b·∇`:
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>`∫ (Δφ + b·∇φ) dμ = 0` for every `φ ∈ C_c^∞` (infinitesimal invariance; S lines 2196-2197). -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>def IsInvariantMeasure (b : Euc d → Euc d) (μ : Measure (Euc d)) : Prop :=
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  IsProbabilityMeasure μ ∧ ∀ φ : Euc d → ℝ, ContDiff ℝ ∞ φ → HasCompactSupport φ →
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    ∫ x, Laplacian.laplacian φ x + inner ℝ (b x) (gradient φ x) ∂μ = 0
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>/-- The Poisson operator `(-Δ - b·∇)χ`. -/
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>def poissonOp (b : Euc d → Euc d) (χ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  -Laplacian.laplacian χ x - inner ℝ (b x) (gradient χ x)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-- `B ∈ C_b^m(ℝ^d;ℝ^d)` with all derivatives of order `≤ m` bounded by `Mb`. -/
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>def HasCbBound (m : ℕ) (Mb : ℝ) (B : Euc d → Euc d) : Prop :=
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  ContDiff ℝ m B ∧ ∀ j ≤ m, ∀ x, ‖iteratedFDeriv ℝ j B x‖ ≤ Mb
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>/-- The conclusions `W:eq:r2-affine-Poisson-bound` (S lines 2199-2207) for a solution `χ`:
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>centered, `C²`, solving `(-Δ - b·∇)χ = r`, with `|χ(x)| ≤ C‖r‖_{C_b²}(1+log(2+|x|))` and
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>`‖∇χ‖_∞ + ‖D²χ‖_∞ ≤ C‖r‖_{C_b²}`. -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>def IsPoissonSolution (b : Euc d → Euc d) (μ : Measure (Euc d)) (r : Euc d → ℝ) (C : ℝ)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    (χ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  ContDiff ℝ 2 χ ∧ Integrable χ μ ∧ ∫ x, χ x ∂μ = 0 ∧ (∀ x, poissonOp b χ x = r x) ∧
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    (∀ x, |χ x| ≤ C * cbNorm 2 r * (1 + Real.log (2 + ‖x‖))) ∧
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    ∀ x y, ‖gradient χ x‖ + ‖iteratedFDeriv ℝ 2 χ y‖ ≤ C * cbNorm 2 r
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- Lemma S4.2 `W:lem:r2-affine-Poisson` (S lines 2194-2211): `q &gt; 0`, `b(x) = -qx + B(x)`
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>with `B ∈ C_b²`, `μ` an invariant probability measure of `Δ + b·∇` with finite second
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>moment; for `r ∈ C_b²` with `μ(r) = 0` there is a centered solution of `(-Δ-b·∇)χ = r`
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>with the bounds `W:eq:r2-affine-Poisson-bound`.  The constant depends on `q`, the bound `Mb`
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>for `B`, and the second moment bound `m₂` of `μ`, on no support radius and on no lower bound
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>for the density of `μ` (so `C` is quantified before `B, μ, r`). -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>theorem affine_poisson (hd : 1 ≤ d) (q Mb m₂ : ℝ) (hq : 0 &lt; q) :
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    ∃ C : ℝ, ∀ B : Euc d → Euc d, HasCbBound 2 Mb B → ∀ μ : Measure (Euc d),
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      IsInvariantMeasure (fun x =&gt; -q • x + B x) μ → Integrable (fun x =&gt; ‖x‖ ^ 2) μ →
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      ∫ x, ‖x‖ ^ 2 ∂μ ≤ m₂ → ∀ r : Euc d → ℝ, MemCb 2 r → Integrable r μ → ∫ x, r x ∂μ = 0 →
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        ∃ χ : Euc d → ℝ, IsPoissonSolution (fun x =&gt; -q • x + B x) μ r C χ := by
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  sorry
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>/-- Corollary S4.3 `W:cor:r2-higher-Poisson` (S lines 2327-2334): under the assumptions of
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>S4.2, if moreover `B ∈ C_b^m` and `r ∈ C_b^m` for an integer `m ≥ 2`, the same solution
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>satisfies `∑_{j=1}^m ‖D^jχ‖_∞ ≤ C_m ‖r‖_{C_b^m}` (`W:eq:r2-higher-Poisson`): there is one
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>centered solution with both the S4.2 bounds and the higher bounds. -/
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>theorem affine_poisson_higher (hd : 1 ≤ d) (q Mb m₂ : ℝ) (hq : 0 &lt; q) (m : ℕ) (hm : 2 ≤ m) :
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    ∃ C Cm : ℝ, ∀ B : Euc d → Euc d, HasCbBound m Mb B → ∀ μ : Measure (Euc d),
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      IsInvariantMeasure (fun x =&gt; -q • x + B x) μ → Integrable (fun x =&gt; ‖x‖ ^ 2) μ →
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      ∫ x, ‖x‖ ^ 2 ∂μ ≤ m₂ → ∀ r : Euc d → ℝ, MemCb m r → Integrable r μ → ∫ x, r x ∂μ = 0 →
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>        ∃ χ : Euc d → ℝ, IsPoissonSolution (fun x =&gt; -q • x + B x) μ r C χ ∧
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>          ContDiff ℝ m χ ∧
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>          ∀ x : Fin m → Euc d, ∑ j : Fin m, ‖iteratedFDeriv ℝ ((j : ℕ) + 1) χ (x j)‖ ≤ Cm * cbNorm m r := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  sorry
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>/-- Row S4.8b `affine_poisson_deriv` (supplement repair P11; `HRS/MS/PoissonPlan.md` section 5): the
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>version of S4.3 needed to prove S4.8, where the right-hand side `r = a_φ` is a `C^m` function that is
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>only Lipschitz-controlled (its sup norm is not controlled by `‖P_μφ‖_{L²(μ)} + ∑_{j≥1}‖D^jφ‖_∞`).
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>Under the assumptions of S4.2 (`B ∈ C_b^m`, invariant `μ` with second moment `≤ m₂`), for `r ∈ C^m`
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>with `‖D^j r‖_∞ ≤ D` for `1 ≤ j ≤ m` and `∫ r dμ = 0` (`r` is Lipschitz, hence `μ`-integrable), the
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>centered Poisson solution `χ` of `𝓛χ = r` has `‖D^jχ‖_∞ ≤ Cm D` for `1 ≤ j ≤ m`: only positive-order
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>derivatives of `r` enter. -/
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>theorem affine_poisson_deriv (hd : 1 ≤ d) (q Mb m₂ : ℝ) (hq : 0 &lt; q) (m : ℕ) (hm : 2 ≤ m) :
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    ∃ Cm : ℝ, ∀ B : Euc d → Euc d, HasCbBound m Mb B → ∀ μ : Measure (Euc d),
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      IsInvariantMeasure (fun x =&gt; -q • x + B x) μ → Integrable (fun x =&gt; ‖x‖ ^ 2) μ →
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      ∫ x, ‖x‖ ^ 2 ∂μ ≤ m₂ → ∀ r : Euc d → ℝ, ContDiff ℝ m r → ∀ D : ℝ,
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>        (∀ j : ℕ, 1 ≤ j → j ≤ m → ∀ x, ‖iteratedFDeriv ℝ j r x‖ ≤ D) → ∫ x, r x ∂μ = 0 →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        ∃ χ : Euc d → ℝ, ContDiff ℝ m χ ∧ Integrable χ μ ∧ ∫ x, χ x ∂μ = 0 ∧
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>          (∀ x, poissonOp (fun x =&gt; -q • x + B x) χ x = r x) ∧
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>          ∀ j : ℕ, 1 ≤ j → j ≤ m → ∀ x, ‖iteratedFDeriv ℝ j χ x‖ ≤ Cm * D := by
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  sorry
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>end Poisson
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>/-! ### S4.4 `W:lem:r2-thermal-corrector` (S lines 2405-2420) -/
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>section Corrector
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>variable {s : ℝ}
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>/-- `L = -Δ + β∇(V + g*μ)·∇` (S line 2397) for the thermal measure `μ = μ_{a,β}`. -/
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>def thermalGen (d : ℕ) (s a β : ℝ) (χ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  -Laplacian.laplacian χ x +
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    β * inner ℝ (gradient (fun y =&gt; confinement a y + convMeasure (rieszKernel d s)
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      (thermalMeasure d s a β) y) x) (gradient χ x)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>/-- `A = γ⁻¹ I + K_μ` on `L²_0(μ)` (S line 2396). -/
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>def susceptibilityOp (g : Euc d → ℝ) (μ : Measure (Euc d)) (γ : ℝ) (f : Euc d → ℝ) :
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    Euc d → ℝ :=
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  fun x =&gt; γ⁻¹ * f x + Kop g μ f x
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>/-- The corrector conclusions `W:eq:r2-thermal-corrector` (S lines 2408-2415) at level `k`:
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>`χ ∈ L²(μ)` centered, `C^{k+1}`, `Lχ ∈ L²(μ)`, `ALχ = P_μ φ` (`μ`-a.e.),
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>`|χ(x)| ≤ C‖φ‖(1 + log(2+|x|))`, `∑_{j=1}^{k+1} ‖D^jχ‖_∞ ≤ C‖φ‖` (for `k = 1`:
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>`‖∇χ‖_∞ + ‖D²χ‖_∞ ≤ C‖φ‖`). -/
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>def IsThermalCorrector (d : ℕ) (s a β γ : ℝ) (k : ℕ) (φ : Euc d → ℝ) (normφ C : ℝ)
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    (χ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  MemL2Zero (thermalMeasure d s a β) χ ∧ ContDiff ℝ (k + 1) χ ∧
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    MemLp (thermalGen d s a β χ) 2 (thermalMeasure d s a β) ∧
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    (∀ᵐ x ∂(thermalMeasure d s a β),
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      susceptibilityOp (rieszKernel d s) (thermalMeasure d s a β) γ (thermalGen d s a β χ) x =
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        projMean (thermalMeasure d s a β) φ x) ∧
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    (∀ x, |χ x| ≤ C * normφ * (1 + Real.log (2 + ‖x‖))) ∧
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    ∀ x : Fin (k + 1) → Euc d, ∑ j : Fin (k + 1), ‖iteratedFDeriv ℝ ((j : ℕ) + 1) χ (x j)‖ ≤ C * normφ
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-- Lemma S4.4 `W:lem:r2-thermal-corrector` (S lines 2405-2420), `C_b^J` version: for
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>`0 ≤ s &lt; d`, `k ≥ 1` and an integer `J &gt; k + 1 + d/2` (`k = 1` is the first assertion,
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>`J &gt; d/2 + 2`), for every `φ ∈ C_b^J(ℝ^d)` there is a centered `χ ∈ L²(μ)` with `ALχ = P_μφ`,
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>`|χ(x)| ≤ C‖φ‖_{C_b^J}(1+log(2+|x|))` and `∑_{j=1}^{k+1}‖D^jχ‖_∞ ≤ C_k‖φ‖_{C_b^J}`.  The
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>constants are independent of the support of `φ` and uniform for `a, β, γ` in compact subsets
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>of `(0,∞)` (quantified before them). -/
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>theorem thermal_corrector (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ) (hk : 1 ≤ k)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    (J : ℕ) (hJ : (k : ℝ) + 1 + (d : ℝ) / 2 &lt; J) (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) :
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ ∈ Set.Icc γm γp,
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      ∀ φ : Euc d → ℝ, MemCb J φ →
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>        ∃ χ : Euc d → ℝ, IsThermalCorrector d s a β γ k φ (cbNorm J φ) C χ := by
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  sorry
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>/-- `φ ∈ H^J(dx)` (smooth representative): `C^J` with all derivatives through order `J`
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>square integrable; the norm is `sobolevWNorm J 2`. -/
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>def MemHSmooth (J : ℕ) (φ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  ContDiff ℝ J φ ∧ ∀ j ≤ J, MemLp (fun x =&gt; iteratedFDeriv ℝ j φ x) 2 (volume : Measure (Euc d))
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>/-- Lemma S4.4, last sentence (S lines 2418-2419): the same assertion for `φ ∈ H^J(dx)` with
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>`‖φ‖_{H^J}` in place of `‖φ‖_{C_b^J}`. -/
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>theorem thermal_corrector_sobolev (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ) (hk : 1 ≤ k)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    (J : ℕ) (hJ : (k : ℝ) + 1 + (d : ℝ) / 2 &lt; J) (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) :
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ ∈ Set.Icc γm γp,
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>      ∀ φ : Euc d → ℝ, MemHSmooth J φ →
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>        ∃ χ : Euc d → ℝ, IsThermalCorrector d s a β γ k φ (sobolevWNorm J 2 φ) C χ := by
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  sorry
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>end Corrector
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>/-! ### `ℓ²`-valued feature vectors and Gaussian laws -/
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>/-- `ℓ² = ℓ²(ℕ)`, the target of the feature coordinates (S line 2524). -/
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>def SeqL2 : Type := lp (fun _ : ℕ =&gt; ℝ) 2
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>namespace SeqL2
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>instance : NormedAddCommGroup SeqL2 := inferInstanceAs (NormedAddCommGroup (lp (fun _ : ℕ =&gt; ℝ) 2))
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>instance : InnerProductSpace ℝ SeqL2 := inferInstanceAs (InnerProductSpace ℝ (lp (fun _ : ℕ =&gt; ℝ) 2))
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>instance : CompleteSpace SeqL2 := inferInstanceAs (CompleteSpace (lp (fun _ : ℕ =&gt; ℝ) 2))
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>instance : MeasurableSpace SeqL2 := borel _
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>instance : BorelSpace SeqL2 := ⟨rfl⟩
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>/-- The `i`-th coordinate. -/
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>def coord (z : SeqL2) (i : ℕ) : ℝ := (show lp (fun _ : ℕ =&gt; ℝ) 2 from z) i
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>open Classical in
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>/-- The element of `ℓ²` with coordinates `c` (`0` if `c ∉ ℓ²`). -/
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>def ofSeq (c : ℕ → ℝ) : SeqL2 :=
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>  if h : Memℓp c 2 then (⟨c, h⟩ : lp (fun _ : ℕ =&gt; ℝ) 2) else 0
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>end SeqL2
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>/-- The centered feature vector `(√N (μ_N - ν)(φ_j))_{j ≥ 1} ∈ ℓ²` of a configuration
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>(S line 2524 with `ν = m_N`; S line 2732 with `ν = μ₀`). -/
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>def featureVec (φ : ℕ → Euc d → ℝ) (ν : Measure (Euc d)) (X : EucConfig d N) : SeqL2 :=
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  SeqL2.ofSeq fun j =&gt; Real.sqrt N * (pair (empirical X) (φ j) - pair ν (φ j))
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>/-- A centered Gaussian law on `ℓ²` with coordinate covariances `E[Z_i Z_j] = C i j`
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>(S lines 2525-2531). -/
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>def IsCenteredGaussianSeq (γ : Measure SeqL2) (C : ℕ → ℕ → ℝ) : Prop :=
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  IsCenteredGaussian γ ∧ ∀ i j, Integrable (fun z =&gt; SeqL2.coord z i * SeqL2.coord z j) γ ∧
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    ∫ z, SeqL2.coord z i * SeqL2.coord z j ∂γ = C i j
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>/-- A centered Gaussian law on `B_m` whose covariance on the Hermite functions is
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>`Cov(F(h_α), F(h_β)) = C(h_α, h_β)` (the field version, S lines 2544-2546). -/
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>def IsCenteredGaussianOsc (m : ℝ) (γ : Measure (OscDual d m))
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    (C : (Euc d → ℝ) → (Euc d → ℝ) → ℝ) : Prop :=
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  IsCenteredGaussian γ ∧ ∀ α β : MultiIndex d,
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    Integrable (fun F =&gt; OscDual.hermiteCoeff F α * OscDual.hermiteCoeff F β) γ ∧
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    ∫ F, OscDual.hermiteCoeff F α * OscDual.hermiteCoeff F β ∂γ = C (hermiteFunD α) (hermiteFunD β)
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>/-- The summability hypothesis `W:eq:r2-feature-summability` `S = ∑_j ‖φ_j‖_{C_b^J} &lt; ∞`
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>(S lines 2519-2523): each `φ_j ∈ C_b^J` and the norms are summable. -/
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>def IsSummableFeatureFamily (J : ℕ) (φ : ℕ → Euc d → ℝ) : Prop :=
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  (∀ j, MemCb J (φ j)) ∧ Summable fun j =&gt; cbNorm J (φ j)
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>/-- `S = ∑_j ‖φ_j‖_{C_b^J}`. -/
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>def featureSum (J : ℕ) (φ : ℕ → Euc d → ℝ) : ℝ := ∑&#x27; j, cbNorm J (φ j)
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>/-- The conclusions of Theorem S4.5 for a law `P` on configurations, a centering `ν`, a
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>Gaussian `γ` and the constant `C` (S lines 2524-2543): the feature vector is an `ℓ²`-valued
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>random variable; `d_{C_b²(ℓ²)}(X_N, Z) ≤ C(S+S²)√δ_N` (`W:eq:r2-static-feature-rate`); and
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>for every `F ∈ C²(ℓ²)` with bounded first and second derivatives,
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>`|E F(X_N) - E F(Z)| ≤ C√δ_N (S‖DF‖_∞ + S²‖D²F‖_∞)` (`W:eq:r2-static-derivative-only`). -/
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>def StaticFieldConclusion (d : ℕ) (s : ℝ) (N : ℕ) (P : Measure (EucConfig d N))
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    (ν : Measure (Euc d)) (J : ℕ) (φ : ℕ → Euc d → ℝ) (γ : Measure SeqL2) (C : ℝ) : Prop :=
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  (∀ X : EucConfig d N,
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    Memℓp (fun j =&gt; Real.sqrt N * (pair (empirical X) (φ j) - pair ν (φ j))) 2) ∧
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  Measurable (featureVec φ ν : EucConfig d N → SeqL2) ∧
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  smoothDist 2 (law P (featureVec φ ν)) γ ≤
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>    C * (featureSum J φ + featureSum J φ ^ 2) * Real.sqrt (deltaN d s N) ∧
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  ∀ F : SeqL2 → ℝ, ContDiff ℝ 2 F → ∀ D₁ D₂ : ℝ, (∀ z, ‖fderiv ℝ F z‖ ≤ D₁) →
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    (∀ z, ‖iteratedFDeriv ℝ 2 F z‖ ≤ D₂) →
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    Integrable (fun X =&gt; F (featureVec φ ν X)) P ∧ Integrable F γ ∧
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    |∫ X, F (featureVec φ ν X) ∂P - ∫ z, F z ∂γ| ≤
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>      C * Real.sqrt (deltaN d s N) * (featureSum J φ * D₁ + featureSum J φ ^ 2 * D₂)
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>/-! ### S4.5 `W:thm:r2-quadratic-static-field` (S lines 2517-2550) -/
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>section StaticField
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>variable {s : ℝ}
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>/-- Existence of the centered Gaussian `Z` of S4.5 (S lines 2525-2531): for a summable
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>feature family and a bounded reference density the susceptibility covariances are those of a
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>centered Gaussian law on `ℓ²`.  At `s = 0` the second logarithmic moment `HasLogMoment2` is assumed
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>(supplement repair P1: the first log moment does not make `K_μ` an operator on `L²_0(μ)`). -/
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>theorem exists_gaussian_feature (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (ρ : Euc d → ℝ) (hρ : IsProbDensity ρ) (M : ℝ)
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>    (hM : ∀ x, ρ x ≤ M) (γ₀ : ℝ) (hγ₀ : 0 &lt; γ₀) (φ : ℕ → Euc d → ℝ)
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    (hφ : IsSummableFeatureFamily J φ) (L : ℝ) (hL : s = 0 → HasLogMoment2 (withDensityReal ρ) L) :
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    (∀ ψ, MemCb J ψ → ∃ h, IsResponse (rieszKernel d s) (withDensityReal ρ) γ₀ ψ h) ∧
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    ∃ γ : Measure SeqL2, IsCenteredGaussianSeq γ
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>      fun i j =&gt; susceptibilityCov (rieszKernel d s) (withDensityReal ρ) γ₀ (φ i) (φ j) := by
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  sorry
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>/-- Theorem S4.5 `W:thm:r2-quadratic-static-field` (S lines 2517-2546), feature form: for fixed
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>`a, β &gt; 0`, `0 ≤ s &lt; d`, `P_N` the canonical Gibbs law `W:eq:r2-quadratic-Gibbs`, an integer
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>`J &gt; d/2 + 2` and `(φ_j) ⊂ C_b^J` with `S = ∑_j ‖φ_j‖_{C_b^J} &lt; ∞`:
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>`X_N = (√N(μ_N - m_N)(φ_j))_j` is an `ℓ²`-valued random variable and, for `Z` the centered
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>Gaussian with covariance `⟨P_μφ_i, (I+βK_μ)⁻¹P_μφ_j⟩_{L²(μ)}`,
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>`d_{C_b²(ℓ²)}(X_N, Z) ≤ C(S+S²)√δ_N` and `|EF(X_N) - EF(Z)| ≤ C√δ_N(S‖DF‖_∞ + S²‖D²F‖_∞)`
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>for `F ∈ C²(ℓ²)` with bounded first and second derivatives.  The constant depends on
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>`d, s, a, β, J` only (quantified before the family and `N`).  &quot;Nondecaying tests and initial
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>semigroup-orbit coordinates&quot; (S lines 2547-2549) are included: no decay of `φ_j` is assumed. -/
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>theorem quadratic_static_field (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (a β : ℝ) (ha : 0 &lt; a)
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>    (hβ : 0 &lt; β) (J : ℕ) (hJ : (d : ℝ) / 2 + 2 &lt; J) :
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>    ∃ C : ℝ, ∀ φ : ℕ → Euc d → ℝ, IsSummableFeatureFamily J φ → ∀ N, 2 ≤ N →
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>      ∀ γ : Measure SeqL2, IsCenteredGaussianSeq γ
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>        (fun i j =&gt; susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) β (φ i) (φ j)) →
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>      StaticFieldConclusion d s N (canonicalGibbs (rieszKernel d s) (confinement a) N β)
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>        (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) N β)) J φ γ C := by
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  sorry
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>/-- Theorem S4.5, oscillator-field clause (S lines 2544-2546): with the Hermite test basis of
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>`W:eq:euc-oscillator-space` and `m &gt; J + 2d`, the exactly centered field
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>`ζ_N = √N(μ_N - m_N)` satisfies the Gaussian field theorem in `B_m`:
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>`d_{C_b²(B_m)}(ζ_N, Z) ≤ C√δ_N` for `Z` the centered Gaussian on `B_m` with the
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>susceptibility covariance on Hermite functions, throughout `0 ≤ s &lt; d`. -/
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>theorem quadratic_static_field_osc (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (J : ℕ) (hJ : (d : ℝ) / 2 + 2 &lt; J) (m : ℝ)
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    (hm : (J : ℝ) + 2 * d &lt; m) :
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    ∃ C : ℝ, ∀ N, 2 ≤ N → ∀ γ : Measure (OscDual d m),
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>      IsCenteredGaussianOsc m γ (susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) β) →
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>      Measurable (zetaB m (canonicalGibbs (rieszKernel d s) (confinement a) N β) :
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>        EucConfig d N → OscDual d m) ∧
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      smoothDist 2 (law (canonicalGibbs (rieszKernel d s) (confinement a) N β)
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>        (zetaB m (canonicalGibbs (rieszKernel d s) (confinement a) N β))) γ ≤
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>        C * Real.sqrt (deltaN d s N) := by
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  sorry
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>/-- Corollary S4.6 `W:cor:r2-quadratic-preparation-static` (S lines 2649-2669): with the
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>quadratic thermal reference `μ = μ_{a,β}` and any other fixed `γ₀ &gt; 0`, all conclusions of
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>S4.5 hold for `Q_{N,γ₀} = 𝒦⁻¹ e^{-γ₀ N F_N^g(·,μ)} μ^{⊗N}`, `m_{N,γ₀} = Q_{N,γ₀}^{(1)}`, with
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>covariance `⟨P_μφ_i, (I+γ₀K_μ)⁻¹P_μφ_j⟩_{L²(μ)}` and the same `√δ_N` rate, with constants
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>uniform for `a, β, γ₀` in compact subsets of `(0,∞)`. -/
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>theorem quadratic_preparation_static (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am) (hβm : 0 &lt; βm)
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    (hγm : 0 &lt; γm) :
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp,
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      ∀ φ : ℕ → Euc d → ℝ, IsSummableFeatureFamily J φ → ∀ N, 2 ≤ N →
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      ∀ γ : Measure SeqL2, IsCenteredGaussianSeq γ
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>        (fun i j =&gt; susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) γ₀ (φ i) (φ j)) →
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>      StaticFieldConclusion d s N (modulatedGibbs (rieszKernel d s) N γ₀ (thermalMeasure d s a β))
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>        (firstMarginal (modulatedGibbs (rieszKernel d s) N γ₀ (thermalMeasure d s a β))) J φ γ C := by
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  sorry
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>/-- Corollary S4.6, oscillator-field clause (&quot;all conclusions&quot;, S line 2658, with the indices
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>of S4.5). -/
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>theorem quadratic_preparation_static_osc (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (m : ℝ) (hm : (J : ℝ) + 2 * d &lt; m) (am ap βm βp γm γp : ℝ)
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    (ham : 0 &lt; am) (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) :
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp, ∀ N, 2 ≤ N →
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>      ∀ γ : Measure (OscDual d m),
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>      IsCenteredGaussianOsc m γ (susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) γ₀) →
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      Measurable (zetaB m (modulatedGibbs (rieszKernel d s) N γ₀ (thermalMeasure d s a β)) :
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>        EucConfig d N → OscDual d m) ∧
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>      smoothDist 2 (law (modulatedGibbs (rieszKernel d s) N γ₀ (thermalMeasure d s a β))
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>        (zetaB m (modulatedGibbs (rieszKernel d s) N γ₀ (thermalMeasure d s a β)))) γ ≤
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>        C * Real.sqrt (deltaN d s N) := by
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  sorry
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>end StaticField
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>/-! ### S4.7 `W:cor:r2-tilt-static` (S lines 2705-2745) -/
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>section Tilt
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>variable {s : ℝ}
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>/-- The tilted reference `μ₀ = (1 + εψ) μ_*` (S line 2711). -/
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>def tiltedMeasure (d : ℕ) (s a β ε : ℝ) (ψ : Euc d → ℝ) : Measure (Euc d) :=
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  withDensityReal (perturbedDensity (thermalDensity d s a β) ε ψ)
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>/-- The perturbation data of S4.7: `ψ ∈ C_c^∞` real with `μ_*(ψ) = 0`, and
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>`|ε| ‖ψ‖_∞ ≤ 1/2` (S lines 2708-2709). -/
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>structure IsTiltData (d : ℕ) (s a β : ℝ) (ψ : Euc d → ℝ) (ε : ℝ) : Prop where
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  smooth : ContDiff ℝ ∞ ψ
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  compactSupport : HasCompactSupport ψ
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  meanZero : ∫ x, ψ x * thermalDensity d s a β x = 0
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  small : ∀ x, |ε| * |ψ x| ≤ 1 / 2
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>/-- Corollary S4.7 `W:cor:r2-tilt-static`, exactly centered part (S lines 2705-2729): for the
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>preparation `Q⁰_{N,γ₀} = 𝒦⁻¹ e^{-γ₀ N F_N^g(·,μ₀)} μ₀^{⊗N}` about `μ₀ = (1+εψ)μ_*`, all
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>conclusions of S4.5 hold for the exactly centered coordinates `√N(μ_N - m⁰_{N,γ₀})(φ_j)` with
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>covariance `C⁰_{ij} = ⟨P_{μ₀}φ_i, (I+γ₀K_{μ₀})⁻¹P_{μ₀}φ_j⟩_{L²(μ₀)}`
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>(`W:eq:r2-tilt-static-covariance`).  Constants are uniform for `a, β, γ₀` in compact positive intervals.
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>Repair ED15 (approved): the constant is uniform over the whole class of tilts with `‖εψ‖_{C_b^{100d+1001}} ≤ ε_*`
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>(the TeX proof uses only finitely many `C_b` seminorms of `εψ`, with `|εψ| ≤ 1/2`): `C` is chosen after `ε_*` and BEFORE `(ε, ψ)`, as S2.1(ii) needs. -/
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>theorem tilt_static (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am) (hβm : 0 &lt; βm)
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    (hγm : 0 &lt; γm) (εstar : ℝ) :
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp, ∀ ε : ℝ,
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      ∀ ψ : Euc d → ℝ, IsTiltData d s a β ψ ε →
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>      cbNorm (100 * d + 1001) (fun x =&gt; ε * ψ x) ≤ εstar →
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>      ∀ φ : ℕ → Euc d → ℝ, IsSummableFeatureFamily J φ → ∀ N, 2 ≤ N →
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>      ∀ γ : Measure SeqL2, IsCenteredGaussianSeq γ
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>        (fun i j =&gt; susceptibilityCov (rieszKernel d s) (tiltedMeasure d s a β ε ψ) γ₀ (φ i) (φ j)) →
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>      StaticFieldConclusion d s N (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ))
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>        (firstMarginal (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ)))
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>        J φ γ C := by
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  sorry
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>/-- Corollary S4.7, oscillator-field clause (S lines 2728-2729): the same indices `J &gt; d/2+2`
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>and `m &gt; J + 2d` as before. -/
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>theorem tilt_static_osc (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (m : ℝ) (hm : (J : ℝ) + 2 * d &lt; m) (am ap βm βp γm γp : ℝ)
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>    (ham : 0 &lt; am) (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) (ψ : Euc d → ℝ) :
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp, ∀ ε : ℝ,
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>      IsTiltData d s a β ψ ε → ∀ N, 2 ≤ N → ∀ γ : Measure (OscDual d m),
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>      IsCenteredGaussianOsc m γ
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>        (susceptibilityCov (rieszKernel d s) (tiltedMeasure d s a β ε ψ) γ₀) →
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>      Measurable (zetaB m (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ)) :
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>        EucConfig d N → OscDual d m) ∧
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>      smoothDist 2 (law (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ))
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>        (zetaB m (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ)))) γ ≤
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>        C * Real.sqrt (deltaN d s N) := by
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>  sorry
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>/-- Corollary S4.7, mean-field-centered part `W:eq:r2-tilt-initial-bias` (S lines 2731-2741):
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>for `Y_N = (√N(μ_N - μ₀)(φ_j))_j` and `F ∈ C²(ℓ²)` with bounded first and second derivatives,
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>`|EF(Y_N) - EF(Z⁰)| ≤ C[S‖DF‖_∞(√Nδ_N + √δ_N) + S²‖D²F‖_∞√δ_N]`.  (That this is a leading
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>Gaussian comparison for `0 ≤ s &lt; 2d/3` is `sqrt_mul_deltaN_tendsto_zero_iff`.)
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>Repair ED15 (approved): `C` is uniform over the class `‖εψ‖_{C_b^{100d+1001}} ≤ ε_*` (chosen after `ε_*`, before `(ε, ψ)`), as in `tilt_static`. -/
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>theorem tilt_static_mean_field (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (J : ℕ)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    (hJ : (d : ℝ) / 2 + 2 &lt; J) (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am) (hβm : 0 &lt; βm)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    (hγm : 0 &lt; γm) (εstar : ℝ) :
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>    ∃ C : ℝ, ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp, ∀ ε : ℝ,
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>      ∀ ψ : Euc d → ℝ, IsTiltData d s a β ψ ε →
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>      cbNorm (100 * d + 1001) (fun x =&gt; ε * ψ x) ≤ εstar →
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>      ∀ φ : ℕ → Euc d → ℝ, IsSummableFeatureFamily J φ → ∀ N, 2 ≤ N →
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>      ∀ γ : Measure SeqL2, IsCenteredGaussianSeq γ
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>        (fun i j =&gt; susceptibilityCov (rieszKernel d s) (tiltedMeasure d s a β ε ψ) γ₀ (φ i) (φ j)) →
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      ∀ F : SeqL2 → ℝ, ContDiff ℝ 2 F → ∀ D₁ D₂ : ℝ, (∀ z, ‖fderiv ℝ F z‖ ≤ D₁) →
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>        (∀ z, ‖iteratedFDeriv ℝ 2 F z‖ ≤ D₂) →
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>        Integrable (fun X =&gt; F (featureVec φ (tiltedMeasure d s a β ε ψ) X))
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>          (modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ)) ∧ Integrable F γ ∧
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>        |∫ X, F (featureVec φ (tiltedMeasure d s a β ε ψ) X)
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>            ∂(modulatedGibbs (rieszKernel d s) N γ₀ (tiltedMeasure d s a β ε ψ)) - ∫ z, F z ∂γ| ≤
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>          C * (featureSum J φ * D₁ * (Real.sqrt N * deltaN d s N + Real.sqrt (deltaN d s N)) +
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>            featureSum J φ ^ 2 * D₂ * Real.sqrt (deltaN d s N)) := by
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>  sorry
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>end Tilt
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>/-! ### S4.8 `W:lem:r2-derivative-corrector` (S lines 2842-2861) -/
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>section DerivativeCorrector
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>variable {s : ℝ}
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>/-- The references of S4.8 (S lines 2843-2844): the quadratic thermal equilibrium density, or
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>one of the compact relative perturbations `(1+εψ)ρ_*` of S4.7 (for a fixed `ψ`). -/
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>inductive IsStaticReference (d : ℕ) (s a β : ℝ) (ψ : Euc d → ℝ) : (Euc d → ℝ) → Prop
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>  | thermal : IsStaticReference d s a β ψ (thermalDensity d s a β)
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>  | perturbed (ε : ℝ) (hε : IsTiltData d s a β ψ ε) :
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      IsStaticReference d s a β ψ (perturbedDensity (thermalDensity d s a β) ε ψ)
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>/-- `L_μ = -Δ - ∇log ρ · ∇` (S line 2850). -/
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>def weightedGen (ρ : Euc d → ℝ) (χ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  -Laplacian.laplacian χ x - inner ℝ (gradient (fun y =&gt; Real.log (ρ y)) x) (gradient χ x)
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>/-- Lemma S4.8 `W:lem:r2-derivative-corrector` (S lines 2842-2861): for `μ = ρ dx` a
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>quadratic thermal equilibrium measure or one of its compact relative perturbations, `γ₀ &gt; 0`
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>and an integer `k ≥ 0`, there is an integer `J &gt; k + 1 + d/2` such that for every
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>`φ ∈ C_b^J`, with `a_φ = (I+γ₀K_μ)⁻¹P_μφ` and `v_φ = ∇L_μ⁻¹a_φ` (`L_μ⁻¹a_φ` a centered
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>solution of `L_μχ = a_φ`):
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>`‖v_φ‖_{C_b^k} ≤ C(‖P_μφ‖_{L²(μ)} + ∑_{j=1}^J ‖D^jφ‖_∞)` (`W:eq:r2-derivative-corrector`),
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>and the same bound holds for every positive-order derivative of `a_φ` through order `k+1`
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>(a `C^{k+1}` version of `a_φ`).  Constants have the uniformity of the preceding static
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>theorems (`a, β, γ₀` in compact positive intervals, `ε` in its interval, `ψ` fixed). -/
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>theorem derivative_corrector (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ)
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>    (am ap βm βp γm γp : ℝ) (ham : 0 &lt; am) (hβm : 0 &lt; βm) (hγm : 0 &lt; γm) (ψ : Euc d → ℝ) :
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>    ∃ J : ℕ, (k : ℝ) + 1 + (d : ℝ) / 2 &lt; J ∧ ∃ C : ℝ,
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>      ∀ a ∈ Set.Icc am ap, ∀ β ∈ Set.Icc βm βp, ∀ γ₀ ∈ Set.Icc γm γp,
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>      ∀ ρ : Euc d → ℝ, IsStaticReference d s a β ψ ρ → ∀ φ : Euc d → ℝ, MemCb J φ →
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>        (∃ aφ : Euc d → ℝ,
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>          IsResponse (rieszKernel d s) (withDensityReal ρ) γ₀ φ aφ ∧
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>          ContDiff ℝ (k + 1) aφ ∧
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>          (∀ x : Fin (k + 1) → Euc d, ∑ j : Fin (k + 1), ‖iteratedFDeriv ℝ ((j : ℕ) + 1) aφ (x j)‖ ≤
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>            C * (l2Norm (withDensityReal ρ) (projMean (withDensityReal ρ) φ) +
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>              ∑ j ∈ Finset.range J, ⨆ y, ‖iteratedFDeriv ℝ (j + 1) φ y‖)) ∧
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>          ∃ χ : Euc d → ℝ, ContDiff ℝ (k + 2) χ ∧ MemL2Zero (withDensityReal ρ) χ ∧
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>            (∀ x, weightedGen ρ χ x = aφ x) ∧
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>            ∀ x : Fin (k + 1) → Euc d, ∑ j : Fin (k + 1), ‖iteratedFDeriv ℝ (j : ℕ) (gradient χ) (x j)‖ ≤
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>              C * (l2Norm (withDensityReal ρ) (projMean (withDensityReal ρ) φ) +
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>                ∑ j ∈ Finset.range J, ⨆ y, ‖iteratedFDeriv ℝ (j + 1) φ y‖)) := by
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>  sorry
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>end DerivativeCorrector
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>/-! ### S4.9 `W:rem:r2-reflection-gap` (S lines 2918-2942): the quantitative claim -/
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>/-- Remark S4.9 `W:rem:r2-reflection-gap` (S lines 2918-2942), the one-body Poincaré inequality
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>`∫|∇f|² dμ ≥ c Var_μ(f)` on the closed form domain, for the logarithmic thermal measure
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>(`s = 0`) and its compact relative perturbations; stated for `C¹` functions with bounded
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>gradient in `L²(μ)`.  (The semigroup decay bound and the spectral-support statement of the
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>remark are not stated: no Lean definition of `e^{-tL_μ}` exists.) -/
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>theorem reflection_gap_poincare (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β)
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    (ψ : Euc d → ℝ) (ρ : Euc d → ℝ) (hρ : IsStaticReference d 0 a β ψ ρ) :
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>    ∃ c &gt; 0, ∀ f : Euc d → ℝ, ContDiff ℝ 1 f → (∃ Cf, ∀ x, ‖gradient f x‖ ≤ Cf) →
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      MemLp f 2 (withDensityReal ρ) →
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      c * ProbabilityTheory.variance f (withDensityReal ρ) ≤
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>        ∫ x, ‖gradient f x‖ ^ 2 ∂(withDensityReal ρ) := by
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>  sorry
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>end HRS.Whole
+</span></code></pre></main></body></html>

@@ -1,0 +1,343 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.QuadraticLimit.Assembly · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.QuadraticLimit.Assembly</code></h1><p><a href="../../lean/HRS/Equilibrium/QuadraticLimit/Assembly.lean">Open the unaltered Lean file</a> · 342 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Equilibrium.QuadraticLimit.Chaos
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Equilibrium.QuadraticLimit.Features
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Equilibrium.QuadraticLimit.Spectral
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Equilibrium.QuadraticLimit.GibbsAuxO
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># Lemma 7.5 `quadratic_limit`: assembly (packet Q08, sub-packet `Assembly`)
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`HRS.quadratic_limit_proof` restates `HRS.quadratic_limit` verbatim and proves it from
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `Spectral`: `q08_Kmat_spec`, `q08_Hmat_spec`, `q08_coef_summable`, `q08_Cmat_spec`, `q08_bounded_family`,
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `Chaos`: `q08_chaos_exists`, `q08_chaos_l2_bound`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* `Features`: `q08_gibbs_isProb`, `q08_measurable_energy`, `q08_integrable_energy`, `q08_weight_Lq`,
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `q08_energy_L2`, `q08_clt_quadratic`, `q08_gauss_tilt`,
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* the intermediate layer `q08_gibbs_approx` below (still `sorry`: the finite-rank approximation theorem).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>Everything else (existence of the probability space, `L²` limits of the finite chaos, bounded Lipschitz to
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>bounded continuous test functions via Portmanteau, the shift `N ↦ N+1`) is proved here.
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>-/
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>noncomputable section
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>namespace HRS.Q08
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>/-- `L²`-convergence to `0` on a probability space implies `L¹`-convergence to `0`. -/
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem q08_tendsto_lintegral_enorm {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    [IsProbabilityMeasure P] (f : ℕ → Ω → ℝ) (hf : ∀ L, Measurable (f L))
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (h : Tendsto (fun L =&gt; ∫⁻ ω, ‖f L ω‖ₑ ^ 2 ∂P) atTop (𝓝 0)) :
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    Tendsto (fun L =&gt; ∫⁻ ω, ‖f L ω‖ₑ ∂P) atTop (𝓝 0) := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have h2 : Tendsto (fun L =&gt; (∫⁻ ω, ‖f L ω‖ₑ ^ 2 ∂P) ^ (1 / (2 : ℝ))) atTop (𝓝 0) := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    have := ENNReal.continuous_rpow_const (y := 1 / (2 : ℝ)) |&gt;.tendsto 0
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    have h0 : (0 : ℝ≥0∞) ^ (1 / (2 : ℝ)) = 0 := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      rw [ENNReal.zero_rpow_of_pos (by norm_num)]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    rw [h0] at this
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    exact this.comp h
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds h2 (fun L =&gt; bot_le) (fun L =&gt; ?_)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have := eLpNorm_le_eLpNorm_of_exponent_le (μ := P) (p := 1) (q := 2) (f := f L) (by norm_num)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  rw [eLpNorm_one_eq_lintegral_enorm] at this
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  · refine this.trans (le_of_eq ?_)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    simp
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    all_goals exact (hf L).aestronglyMeasurable
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  · exact (hf L).aestronglyMeasurable
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>/-- Passing from the finite-dimensional Gaussian chaos functionals to the limit chaos (bounded Lipschitz
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>test functions). -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>theorem q08_finiteChaos_tendsto {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    {p : ℕ} (C H : ℕ → ℕ → ℝ) (a : Fin p → ℕ → ℝ)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (G : ℕ → Ω → ℝ) (Q : Ω → ℝ) (Lin : Fin p → Ω → ℝ)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    (hGm : ∀ i, Measurable (G i)) (hQm : Measurable Q) (hLm : ∀ b, Measurable (Lin b))
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (hlaw : ∀ n : ℕ, law P (fun ω =&gt; (WithLp.toLp 2 fun i : Fin n =&gt; G i ω : EuclideanSpace ℝ (Fin n))) =
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>        multivariateGaussian 0 (Matrix.of fun i j : Fin n =&gt; C i j))
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (hLin : ∀ b, Tendsto (fun L =&gt; ∫⁻ ω, ‖Lin b ω - ∑ i ∈ Finset.range L, a b i * G i ω‖ₑ ^ 2 ∂P)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>        atTop (𝓝 0))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (hQ : Tendsto (fun L =&gt; ∫⁻ ω, ‖Q ω - (1 / 2) * ∑ i ∈ Finset.range L, ∑ j ∈ Finset.range L,
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>          H i j * (G i ω * G j ω - C i j)‖ₑ ^ 2 ∂P) atTop (𝓝 0))
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (F : ℝ × (Fin p → ℝ) → ℝ) (M : ℝ) (hM : ∀ z, |F z| ≤ M) (K : ℝ≥0) (hF : LipschitzWith K F) :
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    Tendsto (fun L : ℕ =&gt; ∫ g : EuclideanSpace ℝ (Fin L),
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>        F ((1 / 2) * ∑ i : Fin L, ∑ j : Fin L, H i j * (g i * g j - C i j),
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>          fun b =&gt; ∑ i : Fin L, a b i * g i)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        ∂(multivariateGaussian 0 (Matrix.of fun i j : Fin L =&gt; C i j))) atTop
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      (𝓝 (∫ ω, F (Q ω, fun b =&gt; Lin b ω) ∂P)) := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  -- the finite-L functionals on `Ω`
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  set TQ : ℕ → Ω → ℝ := fun L ω =&gt; (1 / 2) * ∑ i ∈ Finset.range L, ∑ j ∈ Finset.range L,
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    H i j * (G i ω * G j ω - C i j) with hTQ
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  set TB : ℕ → Fin p → Ω → ℝ := fun L b ω =&gt; ∑ i ∈ Finset.range L, a b i * G i ω with hTB
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hTQm : ∀ L, Measurable (TQ L) := fun L =&gt; by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    simp only [hTQ]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    refine Measurable.const_mul (Finset.measurable_sum _ fun i _ =&gt; Finset.measurable_sum _ fun j _ =&gt; ?_) _
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    exact measurable_const.mul (((hGm i).mul (hGm j)).sub measurable_const)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hTBm : ∀ L b, Measurable (TB L b) := fun L b =&gt; by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    simp only [hTB]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    exact Finset.measurable_sum _ fun i _ =&gt; measurable_const.mul (hGm i)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hFc : Continuous F := hF.continuous
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hFm : Measurable F := hFc.measurable
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hTm : ∀ L, Measurable (fun ω =&gt; (TQ L ω, fun b =&gt; TB L b ω)) := fun L =&gt;
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (hTQm L).prodMk (measurable_pi_iff.2 fun b =&gt; hTBm L b)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hT0 : Measurable (fun ω =&gt; (Q ω, fun b =&gt; Lin b ω)) :=
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    hQm.prodMk (measurable_pi_iff.2 fun b =&gt; hLm b)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  -- Step 1: Gaussian integrals as integrals over `Ω`
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have step1 : ∀ L : ℕ, ∫ g : EuclideanSpace ℝ (Fin L),
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        F ((1 / 2) * ∑ i : Fin L, ∑ j : Fin L, H i j * (g i * g j - C i j),
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>          fun b =&gt; ∑ i : Fin L, a b i * g i)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>        ∂(multivariateGaussian 0 (Matrix.of fun i j : Fin L =&gt; C i j)) =
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      ∫ ω, F (TQ L ω, fun b =&gt; TB L b ω) ∂P := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    intro L
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    rw [← hlaw L]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have hGv : Measurable (fun ω =&gt; (WithLp.toLp 2 fun i : Fin L =&gt; G i ω : EuclideanSpace ℝ (Fin L))) := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      refine (WithLp.measurable_toLp 2 (Fin L → ℝ)).comp (measurable_pi_iff.2 fun i =&gt; hGm i)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    unfold law
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    rw [integral_map hGv.aemeasurable]
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    · refine integral_congr_ae (Eventually.of_forall fun ω =&gt; ?_)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      simp only [hTQ, hTB, Finset.sum_range]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    · refine (hFm.comp ?_).aestronglyMeasurable
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      refine Measurable.prodMk ?_ (measurable_pi_iff.2 fun b =&gt; ?_)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      · refine Measurable.const_mul (Finset.measurable_sum _ fun i _ =&gt; Finset.measurable_sum _ fun j _ =&gt; ?_) _
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        exact measurable_const.mul (((measurable_pi_apply i |&gt;.comp (PiLp.continuous_ofLp 2 _ |&gt;.measurable)).mul
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          (measurable_pi_apply j |&gt;.comp (PiLp.continuous_ofLp 2 _ |&gt;.measurable))).sub measurable_const)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      · exact Finset.measurable_sum _ fun i _ =&gt; measurable_const.mul
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>          (measurable_pi_apply i |&gt;.comp (PiLp.continuous_ofLp 2 _ |&gt;.measurable))
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  simp_rw [step1]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hint : ∀ f : Ω → ℝ × (Fin p → ℝ), Measurable f → Integrable (fun ω =&gt; F (f ω)) P := fun f hf =&gt;
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    Integrable.of_bound (hFm.comp hf).aestronglyMeasurable M
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      (Eventually.of_forall fun ω =&gt; by simpa [Real.norm_eq_abs] using hM _)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  -- pointwise Lipschitz bound
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hpt : ∀ L ω, ‖F (TQ L ω, fun b =&gt; TB L b ω) - F (Q ω, fun b =&gt; Lin b ω)‖ₑ ≤
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      ENNReal.ofReal K * (‖Q ω - TQ L ω‖ₑ + ∑ b, ‖Lin b ω - TB L b ω‖ₑ) := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    intro L ω
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have h1 : dist (F (TQ L ω, fun b =&gt; TB L b ω)) (F (Q ω, fun b =&gt; Lin b ω)) ≤
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>        K * dist (TQ L ω, fun b =&gt; TB L b ω) (Q ω, fun b =&gt; Lin b ω) := hF.dist_le_mul _ _
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    have h2 : dist (TQ L ω, fun b =&gt; TB L b ω) (Q ω, fun b =&gt; Lin b ω) ≤
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        |Q ω - TQ L ω| + ∑ b, |Lin b ω - TB L b ω| := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      rw [Prod.dist_eq]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      refine max_le ?_ ?_
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      · rw [Real.dist_eq, abs_sub_comm]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        have : 0 ≤ ∑ b, |Lin b ω - TB L b ω| := Finset.sum_nonneg fun _ _ =&gt; abs_nonneg _
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        linarith
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      · rw [dist_pi_le_iff (by positivity)]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        intro b
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        rw [Real.dist_eq, abs_sub_comm]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        have : |Lin b ω - TB L b ω| ≤ ∑ b, |Lin b ω - TB L b ω| :=
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          Finset.single_le_sum (f := fun b =&gt; |Lin b ω - TB L b ω|) (fun _ _ =&gt; abs_nonneg _)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>            (Finset.mem_univ b)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        linarith [abs_nonneg (Q ω - TQ L ω)]
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    have h3 : |F (TQ L ω, fun b =&gt; TB L b ω) - F (Q ω, fun b =&gt; Lin b ω)| ≤
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        K * (|Q ω - TQ L ω| + ∑ b, |Lin b ω - TB L b ω|) := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      rw [← Real.dist_eq]; exact h1.trans (mul_le_mul_of_nonneg_left h2 K.2)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    rw [Real.enorm_eq_ofReal_abs]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    calc ENNReal.ofReal |F (TQ L ω, fun b =&gt; TB L b ω) - F (Q ω, fun b =&gt; Lin b ω)|
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        ≤ ENNReal.ofReal (K * (|Q ω - TQ L ω| + ∑ b, |Lin b ω - TB L b ω|)) :=
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          ENNReal.ofReal_le_ofReal h3
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      _ = ENNReal.ofReal K * (‖Q ω - TQ L ω‖ₑ + ∑ b, ‖Lin b ω - TB L b ω‖ₑ) := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          rw [ENNReal.ofReal_mul (NNReal.coe_nonneg K), ENNReal.ofReal_add (abs_nonneg _)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            (Finset.sum_nonneg fun _ _ =&gt; abs_nonneg _), ENNReal.ofReal_sum_of_nonneg
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>            (fun _ _ =&gt; abs_nonneg _)]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>          simp [Real.enorm_eq_ofReal_abs]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hQ1 := q08_tendsto_lintegral_enorm P (fun L ω =&gt; Q ω - TQ L ω)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    (fun L =&gt; hQm.sub (hTQm L)) hQ
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have hL1 : ∀ b, Tendsto (fun L =&gt; ∫⁻ ω, ‖Lin b ω - TB L b ω‖ₑ ∂P) atTop (𝓝 0) := fun b =&gt;
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    q08_tendsto_lintegral_enorm P (fun L ω =&gt; Lin b ω - TB L b ω) (fun L =&gt; (hLm b).sub (hTBm L b))
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      (hLin b)
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have hbound : Tendsto (fun L =&gt; ENNReal.ofReal K * (∫⁻ ω, ‖Q ω - TQ L ω‖ₑ ∂P +
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>      ∑ b, ∫⁻ ω, ‖Lin b ω - TB L b ω‖ₑ ∂P)) atTop (𝓝 0) := by
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have := ENNReal.Tendsto.const_mul (a := ENNReal.ofReal K)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      (hQ1.add (tendsto_finsetSum (Finset.univ : Finset (Fin p)) fun b _ =&gt; hL1 b)) (Or.inr ENNReal.ofReal_ne_top)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    simpa using this
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  refine tendsto_integral_of_L1 _ (hint _ hT0).aestronglyMeasurable (Eventually.of_forall fun L =&gt; hint _ (hTm L)) ?_
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hbound (fun L =&gt; bot_le)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    (fun L =&gt; ?_)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  calc ∫⁻ ω, ‖F (TQ L ω, fun b =&gt; TB L b ω) - F (Q ω, fun b =&gt; Lin b ω)‖ₑ ∂P
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      ≤ ∫⁻ ω, ENNReal.ofReal K * (‖Q ω - TQ L ω‖ₑ + ∑ b, ‖Lin b ω - TB L b ω‖ₑ) ∂P :=
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>        lintegral_mono (hpt L)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    _ = ENNReal.ofReal K * (∫⁻ ω, ‖Q ω - TQ L ω‖ₑ ∂P + ∑ b, ∫⁻ ω, ‖Lin b ω - TB L b ω‖ₑ ∂P) := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        have hm : Measurable (fun ω =&gt; ‖Q ω - TQ L ω‖ₑ) := (hQm.sub (hTQm L)).enorm
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        rw [lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top, lintegral_add_left hm,
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>          lintegral_finsetSum]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        intro b _
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        exact ((hLm b).sub (hTBm L b)).enorm
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-- Convergence of integrals of bounded Lipschitz functions implies convergence of integrals of bounded
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>continuous functions (Portmanteau, via Mathlib&#x27;s `ProbabilityMeasure` topology). -/
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>theorem q08_upgrade {E : Type*} [PseudoMetricSpace E] [MeasurableSpace E] [OpensMeasurableSpace E]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    {X : ℕ → Type*} [∀ N, MeasurableSpace (X N)] (ν : ∀ N, Measure (X N))
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    (hν : ∀ N, 1 ≤ N → IsProbabilityMeasure (ν N)) (T : ∀ N, X N → E) (hT : ∀ N, Measurable (T N))
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    (lam : Measure E) [IsProbabilityMeasure lam]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    (hlip : ∀ F : E → ℝ, (∃ M, ∀ z, |F z| ≤ M) → (∃ K, LipschitzWith K F) →
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      Tendsto (fun N =&gt; ∫ x, F (T N x) ∂(ν N)) atTop (𝓝 (∫ z, F z ∂lam)))
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    (F : E → ℝ) (hFc : Continuous F) (hFb : ∃ M, ∀ z, |F z| ≤ M) :
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    Tendsto (fun N =&gt; ∫ x, F (T N x) ∂(ν N)) atTop (𝓝 (∫ z, F z ∂lam)) := by
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  have hprob : ∀ n : ℕ, IsProbabilityMeasure ((ν (n + 1)).map (T (n + 1))) := fun n =&gt; by
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    have := hν (n + 1) (by omega)
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    exact (Measure.isProbabilityMeasure_map_iff (hT (n + 1)).aemeasurable).2 inferInstance
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  let μs : ℕ → ProbabilityMeasure E := fun n =&gt; ⟨(ν (n + 1)).map (T (n + 1)), hprob n⟩
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  let L0 : ProbabilityMeasure E := ⟨lam, inferInstance⟩
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  have hint : ∀ (n : ℕ) (f : E → ℝ), Continuous f → ∫ z, f z ∂(μs n : Measure E) =
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>      ∫ x, f (T (n + 1) x) ∂(ν (n + 1)) := fun n f hf =&gt; by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    show ∫ z, f z ∂((ν (n + 1)).map (T (n + 1))) = _
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    exact integral_map (hT (n + 1)).aemeasurable hf.aestronglyMeasurable
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hlim : Tendsto μs atTop (𝓝 L0) := by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    rw [tendsto_iff_forall_lipschitz_integral_tendsto]
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    intro f hfb hfl
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    obtain ⟨K, hK⟩ := hfl
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    obtain ⟨C, hC⟩ := hfb
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    have hb : ∃ M, ∀ z, |f z| ≤ M := by
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      by_cases hE : Nonempty E
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      · obtain ⟨z0⟩ := hE
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        refine ⟨|f z0| + C, fun z =&gt; ?_⟩
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>        have := hC z z0
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        rw [Real.dist_eq] at this
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>        have h2 : |f z| ≤ |f z0| + |f z - f z0| := by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>          have := abs_sub_abs_le_abs_sub (f z) (f z0)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>          linarith
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        linarith
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      · exact ⟨0, fun z =&gt; (hE ⟨z⟩).elim⟩
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    simp_rw [hint _ _ hK.continuous]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    exact (tendsto_add_atTop_iff_nat 1).2 (hlip f hb ⟨K, hK⟩)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  rw [ProbabilityMeasure.tendsto_iff_forall_integral_tendsto] at hlim
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  obtain ⟨M, hM⟩ := hFb
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  let f&#x27; : BoundedContinuousFunction E ℝ := BoundedContinuousFunction.ofNormedAddCommGroup F hFc M
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    (fun z =&gt; by simpa [Real.norm_eq_abs] using hM z)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have := hlim f&#x27;
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  simp_rw [show ∀ n, ∫ z, f&#x27; z ∂(μs n : Measure E) = ∫ x, F (T (n + 1) x) ∂(ν (n + 1)) from fun n =&gt;
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    hint n f&#x27; f&#x27;.continuous] at this
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  exact (tendsto_add_atTop_iff_nat 1).1 this
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>/-! ### The intermediate layer and the assembly -/
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>variable {d : ℕ} (D : Q08Data d)
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>/-- The pair `(B_N(h), ζ_N(φ))` of the conclusion of Lemma 7.5 (`B_N` exactly centred under `Q_{N,β}`, the
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>linear statistics centred at the Gibbs first marginal `m_N`). -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>def q08Stat (N : ℕ) (X : Config d N) : ℝ × (Fin D.p → ℝ) :=
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  ((N : ℝ) * (modulatedEnergy D.h X D.μ - ∫ Y, modulatedEnergy D.h Y D.μ ∂(D.Gibbs N)),
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    fun a =&gt; Real.sqrt N * ((1 / (N : ℝ)) * ∑ i, D.φ a (X i) - pair (firstMarginal (D.Gibbs N)) (D.φ a)))
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>/-- The finite-dimensional Wick chaos functional `E F(½ ∑_{i,j&lt;L} H_ij (G_iG_j - C_ij), (∑_{i&lt;L} a_{ai} G_i)_a)`
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>for `(G_i)_{i&lt;L} ~ N(0, C|_{L×L})`. -/
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>def q08FiniteChaos (L : ℕ) (F : ℝ × (Fin D.p → ℝ) → ℝ) : ℝ :=
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  ∫ g : EuclideanSpace ℝ (Fin L),
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    F ((1 / 2) * ∑ i : Fin L, ∑ j : Fin L, D.Hmat i j * (g i * g j - D.Cmat i j),
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      fun b =&gt; ∑ i : Fin L, D.coef b i * g i)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    ∂(multivariateGaussian 0 (Matrix.of fun i j : Fin L =&gt; D.Cmat i j))
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>/-- **Intermediate layer** (the finite-rank approximation theorem, the heart of Lemma 7.5; to be proved
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>from `Spectral`, `Features` and the `Chaos` bound, see the route below): for bounded Lipschitz `F`, the law
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>of `(B_N, ζ_N)` under `Q_{N,β}` is within `ε` of the finite-rank Wick chaos functional `q08FiniteChaos D L`
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>for all large `L` and then all large `N`.
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>Route: (1) `q08_bounded_family` gives bounded orthonormal centred `u_{&lt;L}`, with finite-rank (projected)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>kernels `g^U, h^U` and test-coefficients within `ε` in `L²`; (2) by `q08_weight_Lq` and `q08_energy_L2`
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>(Hölder, `w_N ∈ L^3`, `L²` closeness of the statistics under `μ^{⊗N}`) one may replace the statistics and the
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>Gibbs weight by the finite-rank ones `½(SᵀH^U S - tr H^U)`, `S^N = N^{-1/2} ∑_k u(X_k)`, with
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>`e^{-(β/2)(SᵀK^U S - tr K^U)}`, up to `O(ε)` uniformly in `N` (the diagonal terms `(1/N)∑_k u(X_k)ᵀ K u(X_k)`
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>converge by the LLN, `u` bounded); the exact centring of `B_N` under `Q_N` passes to the limit because the `L²`
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>errors are controlled under `Q_N` by Cauchy-Schwarz with `w_N ∈ L²`; (3) `q08_clt_quadratic` gives the
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>`N → ∞` limit as an integral against `N(0, I_L)`, `q08_gauss_tilt` turns the tilt into `N(0, (I+βK^U)^{-1})`;
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>(4) the resolvent identity of `q08_Cmat_spec` and `‖K - K^U‖_{HS} ≤ ε` give `‖(I+βK^U)^{-1} - C‖ ≲ βε`, and
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>`q08_chaos_l2_bound` (basis change from `u` to `e`) gives closeness to `q08FiniteChaos D L` for `L` large. -/
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>theorem q08_gibbs_approx (F : ℝ × (Fin D.p → ℝ) → ℝ) (hb : ∃ M, ∀ z, |F z| ≤ M)
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    (hl : ∃ K : ℝ≥0, LipschitzWith K F) (ε : ℝ) (hε : 0 &lt; ε) :
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    ∃ L0 : ℕ, ∀ L ≥ L0, ∀ᶠ N in atTop,
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>      |∫ X, F (q08Stat D N X) ∂(D.Gibbs N) - q08FiniteChaos D L F| ≤ ε :=
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  q08gl_final D F hb hl ε hε
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>theorem q08_measurable_stat (N : ℕ) : Measurable (q08Stat D N) := by
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  refine Measurable.prodMk ?_ (measurable_pi_iff.2 fun a =&gt; ?_)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  · exact measurable_const.mul ((q08_measurable_energy D N).sub measurable_const)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  · refine measurable_const.mul ?_
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    refine Measurable.sub (measurable_const.mul (Finset.measurable_sum _ fun i _ =&gt; ?_)) measurable_const
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    exact (D.hφ a).1.comp (measurable_pi_apply i)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>end HRS.Q08
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>namespace HRS
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>open Q08 in
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>/-- Lemma 7.5 `M:N:lem:quadratic-limit` (statement verbatim as `HRS.quadratic_limit`), proved from the
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>Q08 skeleton lemmas (`HRS/Equilibrium/QuadraticLimit/*`). -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>theorem quadratic_limit_proof {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ)
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    (hβ : 0 &lt; β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    (hc : ∀ z, z ≠ 0 → 1 ≤ periodicRiesz d s z + c) (B : ℝ) (h : Torus d → Torus d → ℝ)
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    (hmeas : Measurable (Function.uncurry h)) (hsymm : ∀ x y, h x y = h y x)
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    (hB : ∀ x y, x ≠ y → |h x y| ≤ B * (periodicRiesz d s (x - y) + c))
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    (e : ℕ → Torus d → ℝ) (he : IsONBL2Zero (withDensityReal ρ) e)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    (p : ℕ) (φ : Fin p → Torus d → ℝ) (hφ : ∀ a, Measurable (φ a) ∧ ∃ M, ∀ x, |φ a x| ≤ M) :
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    (∀ N : ℕ, 1 ≤ N → Integrable (fun X : Config d N =&gt; modulatedEnergy h X (withDensityReal ρ))
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))) ∧
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    ∃ (Ω : Type) (_ : MeasurableSpace Ω) (P : Measure Ω) (_ : IsProbabilityMeasure P)
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>      (G : ℕ → Ω → ℝ) (Q : Ω → ℝ) (Lin : Fin p → Ω → ℝ),
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>      (∀ n : ℕ, law P (fun ω =&gt; (WithLp.toLp 2 fun i : Fin n =&gt; G i ω : EuclideanSpace ℝ (Fin n))) =
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>        multivariateGaussian 0 (Matrix.of fun i j : Fin n =&gt;
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>          susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β (e i) (e j))) ∧
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      (∀ a, Tendsto (fun L =&gt; ∫⁻ ω, ‖Lin a ω - ∑ i ∈ Finset.range L,
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>          l2Inner (withDensityReal ρ) (φ a) (e i) * G i ω‖ₑ ^ 2 ∂P) atTop (𝓝 0)) ∧
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      Tendsto (fun L =&gt; ∫⁻ ω, ‖Q ω - (1 / 2) * ∑ i ∈ Finset.range L, ∑ j ∈ Finset.range L,
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>          (∫ x, ∫ y, h x y * e i x * e j y ∂(withDensityReal ρ) ∂(withDensityReal ρ)) *
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>            (G i ω * G j ω -
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>              susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β (e i) (e j))‖ₑ ^ 2 ∂P)
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>        atTop (𝓝 0) ∧
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      ∀ F : ℝ × (Fin p → ℝ) → ℝ, Continuous F → (∃ M, ∀ z, |F z| ≤ M) →
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>        Tendsto (fun N : ℕ =&gt; ∫ X, F ((N : ℝ) * (modulatedEnergy h X (withDensityReal ρ) -
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>              ∫ Y, modulatedEnergy h Y (withDensityReal ρ)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>                ∂(modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))),
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>            fun a =&gt; Real.sqrt N * ((1 / (N : ℝ)) * ∑ i, φ a (X i) -
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>              pair (firstMarginal (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ)))
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>                (φ a)))
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>            ∂(modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))) atTop
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>          (𝓝 (∫ ω, F (Q ω, fun a =&gt; Lin a ω) ∂P)) := by
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  let D : Q08Data d := ⟨s, β, ρ, c, B, h, e, p, φ, hd, hs0, hs, hβ, hρ, hc, hmeas, hsymm, hB, he, hφ⟩
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  obtain ⟨hCs, hCp, hCle, hCres⟩ := q08_Cmat_spec D
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  obtain ⟨hHs, hHsum⟩ := q08_Hmat_spec D
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  have hC : q08_IsCov D.Cmat := ⟨hCs, hCp, hCle⟩
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  obtain ⟨Ω, mΩ, P, hP, G, Q, Lin, hGm, hQm, hLm, hlaw, hLin, hQ⟩ :=
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    q08_chaos_exists D.Cmat D.Hmat D.coef hC hHs hHsum (q08_coef_summable D)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  refine ⟨fun N hN =&gt; q08_integrable_energy D N hN, Ω, mΩ, P, hP, G, Q, Lin, hlaw, hLin, hQ, ?_⟩
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  intro F hFc hFb
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  have hT0 : Measurable (fun ω =&gt; (Q ω, fun a =&gt; Lin a ω)) :=
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    hQm.prodMk (measurable_pi_iff.2 fun a =&gt; hLm a)
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  let lam : Measure (ℝ × (Fin p → ℝ)) := P.map (fun ω =&gt; (Q ω, fun a =&gt; Lin a ω))
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  have : IsProbabilityMeasure lam := (Measure.isProbabilityMeasure_map_iff hT0.aemeasurable).2 hP
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  have hint : ∀ F&#x27; : ℝ × (Fin p → ℝ) → ℝ, Continuous F&#x27; →
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>      ∫ z, F&#x27; z ∂lam = ∫ ω, F&#x27; (Q ω, fun a =&gt; Lin a ω) ∂P := fun F&#x27; hF&#x27; =&gt;
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    integral_map hT0.aemeasurable hF&#x27;.aestronglyMeasurable
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  have hlip : ∀ F&#x27; : ℝ × (Fin p → ℝ) → ℝ, (∃ M, ∀ z, |F&#x27; z| ≤ M) → (∃ K : ℝ≥0, LipschitzWith K F&#x27;) →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      Tendsto (fun N =&gt; ∫ X, F&#x27; (q08Stat D N X) ∂(D.Gibbs N)) atTop (𝓝 (∫ z, F&#x27; z ∂lam)) := by
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    intro F&#x27; hb hl
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    obtain ⟨M, hM⟩ := hb
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    obtain ⟨K, hK⟩ := hl
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    rw [hint F&#x27; hK.continuous]
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    have A : Tendsto (fun L =&gt; q08FiniteChaos D L F&#x27;) atTop
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        (𝓝 (∫ ω, F&#x27; (Q ω, fun a =&gt; Lin a ω) ∂P)) :=
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>      q08_finiteChaos_tendsto P D.Cmat D.Hmat D.coef G Q Lin hGm hQm hLm hlaw hLin hQ F&#x27; M hM K hK
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    rw [Metric.tendsto_atTop]
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    intro ε hε
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    obtain ⟨L1, hL1⟩ := Metric.tendsto_atTop.1 A (ε / 2) (by linarith)
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    obtain ⟨L0, hL0⟩ := q08_gibbs_approx D F&#x27; ⟨M, hM⟩ ⟨K, hK⟩ (ε / 2) (by linarith)
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    obtain ⟨N0, hN0⟩ := eventually_atTop.1 (hL0 (max L0 L1) (le_max_left _ _))
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    refine ⟨N0, fun N hN =&gt; ?_⟩
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    have h1 := hN0 N hN
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    have h2 := hL1 (max L0 L1) (le_max_right _ _)
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    rw [Real.dist_eq] at h2 ⊢
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    calc |∫ X, F&#x27; (q08Stat D N X) ∂(D.Gibbs N) - ∫ ω, F&#x27; (Q ω, fun a =&gt; Lin a ω) ∂P|
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>        ≤ |∫ X, F&#x27; (q08Stat D N X) ∂(D.Gibbs N) - q08FiniteChaos D (max L0 L1) F&#x27;| +
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>          |q08FiniteChaos D (max L0 L1) F&#x27; - ∫ ω, F&#x27; (Q ω, fun a =&gt; Lin a ω) ∂P| :=
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>          abs_sub_le _ _ _
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>      _ &lt; ε := by linarith
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  have main := q08_upgrade (X := fun N =&gt; Config d N) (fun N =&gt; D.Gibbs N)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    (fun N hN =&gt; q08_gibbs_isProb D N hN) (fun N =&gt; q08Stat D N) (q08_measurable_stat D) lam hlip
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    F hFc hFb
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  rw [hint F hFc] at main
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  exact main
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>example := (@quadratic_limit_proof : type_of% @quadratic_limit)
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>end HRS
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>end
+</span></code></pre></main></body></html>

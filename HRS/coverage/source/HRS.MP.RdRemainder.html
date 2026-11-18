@@ -1,0 +1,481 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.RdRemainder · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.RdRemainder</code></h1><p><a href="../../lean/HRS/MP/RdRemainder.lean">Open the unaltered Lean file</a> · 480 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.AppendixALemmas2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.HNegInfra
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Packet MPRREM: `E sup_t ‖ℝ_N^t‖_{H^{-q_R}(ℝ^d)} ≤ C T σ_N(𝔈_N + e_N)` (S.A.25 on `ℝ^d`)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>-/
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>noncomputable section
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open HRS HRS.Whole HRS.Whole.AppendixA
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open HRS.Whole.AppendixALemmas (HasContVersion IsRemainderW SelectedCommutatorInput PathAdjointInput)
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open scoped ENNReal NNReal BigOperators ContDiff ComplexConjugate
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>namespace HRS.MP.RdRem
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>variable {d : ℕ}
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>/-! ### Elementary facts -/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS.PDE.ToolboxRd HRS.PDE.ToolboxRd.FourierAux in
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>theorem mrr_sobolevNorm_mono {a b : ℝ} (hab : a ≤ b) {φ : Euc d → ℝ} (h : HRS.PDE.ToolboxRd.MemSobolev b φ) :
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    HRS.Whole.sobolevNorm a φ ≤ HRS.Whole.sobolevNorm b φ := by
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  unfold HRS.Whole.sobolevNorm
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  refine Real.sqrt_le_sqrt ?_
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have hm := memSobolev_mono hab h
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  unfold sobolevNormSq
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  refine integral_mono_of_nonneg (Filter.Eventually.of_forall fun ξ =&gt; ?_) h.2
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (Filter.Eventually.of_forall fun ξ =&gt; ?_)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  · have := wt_pos (d := d) ξ
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    positivity
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  · exact mul_le_mul_of_nonneg_right (Real.rpow_le_rpow_of_exponent_le (one_le_wt ξ) hab) (by positivity)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>theorem mrr_abs_le_cbNorm {k : ℕ} {f : Euc d → ℝ} (hf : MemCb k f) (x : Euc d) :
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    |f x| ≤ cbNorm k f := by
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have h0 : |f x| ≤ ⨆ z : Euc d, ‖iteratedFDeriv ℝ 0 f z‖ := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    have := le_ciSup (hf.2 0 (Nat.zero_le _)) x
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    simpa using this
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  refine h0.trans ?_
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  unfold cbNorm
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  exact Finset.single_le_sum (f := fun j =&gt; ⨆ z : Euc d, ‖iteratedFDeriv ℝ j f z‖)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (fun j _ =&gt; Real.iSup_nonneg fun z =&gt; norm_nonneg _) (Finset.mem_range.2 (Nat.succ_pos k))
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem mrr_eN_nonneg {s : ℝ} (fd : FieldDensityRd d s) (N : ℕ) : 0 ≤ fd.eN N := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hlog : (0 : ℝ) ≤ Real.log N := Real.log_natCast_nonneg N
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  cases fd with
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  | nd Rg =&gt; simp [FieldDensityRd.eN]
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  | decSub c =&gt;
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    cases c with
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    | sharp a ha =&gt; simp [FieldDensityRd.eN, DecayingDensity.errorRate]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    | lower hs =&gt;
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      simp only [FieldDensityRd.eN, DecayingDensity.errorRate]
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      refine mul_nonneg ?_ (Real.rpow_nonneg (Nat.cast_nonneg N) _)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      split_ifs &lt;;&gt; linarith
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  | decSuperIso m p =&gt; simp [FieldDensityRd.eN]
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  | decSuperHilb m =&gt; simp [FieldDensityRd.eN]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>theorem mrr_sigma_nonneg (S : WholeMainData d) (N : ℕ) : 0 ≤ S.sigma N := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  unfold WholeMainData.sigma sigmaScale
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hκ := (S.hκ N).le
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  split_ifs
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  · exact hκ
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  · exact le_min hκ (Real.sqrt_nonneg _)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>/-! ### The pathwise bound of the remainder integral for one test -/
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>theorem mrr_path_bound (S : WholeMainData d) {Γ : ℝ} {T K C₀ Λ : ℝ} {e : ℕ → ℝ}
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    (hsel : SelectedCommutatorInput S Γ T K C₀ Λ e) {N : ℕ} (hN : 2 ≤ N) (Xp : ℝ → EucConfig d N)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    (hnn : ∀ r ∈ Set.Icc (0 : ℝ) T, Function.Injective (Xp r) →
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      0 ≤ rieszModulatedEnergy d S.s (Xp r) (HRS.Whole.withDensityReal (S.ρ N r)) + oNΛ d S.s C₀ Λ N + e N)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (hinj : ∀ᵐ r ∂(volume.restrict (Set.Icc (0 : ℝ) T)), Function.Injective (Xp r))
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) {Γ&#x27; : ℝ} (hΓ : Γ ≤ Γ&#x27;) {φ : Euc d → ℝ}
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (hφ : HRS.Whole.IsSobolevTest Γ&#x27; φ) :
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    ENNReal.ofReal |∫ r in (0 : ℝ)..t,
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        commN d S.s (fun x =&gt; Torus.matVec S.M.transpose (gradient (propagatorW (S.coeff N) r t φ) x))
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>          (Xp r) (HRS.Whole.withDensityReal (S.ρ N r))| ≤
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      ENNReal.ofReal (max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ) *
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>        ∫⁻ r in Set.Icc (0 : ℝ) T, ENNReal.ofReal
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>          (rieszModulatedEnergy d S.s (Xp r) (HRS.Whole.withDensityReal (S.ρ N r)) + oNΛ d S.s C₀ Λ N + e N) := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  classical
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have ht0 := ht.1
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  rw [intervalIntegral.integral_of_le ht0]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hφΓ : HRS.Whole.IsSobolevTest Γ φ := ⟨hφ.1, HRS.PDE.ToolboxRd.FourierAux.memSobolev_mono hΓ hφ.2⟩
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hnorm : HRS.Whole.sobolevNorm Γ φ ≤ HRS.Whole.sobolevNorm Γ&#x27; φ := mrr_sobolevNorm_mono hΓ hφ.2
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have ha : 0 ≤ HRS.Whole.sobolevNorm Γ φ := Real.sqrt_nonneg _
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hcoef : 0 ≤ max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    mul_nonneg (le_max_right _ _) ((ha.trans hnorm))
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  set f : ℝ → ℝ := fun r =&gt;
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    commN d S.s (fun x =&gt; Torus.matVec S.M.transpose (gradient (propagatorW (S.coeff N) r t φ) x))
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      (Xp r) (HRS.Whole.withDensityReal (S.ρ N r)) with hf
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  set E : ℝ → ℝ := fun r =&gt;
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    rieszModulatedEnergy d S.s (Xp r) (HRS.Whole.withDensityReal (S.ρ N r)) + oNΛ d S.s C₀ Λ N + e N with hE
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hsub : Set.Ioc (0 : ℝ) t ⊆ Set.Icc (0 : ℝ) T := fun r hr =&gt; ⟨hr.1.le, hr.2.trans ht.2⟩
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hae : ∀ᵐ r ∂(volume.restrict (Set.Ioc (0 : ℝ) t)),
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      ‖f r‖ₑ ≤ ENNReal.ofReal (max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ) * ENNReal.ofReal (E r) := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have h1 := ae_restrict_of_ae_restrict_of_subset hsub hinj
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    filter_upwards [h1, ae_restrict_mem measurableSet_Ioc] with r hr hrm
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have hrI := hsub hrm
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    have hb := hsel N hN (Xp r) hr r t hrm.1.le hrm.2 ht.2 φ hφΓ
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have hE0 : 0 ≤ E r := hnn r hrI hr
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    rw [Real.enorm_eq_ofReal_abs, ← ENNReal.ofReal_mul hcoef]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    refine ENNReal.ofReal_le_ofReal (hb.trans ?_)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have hKa : K * HRS.Whole.sobolevNorm Γ φ ≤ max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ :=
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (mul_le_mul_of_nonneg_right (le_max_left K 0) ha).trans
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        (mul_le_mul_of_nonneg_left hnorm (le_max_right K 0))
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    exact mul_le_mul_of_nonneg_right hKa hE0
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  calc ENNReal.ofReal |∫ r in Set.Ioc (0 : ℝ) t, f r|
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      = ‖∫ r in Set.Ioc (0 : ℝ) t, f r‖ₑ := (Real.enorm_eq_ofReal_abs _).symm
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    _ ≤ ∫⁻ r in Set.Ioc (0 : ℝ) t, ‖f r‖ₑ := enorm_integral_le_lintegral_enorm _
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    _ ≤ ∫⁻ r in Set.Ioc (0 : ℝ) t,
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>          ENNReal.ofReal (max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ) * ENNReal.ofReal (E r) :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        lintegral_mono_ae hae
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    _ = ENNReal.ofReal (max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ) * ∫⁻ r in Set.Ioc (0 : ℝ) t, ENNReal.ofReal (E r) :=
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    _ ≤ ENNReal.ofReal (max K 0 * HRS.Whole.sobolevNorm Γ&#x27; φ) * ∫⁻ r in Set.Icc (0 : ℝ) T, ENNReal.ofReal (E r) := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        gcongr
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-! ### Joint measurability of the flow and of the corrected energy -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>/-- clamp a time into `[0,T]` -/
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>def mrrClamp (T r : ℝ) : ℝ := max 0 (min r T)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>theorem mrrClamp_mem {T : ℝ} (hT : 0 ≤ T) (r : ℝ) : mrrClamp T r ∈ Set.Icc (0 : ℝ) T :=
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  ⟨le_max_left _ _, max_le hT (min_le_right _ _)⟩
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>theorem mrrClamp_of_mem {T r : ℝ} (hr : r ∈ Set.Icc (0 : ℝ) T) : mrrClamp T r = r := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  unfold mrrClamp
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  rw [min_eq_left hr.2, max_eq_right hr.1]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>theorem continuous_mrrClamp (T : ℝ) : Continuous (mrrClamp T) := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  unfold mrrClamp; fun_prop
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>theorem mrr_prog_meas {Ω E : Type*} [mΩ : MeasurableSpace Ω] [MeasurableSpace E]
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    (ℱ : Filtration ℝ mΩ) (X : ℝ≥0 → Ω → E) (hprog : IsProgressive ℱ (ofNNRealTime X)) {T : ℝ}
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    (hT : 0 ≤ T) : Measurable fun p : ℝ × Ω =&gt; X (Real.toNNReal (mrrClamp T p.1)) p.2 := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have h1 := hprog T
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  have hle : (Subtype.instMeasurableSpace (α := ℝ) (p := (· ∈ Set.Iic T))).prod (ℱ T) ≤
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (Subtype.instMeasurableSpace (α := ℝ) (p := (· ∈ Set.Iic T))).prod mΩ :=
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    sup_le_sup le_rfl (MeasurableSpace.comap_mono (ℱ.le T))
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have h2 : Measurable fun p : Set.Iic T × Ω =&gt; ofNNRealTime X p.1 p.2 := h1.mono hle le_rfl
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have h3 : Measurable fun p : ℝ × Ω =&gt;
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      ((⟨mrrClamp T p.1, (mrrClamp_mem hT p.1).2⟩ : Set.Iic T), p.2) :=
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    (((continuous_mrrClamp T).measurable.comp measurable_fst).subtype_mk).prodMk measurable_snd
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  exact h2.comp h3
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>theorem mrr_measurable_rieszKernel (s : ℝ) : Measurable (rieszKernel d s) := by
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  unfold rieszKernel
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  by_cases hs : s = 0
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  · simp only [hs, if_true]
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    exact (Real.measurable_log.comp measurable_norm).neg
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  · simp only [hs, if_false]
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    exact measurable_norm.pow_const _
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>theorem mrr_integral_withDensityReal (ρ : Euc d → ℝ) (hρ : Measurable ρ) (hρ0 : ∀ x, 0 ≤ ρ x)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    (f : Euc d → ℝ) : ∫ y, f y ∂(HRS.Whole.withDensityReal ρ) = ∫ y, ρ y * f y := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  unfold HRS.Whole.withDensityReal
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  rw [integral_withDensity_eq_integral_toReal_smul₀ (f := fun x =&gt; ENNReal.ofReal (ρ x))
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    (ENNReal.measurable_ofReal.comp hρ).aemeasurable
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    (Filter.Eventually.of_forall fun x =&gt; ENNReal.ofReal_lt_top)]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  refine integral_congr_ae (Filter.Eventually.of_forall fun y =&gt; ?_)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  simp [ENNReal.toReal_ofReal (hρ0 y)]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>section Energy
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>variable {S : WholeMainData d} {R : ∀ N, RealizationRd d N} {MB Λ ΛV G₀ m20 C₀ : ℝ} {r mV : ℕ}
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  {𝔈 : ℕ → ℝ}
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>theorem mrr_rho_cont_time (hS : RdStanding S R MB Λ ΛV G₀ m20 r mV C₀ 𝔈) {N : ℕ} (hN : 1 ≤ N)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    (x : Euc d) : ContinuousOn (fun u =&gt; S.ρ N u x) (Set.Icc 0 S.T) := by
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  obtain ⟨B, ρt, h⟩ := hS.mean_field.time_derivative
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  intro t ht
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  exact ((h N hN).1 t ht x).continuousWithinAt
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>theorem mrr_rho_meas (hS : RdStanding S R MB Λ ΛV G₀ m20 r mV C₀ 𝔈) {N : ℕ} (hN : 1 ≤ N) :
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    Measurable fun p : ℝ × Euc d =&gt; S.ρ N (mrrClamp S.T p.1) p.2 := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have hT : 0 ≤ S.T := S.hT.le
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hρc : ∀ q, Continuous (S.ρ N (mrrClamp S.T q)) := fun q =&gt;
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    ((hS.mean_field.regular N hN).1 _ (mrrClamp_mem hT q)).1.1.continuous
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  have hpt : ∀ x, Continuous fun q =&gt; S.ρ N (mrrClamp S.T q) x := fun x =&gt; by
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    have h1 : ContinuousOn (fun u =&gt; S.ρ N u x) (Set.Icc 0 S.T) := mrr_rho_cont_time hS hN x
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    exact h1.comp_continuous (continuous_mrrClamp S.T) (fun q =&gt; mrrClamp_mem hT q)
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  exact measurable_uncurry_of_continuous_of_measurable (u := fun (q : ℝ) (x : Euc d) =&gt;
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    S.ρ N (mrrClamp S.T q) x) (fun x =&gt; hpt x) (fun q =&gt; (hρc q).measurable)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>theorem mrr_energy_meas (hS : RdStanding S R MB Λ ΛV G₀ m20 r mV C₀ 𝔈) {N : ℕ} (hN : 1 ≤ N) :
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    Measurable fun p : ℝ × EucConfig d N =&gt;
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      rieszModulatedEnergy d S.s p.2 (HRS.Whole.withDensityReal (S.ρ N (mrrClamp S.T p.1))) +
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>        oNΛ d S.s C₀ Λ N := by
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hT : 0 ≤ S.T := S.hT.le
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  have hgm : Measurable (rieszKernel d S.s) := mrr_measurable_rieszKernel S.s
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hjm := mrr_rho_meas hS hN
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  set ρt : ℝ → Euc d → ℝ := fun q =&gt; S.ρ N (mrrClamp S.T q) with hρt
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hprob : ∀ q, HRS.Whole.IsProbDensity (ρt q) := fun q =&gt;
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (hS.mean_field.solution N hN).density _ (mrrClamp_mem hT q)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hint : ∀ (q : ℝ) (f : Euc d → ℝ),
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      ∫ y, f y ∂(HRS.Whole.withDensityReal (ρt q)) = ∫ y, ρt q y * f y :=
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    fun q f =&gt; mrr_integral_withDensityReal (ρt q) (hprob q).measurable (hprob q).nonneg f
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have hjm&#x27; : Measurable fun p : ℝ × Euc d =&gt; ρt p.1 p.2 := hjm
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  unfold rieszModulatedEnergy HRS.Whole.modulatedEnergy
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  refine Measurable.add (Measurable.add (Measurable.sub ?_ ?_) ?_) measurable_const
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  · refine measurable_const.mul (Finset.measurable_sum _ fun i _ =&gt; Finset.measurable_sum _ fun j _ =&gt; ?_)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    exact hgm.comp (((measurable_pi_apply i).comp measurable_snd).sub
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      ((measurable_pi_apply j).comp measurable_snd))
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  · refine measurable_const.mul (Finset.measurable_sum _ fun i _ =&gt; ?_)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    have e&#x27; : (fun p : ℝ × EucConfig d N =&gt; HRS.Whole.convMeasure (rieszKernel d S.s) (HRS.Whole.withDensityReal (ρt p.1)) (p.2 i)) =
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>        fun p =&gt; ∫ y, ρt p.1 y * rieszKernel d S.s (p.2 i - y) := funext fun p =&gt; hint p.1 _
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    rw [e&#x27;]
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    have : StronglyMeasurable (fun q : (ℝ × EucConfig d N) × Euc d =&gt;
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>        ρt q.1.1 q.2 * rieszKernel d S.s (q.1.2 i - q.2)) := by
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      refine Measurable.stronglyMeasurable ?_
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      refine Measurable.mul ?_ ?_
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      · exact hjm&#x27;.comp ((measurable_fst.comp measurable_fst).prodMk measurable_snd)
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>      · exact hgm.comp (((measurable_pi_apply i).comp (measurable_snd.comp measurable_fst)).sub
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>          measurable_snd)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    exact (this.integral_prod_right&#x27; (ν := volume)).measurable
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  · have e : (fun p : ℝ × EucConfig d N =&gt; HRS.Whole.energyPairing (rieszKernel d S.s)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>          (HRS.Whole.withDensityReal (ρt p.1)) (HRS.Whole.withDensityReal (ρt p.1))) =
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        fun p =&gt; ∫ x, ρt p.1 x * ∫ y, ρt p.1 y * rieszKernel d S.s (x - y) := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      funext p
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      unfold HRS.Whole.energyPairing
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      rw [hint p.1]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      refine integral_congr_ae (Filter.Eventually.of_forall fun x =&gt; ?_)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      simp only
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>      rw [hint p.1]
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    refine Measurable.const_mul ?_ _
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    rw [e]
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    have h1 : StronglyMeasurable (fun q : (ℝ × Euc d) × Euc d =&gt;
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        ρt q.1.1 q.2 * rieszKernel d S.s (q.1.2 - q.2)) := by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      refine Measurable.stronglyMeasurable (Measurable.mul ?_ ?_)
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      · exact hjm&#x27;.comp ((measurable_fst.comp measurable_fst).prodMk measurable_snd)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      · exact hgm.comp ((measurable_snd.comp measurable_fst).sub measurable_snd)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    have h2 := h1.integral_prod_right&#x27; (ν := volume)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    have h3 : StronglyMeasurable (fun q : ℝ × Euc d =&gt;
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>        ρt q.1 q.2 * ∫ y, ρt q.1 y * rieszKernel d S.s (q.2 - y)) :=
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      (hjm&#x27;.stronglyMeasurable).mul h2
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    have h4 := h3.integral_prod_right&#x27; (ν := volume)
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    exact h4.measurable.comp measurable_fst
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>end Energy
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>/-! ### Collisions on a null set of times, and the dual-norm reduction -/
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>theorem mrr_measurableSet_coll (N : ℕ) : MeasurableSet (eucCollisionSet d N) := by
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  have : eucCollisionSet d N = ⋃ i : Fin N, ⋃ j : Fin N, ⋃ _ : i ≠ j, {X : EucConfig d N | X i = X j} := by
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    ext X; simp [eucCollisionSet]
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  rw [this]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  refine MeasurableSet.iUnion fun i =&gt; MeasurableSet.iUnion fun j =&gt; MeasurableSet.iUnion fun _ =&gt; ?_
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  exact measurableSet_eq_fun (measurable_pi_apply i) (measurable_pi_apply j)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>theorem mrr_coll_ae {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P] {N : ℕ}
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    {T : ℝ} (hT : 0 ≤ T) (X : ℝ≥0 → Ω → EucConfig d N)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    (hm : Measurable fun p : ℝ × Ω =&gt; X (Real.toNNReal (mrrClamp T p.1)) p.2)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    (hcoll : ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ᵐ ζ ∂P, X (Real.toNNReal t) ζ ∉ eucCollisionSet d N) :
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    ∀ᵐ ζ ∂P, ∀ᵐ r ∂(volume.restrict (Set.Icc (0 : ℝ) T)), Function.Injective (X (Real.toNNReal r) ζ) := by
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  set ν : Measure ℝ := volume.restrict (Set.Icc (0 : ℝ) T) with hν
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  set A : Set (Ω × ℝ) := {p | X (Real.toNNReal (mrrClamp T p.2)) p.1 ∈ eucCollisionSet d N} with hA
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  have hAm : MeasurableSet A :=
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    (hm.comp measurable_swap) (mrr_measurableSet_coll N)
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have h0 : (P.prod ν) A = 0 := by
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    rw [Measure.prod_apply_symm hAm]
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    refine (lintegral_congr_ae ?_).trans lintegral_zero
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    filter_upwards [ae_restrict_mem measurableSet_Icc] with r hr
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    have := hcoll r hr
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    have e : (fun x : Ω =&gt; (x, r)) ⁻¹&#x27; A = {ζ | X (Real.toNNReal r) ζ ∈ eucCollisionSet d N} := by
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>      ext ζ; simp [hA, mrrClamp_of_mem hr]
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    rw [e]
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    exact measure_eq_zero_iff_ae_notMem.2 this
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  have h1 := (Measure.measure_prod_null hAm).1 h0
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  filter_upwards [h1] with ζ hζ
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  have : ν (Prod.mk ζ ⁻¹&#x27; A) = 0 := hζ
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  have h2 := measure_eq_zero_iff_ae_notMem.1 this
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  filter_upwards [h2, ae_restrict_mem measurableSet_Icc] with r hr hrm
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  have hr&#x27; : X (Real.toNNReal r) ζ ∉ eucCollisionSet d N := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    intro h
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    exact hr (by simp only [hA, Set.mem_preimage, Set.mem_setOf_eq]; rwa [mrrClamp_of_mem hrm])
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  intro i j hij
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  by_contra hne
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  exact hr&#x27; ⟨i, j, hne, hij⟩
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>theorem mrr_enorm_le {Γ&#x27; : ℝ} {F : HNeg d Γ&#x27;} {p : ℕ → ℝ} (h : ‖F‖ = ⨆ n, p n) (B : ℝ≥0∞)
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    (hB : ∀ n, ENNReal.ofReal (p n) ≤ B) : ‖F‖ₑ ≤ B := by
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  rcases eq_or_ne B ⊤ with rfl | hBt
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  · exact le_top
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  · have hb : ∀ n, p n ≤ B.toReal := fun n =&gt; (ENNReal.ofReal_le_iff_le_toReal hBt).1 (hB n)
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    have h2 : ‖F‖ ≤ B.toReal := by rw [h]; exact ciSup_le hb
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    rw [← ofReal_norm_eq_enorm]
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    calc ENNReal.ofReal ‖F‖ ≤ ENNReal.ofReal B.toReal := ENNReal.ofReal_le_ofReal h2
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>      _ = B := ENNReal.ofReal_toReal hBt
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>theorem mrr_closure_bound {Γ&#x27; T : ℝ} (D : Set (Set.Icc (0 : ℝ) T)) (hD : Dense D) (g : ℝ → HNeg d Γ&#x27;)
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    (hg : ContinuousOn g (Set.Icc 0 T)) (b : ℝ) (hDB : ∀ t : Set.Icc (0 : ℝ) T, t ∈ D → ‖g t‖ ≤ b) :
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    ∀ t ∈ Set.Icc (0 : ℝ) T, ‖g t‖ ≤ b := by
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  have hc : Continuous (fun t : Set.Icc (0 : ℝ) T =&gt; g t) := hg.restrict
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  have hn : Continuous (fun t : Set.Icc (0 : ℝ) T =&gt; ‖g t‖) := continuous_norm.comp hc
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  have hcl : IsClosed ((fun t : Set.Icc (0 : ℝ) T =&gt; ‖g t‖) ⁻¹&#x27; Set.Iic b) := isClosed_Iic.preimage hn
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  have h1 : closure D ⊆ (fun t : Set.Icc (0 : ℝ) T =&gt; ‖g t‖) ⁻¹&#x27; Set.Iic b :=
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    closure_minimal (fun t ht =&gt; hDB t ht) hcl
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  intro t ht
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  have h2 : (⟨t, ht⟩ : Set.Icc (0 : ℝ) T) ∈ closure D := by
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    rw [hD.closure_eq]; exact Set.mem_univ _
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  have h3 := h1 h2
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  exact h3
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>/-- a bound `‖F‖ₑ ≤ B` along a dense set of times, extended to all times by continuity -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>theorem mrr_closure_enorm {Γ&#x27; T : ℝ} (D : Set (Set.Icc (0 : ℝ) T)) (hD : Dense D) (g : ℝ → HNeg d Γ&#x27;)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>    (hg : ContinuousOn g (Set.Icc 0 T)) (B : ℝ≥0∞)
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    (hDB : ∀ t : Set.Icc (0 : ℝ) T, t ∈ D → ‖g t‖ₑ ≤ B) :
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    ∀ t ∈ Set.Icc (0 : ℝ) T, ‖g t‖ₑ ≤ B := by
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  rcases eq_or_ne B ⊤ with rfl | hBt
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  · intro t _; exact le_top
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  · intro t ht
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    have hb : ∀ t : Set.Icc (0 : ℝ) T, t ∈ D → ‖g t‖ ≤ B.toReal := by
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      intro u hu
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>      have := hDB u hu
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>      rw [← ofReal_norm_eq_enorm] at this
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>      exact (ENNReal.ofReal_le_iff_le_toReal hBt).1 this
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>    have h := mrr_closure_bound D hD g hg B.toReal hb t ht
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    rw [← ofReal_norm_eq_enorm]
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    calc ENNReal.ofReal ‖g t‖ ≤ ENNReal.ofReal B.toReal := ENNReal.ofReal_le_ofReal h
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>      _ = B := ENNReal.ofReal_toReal hBt
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>theorem mrr_time_moment {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    {T : ℝ} (G : ℝ → Ω → ℝ) (hGm : Measurable fun p : ℝ × Ω =&gt; G p.1 p.2) (E1 : ℝ≥0∞)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    (hmom : ∀ r ∈ Set.Icc (0 : ℝ) T, ∫⁻ ζ, ENNReal.ofReal (G r ζ) ∂P ≤ E1) :
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    ∫⁻ ζ, (∫⁻ r in Set.Icc (0 : ℝ) T, ENNReal.ofReal (G r ζ)) ∂P ≤ ENNReal.ofReal T * E1 := by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>  have hm : Measurable (Function.uncurry fun (ζ : Ω) (r : ℝ) =&gt; ENNReal.ofReal (G r ζ)) :=
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    ENNReal.measurable_ofReal.comp (hGm.comp measurable_swap)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  rw [lintegral_lintegral_swap hm.aemeasurable]
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  calc ∫⁻ r in Set.Icc (0 : ℝ) T, (∫⁻ ζ, ENNReal.ofReal (G r ζ) ∂P)
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>      ≤ ∫⁻ r in Set.Icc (0 : ℝ) T, E1 := setLIntegral_mono&#x27; measurableSet_Icc hmom
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    _ = ENNReal.ofReal T * E1 := by
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>        rw [setLIntegral_const, Real.volume_Icc, sub_zero, mul_comm]
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>section PerN
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>variable {S : WholeMainData d} {R : ∀ N, RealizationRd d N} {MB Λ ΛV G₀ m20 C₀ : ℝ} {𝔈 : ℕ → ℝ}
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  {Γ : ℕ}
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>/-- The per-`N` form of the remainder bound. -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>theorem mrr_perN (hS : RdStanding S R MB Λ ΛV G₀ m20 (Γ + 5) (Γ + 5) C₀ 𝔈) (hΛ : 1 ≤ Λ)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    {K&#x27; : ℝ} {e : ℕ → ℝ} (he : ∀ N, 0 ≤ e N)
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    (hsel : SelectedCommutatorInput S (Γ : ℝ) S.T K&#x27; C₀ Λ e)
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    {N : ℕ} (hN : 2 ≤ N)
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    (hcoll : ∀ t ∈ Set.Icc (0 : ℝ) S.T, ∀ᵐ ζ ∂(R N).P,
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      (R N).X (Real.toNNReal t) ζ ∉ eucCollisionSet d N)
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    (Rm Rc : ℝ → (R N).Ω → HNeg d ((Γ + 2 : ℕ) : ℝ))
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    (hRem : IsRemainderW S R N (Γ + 2) Rm) (hCont : HasContVersion S.T (R N).P Rm Rc) :
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    ∫⁻ ζ, ⨆ t ∈ Set.Icc (0 : ℝ) S.T, ‖Rc t ζ‖ₑ ∂(R N).P ≤
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      ENNReal.ofReal (max K&#x27; 0 / 2 * S.T * S.sigma N * (𝔈 N + e N)) := by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  classical
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  have hT : 0 ≤ S.T := S.hT.le
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  obtain ⟨ℱ, W&#x27;, hF⟩ := hS.filtered N
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  have hXm := mrr_prog_meas ℱ (R N).X hF.progressive hT
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  have hinjAE := mrr_coll_ae (R N).P hT (R N).X hXm (fun t ht =&gt; hcoll t ht)
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>  set Gc : ℝ → (R N).Ω → ℝ := fun r ζ =&gt;
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>    rieszModulatedEnergy d S.s ((R N).X (Real.toNNReal (mrrClamp S.T r)) ζ)
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>      (HRS.Whole.withDensityReal (S.ρ N (mrrClamp S.T r))) + oNΛ d S.s C₀ Λ N + e N with hGc
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  have hGm : Measurable fun p : ℝ × (R N).Ω =&gt; Gc p.1 p.2 :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>    ((mrr_energy_meas hS hN1).comp (measurable_fst.prodMk hXm)).add measurable_const
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  have h𝔈 : 0 ≤ 𝔈 N := (hS.energy.pos N hN1).le
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  have hmom : ∀ r ∈ Set.Icc (0 : ℝ) S.T,
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>      ∫⁻ ζ, ENNReal.ofReal (Gc r ζ) ∂(R N).P ≤ ENNReal.ofReal (𝔈 N + e N) := by
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    intro r hr
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    have hb := hS.energy.bound N hN1 r hr
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    calc ∫⁻ ζ, ENNReal.ofReal (Gc r ζ) ∂(R N).P
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>        ≤ ∫⁻ ζ, (ENNReal.ofReal (correctedEnergyRd S C₀ Λ N ((R N).X (Real.toNNReal r) ζ) r) +
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>            ENNReal.ofReal (e N)) ∂(R N).P := by
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>          refine lintegral_mono fun ζ =&gt; ?_
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>          simp only [hGc, mrrClamp_of_mem hr]
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>          exact ENNReal.ofReal_add_le
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      _ = ∫⁻ ζ, ENNReal.ofReal (correctedEnergyRd S C₀ Λ N ((R N).X (Real.toNNReal r) ζ) r) ∂(R N).P +
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>            ENNReal.ofReal (e N) := by
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>          rw [lintegral_add_right _ measurable_const, lintegral_const, measure_univ, mul_one]
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>      _ ≤ ENNReal.ofReal (𝔈 N) + ENNReal.ofReal (e N) := add_le_add hb le_rfl
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>      _ = ENNReal.ofReal (𝔈 N + e N) := (ENNReal.ofReal_add h𝔈 (he N)).symm
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>  have hZ := mrr_time_moment (R N).P Gc hGm _ hmom
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  set Z : (R N).Ω → ℝ≥0∞ := fun ζ =&gt; ∫⁻ r in Set.Icc (0 : ℝ) S.T, ENNReal.ofReal (Gc r ζ) with hZdef
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  set c : ℝ := S.sigma N / 2 * max K&#x27; 0 with hc
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  have hσ := mrr_sigma_nonneg S N
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  have hc0 : 0 ≤ c := mul_nonneg (by positivity) (le_max_right _ _)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  obtain ⟨φ, hφt, hφn, hnormF⟩ := HRS.MP.HNegInfra.hneg_norming d (((Γ + 2 : ℕ) : ℝ))
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  have hΓle : (Γ : ℝ) ≤ ((Γ + 2 : ℕ) : ℝ) := by exact_mod_cast Nat.le_add_right Γ 2
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>  -- the pathwise bound for one time and one test
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  have hpair : ∀ t ∈ Set.Icc (0 : ℝ) S.T, ∀ n : ℕ, ∀ᵐ ζ ∂(R N).P,
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>      ENNReal.ofReal |HNeg.pairing (φ n) (Rc t ζ)| ≤ ENNReal.ofReal c * Z ζ := by
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    intro t ht n
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    filter_upwards [hCont.1 t ht, hRem.2 t ht (φ n) (hφt n), hinjAE] with ζ hRc hpairζ hinj
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    rw [hRc, hpairζ]
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    have hnn&#x27; : ∀ r ∈ Set.Icc (0 : ℝ) S.T, Function.Injective ((R N).X (Real.toNNReal r) ζ) →
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>        0 ≤ rieszModulatedEnergy d S.s ((R N).X (Real.toNNReal r) ζ)
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>          (HRS.Whole.withDensityReal (S.ρ N r)) + oNΛ d S.s C₀ Λ N + e N := by
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      intro r hr hinjr
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      have hreg := (hS.mean_field.regular N hN1).1 r hr
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      have hrho := (hS.mean_field.solution N hN1).density r hr
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      have hle : ∀ x, S.ρ N r x ≤ Λ := fun x =&gt;
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>        ((le_abs_self _).trans (mrr_abs_le_cbNorm hreg.1 x)).trans
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>          (le_trans (le_add_of_nonneg_right ENNReal.toReal_nonneg) hreg.2.2)
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      have hcomp := hS.energy.completion.2 Λ hΛ N hN (S.ρ N r) hrho hle
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        (fun _ =&gt; Q09A.log_integrable_withDensityReal hrho
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>          ((hS.mean_field.solution N hN1).second_moment r hr))
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>        ((R N).X (Real.toNNReal r) ζ) (fun ⟨i, j, hij, heq⟩ =&gt; hij (hinjr heq))
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>      exact add_nonneg hcomp (he N)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    have hb := mrr_path_bound S hsel hN (fun r =&gt; (R N).X (Real.toNNReal r) ζ) hnn&#x27; hinj ht hΓle
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>      (hφt n)
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    have hZeq : ∫⁻ r in Set.Icc (0 : ℝ) S.T, ENNReal.ofReal
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>        (rieszModulatedEnergy d S.s ((R N).X (Real.toNNReal r) ζ) (HRS.Whole.withDensityReal (S.ρ N r)) +
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>          oNΛ d S.s C₀ Λ N + e N) = Z ζ := by
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      refine setLIntegral_congr_fun measurableSet_Icc fun r hr =&gt; ?_
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      simp only [hGc, mrrClamp_of_mem hr]
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>    rw [hZeq] at hb
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ S.sigma N / 2),
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>      ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ S.sigma N / 2)]
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>    have h1 : ENNReal.ofReal (max K&#x27; 0 * HRS.Whole.sobolevNorm (((Γ + 2 : ℕ) : ℝ)) (φ n)) ≤
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>        ENNReal.ofReal (max K&#x27; 0) :=
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>      ENNReal.ofReal_le_ofReal (mul_le_of_le_one_right (le_max_right _ _) (hφn n))
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    calc ENNReal.ofReal (S.sigma N / 2) * ENNReal.ofReal |∫ r in (0 : ℝ)..t,
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>          commN d S.s (fun x =&gt; Torus.matVec S.M.transpose
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>            (gradient (propagatorW (S.coeff N) r t (φ n)) x))
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>            ((R N).X (Real.toNNReal r) ζ) (HRS.Whole.withDensityReal (S.ρ N r))|
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>        ≤ ENNReal.ofReal (S.sigma N / 2) * (ENNReal.ofReal (max K&#x27; 0) * Z ζ) := by
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>          gcongr
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>          exact hb.trans (by gcongr)
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>      _ = ENNReal.ofReal c * Z ζ := by
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>          rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ S.sigma N / 2)]
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  -- the supremum over all times
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  obtain ⟨D, hDc, hDd⟩ := TopologicalSpace.exists_countable_dense (Set.Icc (0 : ℝ) S.T)
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  haveI : Countable D := hDc.to_subtype
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  have hall : ∀ᵐ ζ ∂(R N).P, ∀ (t : D) (n : ℕ),
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>      ENNReal.ofReal |HNeg.pairing (φ n) (Rc t.1.1 ζ)| ≤ ENNReal.ofReal c * Z ζ :=
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>    ae_all_iff.2 fun t =&gt; ae_all_iff.2 fun n =&gt; hpair t.1.1 t.1.2 n
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  have hsup : ∀ᵐ ζ ∂(R N).P, ⨆ t ∈ Set.Icc (0 : ℝ) S.T, ‖Rc t ζ‖ₑ ≤ ENNReal.ofReal c * Z ζ := by
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    filter_upwards [hall, hCont.2] with ζ hζ hcont
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>    have hD : ∀ t : Set.Icc (0 : ℝ) S.T, t ∈ D → ‖Rc t.1 ζ‖ₑ ≤ ENNReal.ofReal c * Z ζ :=
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>      fun t ht =&gt; mrr_enorm_le (hnormF (Rc t.1 ζ)) _ (fun n =&gt; hζ ⟨t, ht⟩ n)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    have := mrr_closure_enorm D hDd (fun t =&gt; Rc t ζ) hcont _ hD
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    exact iSup₂_le this
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>  calc ∫⁻ ζ, ⨆ t ∈ Set.Icc (0 : ℝ) S.T, ‖Rc t ζ‖ₑ ∂(R N).P
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>      ≤ ∫⁻ ζ, ENNReal.ofReal c * Z ζ ∂(R N).P := lintegral_mono_ae hsup
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    _ = ENNReal.ofReal c * ∫⁻ ζ, Z ζ ∂(R N).P := lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    _ ≤ ENNReal.ofReal c * (ENNReal.ofReal S.T * ENNReal.ofReal (𝔈 N + e N)) := by gcongr
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    _ = ENNReal.ofReal (max K&#x27; 0 / 2 * S.T * S.sigma N * (𝔈 N + e N)) := by
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>        have h2 : 0 ≤ 𝔈 N + e N := add_nonneg h𝔈 (he N)
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>        rw [← ENNReal.ofReal_mul hT, ← ENNReal.ofReal_mul hc0]
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>        congr 1
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>        rw [hc]; ring
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>end PerN
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>theorem path_remainder_rd_proof (s : ℝ) (fd : FieldDensityRd d s)
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    (ν₀ MB Λ ΛV G₀ νbar T Kadj Cw C₀ K&#x27; : ℝ) (m₀ : ℕ) (hΛ : 1 ≤ Λ) :
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>    ∃ C : ℝ, ∀ (S : WholeMainData d), S.s = s → S.T = T → (∀ N, S.invβ N ≤ νbar) →
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>      fd.Holds S ν₀ → ∀ (R : ∀ N, RealizationRd d N) (𝔈 : ℕ → ℝ) (m20 : ℝ),
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>      RdStanding S R MB Λ ΛV G₀ m20 (fd.Gamma + 5) (fd.Gamma + 5) C₀ 𝔈 →
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>      PathAdjointInput S fd.Gamma m₀ Kadj Cw →
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>      SelectedCommutatorInput S (fd.Gamma : ℝ) T K&#x27; C₀ Λ fd.eN →
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>      Tendsto (fun N =&gt; S.sigma N * (𝔈 N + fd.eN N)) atTop (𝓝 0) →
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>      (∀ N : ℕ, 1 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ᵐ ζ ∂(R N).P,
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>        (R N).X (Real.toNNReal t) ζ ∉ eucCollisionSet d N) →
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>      ∀ (Rm Rc : ∀ N, ℝ → (R N).Ω → HNeg d ((fd.Gamma + 2 : ℕ) : ℝ)),
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>      (∀ N : ℕ, 2 ≤ N → IsRemainderW S R N (fd.Gamma + 2) (Rm N)) →
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>      (∀ N : ℕ, 2 ≤ N → HasContVersion T (R N).P (Rm N) (Rc N)) →
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>      (∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>        ∫⁻ ζ, ⨆ t ∈ Set.Icc (0 : ℝ) T, ‖Rc N t ζ‖ₑ ∂(R N).P ≤
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>          ENNReal.ofReal (C * T * S.sigma N * (𝔈 N + fd.eN N))) ∧
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>      Tendsto (fun N =&gt; C * T * S.sigma N * (𝔈 N + fd.eN N)) atTop (𝓝 0) := by
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  refine ⟨max K&#x27; 0 / 2, ?_⟩
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>  intro S hs hT hinv hHolds R 𝔈 m20 hS hPA hsel hsmall hcoll Rm Rc hRem hCont
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>  subst hT
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>  refine ⟨fun N hN =&gt; ?_, ?_⟩
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>  · exact mrr_perN (Γ := fd.Gamma) hS hΛ (mrr_eN_nonneg fd) hsel hN (hcoll N (by omega))
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>      (Rm N) (Rc N) (hRem N hN) (hCont N hN)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  · have h := hsmall.const_mul (max K&#x27; 0 / 2 * S.T)
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>    rw [mul_zero] at h
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>    refine h.congr fun N =&gt; ?_
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    ring
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>example := (@path_remainder_rd_proof : type_of% @HRS.Whole.AppendixALemmas.path_remainder_rd)
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>end HRS.MP.RdRem
+</span></code></pre></main></body></html>

@@ -1,0 +1,454 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Analysis.Category · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Analysis.Category</code></h1><p><a href="../../lean/HRS/Analysis/Category.lean">Open the unaltered Lean file</a> · 453 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import Mathlib
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Real-analysis lemmas used in the sharpness statements
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Sources (HRS periodic main paper):
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* Lemma 4.20 `M:V:lem:response-category` (source lines 5386-5395): a Baire-category
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>  lemma for sequences of continuous functions with interval-averaged lower bounds.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Lemma C.6 `M:B:lem:sqrt-lipschitz` (12311-12313): square roots of nonnegative `C^{1,1}`
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  functions are Lipschitz, `‖∇√a‖_∞ ≤ (‖∇²a‖_∞/2)^{1/2}`.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Proposition 3.10 `M:B:prop:hadamard` (1778-1786), the lattice-supremum identity
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `sup_k ⟨k⟩^{m&#x27;-m} e^{4π² c (2π|k|)^{s-d} (kᵀ S k) τ} = ∞`, isolated here as a pure
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  analysis statement (`hadamard_sup_eq_top`); the connection with the zero-temperature
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  adjoint equation is package ADJ-03.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>noncomputable section
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open Filter Topology
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open scoped BigOperators
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>/-- Lemma 4.20 in the form that the manuscript&#x27;s proof actually gives: a dense `G_δ` set `R ⊆ (a,b)`
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>of points `θ` with `f_N θ &gt; q/2` for arbitrarily large `N` (so `limsup_N f_N θ ≥ q/2` in `EReal`).
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>This frequent form implies the `EReal` limsup statement `response_category` below. -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem response_category_freq (a b : ℝ) (hab : a &lt; b) (f : ℕ → ℝ → ℝ)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (hcont : ∀ N, ContinuousOn (f N) (Set.Ioo a b))
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (hnonneg : ∀ N, ∀ θ ∈ Set.Ioo a b, 0 ≤ f N θ)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (q : ℝ) (hq : 0 &lt; q)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (havg : ∀ c d, a &lt; c → c &lt; d → d &lt; b →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      ((q : ℝ) : EReal) ≤ liminf (fun N =&gt; (((d - c)⁻¹ * ∫ θ in c..d, f N θ : ℝ) : EReal)) atTop) :
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    ∃ R : Set ℝ, R ⊆ Set.Ioo a b ∧ IsGδ R ∧ Set.Ioo a b ⊆ closure R ∧
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>      ∀ θ ∈ R, ∀ L : ℕ, ∃ N, L ≤ N ∧ q / 2 &lt; f N θ := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  set O : ℕ → Set ℝ := fun L =&gt; ⋃ N ∈ {N : ℕ | L ≤ N}, (Set.Ioo a b ∩ f N ⁻¹&#x27; Set.Ioi (q / 2)) with hO
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have hOopen : ∀ L, IsOpen (O L) := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    intro L
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    refine isOpen_biUnion fun N _ =&gt; ?_
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    exact (hcont N).isOpen_inter_preimage isOpen_Ioo isOpen_Ioi
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hOsub : ∀ L, O L ⊆ Set.Ioo a b := by
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    intro L θ hθ
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    simp only [hO, Set.mem_iUnion] at hθ
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    obtain ⟨N, _, h, _⟩ := hθ
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    exact h
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  -- density of O L in Ioo
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hOdense : ∀ L, Set.Ioo a b ⊆ closure (O L) := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    intro L θ hθ
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    rw [mem_closure_iff]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    intro U hU hθU
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    obtain ⟨ε, hε, hball⟩ := Metric.isOpen_iff.1 (hU.inter isOpen_Ioo) θ ⟨hθU, hθ⟩
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    obtain ⟨c, hc⟩ : ∃ c : ℝ, c = θ - ε / 2 := ⟨_, rfl⟩
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    obtain ⟨d, hd⟩ : ∃ d : ℝ, d = θ + ε / 2 := ⟨_, rfl⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    have hsub : Set.Icc c d ⊆ U ∩ Set.Ioo a b := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      intro x hx
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      apply hball
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      rw [Metric.mem_ball, Real.dist_eq, abs_lt]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      constructor &lt;;&gt; linarith [hx.1, hx.2]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    have hac : a &lt; c := (hsub (Set.left_mem_Icc.2 (by linarith))).2.1
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    have hdb : d &lt; b := (hsub (Set.right_mem_Icc.2 (by linarith))).2.2
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    have hcd : c &lt; d := by linarith
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have hint : ∀ N, IntervalIntegrable (f N) MeasureTheory.volume c d := fun N =&gt;
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      ((hcont N).mono (fun x hx =&gt; (hsub (Set.uIcc_of_le hcd.le ▸ hx)).2)).intervalIntegrable
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    have hev : ∀ᶠ N in atTop, q / 2 &lt; (d - c)⁻¹ * ∫ θ in c..d, f N θ := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      have hlt : ((q / 2 : ℝ) : EReal) &lt;
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>          liminf (fun N =&gt; (((d - c)⁻¹ * ∫ θ in c..d, f N θ : ℝ) : EReal)) atTop :=
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        lt_of_lt_of_le (EReal.coe_lt_coe_iff.2 (half_lt_self hq)) (havg c d hac hcd hdb)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      filter_upwards [eventually_lt_of_lt_liminf hlt] with N hN
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      exact EReal.coe_lt_coe_iff.1 hN
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    obtain ⟨N, hN, hLN⟩ := (hev.and (eventually_ge_atTop L)).exists
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    by_contra hnone
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have hle : ∀ x ∈ Set.Icc c d, f N x ≤ q / 2 := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      intro x hx
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      by_contra hlt
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      push Not at hlt
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      apply hnone
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      refine ⟨x, (hsub hx).1, ?_⟩
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      simp only [hO, Set.mem_iUnion]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      exact ⟨N, hLN, (hsub hx).2, hlt⟩
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    have h1 : ∫ θ in c..d, f N θ ≤ ∫ θ in c..d, q / 2 :=
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      intervalIntegral.integral_mono_on hcd.le (hint N) (by simp) hle
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    rw [intervalIntegral.integral_const, smul_eq_mul] at h1
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    have hdc : 0 &lt; d - c := by linarith
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have : (d - c)⁻¹ * ∫ θ in c..d, f N θ ≤ q / 2 := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      calc _ ≤ (d - c)⁻¹ * ((d - c) * (q / 2)) := by gcongr
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        _ = q / 2 := by field_simp
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    linarith
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  refine ⟨⋂ L, O L, ?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  · exact (Set.iInter_subset _ 0).trans (hOsub 0)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  · exact IsGδ.iInter_of_isOpen hOopen
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  · -- density
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    set U : ℕ → Set ℝ := fun L =&gt; O L ∪ (Set.Icc a b)ᶜ with hU
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have hUopen : ∀ L, IsOpen (U L) := fun L =&gt; (hOopen L).union isClosed_Icc.isOpen_compl
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have hUdense : ∀ L, Dense (U L) := by
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      intro L
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      rw [dense_iff_closure_eq, Set.eq_univ_iff_forall]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      intro x
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      by_cases hx : x ∈ Set.Icc a b
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      · have : Set.Icc a b ⊆ closure (O L) := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          calc Set.Icc a b ⊆ closure (Set.Ioo a b) := by rw [closure_Ioo hab.ne]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>            _ ⊆ closure (closure (O L)) := closure_mono (hOdense L)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>            _ = closure (O L) := closure_closure
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        exact closure_mono Set.subset_union_left (this hx)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      · exact subset_closure (Or.inr hx)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have hD := dense_iInter_of_isOpen_nat hUopen hUdense
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    have h2 := hD.open_subset_closure_inter (isOpen_Ioo (a := a) (b := b))
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    refine h2.trans (closure_mono ?_)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    intro x ⟨hx1, hx2⟩
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    simp only [Set.mem_iInter] at hx2 ⊢
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    intro L
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    rcases hx2 L with h | h
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    · exact h
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    · exact absurd (Set.Ioo_subset_Icc_self hx1) h
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  · intro θ hθ L
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    have := Set.mem_iInter.1 hθ L
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    simp only [hO, Set.mem_iUnion] at this
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    obtain ⟨N, hN, _, h⟩ := this
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    exact ⟨N, hN, h⟩
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>/-- Lemma 4.20 `M:V:lem:response-category` (lines 5386-5395): let `I = (a,b)` be an open bounded
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>interval and `f_N : I → [0,∞)` continuous. If some `q &gt; 0` satisfies
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>`liminf_N |J|⁻¹ ∫_J f_N ≥ q` for every closed nondegenerate interval `J ⊂ I`, then a dense
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>`G_δ` subset of `I` consists of points where `limsup_N f_N ≥ q/2`.
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>The `liminf` and `limsup` are taken in `EReal`, as in the source (values in `[0,∞]`); the real
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>`liminf`/`limsup` of Mathlib take junk values on unbounded sequences and would change the
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>statement (docs/ISSUES.md, item on Lemma 4.20). &quot;Dense in `I`&quot; is `I ⊆ closure R` with `R ⊆ I`;
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>a `G_δ` subset of the open set `I` is the same as a `G_δ` subset of `ℝ` contained in `I`. -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>theorem response_category (a b : ℝ) (hab : a &lt; b) (f : ℕ → ℝ → ℝ)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    (hcont : ∀ N, ContinuousOn (f N) (Set.Ioo a b))
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (hnonneg : ∀ N, ∀ θ ∈ Set.Ioo a b, 0 ≤ f N θ)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (q : ℝ) (hq : 0 &lt; q)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (havg : ∀ c d, a &lt; c → c &lt; d → d &lt; b →
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ((q : ℝ) : EReal) ≤ liminf (fun N =&gt; (((d - c)⁻¹ * ∫ θ in c..d, f N θ : ℝ) : EReal)) atTop) :
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    ∃ R : Set ℝ, R ⊆ Set.Ioo a b ∧ IsGδ R ∧ Set.Ioo a b ⊆ closure R ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      ∀ θ ∈ R, ((q / 2 : ℝ) : EReal) ≤ limsup (fun N =&gt; ((f N θ : ℝ) : EReal)) atTop := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  obtain ⟨R, h1, h2, h3, h4⟩ := response_category_freq a b hab f hcont hnonneg q hq havg
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  refine ⟨R, h1, h2, h3, fun θ hθ =&gt; ?_⟩
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  refine Filter.le_limsup_of_frequently_le ?_
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  rw [Filter.frequently_atTop]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  intro L
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  obtain ⟨N, hN, hlt⟩ := h4 θ hθ L
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  exact ⟨N, hN, EReal.coe_le_coe_iff.2 hlt.le⟩
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>section Sqrt
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>omit [FiniteDimensional ℝ E] in
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>lemma sqrtLip_taylor (a : E → ℝ) (ha : ContDiff ℝ 1 a) (L : ℝ) (hL : 0 ≤ L)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (hlip : LipschitzWith (Real.toNNReal L) (fun x =&gt; fderiv ℝ a x)) (x h : E) :
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    a (x + h) ≤ a x + fderiv ℝ a x h + L / 2 * ‖h‖ ^ 2 := by
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hda : Differentiable ℝ a := ha.differentiable (by norm_num)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  have hd : ∀ t : ℝ, HasDerivAt (fun t : ℝ =&gt; a (x + t • h)) (fderiv ℝ a (x + t • h) h) t := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    intro t
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    have h1 : HasDerivAt (fun t : ℝ =&gt; x + t • h) h t := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      simpa using ((hasDerivAt_id t).smul_const h).const_add x
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    exact (hda (x + t • h)).hasFDerivAt.comp_hasDerivAt t h1
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  set φ : ℝ → ℝ := fun t =&gt; a (x + t • h) - t * fderiv ℝ a x h - L / 2 * t ^ 2 * ‖h‖ ^ 2 with hφ
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have hφd : ∀ t : ℝ, HasDerivAt φ
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      (fderiv ℝ a (x + t • h) h - fderiv ℝ a x h - L * t * ‖h‖ ^ 2) t := by
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    intro t
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    have := (((hd t).sub ((hasDerivAt_id t).mul_const (fderiv ℝ a x h))).sub
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      ((((hasDerivAt_id t).pow 2).const_mul (L / 2)).mul_const (‖h‖ ^ 2)))
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    exact this.congr_deriv (by simp only [id, Nat.cast_ofNat, Nat.add_one_sub_one, pow_one, mul_one, one_mul]; ring)
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hanti : AntitoneOn φ (Set.Icc 0 1) := by
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    apply antitoneOn_of_deriv_nonpos (convex_Icc 0 1)
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    · exact fun t _ =&gt; (hφd t).continuousAt.continuousWithinAt
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    · exact fun t _ =&gt; (hφd t).differentiableAt.differentiableWithinAt
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    · intro t ht
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>      rw [interior_Icc] at ht
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      rw [(hφd t).deriv]
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      have h0 : 0 ≤ t := ht.1.le
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      have h1 : dist (fderiv ℝ a (x + t • h)) (fderiv ℝ a x) ≤ L * (t * ‖h‖) := by
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>        have := hlip.dist_le_mul (x + t • h) x
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>        simpa [Real.coe_toNNReal _ hL, dist_eq_norm, norm_smul, abs_of_nonneg h0] using this
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      have h2 : fderiv ℝ a (x + t • h) h - fderiv ℝ a x h ≤ L * (t * ‖h‖) * ‖h‖ := by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>        have := (fderiv ℝ a (x + t • h) - fderiv ℝ a x).le_opNorm h
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>        rw [dist_eq_norm] at h1
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        have h3 : (fderiv ℝ a (x + t • h) - fderiv ℝ a x) h = fderiv ℝ a (x + t • h) h - fderiv ℝ a x h := rfl
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>        rw [h3] at this
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>        calc _ ≤ ‖fderiv ℝ a (x + t • h) h - fderiv ℝ a x h‖ := Real.le_norm_self _
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>          _ ≤ ‖fderiv ℝ a (x + t • h) - fderiv ℝ a x‖ * ‖h‖ := this
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>          _ ≤ _ := by gcongr
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      nlinarith
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  have := hanti (Set.left_mem_Icc.2 zero_le_one) (Set.right_mem_Icc.2 zero_le_one) zero_le_one
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  simp only [hφ] at this
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  simp at this
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  linarith
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>omit [FiniteDimensional ℝ E] in
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>lemma sqrtLip_grad (a : E → ℝ) (ha : ContDiff ℝ 1 a) (hnn : ∀ x, 0 ≤ a x) (L : ℝ) (hL : 0 ≤ L)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (hlip : LipschitzWith (Real.toNNReal L) (fun x =&gt; fderiv ℝ a x)) (x h : E) :
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (fderiv ℝ a x h) ^ 2 ≤ 2 * L * a x * ‖h‖ ^ 2 := by
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  have key : ∀ s : ℝ, 0 ≤ a x + s * fderiv ℝ a x h + L / 2 * s ^ 2 * ‖h‖ ^ 2 := by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    intro s
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    have := sqrtLip_taylor a ha L hL hlip x (s • h)
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    have h2 := hnn (x + s • h)
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    simp only [map_smul, smul_eq_mul, norm_smul, Real.norm_eq_abs, mul_pow, sq_abs] at this
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    nlinarith
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  set D := fderiv ℝ a x h
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  set H := ‖h‖ ^ 2 with hH
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  have hH0 : 0 ≤ H := by positivity
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  have hax := hnn x
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  by_cases hLH : L * H = 0
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  · have : D = 0 := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      by_contra hD
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      have := key (-(a x + 1) * D / D ^ 2)
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      have hD2 : 0 &lt; D ^ 2 := by positivity
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      have e : L / 2 * (-(a x + 1) * D / D ^ 2) ^ 2 * H = 0 := by
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>        have : L / 2 * (-(a x + 1) * D / D ^ 2) ^ 2 * H = (-(a x + 1) * D / D ^ 2) ^ 2 / 2 * (L * H) := by ring
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>        rw [this, hLH]; ring
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      rw [e] at this
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>      have : (-(a x + 1) * D / D ^ 2) * D = -(a x + 1) := by field_simp
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      nlinarith
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    rw [this]; simp; positivity
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  · have hLH&#x27; : 0 &lt; L * H := lt_of_le_of_ne (by positivity) (Ne.symm hLH)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    have := key (-D / (L * H))
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    have e : a x + -D / (L * H) * D + L / 2 * (-D / (L * H)) ^ 2 * H = a x - D ^ 2 / (2 * (L * H)) := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      field_simp; ring
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    rw [e] at this
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    have : D ^ 2 / (2 * (L * H)) ≤ a x := by linarith
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    rw [div_le_iff₀ (by positivity)] at this
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    nlinarith
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-- Lemma C.6 `M:B:lem:sqrt-lipschitz` (lines 12311-12313), on a finite-dimensional Euclidean
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>space (the torus case follows by periodic lifting): if `0 ≤ a ∈ C^{1,1}` with
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>`‖∇²a‖_∞ ≤ L`, then `√a` is Lipschitz with constant `(L/2)^{1/2}`. -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>theorem sqrt_lipschitz (a : E → ℝ) (ha : ContDiff ℝ 1 a) (hnn : ∀ x, 0 ≤ a x) (L : ℝ) (hL : 0 ≤ L)
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (hlip : LipschitzWith (Real.toNNReal L) (fun x =&gt; fderiv ℝ a x)) :
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    LipschitzWith (Real.toNNReal (Real.sqrt (L / 2))) (fun x =&gt; Real.sqrt (a x)) := by
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  have step : ∀ x y : E, Real.sqrt (a y) ≤ Real.sqrt (a x) + Real.sqrt (L / 2) * dist y x := by
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    intro x y
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    set h := y - x with hh
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    have hy : y = x + h := by simp [hh]
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    have hdist : dist y x = ‖h‖ := by rw [dist_eq_norm]
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    rw [hdist]
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    set M := Real.sqrt (L / 2)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    have hM : 0 ≤ M := Real.sqrt_nonneg _
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    have hM2 : M ^ 2 = L / 2 := Real.sq_sqrt (by positivity)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    have hax := hnn x
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    have hsa := Real.sq_sqrt hax
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    have hsa0 := Real.sqrt_nonneg (a x)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    have hT := sqrtLip_taylor a ha L hL hlip x h
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    have hG := sqrtLip_grad a ha hnn L hL hlip x h
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    have hD : fderiv ℝ a x h ≤ 2 * Real.sqrt (a x) * M * ‖h‖ := by
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      have h1 : (fderiv ℝ a x h) ^ 2 ≤ (2 * Real.sqrt (a x) * M * ‖h‖) ^ 2 := by
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        calc _ ≤ 2 * L * a x * ‖h‖ ^ 2 := hG
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>          _ = _ := by
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>            have : (2 * Real.sqrt (a x) * M * ‖h‖) ^ 2 = 4 * (Real.sqrt (a x)) ^ 2 * M ^ 2 * ‖h‖ ^ 2 := by ring
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>            rw [this, hsa, hM2]; ring
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      exact (le_abs_self _).trans (abs_le_of_sq_le_sq h1 (by positivity))
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    have : a y ≤ (Real.sqrt (a x) + M * ‖h‖) ^ 2 := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      rw [hy]
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      nlinarith
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    calc Real.sqrt (a y) ≤ Real.sqrt ((Real.sqrt (a x) + M * ‖h‖) ^ 2) := Real.sqrt_le_sqrt this
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>      _ = _ := Real.sqrt_sq (by positivity)
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  refine LipschitzWith.of_dist_le_mul fun x y =&gt; ?_
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  rw [Real.coe_toNNReal _ (Real.sqrt_nonneg _), Real.dist_eq, abs_le]
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have h1 := step x y
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have h2 := step y x
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  rw [dist_comm y x] at h1
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  constructor &lt;;&gt; linarith
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>end Sqrt
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>section Hadamard
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>/-- The Hadamard growth factor of Proposition 3.10 for frequency `k`:
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>`⟨k⟩^{m&#x27;-m} exp(4π² c (2π|k|)^{s-d} (kᵀ S k) τ)` with `⟨k⟩ = (1+4π²|k|²)^{1/2}`. -/
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>def hadamardFactor (d : ℕ) (s c τ m m&#x27; : ℝ) (S : Matrix (Fin d) (Fin d) ℝ) (k : Fin d → ℤ) : ℝ :=
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  let nk : ℝ := Real.sqrt (∑ i, ((k i : ℝ)) ^ 2)
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  let kSk : ℝ := ∑ i, ∑ j, (k i : ℝ) * S i j * (k j : ℝ)
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  (1 + 4 * Real.pi ^ 2 * nk ^ 2) ^ (m&#x27; / 2) / (1 + 4 * Real.pi ^ 2 * nk ^ 2) ^ (m / 2) *
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    Real.exp (4 * Real.pi ^ 2 * c * (2 * Real.pi * nk) ^ (s - d) * kSk * τ)
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>/-- A nonzero lattice vector on which the quadratic form of `S` is positive. -/
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>lemma exists_lattice_pos (d : ℕ) (S : Matrix (Fin d) (Fin d) ℝ)
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    (hpos : ∃ q : EuclideanSpace ℝ (Fin d), ‖q‖ = 1 ∧ 0 &lt; ∑ i, ∑ j, q i * S i j * q j) :
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    ∃ k : Fin d → ℤ, k ≠ 0 ∧ 0 &lt; ∑ i, ∑ j, (k i : ℝ) * S i j * (k j : ℝ) := by
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  obtain ⟨q, hq1, hq2⟩ := hpos
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  set Q : (Fin d → ℝ) → ℝ := fun u =&gt; ∑ i, ∑ j, u i * S i j * u j with hQ
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  have hQc : Continuous Q := by
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    simp only [hQ]; fun_prop
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  have hqne : ∃ i, q i ≠ 0 := by
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    by_contra hcon
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    push Not at hcon
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    have : q = 0 := by ext i; exact hcon i
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    simp [this] at hq1
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  obtain ⟨i0, hi0⟩ := hqne
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  -- rounding approximations
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  let r : ℕ → (Fin d → ℤ) := fun N =&gt; fun i =&gt; round ((N : ℝ) * q i)
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  have hconv : Tendsto (fun N : ℕ =&gt; fun i =&gt; ((r N i : ℤ) : ℝ) / (N : ℝ)) atTop (𝓝 (fun i =&gt; q i)) := by
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    rw [tendsto_pi_nhds]
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    intro i
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    have hbd : ∀ N : ℕ, 1 ≤ N → |((r N i : ℤ) : ℝ) / (N : ℝ) - q i| ≤ 1 / (N : ℝ) := by
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>      intro N hN
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>      have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>      have h1 := abs_sub_round ((N : ℝ) * q i)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>      have : ((r N i : ℤ) : ℝ) / (N : ℝ) - q i = (((r N i : ℤ) : ℝ) - (N : ℝ) * q i) / N := by
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>        field_simp
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>      rw [this, abs_div, abs_of_pos hNpos]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>      rw [abs_sub_comm] at h1
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>      calc _ ≤ (1 / 2) / (N : ℝ) := by gcongr
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>        _ ≤ 1 / (N : ℝ) := by gcongr; norm_num
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>    rw [tendsto_iff_dist_tendsto_zero]
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    refine squeeze_zero&#x27; (Eventually.of_forall fun _ =&gt; dist_nonneg) ?_ tendsto_one_div_atTop_nhds_zero_nat
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    rw [Real.dist_eq]; exact hbd N hN
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  have hev1 : ∀ᶠ N : ℕ in atTop, 0 &lt; Q (fun i =&gt; ((r N i : ℤ) : ℝ) / (N : ℝ)) :=
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    hconv.eventually ((hQc.tendsto _).eventually (lt_mem_nhds (show 0 &lt; Q (fun i =&gt; q i) from hq2)))
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  have hev2 : ∀ᶠ N : ℕ in atTop, ((r N i0 : ℤ) : ℝ) / (N : ℝ) ≠ 0 :=
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    (tendsto_pi_nhds.1 hconv i0).eventually (isOpen_ne.mem_nhds hi0)
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  obtain ⟨N, ⟨h1, h2⟩, h3⟩ := ((hev1.and hev2).and (eventually_ge_atTop 1)).exists
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast h3
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  refine ⟨r N, ?_, ?_⟩
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  · intro h0
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    apply h2
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    have : r N i0 = 0 := congrFun h0 i0
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    simp [this]
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  · have hscale : Q (fun i =&gt; ((r N i : ℤ) : ℝ) / (N : ℝ)) =
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>        ((N : ℝ)⁻¹) ^ 2 * ∑ i, ∑ j, ((r N i : ℤ) : ℝ) * S i j * ((r N j : ℤ) : ℝ) := by
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>      simp only [hQ, Finset.mul_sum]
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>      refine Finset.sum_congr rfl fun i _ =&gt; Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>      ring
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    rw [hscale] at h1
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    exact pos_of_mul_pos_right h1 (by positivity)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>lemma exp_rpow_div_tendsto (K θ m : ℝ) (hK : 0 &lt; K) (hθ : 0 &lt; θ) :
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    Tendsto (fun x : ℝ =&gt; Real.exp (K * x ^ θ) / x ^ m) atTop atTop := by
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  have h1 := (tendsto_exp_mul_div_rpow_atTop (m / θ) K hK).comp (tendsto_rpow_atTop hθ)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  refine h1.congr&#x27; ?_
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  filter_upwards [eventually_gt_atTop 0] with x hx
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  simp only [Function.comp]
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  rw [← Real.rpow_mul hx.le]
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  congr 2
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  field_simp
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>lemma hadamardFactor_smul (d : ℕ) (s c τ m m&#x27; : ℝ) (S : Matrix (Fin d) (Fin d) ℝ)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    (q0 : Fin d → ℤ) (n : ℕ) :
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    hadamardFactor d s c τ m m&#x27; S (fun i =&gt; (n : ℤ) * q0 i) =
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>      (1 + 4 * Real.pi ^ 2 * ((n : ℝ) * Real.sqrt (∑ i, ((q0 i : ℤ) : ℝ) ^ 2)) ^ 2) ^ (m&#x27; / 2) /
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>        (1 + 4 * Real.pi ^ 2 * ((n : ℝ) * Real.sqrt (∑ i, ((q0 i : ℤ) : ℝ) ^ 2)) ^ 2) ^ (m / 2) *
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      Real.exp (4 * Real.pi ^ 2 * c *
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>        (2 * Real.pi * ((n : ℝ) * Real.sqrt (∑ i, ((q0 i : ℤ) : ℝ) ^ 2))) ^ (s - d) *
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>        ((n : ℝ) ^ 2 * ∑ i, ∑ j, ((q0 i : ℤ) : ℝ) * S i j * ((q0 j : ℤ) : ℝ)) * τ) := by
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  have h1 : ∑ i, (((((n : ℤ) * q0 i : ℤ)) : ℝ)) ^ 2 = (n : ℝ) ^ 2 * ∑ i, ((q0 i : ℤ) : ℝ) ^ 2 := by
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun i _ =&gt; ?_; push_cast; ring
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  have h2 : ∑ i, ∑ j, (((((n : ℤ) * q0 i : ℤ)) : ℝ)) * S i j * (((((n : ℤ) * q0 j : ℤ)) : ℝ)) =
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      (n : ℝ) ^ 2 * ∑ i, ∑ j, ((q0 i : ℤ) : ℝ) * S i j * ((q0 j : ℤ) : ℝ) := by
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>    rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun j _ =&gt; ?_; push_cast; ring
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  have h3 : Real.sqrt ((n : ℝ) ^ 2 * ∑ i, ((q0 i : ℤ) : ℝ) ^ 2) =
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>      (n : ℝ) * Real.sqrt (∑ i, ((q0 i : ℤ) : ℝ) ^ 2) := by
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    rw [Real.sqrt_mul (by positivity), Real.sqrt_sq (Nat.cast_nonneg n)]
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  simp only [hadamardFactor, h1, h2, h3]
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>/-- Proposition 3.10 `M:B:prop:hadamard` (lines 1778-1786), the supremum identity: for
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>`d - 2 &lt; s &lt; d`, `c &gt; 0`, `τ &gt; 0`, `m, m&#x27; ≥ 0`, and a symmetric `S` with `qᵀ S q &gt; 0` for some
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>unit vector `q`, `sup_{k ≠ 0} hadamardFactor = ∞` (the factor is unbounded over `ℤ^d∖{0}`). -/
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>theorem hadamard_sup_eq_top (d : ℕ) (hd : 2 ≤ d) (s : ℝ) (hs1 : (d : ℝ) - 2 &lt; s) (hs2 : s &lt; d)
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    (c : ℝ) (hc : 0 &lt; c) (τ : ℝ) (hτ : 0 &lt; τ) (m m&#x27; : ℝ) (hm : 0 ≤ m) (hm&#x27; : 0 ≤ m&#x27;)
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    (S : Matrix (Fin d) (Fin d) ℝ) (hS : S.IsSymm)
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    (hpos : ∃ q : EuclideanSpace ℝ (Fin d), ‖q‖ = 1 ∧ 0 &lt; ∑ i, ∑ j, q i * S i j * q j) :
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    ¬ BddAbove (Set.range fun k : {k : Fin d → ℤ // k ≠ 0} =&gt; hadamardFactor d s c τ m m&#x27; S k.1) := by
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>  obtain ⟨q0, hq0, hσ⟩ := exists_lattice_pos d S hpos
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>  set σ : ℝ := ∑ i, ∑ j, ((q0 i : ℤ) : ℝ) * S i j * ((q0 j : ℤ) : ℝ) with hσdef
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>  set T : ℝ := ∑ i, ((q0 i : ℤ) : ℝ) ^ 2 with hTdef
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>  have hT : 0 &lt; T := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    obtain ⟨i0, hi0⟩ : ∃ i, q0 i ≠ 0 := by
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      by_contra hcon
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>      push Not at hcon
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>      exact hq0 (funext hcon)
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    refine Finset.sum_pos&#x27; (fun i _ =&gt; by positivity) ⟨i0, Finset.mem_univ _, ?_⟩
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    have : ((q0 i0 : ℤ) : ℝ) ≠ 0 := by exact_mod_cast hi0
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>    positivity
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  set r : ℝ := Real.sqrt T with hrdef
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  have hr : 0 &lt; r := Real.sqrt_pos.2 hT
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  set A : ℝ := 4 * Real.pi ^ 2 * r ^ 2 with hAdef
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  have hA : 0 &lt; A := by positivity
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  set θ : ℝ := s - d + 2 with hθdef
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>  have hθ : 0 &lt; θ := by linarith
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  set K : ℝ := 4 * Real.pi ^ 2 * c * (2 * Real.pi * r) ^ (s - d) * σ * τ with hKdef
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>  have hK : 0 &lt; K := by positivity
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>  have hlow : ∀ n : ℕ, 1 ≤ n →
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      (1 + A) ^ (-(m / 2)) * (Real.exp (K * (n : ℝ) ^ θ) / (n : ℝ) ^ m) ≤
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>        hadamardFactor d s c τ m m&#x27; S (fun i =&gt; (n : ℤ) * q0 i) := by
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    intro n hn
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    have hnpos : (0 : ℝ) &lt; n := by exact_mod_cast hn
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    rw [hadamardFactor_smul]
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>    simp only [← hTdef, ← hσdef, ← hrdef]
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    have hu : 4 * Real.pi ^ 2 * ((n : ℝ) * r) ^ 2 = A * (n : ℝ) ^ 2 := by rw [hAdef]; ring
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>    rw [hu]
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    have hE : 4 * Real.pi ^ 2 * c * (2 * Real.pi * ((n : ℝ) * r)) ^ (s - d) *
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>        ((n : ℝ) ^ 2 * σ) * τ = K * (n : ℝ) ^ θ := by
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      have e1 : (2 * Real.pi * ((n : ℝ) * r)) = (2 * Real.pi * r) * n := by ring
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>      rw [e1, Real.mul_rpow (by positivity) hnpos.le, hθdef, Real.rpow_add hnpos, Real.rpow_two,
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>        hKdef]
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      ring
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    rw [hE]
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    set u : ℝ := 1 + A * (n : ℝ) ^ 2 with hudef
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    have hu1 : 1 ≤ u := by rw [hudef]; nlinarith [sq_nonneg (n : ℝ)]
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    have hu0 : 0 &lt; u := by linarith
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    have hup : 1 ≤ u ^ (m&#x27; / 2) := Real.one_le_rpow hu1 (by positivity)
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>    have hule : u ≤ (1 + A) * (n : ℝ) ^ 2 := by
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      rw [hudef]; nlinarith [sq_nonneg (n : ℝ)]
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    have hum : u ^ (m / 2) ≤ (1 + A) ^ (m / 2) * (n : ℝ) ^ m := by
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>      calc u ^ (m / 2) ≤ ((1 + A) * (n : ℝ) ^ 2) ^ (m / 2) :=
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>            Real.rpow_le_rpow hu0.le hule (by positivity)
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>        _ = (1 + A) ^ (m / 2) * (n : ℝ) ^ m := by
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>            rw [Real.mul_rpow (by positivity) (by positivity), ← Real.rpow_natCast (n : ℝ) 2,
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>              ← Real.rpow_mul hnpos.le]
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>            congr 2
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>            push_cast; ring
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    have hpos1 : 0 &lt; (1 + A) ^ (m / 2) * (n : ℝ) ^ m := by positivity
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    have hexp : 0 &lt; Real.exp (K * (n : ℝ) ^ θ) := Real.exp_pos _
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    have hq : 1 / ((1 + A) ^ (m / 2) * (n : ℝ) ^ m) ≤ u ^ (m&#x27; / 2) / u ^ (m / 2) := by
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>      rw [div_le_div_iff₀ hpos1 (by positivity)]
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>      nlinarith [Real.rpow_pos_of_pos hu0 (m / 2)]
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    calc (1 + A) ^ (-(m / 2)) * (Real.exp (K * (n : ℝ) ^ θ) / (n : ℝ) ^ m)
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>        = 1 / ((1 + A) ^ (m / 2) * (n : ℝ) ^ m) * Real.exp (K * (n : ℝ) ^ θ) := by
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>          rw [Real.rpow_neg (by positivity)]; field_simp
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>      _ ≤ _ := by gcongr
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  rintro ⟨B, hB⟩
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  have ht : Tendsto (fun n : ℕ =&gt; (1 + A) ^ (-(m / 2)) *
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>      (Real.exp (K * (n : ℝ) ^ θ) / (n : ℝ) ^ m)) atTop atTop :=
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    Tendsto.const_mul_atTop (by positivity)
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>      ((exp_rpow_div_tendsto K θ m hK hθ).comp tendsto_natCast_atTop_atTop)
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  have hev := (ht.eventually_gt_atTop B).and (eventually_ge_atTop 1)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  obtain ⟨n, hn1, hn2⟩ := hev.exists
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  have hne : (fun i =&gt; (n : ℤ) * q0 i) ≠ 0 := by
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    intro h0
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    apply hq0
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    funext i
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    have := congrFun h0 i
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>    simp only [Pi.zero_apply, mul_eq_zero] at this
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    rcases this with h | h
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    · omega
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    · exact h
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  have hmem : hadamardFactor d s c τ m m&#x27; S (fun i =&gt; (n : ℤ) * q0 i) ∈
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>      Set.range fun k : {k : Fin d → ℤ // k ≠ 0} =&gt; hadamardFactor d s c τ m m&#x27; S k.1 :=
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    ⟨⟨_, hne⟩, rfl⟩
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  have := hB hmem
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  have := hlow n hn2
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  linarith
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>end Hadamard
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>end HRS
+</span></code></pre></main></body></html>

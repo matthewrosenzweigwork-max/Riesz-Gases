@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Prob.Edgeworth · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Prob.Edgeworth</code></h1><p><a href="../../lean/HRS/Prob/Edgeworth.lean">Open the unaltered Lean file</a> · 76 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Prob.Gaussian
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Prob.EdgeworthAux
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Prob.EdgeworthC4Aux
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Lemma 7.1 `M:O:lem:iid-edge`: initial Hilbert-valued Edgeworth expansion
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Source: HRS periodic main paper, lines 7729-7736. The statements were moved unchanged from
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`HRS.Prob.Gaussian` so that the proof can use the Stein lemmas (Lemma 7.2) proved there. The
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>representation of the third-moment pairing is `thirdMomentPairing` (see `docs/ISSUES.md` §G1).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>-/
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>noncomputable section
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>namespace HRS
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>section Hilbert
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>/-- Lemma 7.1 `M:O:lem:iid-edge` (lines 7729-7736), `C_b^6` form: for i.i.d. centered `X_i` in
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>a separable real Hilbert space with finite fourth moment and `G` centered Gaussian with the same
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>covariance, uniformly for `‖F‖_{C_b^6(H)} ≤ 1`,
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>`|E[F(N^{-1/2} ∑ X_i)] - E[F(G)] - (6√N)⁻¹ E[D³F(G)[M₃]]| ≤ C/N`, with `C` depending only on
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>the second, third and fourth moments.  Degenerate covariance allowed. -/
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>theorem hilbert_edgeworth_C6 : ∃ C : ℝ → ℝ → ℝ → ℝ, ∀ {Ω : Type} [MeasurableSpace Ω]
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (P : Measure Ω) [IsProbabilityMeasure P] (N : ℕ) (hN : 1 ≤ N)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (X₀ : Ω → H) (hmeas₀ : AEMeasurable X₀ P) (hcent : ∫ ω, X₀ ω ∂P = 0) (h4 : HasMoment P 4 X₀)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (X : Fin N → Ω → H) (hiid : IsIIDCopies P X) (hmeas : ∀ i, AEMeasurable (X i) P)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (hlaw : ∀ i, law P (X i) = law P X₀)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (G : Ω → H) (hG : IsCenteredGaussianRV P G fun x y =&gt; ProbabilityTheory.covarianceBilin (law P X₀) x y)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (F : H → ℝ) (hF : F ∈ CbUnitBall H 6),
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    |∫ ω, F ((Real.sqrt N)⁻¹ • ∑ i, X i ω) ∂P - ∫ ω, F (G ω) ∂P -
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        (1 / (6 * Real.sqrt N)) * thirdMomentPairing P F G X₀| ≤
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>      C (momentNorm P 2 X₀) (momentNorm P 3 X₀) (momentNorm P 4 X₀) / N := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  refine ⟨EdgeAux.c6const, ?_⟩
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  intro Ω _ P _ N hN X₀ hmeas₀ hcent h4 X hiid hmeas hlaw G hG F hF
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have h4&#x27; : Integrable (fun ω =&gt; ‖X₀ ω‖ ^ (4 : ℕ)) P := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    have h4&#x27;&#x27; : Integrable (fun ω =&gt; ‖X₀ ω‖ ^ (4 : ℝ)) P := h4
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    simpa using h4&#x27;&#x27;
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have := EdgeAux.c6_core (P := P) hN hmeas₀ hcent h4&#x27; hiid.1 hmeas hlaw hG hF
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  simpa [momentNorm] using this
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- Lemma 7.1, `C_b^4` form with `o(N^{-1/2})` remainder, uniform over families with a uniform
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>fourth-moment bound and uniformly vanishing squared projection tails: for every such family
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>(indexed by `ι`) and `ε &gt; 0` there is `N₀` with
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>`|E[F(N^{-1/2}∑X_i)] - E[F(G)] - (6√N)⁻¹ E[D³F(G)[M₃]]| ≤ ε N^{-1/2}` for `N ≥ N₀`,
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>uniformly over the family and over `‖F‖_{C_b^4} ≤ 1`.  Tails are measured along a fixed
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>Hilbert basis `e`.
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>The copies `Xs i` are random vectors, hence a.e.-measurable; this is stated explicitly because
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>`IsIIDCopies` does not include it and `law` of a non-measurable map is a junk Dirac mass
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>(`docs/ISSUES.md` §E). -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>theorem hilbert_edgeworth_C4 (e : HilbertBasis ℕ ℝ H) {ι : Type*}
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    {Ω : ι → Type} [∀ a, MeasurableSpace (Ω a)] (P : ∀ a, Measure (Ω a))
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    [∀ a, IsProbabilityMeasure (P a)] (X : ∀ a, Ω a → H) (hmeas : ∀ a, AEMeasurable (X a) (P a))
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (hcent : ∀ a, ∫ ω, X a ω ∂(P a) = 0) (M₄ : ℝ)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (hint4 : ∀ a, Integrable (fun ω =&gt; ‖X a ω‖ ^ 4) (P a)) (h4 : ∀ a, ∫ ω, ‖X a ω‖ ^ 4 ∂(P a) ≤ M₄)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (htail : ∀ ε &gt; 0, ∃ n₀ : ℕ, ∀ a, ∫ ω, ∑&#x27; n : {n : ℕ // n₀ ≤ n}, (inner ℝ (e n) (X a ω)) ^ 2 ∂(P a) ≤ ε)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    (G : ∀ a, Ω a → H)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (hG : ∀ a, IsCenteredGaussianRV (P a) (G a) fun x y =&gt; ProbabilityTheory.covarianceBilin (law (P a) (X a)) x y) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    ∀ ε &gt; 0, ∃ N₀ : ℕ, ∀ N ≥ N₀, ∀ a, ∀ (Xs : Fin N → Ω a → H), (∀ i, AEMeasurable (Xs i) (P a)) →
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      IsIIDCopies (P a) Xs → (∀ i, law (P a) (Xs i) = law (P a) (X a)) →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      ∀ F : H → ℝ, F ∈ CbUnitBall H 4 →
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        |∫ ω, F ((Real.sqrt N)⁻¹ • ∑ i, Xs i ω) ∂(P a) - ∫ ω, F (G a ω) ∂(P a) -
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>            (1 / (6 * Real.sqrt N)) * thirdMomentPairing (P a) F (G a) (X a)| ≤
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          ε / Real.sqrt N :=
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  EdgeAux.c4_main e P X hmeas hcent M₄ hint4 h4 htail G hG
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>end Hilbert
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>end HRS
+</span></code></pre></main></body></html>

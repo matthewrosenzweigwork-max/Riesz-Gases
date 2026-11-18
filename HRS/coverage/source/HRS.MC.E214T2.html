@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.E214T2 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.E214T2</code></h1><p><a href="../../lean/HRS/MC/E214T2.lean">Open the unaltered Lean file</a> · 164 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.E214T1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MC.E214P2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MC.E214P3
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MC.E214P5
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MC.E213Q2
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Main.HeadlineEdgeworth
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>/-!
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a># E214T2: proof of `HRS.Main.two_parameter_expansion` (Corollary 2.14, two-parameter expansion)
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Route: `hK.expansion` at the SAME `a` gives `E Φ(ζ) = E Φ(Z^a) + (6√N)⁻¹ E K_a(D³Φ(Z^a)) + O(ε_N/√N)`; the Hessian step
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>(`t1_hessian`) replaces `Z^a` by the stationary window up to `½ E Δ(D²Φ) + covDist²/8`; the cubic term is moved from `K_a`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>to `Kst` by `hrel` (`p5_cubic_diff`) and from `Z^a` to the stationary window by first-order comparison (`p3_compare` for
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>the `C²` function `Kst ∘ D³Φ`) and `hcov` (`covDist ≤ C₁e^{-ca}`, same `c`).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.MC.E214T
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open HRS HRS.Main HRS.MC.E214P
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>set_option maxHeartbeats 600000 in
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem two_parameter_expansion_proof (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (hT : 0 &lt; T) (ρβ : Torus d → ℝ)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ) (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (hK : IsWindowEdgeworth S β₀ m T K ε) (Kst : projTensor (PathSpace d m T) 3) (C₁ c : ℝ)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (hC₁ : 0 &lt; C₁) (hc : 0 &lt; c)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (hrel : ∀ a&#x27; : ℝ, 0 ≤ a&#x27; → ‖K a&#x27; - Kst‖ ≤ C₁ * Real.exp (-c * a&#x27;))
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (hcov : ∀ a&#x27; : ℝ, 0 ≤ a&#x27; → ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>        IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        IsPreparedLinear S m (a&#x27; + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        [IsProbabilityMeasure P&#x27;&#x27;] (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m),
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>        IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs →
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>        covDist P&#x27; P&#x27;&#x27; (windowPath m T a&#x27; Z) (windowPath m T 0 Zs) ≤ C₁ * Real.exp (-c * a&#x27;)) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>        law P X₀ = modulatedGibbs (periodicRiesz d S.s) N β₀ S.μ0 →
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        [IsProbabilityMeasure P&#x27;&#x27;] (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m),
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs →
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      ∀ Φ : PathSpace d m T → ℝ, Φ ∈ CbUnitBall (PathSpace d m T) 5 →
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        |∫ z, Φ z ∂(law P (windowZeta m T a P X)) - ∫ z, Φ z ∂(law P&#x27;&#x27; (windowPath m T 0 Zs)) -
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>            (1 / 2) * ∫ ω&#x27;&#x27;, (∫ ω, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>                ![windowPath m T a Z ω, windowPath m T a Z ω] ∂P&#x27; -
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>              ∫ ω₂, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>                ![windowPath m T 0 Zs ω₂, windowPath m T 0 Zs ω₂] ∂P&#x27;&#x27;) ∂P&#x27;&#x27; -
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>            (1 / (6 * Real.sqrt N)) * ∫ ω, ((Kst : projTensor (PathSpace d m T) 3) :
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>              TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>                (iteratedFDeriv ℝ 3 Φ (windowPath m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>          C * (covDist P&#x27; P&#x27;&#x27; (windowPath m T a Z) (windowPath m T 0 Zs) ^ 2 +
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>            (Real.sqrt N)⁻¹ * (ε N + Real.exp (-c * a))) := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  set Mb : ℝ := ‖Kst‖ with hMb
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hMb0 : 0 ≤ Mb := norm_nonneg _
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  refine ⟨1 + C₁ * (1 + Mb / 2) / 6, by positivity, ?_⟩
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  intro a ha N hN Ω _ P _ X₀ W X hsel hfilt hinit ν hν Ω&#x27; _ P&#x27; _ Z₀ Z hZ Ω&#x27;&#x27; _ P&#x27;&#x27; _ Zs hZs Φ hΦ
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hexp := hK.expansion a ha N hN P X₀ W X hsel hfilt hinit ν hν P&#x27; Z₀ Z hZ Φ hΦ
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  obtain ⟨hZm, hZg⟩ := HRS.MC.E213Q.e213q_prepared_window_gaussian S m T a hT ha ν hν.1 P&#x27; Z₀ Z hZ
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  obtain ⟨hZsm, hZsg⟩ := p2_stationary_window_gaussian S.hd S.hs0 S.hsd S.V S.hβ ρβ m T hT P&#x27;&#x27; Zs hZs
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hΦc : Continuous Φ := hΦ.1.continuous
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  -- Hessian step
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hH := t1_hessian P&#x27;&#x27; (windowPath m T 0 Zs) P&#x27; (windowPath m T a Z) hZsm hZm hZsg hZg hΦ
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  -- notation
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  set δ : ℝ := covDist P&#x27; P&#x27;&#x27; (windowPath m T a Z) (windowPath m T 0 Zs) with hδ
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hδ0 : 0 ≤ δ := p3_covDist_nonneg _ _ _ _
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hδc : δ ≤ C₁ * Real.exp (-c * a) := hcov a ha ν hν P&#x27; Z₀ Z hZ P&#x27;&#x27; Zs hZs
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  set Ca : ℝ := ∫ ω, ((K a : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (iteratedFDeriv ℝ 3 Φ (windowPath m T a Z ω)) ∂P&#x27; with hCa
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  set Ca&#x27; : ℝ := ∫ ω, ((Kst : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (iteratedFDeriv ℝ 3 Φ (windowPath m T a Z ω)) ∂P&#x27; with hCa&#x27;
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  set Cst : ℝ := ∫ ω, ((Kst : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    (iteratedFDeriv ℝ 3 Φ (windowPath m T 0 Zs ω)) ∂P&#x27;&#x27; with hCst
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hstep3 : |Ca - Ca&#x27;| ≤ C₁ * Real.exp (-c * a) := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    refine (p5_cubic_diff hZm hΦ _ _).trans ?_
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have : ‖((K a : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3) -
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        ((Kst : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)‖ =
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        ‖K a - Kst‖ := rfl
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    rw [this]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    exact hrel _ ha
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hstep4 : |Ca&#x27; - Cst| ≤ (1 / 2) * Mb * (C₁ * Real.exp (-c * a)) := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    set L : TensorDual (PathSpace d m T) 3 := ((Kst : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      with hL
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    have hLn : ‖L‖ = Mb := rfl
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    obtain ⟨b0, b1, b2⟩ := p4_bound hΦ L
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have hcmp := p3_compare P&#x27;&#x27; (windowPath m T 0 Zs) P&#x27; (windowPath m T a Z) hZsm hZm hZsg hZg
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (Θ := fun x =&gt; L (iteratedFDeriv ℝ 3 Φ x)) (p4_contDiff hΦ L) (M0 := ‖L‖) (M1 := ‖L‖) (K := ‖L‖)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      b0 b1 b2
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    rw [hLn] at hcmp
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    refine hcmp.trans ?_
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    have := mul_le_mul_of_nonneg_left hδc hMb0
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    linarith
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  -- law = integral conversions
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  rw [p5_law_integral hZsm hΦc]
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  rw [p5_law_integral hZm hΦc] at hexp
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  -- assembling
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  set s : ℝ := Real.sqrt N with hs
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hspos : 0 &lt; s := Real.sqrt_pos.2 (by exact_mod_cast (by omega : 0 &lt; N))
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  set A : ℝ := ∫ z, Φ z ∂(law P (windowZeta m T a P X)) with hA
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  set Bq : ℝ := ∫ ω, Φ (windowPath m T a Z ω) ∂P&#x27; with hB
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  set B1 : ℝ := ∫ ω, Φ (windowPath m T 0 Zs ω) ∂P&#x27;&#x27; with hB1
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  set Hq : ℝ := ∫ ω&#x27;&#x27;, (∫ ω, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>                ![windowPath m T a Z ω, windowPath m T a Z ω] ∂P&#x27; -
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>              ∫ ω₂, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>                ![windowPath m T 0 Zs ω₂, windowPath m T 0 Zs ω₂] ∂P&#x27;&#x27;) ∂P&#x27;&#x27; with hHq
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  have hε0 : 0 ≤ ε N := (abs_nonneg _).trans hexp
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have e : A - B1 - (1 / 2) * Hq - (1 / (6 * s)) * Cst =
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      (Bq - B1 - (1 / 2) * Hq) +
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      ((s * (A - Bq) - (1 / 6) * Ca) + (1 / 6) * ((Ca - Ca&#x27;) + (Ca&#x27; - Cst))) / s := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    field_simp
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    ring
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hq : |((s * (A - Bq) - (1 / 6) * Ca) + (1 / 6) * ((Ca - Ca&#x27;) + (Ca&#x27; - Cst))) / s| ≤
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      (ε N + (1 / 6) * (C₁ * Real.exp (-c * a) + (1 / 2) * Mb * (C₁ * Real.exp (-c * a)))) / s := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    rw [abs_div, abs_of_pos hspos]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    refine div_le_div_of_nonneg_right ?_ hspos.le
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    calc |(s * (A - Bq) - (1 / 6) * Ca) + (1 / 6) * ((Ca - Ca&#x27;) + (Ca&#x27; - Cst))|
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        ≤ |s * (A - Bq) - (1 / 6) * Ca| + |(1 / 6) * ((Ca - Ca&#x27;) + (Ca&#x27; - Cst))| := abs_add_le _ _
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      _ ≤ _ := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          refine add_le_add hexp ?_
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>          rw [abs_mul, abs_of_pos (by norm_num : (0 : ℝ) &lt; 1 / 6)]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          exact mul_le_mul_of_nonneg_left ((abs_add_le _ _).trans (add_le_add hstep3 hstep4)) (by norm_num)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  rw [e]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hex0 : 0 ≤ Real.exp (-c * a) := (Real.exp_pos _).le
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hsinv : s⁻¹ * (C₁ * (1 + Mb / 2) / 6 * Real.exp (-c * a)) ≥ 0 := by positivity
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  calc _ ≤ |Bq - B1 - (1 / 2) * Hq| + |((s * (A - Bq) - (1 / 6) * Ca) + (1 / 6) * ((Ca - Ca&#x27;) + (Ca&#x27; - Cst))) / s| :=
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>        abs_add_le _ _
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    _ ≤ δ ^ 2 / 8 + (ε N + (1 / 6) * (C₁ * Real.exp (-c * a) + (1 / 2) * Mb * (C₁ * Real.exp (-c * a)))) / s :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>        add_le_add hH hq
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    _ ≤ _ := by
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        have h1 : (ε N + (1 / 6) * (C₁ * Real.exp (-c * a) + (1 / 2) * Mb * (C₁ * Real.exp (-c * a)))) / s =
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>            s⁻¹ * ε N + s⁻¹ * (C₁ * (1 + Mb / 2) / 6 * Real.exp (-c * a)) := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>          field_simp
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        have hsi : 0 ≤ s⁻¹ := inv_nonneg.2 hspos.le
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        have hCC : 0 ≤ C₁ * (1 + Mb / 2) / 6 := by positivity
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        have h2 : s⁻¹ * ε N ≤ (1 + C₁ * (1 + Mb / 2) / 6) * (s⁻¹ * ε N) := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>          nlinarith [mul_nonneg hsi hε0, mul_nonneg hCC (mul_nonneg hsi hε0)]
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        have h3 : s⁻¹ * (C₁ * (1 + Mb / 2) / 6 * Real.exp (-c * a)) ≤
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>            (1 + C₁ * (1 + Mb / 2) / 6) * (s⁻¹ * Real.exp (-c * a)) := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          nlinarith [mul_nonneg hsi hex0, mul_nonneg hCC (mul_nonneg hsi hex0)]
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        have h4 : δ ^ 2 / 8 ≤ (1 + C₁ * (1 + Mb / 2) / 6) * δ ^ 2 := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          nlinarith [sq_nonneg δ, mul_nonneg hCC (sq_nonneg δ)]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        rw [h1]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        nlinarith
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>end HRS.MC.E214T
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>end
+</span></code></pre></main></body></html>

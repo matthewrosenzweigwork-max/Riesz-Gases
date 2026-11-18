@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.S11Q3C3 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.S11Q3C3</code></h1><p><a href="../../lean/HRS/MS/S11Q3C3.lean">Open the unaltered Lean file</a> · 69 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.S11Q3C2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.S11Q2C8
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># S11.3 / S11.4 (worker S11Q3), C3: `r2_moving_Lp` and `r2_moving_moment_transfer` without any hypothesis on the moving reference
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`s11q3_QReg_of_data`: the core `S11Q2QReg` holds for the constants constructed in S6.3 (tuple of `s11q3_class_data`), by `s11q3_QReg_of_Reg`.
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`s11q3_cores_tuple`, `s11q3_r2_moving_Lp`, `s11q3_r2_moving_moment_transfer`: the frozen types, from the (proved) `S113XLiouville` only.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>set_option linter.style.longLine false
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>noncomputable section
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS.MS.S11Q3
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS HRS.Whole HRS.MS.S113BD HRS.MS.S113X2C HRS.MS.S11Q2
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem s11q3_cores_tuple (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β q : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (hq : 0 &lt; q) (ρ₀ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ₀) :
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    ∃ j m : ℕ, 1 ≤ j ∧ (d : ℝ) / 2 + j + 6 &lt; m ∧
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>      ∃ εstar r c₀ c C₁ : ℝ, S113XTupleOK d s q β ρ₀ j m εstar r c₀ c C₁ ∧
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>        S113XLocalizedI d s q β ρ₀ j m εstar r c₀ := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  have hsd : s &lt; d := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    have : (0 : ℝ) ≤ (d : ℝ) / 2 := by positivity
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    linarith
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  set m : ℕ := ⌊(d : ℝ) / 2⌋₊ + 8 with hm
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hmm : (d : ℝ) / 2 + (1 : ℕ) + 6 &lt; m := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    have := Nat.lt_floor_add_one ((d : ℝ) / 2)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    simp only [hm]; push_cast; linarith
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have hm3 : (d : ℝ) / 2 + 3 &lt; m := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    have : ((1 : ℕ) : ℝ) = 1 := by simp
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    linarith
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  obtain ⟨εstar, r, c₀, c, C, hε, hr, hc₀, hc, hC, hNL, hall⟩ :=
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    s11q3_class_data hd hs0 hsd β q hβ hq 1 m le_rfl hmm hm3 ρ₀ hρ
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hOK : S113XTupleOK d s q β ρ₀ 1 m εstar r c₀ c C :=
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    ⟨hε, hr, hc₀, hc, hC, hNL, fun f0 hf0 ρ hρ&#x27; =&gt; (hall f0 hf0 ρ hρ&#x27;).1⟩
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  refine ⟨1, m, le_rfl, hmm, εstar, r, c₀, c, C, hOK, ?_⟩
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hQReg : S11Q2QReg d s q β ρ₀ 1 m εstar r c₀ c C := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    intro _ _ _ _ _ _ _ _ _ f0 hf0 ρ hρ&#x27; N hN T hT K hK hfree
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    obtain ⟨-, D, cc, B, R⟩ := hall f0 hf0 ρ hρ&#x27;
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    have hprob : ∀ t, 0 ≤ t → HRS.Whole.IsProbDensity (ρ t) := fun t ht =&gt;
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>      (HRS.MS.MovEnt.s66_class_props hNL hf0 hρ&#x27; hc₀.le t ht).1
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    exact s11q3_QReg_of_Reg hd hs0 hsd hβ R hprob hN T K hK hfree
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  exact s11q2_localized_of_cores hd hs0 hs hβ hq hρ hC hc₀ hNL (s11q2_liouville d s q β) hQReg
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>theorem s11q3_r2_moving_Lp {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β q : ℝ)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (hβ : 0 &lt; β) (hq : 0 &lt; q) (ρ₀ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ₀) (γ : ℝ) (hγ : 0 ≤ γ)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (hγs : 0 &lt; s → 0 &lt; γ) :
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    type_of% (HRS.Whole.r2_moving_Lp hd s hs0 hs β q hβ hq ρ₀ hρ γ hγ hγs) :=
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  s113c_r2_moving_Lp_of_X2 hd s hs0 hs β q hβ hq ρ₀ hρ γ hγ hγs
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (s11q3_cores_tuple hd s hs0 hs β q hβ hq ρ₀ hρ)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>theorem s11q3_r2_moving_moment_transfer {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (β q : ℝ) (hβ : 0 &lt; β) (hq : 0 &lt; q) (ρ₀ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ₀) (γ : ℝ)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (hγ : 0 ≤ γ) (hγs : 0 &lt; s → 0 &lt; γ) :
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    type_of% (HRS.Whole.r2_moving_moment_transfer hd s hs0 hs β q hβ hq ρ₀ hρ γ hγ hγs) :=
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  s113c_r2_moving_moment_transfer_of_X2 hd s hs0 hs β q hβ hq ρ₀ hρ γ hγ hγs
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (s11q3_cores_tuple hd s hs0 hs β q hβ hq ρ₀ hρ)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>end HRS.MS.S11Q3
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>end
+</span></code></pre></main></body></html>

@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.CanThm · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.CanThm</code></h1><p><a href="../../lean/HRS/MS/CanThm.lean">Open the unaltered Lean file</a> · 161 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.CanThmAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># CAN2: `euc_thermal_canonical` and `logThermal_canonical`
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>* `logThermal_canonical_proof : type_of% @HRS.Whole.logThermal_canonical` is clause 1 only
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>  (`HRS.MS.Can2.can2_clause1_log`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* `euc_thermal_canonical_proof : type_of% @HRS.Whole.euc_thermal_canonical`: clause 1 is
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  `HRS.MS.Can2.can2_clause1_pos`; clause 2 is the Jensen argument of the supplement (S lines 1378-1384),
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  proved without `euc_static`: for `g ≥ 0`, one integrates out the first (resp. first two) particles with
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  the weight `e^{-βV}`; Jensen&#x27;s inequality `∫ w e^{-u} ≥ Λ e^{-βB}` (with `∫ g(x-y) w(x) dx ≤ B Λ`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  from the K1 bound `riesz_conv_gaussian_bound`) gives `W_{n+1} ≥ Λ e^{-βB} W_n` for the total masses of the
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `n`-particle weights with the coupling `1/N`, hence `P^{(1)} ≤ e^{βB} γ` and `P^{(2)} ≤ e^{2βB} γ ⊗ γ`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `γ ≤ ρ/c` (`cb_thermal_two_sided`) converts this into `μ_β`.  No statement was adjusted.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.MS.Can2
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open HRS.Whole HRS.MS.Thm
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>/-- `exp(-β V) = k⁻¹ γ` for the confinement `V = a|x|²/2` and the Gaussian comparison density `γ`. -/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>lemma can2_w_eq {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) (x : Euc d) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    Real.exp (-β * confinement a x) =
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ * gaussianComparison d a β x := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hk : 0 &lt; (β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2) := by positivity
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  rw [gaussianComparison_eq, ← mul_assoc, inv_mul_cancel₀ hk.ne&#x27;, one_mul]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  unfold confinement
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  congr 1
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  ring
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>lemma can2_L_eq {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    can2_L (confinement a : Euc d → ℝ) β = ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  unfold can2_L
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  simp only [can2_w_eq ha hβ]
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  rw [integral_const_mul, (gaussianComparison_isProbDensity (d := d) ha hβ).integral_one, mul_one]
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>lemma can2_rieszKernel_measurable {s : ℝ} (hs : s ≠ 0) : Measurable (rieszKernel d s : Euc d → ℝ) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have h : (rieszKernel d s : Euc d → ℝ) = fun z =&gt; ‖z‖ ^ (-s) := funext fun z =&gt; by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    simp [rieszKernel, hs]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  rw [h]; exact measurable_norm.pow_const _
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- The abstract setting holds for the Riesz kernel with `0 &lt; s &lt; d` and the confinement. -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>lemma can2_setting_pos (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 &lt; s) (hsd : s &lt; d) {a β : ℝ} (ha : 0 &lt; a)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    ∃ B : ℝ, Can2Setting (rieszKernel d s) (confinement a) β B := by
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  obtain ⟨B₀, hB₀⟩ := riesz_conv_gaussian_bound (d := d) hd hs0 hsd ha hβ
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hk : 0 &lt; (β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2) := by positivity
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  refine ⟨max B₀ 0, ?_⟩
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hVm : Measurable (confinement a : Euc d → ℝ) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    unfold confinement; fun_prop
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  refine ⟨hβ, can2_rieszKernel_measurable hs0.ne&#x27;, fun x =&gt; ?_, hVm, ?_, le_max_right _ _, fun y =&gt; ?_⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  · simp only [rieszKernel, hs0.ne&#x27;, ite_false]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    exact Real.rpow_nonneg (norm_nonneg _) _
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  · have h := (gaussianComparison_integrable (d := d) ha hβ).const_mul
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    refine h.congr (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    simp only [can2_w_eq ha hβ]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  · have e : ∀ x : Euc d, rieszKernel d s (x - y) * Real.exp (-β * confinement a x) =
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ *
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>          (rieszKernel d s (y - x) * gaussianComparison d a β x) := fun x =&gt; by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      rw [can2_w_eq ha hβ, ← neg_sub y x, can2_rieszKernel_neg]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      ring
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    simp only [e]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    refine ⟨((hB₀ y).1.const_mul _), ?_⟩
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    have hL := can2_L_eq (d := d) ha hβ
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    unfold can2_L at hL
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    rw [integral_const_mul, hL]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    have h1 := (hB₀ y).2
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have h2 : ∫ x, rieszKernel d s (y - x) * gaussianComparison d a β x ≤ max B₀ 0 := h1.trans (le_max_left _ _)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    calc ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ *
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          ∫ x, rieszKernel d s (y - x) * gaussianComparison d a β x
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        ≤ ((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ * max B₀ 0 :=
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          mul_le_mul_of_nonneg_left h2 (inv_nonneg.2 hk.le)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      _ = _ := mul_comm _ _
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>lemma can2_smul_mono {α : Type*} [MeasurableSpace α] {a b : ℝ≥0∞} (h : a ≤ b) (m : Measure α) :
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    a • m ≤ b • m :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  Measure.le_iff.2 fun s _ =&gt; by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    simp only [Measure.smul_apply, smul_eq_mul]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    exact mul_le_mul_left h _
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>/-- Clause 2 of `euc_thermal_canonical`. -/
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>theorem can2_clause2_pos (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 &lt; s) (hsd : s &lt; d) {a β : ℝ}
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    ∃ C : ℝ≥0, ∀ N, 2 ≤ N →
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      HRS.Whole.firstMarginal (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) N β) ≤
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        C • thermalMeasure d s a β ∧
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      HRS.Whole.secondMarginal (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) N β) ≤
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        C • (thermalMeasure d s a β).prod (thermalMeasure d s a β) := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  obtain ⟨B, hS⟩ := can2_setting_pos hd1 hs0 hsd ha hβ
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  obtain ⟨hprob, c, C&#x27;, hc, hC&#x27;, hbd⟩ := cb_thermal_two_sided hd1 hs0 hsd ha hβ
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  set K : ℝ := Real.exp (β * B) / c with hK
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hK0 : 0 ≤ K := (div_pos (Real.exp_pos _) hc).le
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hdom : ∀ x : Euc d, (can2_L (confinement a : Euc d → ℝ) β * Real.exp (-(β * B)))⁻¹ *
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      Real.exp (-β * confinement a x) ≤ K * thermalDensity d s a β x := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    intro x
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    have hk : 0 &lt; (β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2) := by positivity
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    rw [can2_w_eq ha hβ, can2_L_eq ha hβ]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    have hρ := (hbd x).1
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    have e : (((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ * Real.exp (-(β * B)))⁻¹ *
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>        (((β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2))⁻¹ * gaussianComparison d a β x) =
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        Real.exp (β * B) * gaussianComparison d a β x := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      rw [mul_inv, inv_inv, ← Real.exp_neg, neg_neg]
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      field_simp
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    rw [e, hK, div_mul_eq_mul_div, le_div_iff₀ hc]
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    calc Real.exp (β * B) * gaussianComparison d a β x * c
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        = Real.exp (β * B) * (c * gaussianComparison d a β x) := by ring
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      _ ≤ Real.exp (β * B) * thermalDensity d s a β x :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>          mul_le_mul_of_nonneg_left hρ (Real.exp_pos _).le
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      _ = _ := by ring
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  refine ⟨(K + K * K).toNNReal, fun N hN =&gt; ?_⟩
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  obtain ⟨n, rfl⟩ : ∃ n, N = n + 2 := ⟨N - 2, by omega⟩
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  have hρm := hprob.measurable
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  refine ⟨?_, ?_⟩
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  · have h1 := can2_first_final hS (n + 1) hK0 hdom
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    have e : HRS.Whole.firstMarginal (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β) =
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>        (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) (n + 1 + 1) β).map
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>          (fun X : Fin (n + 1 + 1) → Euc d =&gt; X 0) := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      unfold HRS.Whole.firstMarginal
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      rw [dif_pos (by omega)]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      rfl
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    rw [e]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    refine h1.trans ?_
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    exact can2_smul_mono (by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      change ENNReal.ofReal K ≤ ENNReal.ofReal (K + K * K)
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      exact ENNReal.ofReal_le_ofReal (by nlinarith)) _
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  · have h2 := can2_second_final hS n hρm hK0 hdom
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    have e : HRS.Whole.secondMarginal (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β) =
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        (HRS.Whole.canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β).map
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          (fun X : Fin (n + 2) → Euc d =&gt; (X 0, X 1)) := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      unfold HRS.Whole.secondMarginal
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      rw [dif_pos (by omega)]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      rfl
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    rw [e]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    refine h2.trans ?_
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    refine can2_smul_mono ?_ _
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    rw [← ENNReal.ofReal_mul hK0]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    change ENNReal.ofReal (K * K) ≤ ENNReal.ofReal (K + K * K)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    exact ENNReal.ofReal_le_ofReal (by nlinarith)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- `P_N = Q_N(μ_β)` for the logarithmic thermal measure. -/
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>theorem logThermal_canonical_proof : type_of% @HRS.Whole.logThermal_canonical := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  intro d hd a β ha hβ N
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  exact can2_clause1_log hd ha hβ N
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>/-- Proposition S3.4, last clauses. -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>theorem euc_thermal_canonical_proof : type_of% @HRS.Whole.euc_thermal_canonical := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  intro d s hd hs0 hsd a β ha hβ
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  exact ⟨fun N =&gt; can2_clause1_pos hd hs0 hsd ha hβ N, can2_clause2_pos hd hs0 hsd ha hβ⟩
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>end HRS.MS.Can2
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>end
+</span></code></pre></main></body></html>

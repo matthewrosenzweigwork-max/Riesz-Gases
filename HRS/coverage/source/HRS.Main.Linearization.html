@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.Linearization · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.Linearization</code></h1><p><a href="../../lean/HRS/Main/Linearization.lean">Open the unaltered Lean file</a> · 225 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.Assumptions
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Dynamics.InitialData
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Main.A33Aux18
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># The linear approximation and the limiting field (main manuscript, Appendix A)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Specification file SPEC-A.  Sources (`HRS_periodic_main_20261008T010000Z.tex`):
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* the prose `B:sec:main-surrogate` (L10260-10292): the linear approximation
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  `𝔖_N^t[φ⃗] = (A_N ⟨U_N^{0,t}φ_a, η°⟩ + G_a)_a` (`B:eq:surrogate-def`), the Gaussian covariance
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  `𝗏_N^t[φ_a,φ_b]` (`B:eq:surrogate-cov`), the field `η_{N,lin}^t = A_N V_N^{t,0} η° + G_N^t`
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  (`B:eq:surrogate-field-torus`), and the `N`-independent limit field obtained by replacing the
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  coefficient quadruple `(β_N, μ_{β_N}, A_N, 2σ_N²/(Nβ_N))` by `(β_∞, μ_{β_∞}, A, 2/β_*)`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* Proposition A.33 `prop:periodic-limit-field` (L11310-11318).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>## Representation decisions
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* The *laws* of the linear approximations are given as explicit measures: the law of
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `A_N ⟨U φ, η°⟩ + G` with `G` Gaussian independent of `η°` is the additive convolution
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  (`Measure.conv`) of the law of `A_N ⟨U φ, η°⟩` with the centered Gaussian `N(0, 𝗏)`.  This makes the
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  comparison statements independent of the existence of an independent `G` on the given probability
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  space (the TeX &quot;`G_N^t` is chosen independent of `𝓕_0^in`&quot;).
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* The `H^{-γ}`-valued Gaussian field `G_N^t` is any law `νG` that is a centered Gaussian measure on
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `NegSobolev d γ` with covariance form `HRS.noiseCovariance` (`IsLinearFieldNoise`); it is unique
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  (Gaussian laws on a separable Hilbert space are determined by their covariance on a dense class of
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  tests), and its existence is Proposition A.33 (`periodic_limit_field`).  Statements are made for
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  every such `νG`.
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>* The transported initial field `V_N^{t,0} η°` is `transportField`:
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  `⟨e_k, V^{t,0} F⟩ := ⟨U^{0,t} e_k, F⟩` on the real trigonometric system `e_k = realMode k`
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  (zero mode dropped, as for all of `NegSobolev`), with `U` the project&#x27;s classical adjoint
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  propagator `HRS.propagator`.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>* Weak convergence of laws is `ConvergesInLaw` (the portmanteau form: convergence of the integrals of
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  bounded continuous functions).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>-/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>noncomputable section
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>open scoped ENNReal NNReal BigOperators MeasureTheory BoundedContinuousFunction
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>namespace HRS
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>namespace Main
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>variable {d : ℕ}
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>/-! ### Statistics and their laws (finite families of tests and times) -/
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>section Statistics
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>variable {Ω : Type*} [MeasurableSpace Ω] {N : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>/-- The particle statistics `(⟨φ_a, σ Ξ_N^{t_a}⟩)_a`, `Ξ_N^t = μ_N^t - μ_{β_N}^t`
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>(`μ_N^t` the empirical measure of `X_N^t`, `μ_{β_N}^t = ρ t dx`), a vector in `ℝ^ι`. -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>def fluctStat (σ : ℝ) (X : ℝ≥0 → Ω → Config d N) (ρ : ℝ → Torus d → ℝ) (ts : ι → ℝ)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (φ : ι → Torus d → ℝ) (ω : Ω) : EuclideanSpace ℝ ι :=
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    σ * (pair (empirical (X (Real.toNNReal (ts a)) ω)) (φ a) - pair (withDensityReal (ρ (ts a))) (φ a))
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>/-- The law of the particle statistics. -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>def fluctStatLaw (P : Measure Ω) (σ : ℝ) (X : ℝ≥0 → Ω → Config d N) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (ts : ι → ℝ) (φ : ι → Torus d → ℝ) : Measure (EuclideanSpace ℝ ι) :=
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  law P (fluctStat σ X ρ ts φ)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>end Statistics
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>section Surrogate
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- The covariance matrix of the Gaussian blocks `(G_a)` of `B:eq:surrogate-def`
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>(`B:eq:surrogate-cov`, TeX L10272-10276, with the cross-covariance of the multi-time recipe of
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>`B:rem:multitime`): `2q ∫_0^{t_a ∧ t_b} ⟨∇U^{r,t_a}φ_a · ∇U^{r,t_b}φ_b, μ^r⟩ dr`,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>`q = σ²/(Nβ)` (`2q = 2σ²/(Nβ)`); the same expression as in `HRS.IsLinearFluctuationSolution`. -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>def surrogateCov (D : DynData d) (ρ : ℝ → Torus d → ℝ) (q : ℝ) (ts : ι → ℝ)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (φ : ι → Torus d → ℝ) : Matrix ι ι ℝ :=
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  Matrix.of fun a b =&gt;
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    2 * q * ∫ r in Set.Icc 0 (min (ts a) (ts b)), ∫ x,
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      inner ℝ (Torus.grad (propagator D ρ r (ts a) (φ a)) x)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        (Torus.grad (propagator D ρ r (ts b) (φ b)) x) * ρ r x
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>/-- The law of the linear approximation `𝔖_N^t[φ⃗] = (A ⟨U^{0,t_a}φ_a, η°⟩ + G_a)_a`
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>(`B:eq:surrogate-def`, TeX L10266-10270), `G` centered Gaussian with covariance `surrogateCov`
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>independent of `η°`: the convolution of the law of `(A η°(U^{0,t_a}φ_a))_a` under `P` with the
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>centered Gaussian of covariance `surrogateCov D ρ q`.  `η` is the random functional `η°`,
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>`D, ρ` the coefficients (`β_N, μ_{β_N}`), `A = A_N`, `q = q_N`. -/
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>def surrogateStatLaw {Ω : Type*} [MeasurableSpace Ω] (D : DynData d) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (A q : ℝ) (ts : ι → ℝ) (φ : ι → Torus d → ℝ) (P : Measure Ω)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    (η : Ω → (Torus d → ℝ) → ℝ) : Measure (EuclideanSpace ℝ ι) :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  law P (fun ω =&gt; (WithLp.toLp 2 fun a =&gt; A * η ω (propagator D ρ 0 (ts a) (φ a)) :
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      EuclideanSpace ℝ ι)) ∗ multivariateGaussian 0 (surrogateCov D ρ q ts φ)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>end Surrogate
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-! ### Fields -/
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>/-- The transported initial field `V^{t,0} F` (the transpose of the adjoint propagator `U^{0,t}`):
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>`⟨e_k, V^{t,0} F⟩ = ⟨U^{0,t} e_k, F⟩` for the real trigonometric system `e_k = realMode k`, as an
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>element of `E_γ = NegSobolev d γ`. -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>def transportField (D : DynData d) (ρ : ℝ → Torus d → ℝ) (t γ : ℝ) (F : NegSobolev d γ) :
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    NegSobolev d γ :=
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  NegSobolev.ofSeq γ fun k =&gt; NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode k))
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>/-- `νG` is the law of the Gaussian field `G^t` of the linear approximation at time `t`: a centered
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>Gaussian probability measure on `E_γ = H^{-γ}_0` with covariance
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>`2q ∫_0^t ⟨∇U^{r,t}φ·∇U^{r,t}ψ, μ^r⟩ dr` (`HRS.noiseCovariance`, `B:eq:surrogate-cov`),
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>`q = σ_N²/(Nβ_N)` (resp. `β_*⁻¹` for the limit). -/
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>def IsLinearFieldNoise (D : DynData d) (ρ : ℝ → Torus d → ℝ) (q t : ℝ) (γ : ℝ)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    (νG : Measure (NegSobolev d γ)) : Prop :=
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  IsProbabilityMeasure νG ∧ IsCenteredGaussianWithCov γ νG (noiseCovariance D ρ q t)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>/-- The law of the particle field `σ Ξ_N^t = σ(μ_N^t - μ_{β_N}^t)` in `E_γ`. -/
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>def particleFieldLaw {Ω : Type*} [MeasurableSpace Ω] {N : ℕ} (P : Measure Ω) (σ : ℝ) (γ : ℝ)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (X : ℝ≥0 → Ω → Config d N) (ρ : ℝ → Torus d → ℝ) (t : ℝ) : Measure (NegSobolev d γ) :=
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  law P (fun ω =&gt; σ • NegSobolev.ofMeasureDiff γ (empirical (X (Real.toNNReal t) ω))
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    (withDensityReal (ρ t)))
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- The law of the linear approximation field `η_{N,lin}^t = A V^{t,0} η° + G^t`
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>(`B:eq:surrogate-field-torus`, TeX L10279): the convolution of the law of `A V^{t,0} η°`
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>(`η° = η` a `NegSobolev d γ`-valued random element on `(Ω, P)`) with the Gaussian law `νG` of `G^t`
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>(independent of `η°`). -/
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>def linearFieldLaw {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (D : DynData d)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (ρ : ℝ → Torus d → ℝ) (A t : ℝ) (γ : ℝ) (η : Ω → NegSobolev d γ)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (νG : Measure (NegSobolev d γ)) : Measure (NegSobolev d γ) :=
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  haveI := InitialDataAux.negSobolev_secondCountable d γ
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  law P (fun ω =&gt; A • transportField D ρ t γ (η ω)) ∗ νG
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>/-- The law of the `N`-independent limit field `η^t` (TeX L10285-10290): the coefficients are replaced
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>by `(β_∞, μ_{β_∞}, A, 2/β_*)` (`LimitCoeffs`), `η°` has the fixed law `νin` (`η° ∼ νin`, an
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>`N`-independent initial law), and `νGlim` is the Gaussian law of the limiting block (the cylindrical
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>Wiener process is independent of `η°`). -/
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>def limitFieldLaw (S : MainData d) (L : LimitCoeffs d) (γ : ℝ) (νin : Measure (NegSobolev d γ))
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    (t : ℝ) (νGlim : Measure (NegSobolev d γ)) : Measure (NegSobolev d γ) :=
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  linearFieldLaw νin (L.dyn S) L.ρ L.A t γ id νGlim
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-- Weak convergence of laws (portmanteau form): `∫ f dμ_N → ∫ f dν` for every bounded continuous
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>real `f`.  For random elements this is Mathlib&#x27;s `TendstoInDistribution`. -/
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>def ConvergesInLaw {E : Type*} [TopologicalSpace E] [MeasurableSpace E] (μ : ℕ → Measure E)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    (ν : Measure E) : Prop :=
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  ∀ f : E →ᵇ ℝ, Tendsto (fun N =&gt; ∫ x, f x ∂(μ N)) atTop (𝓝 (∫ x, f x ∂ν))
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-! ### Proposition A.33 -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>/-- A distribution-valued solution of the linearized equation `H:eq:linear-equation` in mild form,
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>*without* a path-continuity requirement: the same as `HRS.IsLinearFluctuationSolution` minus its
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>field `cont`.  Proposition A.33 (TeX L11310-11318) only asserts a &quot;distribution-valued solution&quot;;
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>path continuity is claimed only for the continuous version in `H^{-(γ+2)}` (Proposition A.11,
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>L10386-10391, which uses `IsLinearFluctuationSolution`). -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>structure IsLinearFluctuationProcess {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m q T : ℝ) (Y₀ : Ω → NegSobolev d m)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (Y : ℝ → Ω → NegSobolev d m) : Prop where
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  init : ∀ᵐ ω ∂P, Y 0 ω = Y₀ ω
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  meas : ∀ t, Measurable (Y t)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  gaussian_part : ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ),
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    (∀ a, ts a ∈ Set.Icc 0 T) → (∀ a, Torus.IsSmooth (φ a)) →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    let G : Ω → EuclideanSpace ℝ (Fin p) := fun ω =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      NegSobolev.eval (Y (ts a) ω) (φ a) - NegSobolev.eval (Y₀ ω) (propagator D ρ 0 (ts a) (φ a))
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    ProbabilityTheory.IndepFun G Y₀ P ∧
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    law P G = ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun a b =&gt;
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      2 * q * ∫ r in Set.Icc 0 (min (ts a) (ts b)), ∫ x,
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        inner ℝ (Torus.grad (propagator D ρ r (ts a) (φ a)) x)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>          (Torus.grad (propagator D ρ r (ts b) (φ b)) x) * ρ r x)
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-- Proposition A.33 `M:prop:periodic-limit-field` (TeX L11310-11318).  Under the hypotheses of the
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>periodic field comparison (the adjoint hypotheses of Proposition 3.9 at the level `γ = m_*+d+3`,
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>`AdjointData`, with regime `Rg`) and a noise level `q ≥ 0` (**technical**: `q = σ_N²/(Nβ_N) ≥ 0`
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>makes the covariance positive semidefinite):
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>(1) for every `t ∈ [0,T]` the covariance `B:eq:surrogate-cov` defines a centered Gaussian field in
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>`H^{-γ}(𝕋^d)` (`IsLinearFieldNoise`); the independence from the initial fluctuation field is part
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>of the solution concept (`gaussian_part`);
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>(2) for every initial law `ν₁` on `E_γ` there is a distribution-valued solution `Y` of the linearized
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>equation (`IsLinearFluctuationProcess`: initial field plus stochastic convolution, mild form) with
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>`Y⁰ ∼ ν₁`, and it is unique: any two such solutions have the same finite-dimensional laws on smooth
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>tests, `Law (Y_{t_a}(φ_a))_a` (the TeX asserts uniqueness among distribution-valued solutions, via the
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>adjoint identity and density of smooth tests, and no path continuity here).
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>The same statement applied to the limiting coefficients `(β_∞, μ_{β_∞}, β_*⁻¹)` gives the limiting
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>field (the proposition is stated for arbitrary admissible coefficients `(D, ρ, q)`). -/
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>theorem periodic_limit_field (hd : 1 ≤ d) (Rg : PDE.Regime) (ν₀ MB Λ VB : ℝ)
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    (D : DynData d) (T : ℝ) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    (hA : PDE.AdjointData D.s (gammaIdx d) Rg MB Λ VB D ν₀ T ρ) (q : ℝ) (hq : 0 ≤ q) :
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (∀ t ∈ Set.Icc (0 : ℝ) T, ∃ νG : Measure (NegSobolev d (gammaIdx d : ℝ)),
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        IsLinearFieldNoise D ρ q t (gammaIdx d : ℝ) νG) ∧
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    ∀ ν₁ : Measure (NegSobolev d (gammaIdx d : ℝ)), IsProbabilityMeasure ν₁ →
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      (∃ (Ω&#x27; : Type) (_ : MeasurableSpace Ω&#x27;) (P&#x27; : Measure Ω&#x27;) (_ : IsProbabilityMeasure P&#x27;)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>          (Y₀ : Ω&#x27; → NegSobolev d (gammaIdx d : ℝ)) (Y : ℝ → Ω&#x27; → NegSobolev d (gammaIdx d : ℝ)),
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>          Measurable Y₀ ∧ law P&#x27; Y₀ = ν₁ ∧
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>          IsLinearFluctuationProcess P&#x27; D ρ (gammaIdx d : ℝ) q T Y₀ Y) ∧
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      ∀ (Ω₁ Ω₂ : Type) (_ : MeasurableSpace Ω₁) (_ : MeasurableSpace Ω₂)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>          (P₁ : Measure Ω₁) (P₂ : Measure Ω₂) (_ : IsProbabilityMeasure P₁)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>          (_ : IsProbabilityMeasure P₂)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>          (Y₀₁ : Ω₁ → NegSobolev d (gammaIdx d : ℝ)) (Y₀₂ : Ω₂ → NegSobolev d (gammaIdx d : ℝ))
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>          (Y₁ : ℝ → Ω₁ → NegSobolev d (gammaIdx d : ℝ))
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>          (Y₂ : ℝ → Ω₂ → NegSobolev d (gammaIdx d : ℝ)),
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>        law P₁ Y₀₁ = ν₁ → law P₂ Y₀₂ = ν₁ →
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        IsLinearFluctuationProcess P₁ D ρ (gammaIdx d : ℝ) q T Y₀₁ Y₁ →
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        IsLinearFluctuationProcess P₂ D ρ (gammaIdx d : ℝ) q T Y₀₂ Y₂ →
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ),
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>          (∀ a, ts a ∈ Set.Icc (0 : ℝ) T) → (∀ a, Torus.IsSmooth (φ a)) →
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>          law P₁ (fun ω =&gt; (WithLp.toLp 2 fun a =&gt; NegSobolev.eval (Y₁ (ts a) ω) (φ a) :
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>              EuclideanSpace ℝ (Fin p))) =
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>            law P₂ (fun ω =&gt; (WithLp.toLp 2 fun a =&gt; NegSobolev.eval (Y₂ (ts a) ω) (φ a) :
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>              EuclideanSpace ℝ (Fin p))) := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  have hJ : PDE.mStar d ≤ gammaIdx d := by unfold gammaIdx; omega
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  have hJ2 : PDE.mStar d + d ≤ gammaIdx d := by unfold gammaIdx; omega
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  let S : HRS.A33.A33Setup d :=
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    { J := gammaIdx d, hJ := hJ, hJ2 := hJ2, hd := hd, R := Rg, MB := MB, Λ := Λ, VB := VB,
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      ν₀ := ν₀, D := D, T := T, ρ := ρ, hA := hA }
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  obtain ⟨e⟩ := HRS.A33.a33_exists_equiv hd
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  refine ⟨?_, fun ν₁ hν₁ =&gt; ?_⟩
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  · intro t ht
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    obtain ⟨νG, hp, hc, hcov⟩ := HRS.A33.a33_noise_exists S q hq ht
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    refine ⟨νG, ?_⟩
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    unfold IsLinearFieldNoise IsCenteredGaussianWithCov
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    exact ⟨hp, hc, hcov⟩
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  · haveI := hν₁
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    refine ⟨?_, ?_⟩
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    · obtain ⟨Ω&#x27;, m, P&#x27;, hP&#x27;, Y₀, Y, hY₀m, hlaw, hY⟩ := HRS.A33.a33_exists_process S q hq ν₁
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>      exact ⟨Ω&#x27;, m, P&#x27;, hP&#x27;, Y₀, Y, hY₀m, hlaw, ⟨hY.init, hY.meas, hY.gauss⟩⟩
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    · intro Ω₁ Ω₂ _ _ P₁ P₂ _ _ Y₀₁ Y₀₂ Y₁ Y₂ hl₁ hl₂ h₁ h₂ p ts φ hts hφ
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      exact HRS.A33.a33_unique S q e P₁ P₂ ν₁ Y₀₁ Y₀₂ Y₁ Y₂ hl₁ hl₂
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        ⟨h₁.init, h₁.meas, h₁.gaussian_part⟩ ⟨h₂.init, h₂.meas, h₂.gaussian_part⟩ p ts φ hts hφ
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>end Main
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>end HRS
+</span></code></pre></main></body></html>

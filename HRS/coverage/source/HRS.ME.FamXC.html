@@ -1,0 +1,160 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.FamXC · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.FamXC</code></h1><p><a href="../../lean/HRS/ME/FamXC.lean">Open the unaltered Lean file</a> · 159 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.ME.FamX (packet X2, part C): the frozen `HRS.Main.critical_family_fixed_limsup`
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>Mechanism.  Write `A_N(θ) = |√N E Y_{N,θ}³|` and `E_N(θ) = √N W₂(law Y_{N,θ}, Gaussian)`.
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>* `sharpness_data`: `A_N(θ) ≤ K E_N(θ)` for `N ≥ 2`, `θ ∈ [0,R]`, and `∫₀^R A_N ≥ v` for `N ≥ N₁`;
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>* `rate_W2_pointwise_upper`: `E_N(θ) ≤ C₀` for `N ≥ 2`, `θ ∈ [0,R]`; so `A_N ≤ K C₀` there.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Reverse Fatou on `[0,R]` gives `v ≤ ∫⁻ limsup_N ofReal(A_N(θ)) dθ`; so the set where the limsup is
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>positive has positive measure.  On that set, `limsup A_N ≤ K limsup E_N`, hence `limsup E_N &gt; 0`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>import HRS.ME.FamXB
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.ME.FamVE
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>noncomputable section
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>namespace HRS.ME.FamX
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open HRS
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>/-- The absolute third-moment term `|√N E[Y_{N,θ}³]|`. -/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>def absY (d : ℕ) (k : Lattice d) (β : ℝ) (N : ℕ) (θ : ℝ) : ℝ :=
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  |Real.sqrt N * ∫ X, rateY d ((d : ℝ) / 2) k β N θ X ^ 3 ∂(rateGibbs d ((d : ℝ) / 2) k β θ N)|
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- **Fixed-parameter `limsup` clause.**  On a set of positive measure in `(0, R]`, the limsup of
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>`√N W₂` is positive. -/
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem critical_family_fixed_limsup_proved {d : ℕ} :
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    type_of% (@HRS.Main.critical_family_fixed_limsup d) := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  intro hd β hβ k hk ρ hρ
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hs0 : (0 : ℝ) ≤ (d : ℝ) / 2 := by positivity
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hsd : (d : ℝ) / 2 &lt; d := by linarith
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hg : 0 ≤ rieszCoeff d ((d : ℝ) / 2) k := (rieszCoeff_pos hd hs0 hsd k hk).le
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  obtain ⟨R, hRdef⟩ : ∃ R : ℝ, R = 16 * (1 + β * rieszCoeff d ((d : ℝ) / 2) k) := ⟨_, rfl⟩
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  rw [← hRdef]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have hRpos : 0 &lt; R := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    have := mul_nonneg hβ.le hg
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    rw [hRdef]; linarith
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  obtain ⟨K, v, hK, hv, N₁, hN₁, hlowN, hpt⟩ := sharpness_data hd hβ k hk
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  rw [← hRdef] at hlowN hpt
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  obtain ⟨C0, hC0, hW⟩ := HRS.ME.FamV.rate_W2_pointwise_upper hd hs0 hsd β hβ k R
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  -- pointwise bound `√N W₂ ≤ C₀` and `|√N E Y³| ≤ K C₀`
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hpt&#x27; : ∀ θ ∈ Set.Icc (0 : ℝ) R, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      ENNReal.ofReal (absY d k β N θ) ≤ ENNReal.ofReal K * ENNReal.ofReal C0 := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    intro θ hθ N hN
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    have hNr : (0 : ℝ) &lt; N := by exact_mod_cast (show 0 &lt; N by omega)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    have hsqrt : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 hNr
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    have hsq : (N : ℝ) ^ (-(1 : ℝ) / 2) = 1 / Real.sqrt N := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      rw [show -(1 : ℝ) / 2 = -(1 / 2) by ring, Real.rpow_neg hNr.le, ← Real.sqrt_eq_rpow]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      simp
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have hW&#x27; := hW θ hθ (ρ θ) (hρ θ) N hN
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    have hE : ENNReal.ofReal (Real.sqrt N) *
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>          (Main.rateGaussian d ((d : ℝ) / 2) k β (ρ θ)) ≤ ENNReal.ofReal C0 := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      refine le_trans (mul_le_mul&#x27; le_rfl hW&#x27;) (le_of_eq ?_)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      rw [← ENNReal.ofReal_mul hsqrt.le, hsq]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      congr 1
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      field_simp
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    exact le_trans (hpt ρ hρ N hN θ hθ) (mul_le_mul&#x27; le_rfl hE)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  -- `absY` is continuous, hence measurable
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hGm : ∀ n : ℕ, Measurable (fun θ : ℝ =&gt; ENNReal.ofReal (absY d k β (max n 2) θ)) := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    intro n
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    have hc : Continuous (fun θ : ℝ =&gt; absY d k β (max n 2) θ) :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      h_continuous hd hβ k hk (le_max_right n 2)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    exact hc.measurable.ennreal_ofReal
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  -- lower bound for the integrals, for `N ≥ N₁`
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hlow : ∀ N : ℕ, N₁ ≤ N →
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      ENNReal.ofReal v ≤ ∫⁻ θ in Set.Ioc 0 R, ENNReal.ofReal (absY d k β N θ) := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    intro N hN
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have hN2 : 2 ≤ N := le_trans hN₁ hN
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    have hc : Continuous (fun θ : ℝ =&gt; absY d k β N θ) := h_continuous hd hβ k hk hN2
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have hint : IntegrableOn (fun θ : ℝ =&gt; absY d k β N θ) (Set.Ioc 0 R) :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      hc.integrableOn_Icc.mono_set Set.Ioc_subset_Icc_self
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    have hA := hlowN N hN
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    rw [intervalIntegral.integral_of_le hRpos.le] at hA
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    calc ENNReal.ofReal v ≤ ENNReal.ofReal (∫ θ in Set.Ioc 0 R, absY d k β N θ) :=
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          ENNReal.ofReal_le_ofReal hA
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      _ = ∫⁻ θ in Set.Ioc 0 R, ENNReal.ofReal (absY d k β N θ) :=
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          ofReal_integral_eq_lintegral_ofReal hint (Eventually.of_forall fun θ =&gt; abs_nonneg _)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  -- reverse Fatou on `Ioc 0 R`, with the reindexing `n ↦ max n 2` to get a uniform bound
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hbd : ∀ n : ℕ, (fun θ : ℝ =&gt; ENNReal.ofReal (absY d k β (max n 2) θ)) ≤ᵐ[volume.restrict (Set.Ioc 0 R)]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      (fun _ =&gt; ENNReal.ofReal K * ENNReal.ofReal C0) := fun n =&gt; by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    refine (ae_restrict_iff&#x27; measurableSet_Ioc).2 (Eventually.of_forall fun θ hθ =&gt; ?_)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    exact hpt&#x27; θ (Set.Ioc_subset_Icc_self hθ) (max n 2) (le_max_right n 2)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hfin : ∫⁻ _θ, ENNReal.ofReal K * ENNReal.ofReal C0 ∂(volume.restrict (Set.Ioc 0 R)) ≠ ⊤ := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    rw [lintegral_const, Measure.restrict_apply_univ, Real.volume_Ioc]
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    exact ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      ENNReal.ofReal_ne_top
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hFatou := MeasureTheory.limsup_lintegral_le
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (μ := volume.restrict (Set.Ioc 0 R))
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (f := fun n θ =&gt; ENNReal.ofReal (absY d k β (max n 2) θ))
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (fun _ =&gt; ENNReal.ofReal K * ENNReal.ofReal C0) hGm hbd hfin
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hLB : ENNReal.ofReal v ≤ limsup
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      (fun n : ℕ =&gt; ∫⁻ θ in Set.Ioc 0 R, ENNReal.ofReal (absY d k β (max n 2) θ)) atTop := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    refine le_limsup_of_frequently_le ?_
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    refine Eventually.frequently ?_
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    filter_upwards [eventually_ge_atTop N₁] with n hn
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    exact hlow (max n 2) (le_trans hn (le_max_left _ _))
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hLeq : ∀ θ : ℝ,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      limsup (fun n : ℕ =&gt; ENNReal.ofReal (absY d k β (max n 2) θ)) atTop =
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    intro θ
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    apply limsup_congr
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    filter_upwards [eventually_ge_atTop 2] with n hn
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    simp [max_eq_left hn]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  have hFat : ENNReal.ofReal v ≤
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      ∫⁻ θ in Set.Ioc 0 R, limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop :=
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    le_trans hLB (le_trans hFatou (le_of_eq (lintegral_congr hLeq)))
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  -- measurability of the limsup
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hLm : Measurable (fun θ : ℝ =&gt; limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop) := by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have h := Measurable.limsup hGm
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    have heq : (fun θ : ℝ =&gt; limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop) =
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        fun θ : ℝ =&gt; limsup (fun n : ℕ =&gt; ENNReal.ofReal (absY d k β (max n 2) θ)) atTop :=
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      funext fun θ =&gt; (hLeq θ).symm
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    rw [heq]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    exact h
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  -- the set `A`
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  obtain ⟨A, hAdef⟩ : ∃ A : Set ℝ, A = Set.Ioc 0 R ∩
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      {θ : ℝ | 0 &lt; limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop} := ⟨_, rfl⟩
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  have hAm : MeasurableSet A := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    rw [hAdef]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    exact measurableSet_Ioc.inter (measurableSet_lt measurable_const hLm)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hAsub : A ⊆ Set.Ioc 0 R := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    rw [hAdef]; exact Set.inter_subset_left
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hAmem : ∀ θ, θ ∈ A ↔
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      θ ∈ Set.Ioc 0 R ∧ 0 &lt; limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    intro θ; rw [hAdef]; exact Iff.rfl
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hpos : 0 &lt; volume A := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    rw [pos_iff_ne_zero]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    intro h0
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    have hae : ∀ᵐ θ ∂(volume.restrict (Set.Ioc 0 R)),
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop = 0 := by
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      rw [ae_restrict_iff&#x27; measurableSet_Ioc]
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      filter_upwards [measure_eq_zero_iff_ae_notMem.1 h0] with θ hθ hθI
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      by_contra hne
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>      exact hθ ((hAmem θ).2 ⟨hθI, pos_iff_ne_zero.2 hne⟩)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    have hz : ∫⁻ θ in Set.Ioc 0 R,
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>        limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop = 0 := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      rw [lintegral_congr_ae hae, lintegral_zero]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    rw [hz] at hFat
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    exact absurd hFat (not_le.2 (ENNReal.ofReal_pos.2 hv))
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  refine ⟨A, hAm, hAsub, hpos, ?_⟩
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  intro θ hθ
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  obtain ⟨hθI, hθL⟩ := (hAmem θ).1 hθ
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have hθR : θ ∈ Set.Icc (0 : ℝ) R := Set.Ioc_subset_Icc_self hθI
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have hL : limsup (fun N : ℕ =&gt; ENNReal.ofReal (absY d k β N θ)) atTop ≤
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      ENNReal.ofReal K * limsup (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N) *
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        wassersteinE 2 (Main.rateLaw d ((d : ℝ) / 2) k β N θ)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          (Main.rateGaussian d ((d : ℝ) / 2) k β (ρ θ))) atTop := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    refine le_trans (limsup_le_limsup ?_)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      (le_of_eq (ENNReal.limsup_const_mul_of_ne_top ENNReal.ofReal_ne_top))
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    filter_upwards [eventually_ge_atTop 2] with N hN
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    exact hpt ρ hρ N hN θ hθR
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  refine pos_iff_ne_zero.2 fun h0 =&gt; ?_
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  rw [h0, mul_zero] at hL
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  exact absurd (lt_of_lt_of_le hθL hL) (lt_irrefl _)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>end HRS.ME.FamX
+</span></code></pre></main></body></html>

@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Uniform.Evolution · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Uniform.Evolution</code></h1><p><a href="../../lean/HRS/Uniform/Evolution.lean">Open the unaltered Lean file</a> · 147 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Uniform.Comparison
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.MeanFieldDefs
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Section 3 (evolution estimates at fixed temperature; stationary noise): specification statements, part III
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>(packet SPEC-U; all theorems here are statements with `sorry` proofs)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Rows (main manuscript `M`, source lines of `HRS_periodic_main_20261008T010000Z.tex`):
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* Lemma 3.27 `M:P:lem:evolution` (L2531-2546): `evolution_estimates`.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Lemma 3.31 `M:lem:stationary-noise` (L2758-2769): `stationary_noise`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>## Representation decisions (the orchestrator must check these against the TeX)
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* **Setting of Lemma 3.27.**  The lemma sits in the subsection &quot;Evolution estimates at a fixed positive temperature&quot; (L2515),
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  with the gradient mean-field dynamics of the finite-regularity statement Proposition 5.1 (L5771-5791;
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `HRS.PDE.FiniteRegHyp`, `HRS.PDE.IsMFSolutionHK`, `M = -I`, `ν = β⁻¹`, `HRS.PDE.mfData`), whose density path `ρ^t`
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  converges exponentially to the thermal density; the TeX does not restate these hypotheses (it refers to
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `\\cref{sec:finite-regularity}`), so they are the hypotheses of the statement.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* **The evolution dual to the backward generator on `E_r`** is not a library object; it is characterised by duality
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  with the classical adjoint propagator `HRS.propagator` (Definition 3.5): `⟨V^{t,u} z, φ⟩ = ⟨z, U^{u,t} φ⟩` for smooth `φ`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  (`IsDualEvolution`).  The lemma asserts that a strongly continuous evolution `V` on `E_r = H^{-r}_0` with this duality
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  exists and satisfies the decay and maximal bounds (existence is the content &quot;the evolution dual to
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `H:eq:backward-generator` is strongly continuous on `E_r`&quot;).
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>* **Stochastic convolutions and Hilbert martingales** as in `HRS/Uniform/Spec.lean`.
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>-/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>noncomputable section
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>namespace HRS
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>namespace Uniform
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>universe u
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>variable {d : ℕ}
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>/-- `V` is the evolution dual to the backward generator `H:eq:backward-generator` (for the dynamics `D` and the density path
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>`ρ`) on `E_m = H^{-m}_0`: `⟨V^{t,u} z, φ⟩ = ⟨z, U^{u,t} φ⟩` for `0 ≤ u ≤ t`, `z ∈ E_m` and smooth `φ`, where `U^{u,t} =
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>HRS.propagator D ρ u t` is the adjoint propagator of Definition 3.5 and `⟨F, φ⟩ = NegSobolev.eval F φ`. -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>def IsDualEvolution (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m : ℝ)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (V : ℝ → ℝ → NegSobolev d m →L[ℝ] NegSobolev d m) : Prop :=
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  ∀ u t : ℝ, 0 ≤ u → u ≤ t → ∀ (z : NegSobolev d m) (φ : Torus d → ℝ), Torus.IsSmooth φ →
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    NegSobolev.eval (V t u z) φ = NegSobolev.eval z (propagator D ρ u t φ)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- Lemma 3.27 (`M:P:lem:evolution`, &quot;Maximal estimates and decay&quot;, TeX M L2531-2546), at a fixed positive temperature
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>`β` for the gradient mean-field flow of Proposition 5.1 (`FiniteRegHyp`, `IsMFSolutionHK`, the regularity index `K`
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>sufficiently large depending on `r`: &quot;uniform smooth density and potential bounds&quot;, L2557-2558; for each real `r`).
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>(1) For each real `r` the evolution `V^{t,u}` dual to the backward generator is strongly continuous on `E_r` (a strongly
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>continuous evolution `Vev` with `IsDualEvolution` exists); (2) on the zero-mass subspace (all of `E_r = H^{-r}_0`)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`‖V^{t,u}‖_{E_r→E_r} ≤ C_r e^{-c_r(t-u)}`, `0 ≤ u ≤ t` (`P:eq:decay`); (3) for every `T &gt; 0`, every continuous
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>`E_r`-valued martingale `M` with covariance density `C_u`, and every window `[a, a+T]`, `a ≥ 0`, the stochastic convolution
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>`∫_a^t V^{t,u} dM_u` has a continuous version with
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>`E sup_{a≤t≤a+T} ‖∫_a^t V^{t,u} dM_u‖²_{E_r} ≤ C_{r,T} E ∫_a^{a+T} Tr C_u du` (`P:eq:maximal`), with `C_{r,T}` independent of
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>`a` (chosen before `a`).  The two integrals are `lintegral`s in `ℝ≥0∞`.
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>&quot;The same statements hold for the stationary evolution and for the Gaussian noise considered here&quot;: the stationary evolution
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>is the instance of this statement for the stationary solution `ρ^t ≡ ρ_β` (`ρ⁰ = ρ_β`, `FiniteRegHyp` holds for the smooth
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>positive thermal density), and Gaussian noise is a special case of a continuous martingale; neither is restated.
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>AMBIGUITY (L2515-2530): the regularity hypotheses are not restated in the lemma; the reading used is `FiniteRegHyp` with
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>`β₋ = β₊ = β` and `K ≥ K₀(r)`.  Technical hypotheses: as in Lemma 3.17 (separable `E_r`, `L²` martingale, `M_0 = 0`). -/
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>theorem evolution_estimates (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (r : ℝ) :
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    ∃ K₀ : ℕ, ∀ K : ℕ, K₀ ≤ K → ∀ (β : ℝ) (hβ : 0 &lt; β) (V ρ₀ : Torus d → ℝ),
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      PDE.FiniteRegHyp d s β β K V ρ₀ → ∀ ρc : ℝ → PDE.Coeff d,
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      PDE.IsMFSolutionHK d s V β⁻¹ K ρ₀ ρc →
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      ∃ Cr cr : ℝ, 0 &lt; Cr ∧ 0 &lt; cr ∧
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>        ∃ Vev : ℝ → ℝ → NegSobolev d r →L[ℝ] NegSobolev d r,
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>          IsDualEvolution (PDE.mfData d s hs0 hsd V β hβ) (PDE.mfPath ρc) r Vev ∧
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>          (∀ T : ℝ, 0 ≤ T → IsPlainEvolution Vev T) ∧
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>          (∀ u t : ℝ, 0 ≤ u → u ≤ t → ‖Vev t u‖ ≤ Cr * Real.exp (-cr * (t - u))) ∧
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>          ∀ T : ℝ, 0 &lt; T → ∃ CrT : ℝ, 0 ≤ CrT ∧
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>            ∀ (Ω : Type) [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>              (ℱ : Filtration ℝ mΩ) (a : ℝ), 0 ≤ a →
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>              ∀ (M : ℝ → Ω → NegSobolev d r) (Sg : ℝ → Ω → (NegSobolev d r →L[ℝ] NegSobolev d r →L[ℝ] ℝ)),
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>                IsHilbertMartingaleWithCovariation P ℱ (a + T) M Sg →
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>                ∃ Z : ℝ → Ω → NegSobolev d r,
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>                  (∀ t ∈ Set.Icc a (a + T),
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>                    IsStochConv P Vev (ContinuousLinearMap.id ℝ (NegSobolev d r)) M a t (Z t)) ∧
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>                  (∀ᵐ ω ∂P, ContinuousOn (fun t =&gt; Z t ω) (Set.Icc a (a + T))) ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>                  ∫⁻ ω, (⨆ t ∈ Set.Icc a (a + T), ‖Z t ω‖ₑ) ^ 2 ∂P ≤
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>                    ENNReal.ofReal CrT *
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>                      ∫⁻ ω, (∫⁻ u in Set.Icc a (a + T), ENNReal.ofReal (traceNormForm (Sg u ω))) ∂P := by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  sorry
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>/-- Lemma 3.31 (`M:lem:stationary-noise`, &quot;Periodic stationary noise on a fixed observation window&quot;, TeX M L2758-2769).
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>`μ = ρ_β dx` is a smooth positive periodic thermal equilibrium measure (`IsThermalDensity`, smooth, `ρ_β &gt; 0`, `V` smooth).
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>`Q` is the actual stationary particle law (`Law X_t = Q` for all `t ≥ 0`) with `N Var_Q[μ_N(f)] ≤ C ‖f‖²_{L²(μ)}` for
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>`f ∈ L²(μ)` (`evariance`, in `ℝ≥0∞`) and `‖dm_N/dμ - 1‖_{L²(μ)} ≤ C δ_N`, `m_N` the one-particle marginal of `Q`.
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>At every sufficiently large fixed negative Sobolev index `m` (`m ≥ m₀`), the empirical martingale `M` (an `E_m`-valued
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>martingale with covariance density `C_N^t = covForm m β⁻¹ (μ_N^t)`, i.e. the empirical martingale of Lemma 3.24 with
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>`σ_N = √N`, `q_N = β⁻¹`: the TeX&#x27;s &quot;`2β⁻¹μ`&quot; covariance) and a Gaussian martingale `Ḡ` with covariance `D_t = covForm m β⁻¹ μ`
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>admit one adapted coupling (an enlargement, `Ḡ` independent of the initial σ-field `𝒢`, `M∘π - Ḡ` a Hilbert martingale; the
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>conjuncts of `IsAdaptedGaussianCoupling` for the whole half-line `T = ∞`), whose propagated difference
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>`Z_t = ∫_0^t V^{t,u} d(M - Ḡ)_u` (`V` the stationary dual evolution on `E_m`, `IsDualEvolution` for the frozen coefficient
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>`ρ_β`) has, on every window `[a, a+T]`, `a ≥ 0`, second-mean path norm
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>`‖sup_{a≤t≤a+T} ‖Z_t‖_{E_m}‖_{L²} ≤ C_T (N^{-1/2} + δ_N)`, uniformly in `a ≥ 0` (one coupling, one constant).
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>The index threshold `m₀` depends on `(d, s, β, V)` only; the constant `C_T` is chosen after `m`, the constant `Cv` of the hypotheses
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>(the TeX&#x27;s generic `C`) and `T`, and before `N`, `δ_N` and everything on the probability space.  The second mean is a `lintegral` in `ℝ≥0∞`.
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>Representation: only the covariation of `M` and the stationarity/one-body estimates of the particle law are used (as in the
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>TeX proof, L2776-2799), so the particle process is the pair `(X, Q)` and `M` is any martingale with this covariation;
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>`V` is any evolution with the stationary duality (it exists, strongly continuous and exponentially decaying, by Lemma 3.27 for
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>the stationary solution).  AMBIGUITY: the &quot;adjoint gap&quot; (exponential decay of `V^{t,u}`, L2800-2801) is not a hypothesis here
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>because it is a consequence of the duality with the (frozen-coefficient) propagator (Lemma 3.27). -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>theorem stationary_noise (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    (V : Torus d → ℝ) (_ : Torus.IsSmooth V) (ρβ : Torus d → ℝ)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (_ : IsThermalDensity (periodicRiesz d s) V β ρβ) (_ : Torus.IsSmooth ρβ) (_ : ∀ x, 0 &lt; ρβ x) :
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    ∃ m₀ : ℝ, ∀ m : ℝ, m₀ ≤ m → ∀ Cv : ℝ, ∀ T : ℝ, 0 &lt; T → ∃ C : ℝ, 0 ≤ C ∧
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      ∀ {Ω : Type u} {mΩ : MeasurableSpace Ω} (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        (ℱ : Filtration ℝ mΩ) (𝒢 : InitialSigma ℱ) (N : ℕ) (_ : 1 ≤ N) (δ : ℝ) (_ : 0 ≤ δ)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        (X : ℝ → Ω → Config d N) (Q : Measure (Config d N)) [IsProbabilityMeasure Q] (_ : ∀ t : ℝ, 0 ≤ t → P.map (X t) = Q)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        (_ : ∀ f : Torus d → ℝ, Measurable f → MemLp f 2 (withDensityReal ρβ) →
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>          evariance (fun x : Config d N =&gt; pair (empirical x) f) Q ≤
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>            ENNReal.ofReal (Cv * (N : ℝ)⁻¹ * ∫ x, f x ^ 2 ∂(withDensityReal ρβ)))
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        (g : Torus d → ℝ) (_ : Measurable g)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>        (_ : (N : ℝ≥0∞)⁻¹ • ∑ i, Q.map (fun x : Config d N =&gt; x i) =
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          (withDensityReal ρβ).withDensity fun x =&gt; ENNReal.ofReal (g x))
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        (_ : ∫⁻ x, ‖g x - 1‖ₑ ^ 2 ∂(withDensityReal ρβ) ≤ ENNReal.ofReal ((Cv * δ) ^ 2))
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        (Vev : ℝ → ℝ → NegSobolev d m →L[ℝ] NegSobolev d m)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>        (_ : IsDualEvolution (PDE.mfData d s hs0 hsd V β hβ) (fun _ =&gt; ρβ) m Vev)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        (M : ℝ → Ω → NegSobolev d m)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        (_ : ∀ S : ℝ, 0 ≤ S →
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>          IsHilbertMartingaleWithCovariation P ℱ S M
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>            (fun r ω =&gt; covForm m β⁻¹ (empirical (X r ω)))),
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        ∃ (Ω&#x27; : Type u) (mΩ&#x27; : MeasurableSpace Ω&#x27;) (P&#x27; : ProbabilityMeasure Ω&#x27;) (π : Ω&#x27; → Ω)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>          (ℱ&#x27; : Filtration ℝ mΩ&#x27;) (Gb : ℝ → Ω&#x27; → NegSobolev d m)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>          (Sd : ℝ → Ω&#x27; → (NegSobolev d m →L[ℝ] NegSobolev d m →L[ℝ] ℝ))
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          IsAdaptedGaussianCoupling P ℱ ⊤ 𝒢 M (fun r ω =&gt; covForm m β⁻¹ (empirical (X r ω)))
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>            (fun r =&gt; covForm m β⁻¹ (withDensityReal ρβ)) (fun _ _ =&gt; True) (fun _ _ =&gt; 0)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>            P&#x27; π ℱ&#x27; Gb Sd ∧
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>          (∀ t : ℝ, 0 ≤ t → IsStochConv (P&#x27; : Measure Ω&#x27;) Vev (ContinuousLinearMap.id ℝ (NegSobolev d m))
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>            (fun τ ω&#x27; =&gt; M τ (π ω&#x27;) - Gb τ ω&#x27;) 0 t (Z t)) ∧
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>          (∀ᵐ ω&#x27; ∂(P&#x27; : Measure Ω&#x27;), ContinuousOn (fun t =&gt; Z t ω&#x27;) (Set.Ici 0)) ∧
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          ∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>            (∫⁻ ω&#x27;, (⨆ t ∈ Set.Icc a (a + T), ‖Z t ω&#x27;‖ₑ) ^ 2 ∂(P&#x27; : Measure Ω&#x27;)) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>              ENNReal.ofReal (C * ((N : ℝ) ^ (-(1 : ℝ) / 2) + δ)) := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  sorry
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>end Uniform
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>end HRS
+</span></code></pre></main></body></html>

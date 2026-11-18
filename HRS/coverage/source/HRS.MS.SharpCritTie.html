@@ -1,0 +1,432 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.SharpCritTie · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.SharpCritTie</code></h1><p><a href="../../lean/HRS/MS/SharpCritTie.lean">Open the unaltered Lean file</a> · 431 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.SharpCritAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># HRS.MS.SharpCritTie -- S7.8 ties
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>* `sharp_threshold_supercritical_proof : type_of% @HRS.Whole.sharp_threshold_supercritical` (unconditional).
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* `sharp_threshold_critical_of_static_field : type_of% @HRS.Whole.quadratic_static_field →
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>  type_of% @HRS.Whole.sharp_threshold_critical` (the frozen S4.5 is the only missing input; `ScalarCLT`/`CriticalCLT`
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  are the intermediate scalar statements, `sharp_threshold_critical_of_clt` the deterministic Slutsky step).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>See the scoping report in `HRS/MS/SharpCritAux1.lean`.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>-/
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>set_option linter.style.longLine false
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory ProbabilityTheory Filter Topology
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal BigOperators BoundedContinuousFunction
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>noncomputable section
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS.Whole.S78
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>/-- `A_{d,s} &gt; 0` for `d/2 &lt; s &lt; d`. -/
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>theorem s78_biasConst_pos (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) : 0 &lt; biasConst d s := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  have hp1 : 1 &lt; biasP d s := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    unfold biasP
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    rw [lt_div_iff₀ hs0]
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    linarith
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hp2 : biasP d s &lt; 2 := by
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    unfold biasP
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    rw [div_lt_iff₀ hs0]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    linarith
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  unfold biasConst
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  have h1 : 0 &lt; sphereArea d := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    unfold sphereArea
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    have : 0 &lt; Real.Gamma ((d : ℝ) / 2) := Real.Gamma_pos_of_pos (by linarith)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    positivity
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have h2 : 0 &lt; Real.Gamma (2 - biasP d s) := Real.Gamma_pos_of_pos (by linarith)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have h3 : 0 &lt; biasP d s := by linarith
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have h4 : 0 &lt; biasP d s - 1 := by linarith
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  positivity
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>/-- `p = d/s &lt; 3/2` for `s &gt; 2d/3`. -/
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>theorem s78_p_lt (hd : 2 ≤ d) (hs : 2 * (d : ℝ) / 3 &lt; s) : biasP d s &lt; 3 / 2 := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  unfold biasP
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  rw [div_lt_iff₀ hs0]
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  linarith
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>/-- Chebyshev for the `L²` norm. -/
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>theorem s78_cheb {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) {Z : Ω → ℝ} {t : ℝ} (ht : 0 &lt; t) :
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    P {ω | t ≤ |Z ω|} ≤ (ENNReal.ofReal t)⁻¹ ^ 2 * eLpNorm Z 2 P ^ 2 := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have h := meas_ge_le_mul_pow_eLpNorm_enorm P (p := 2) two_ne_zero ENNReal.ofNat_ne_top
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (f := Z) (ε := ENNReal.ofReal t) (by simpa using ht) (fun h =&gt; absurd h ENNReal.ofReal_ne_top)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  simp only [ENNReal.toReal_ofNat, ENNReal.rpow_two] at h
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  refine le_trans (measure_mono fun ω hω =&gt; ?_) h
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  simp only [Set.mem_setOf_eq, Real.enorm_eq_ofReal_abs] at hω ⊢
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  exact ENNReal.ofReal_le_ofReal hω
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>theorem sharp_threshold_supercritical_proof : type_of% @HRS.Whole.sharp_threshold_supercritical := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  intro d s hd hs hsd a β ha hβ ρβ hρβ
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hs&#x27; : (d : ℝ) / 2 &lt; s := by linarith
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  obtain rfl := s78_eq_thermalDensity hd hs0 hsd ha hβ hρβ
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  obtain ⟨hprob, ⟨M, hM⟩, -, -, -⟩ := HRS.Whole.S71.sharp_bias_quadratic_proof hd hs&#x27; hsd a β ha hβ
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hpos : ∀ x, 0 &lt; thermalDensity d s a β x := s78_thermal_pos hρβ.2
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hV : 0 &lt; scoreVariance d s β (thermalDensity d s a β) :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    s78_scoreVariance_pos hd hs&#x27; hsd hβ hprob hpos hM
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  obtain ⟨C, hC0, hC⟩ := s78_core hd hs&#x27; hsd ha hβ
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  refine ⟨hV, ⟨C, fun N hN =&gt; ?_⟩, ?_⟩
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  · have hm : AEStronglyMeasurable (fun X : EucConfig d N =&gt; (N : ℝ) ^ (biasP d s - 1) *
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          (linStat (thermalDensity d s a β) X -
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>            pair (withDensityReal (thermalDensity d s a β)) (thermalDensity d s a β)) -
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        2 * biasConst d s * β ^ biasP d s * scoreVariance d s β (thermalDensity d s a β))
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (canonicalGibbs (rieszKernel d s) (confinement a) N β) :=
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      ((measurable_const.mul ((s78_measurable_linStat hN hprob.measurable).sub_const _)).sub_const _).aestronglyMeasurable
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    rw [s78_lhs_eq_eLpNorm _ hm]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    exact hC N hN
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  · intro K
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    set ρ := thermalDensity d s a β with hρdef
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    set p := biasP d s with hp
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    set θ := biasTheta d s with hθdef
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    have hθ : 0 &lt; θ := s78_biasTheta_pos hd hs&#x27; hsd
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    have hplt : p &lt; 3 / 2 := s78_p_lt hd hs
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have hA : 0 &lt; biasConst d s := s78_biasConst_pos hd hs&#x27; hsd
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    set c := 2 * biasConst d s * β ^ p * scoreVariance d s β ρ with hcdef
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have hc : 0 &lt; c := by
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      have : 0 &lt; β ^ p := Real.rpow_pos_of_pos hβ _
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      positivity
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hlim1 : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ (p - 3 / 2)) atTop (𝓝 0) := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      have := (tendsto_rpow_neg_atTop (y := 3 / 2 - p) (by linarith)).comp tendsto_natCast_atTop_atTop
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      refine this.congr fun N =&gt; ?_
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      simp only [Function.comp]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      congr 1
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      ring
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    have hlim2 : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ (-θ)) atTop (𝓝 0) :=
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      (tendsto_rpow_neg_atTop hθ).comp tendsto_natCast_atTop_atTop
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have he : Tendsto (fun N : ℕ =&gt; ENNReal.ofReal (C * ((N : ℝ) ^ (p - 3 / 2) + (N : ℝ) ^ (-θ))))
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        atTop (𝓝 0) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      have h0 : Tendsto (fun N : ℕ =&gt; C * ((N : ℝ) ^ (p - 3 / 2) + (N : ℝ) ^ (-θ))) atTop (𝓝 0) := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        simpa using (hlim1.add hlim2).const_mul C
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      simpa using ENNReal.tendsto_ofReal h0
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have hε : (ENNReal.ofReal (c / 2))⁻¹ ^ 2 ≠ ⊤ := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      refine ENNReal.pow_ne_top (ENNReal.inv_ne_top.2 ?_)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      simpa using hc
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have hG : Tendsto (fun N : ℕ =&gt; (ENNReal.ofReal (c / 2))⁻¹ ^ 2 *
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>        ENNReal.ofReal (C * ((N : ℝ) ^ (p - 3 / 2) + (N : ℝ) ^ (-θ))) ^ 2) atTop (𝓝 0) := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      have h2 : Tendsto (fun N : ℕ =&gt; ENNReal.ofReal (C * ((N : ℝ) ^ (p - 3 / 2) + (N : ℝ) ^ (-θ))) ^ 2)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>          atTop (𝓝 0) := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        have h := ((ENNReal.continuous_pow 2).tendsto 0).comp he
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        rw [show (0 : ℝ≥0∞) ^ 2 = 0 by simp] at h
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        exact h
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      simpa using ENNReal.Tendsto.const_mul h2 (Or.inr hε)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have hev : ∀ᶠ N : ℕ in atTop, K * (N : ℝ) ^ (p - 3 / 2) &lt; c / 2 := by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      have := hlim1.const_mul K
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      rw [mul_zero] at this
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      exact this.eventually (gt_mem_nhds (by linarith))
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    refine tendsto_of_tendsto_of_tendsto_of_le_of_le&#x27; tendsto_const_nhds hG
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      (Eventually.of_forall fun N =&gt; bot_le) ?_
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    filter_upwards [hev, eventually_ge_atTop 1] with N hN hN1
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN1
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    set P := canonicalGibbs (rieszKernel d s) (confinement a) N β with hPdef
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    set Z : EucConfig d N → ℝ := fun X =&gt; (N : ℝ) ^ (p - 1) *
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      (linStat ρ X - pair (withDensityReal ρ) ρ) - c with hZ
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    have hsub : {X : EucConfig d N | Real.sqrt N * (linStat ρ X - pair (withDensityReal ρ) ρ) ≤ K} ⊆
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        {X | c / 2 ≤ |Z X|} := by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      intro X hX
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      simp only [Set.mem_setOf_eq] at hX ⊢
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      have hr : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 hNpos
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      have ha : (N : ℝ) ^ (p - 1) = (N : ℝ) ^ (p - 3 / 2) * Real.sqrt N := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        rw [Real.sqrt_eq_rpow, ← Real.rpow_add hNpos]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        congr 1
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>        ring
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      have h1 : (N : ℝ) ^ (p - 1) * (linStat ρ X - pair (withDensityReal ρ) ρ) ≤
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>          (N : ℝ) ^ (p - 3 / 2) * K := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>        rw [ha, mul_assoc]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>        exact mul_le_mul_of_nonneg_left hX (Real.rpow_nonneg hNpos.le _)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      have h2 : Z X ≤ -(c / 2) := by
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>        simp only [hZ]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        nlinarith
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      exact le_trans (by linarith) (neg_le_abs (Z X))
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    have hP : IsProbabilityMeasure P := s78_isProb hd hs&#x27; hsd ha hβ hN1
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    calc P {X | Real.sqrt N * (linStat ρ X - pair (withDensityReal ρ) ρ) ≤ K}
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        ≤ P {X | c / 2 ≤ |Z X|} := measure_mono hsub
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      _ ≤ (ENNReal.ofReal (c / 2))⁻¹ ^ 2 * eLpNorm Z 2 P ^ 2 := s78_cheb P (by linarith)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      _ ≤ _ := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        gcongr
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        exact hC N hN1
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>/-! ### The critical case, conditional on the scalar CLT (the scalar content of S4.5) -/
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>/-- `E_{P_{N,β}} μ_N(ρ_β) = ∫ ρ_β dm_N`, `m_N` the first marginal. -/
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>theorem s78_E_eq (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β)
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    {N : ℕ} (hN : 1 ≤ N) :
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    ∫ X, linStat (thermalDensity d s a β) X ∂(canonicalGibbs (rieszKernel d s) (confinement a) N β) =
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      pair (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) N β)) (thermalDensity d s a β) := by
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  obtain ⟨hprob, ⟨M, hM⟩, -, hcan, -⟩ := HRS.Whole.S71.sharp_bias_quadratic_proof hd hs hsd a β ha hβ
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have := s78_isProb hd hs hsd ha hβ hN
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hexch : IsExchangeable (canonicalGibbs (rieszKernel d s) (confinement a) N β) := by
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    rw [hcan N]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    exact modulatedGibbs_isExchangeable (rieszKernel d s) β _ (fun x =&gt; rieszKernel_neg x)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  exact s78_integral_linStat hN hexch hprob.measurable
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    (fun x =&gt; by rw [abs_of_nonneg (hprob.nonneg x)]; exact hM x)
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>/-- The scalar exactly-centred central limit theorem at the critical exponent, for the single test
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>`ρ_β`: `√N(μ_N(ρ_β) - m_N(ρ_β)) ⇒ N(0, V_ρ)` under `P_{N,β}` (`m_N = E μ_N` the first marginal).  This is the
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>scalar content of S4.5 `quadratic_static_field` (feature family `φ_0 = ρ_β`, `φ_j = 0`), which is not proved. -/
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>def ScalarCLT (d : ℕ) (s a β : ℝ) : Prop :=
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  ∀ f : ℝ →ᵇ ℝ, Tendsto (fun N : ℕ =&gt; ∫ X, f (Real.sqrt N * (linStat (thermalDensity d s a β) X -
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      pair (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) N β)) (thermalDensity d s a β)))
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    ∂(canonicalGibbs (rieszKernel d s) (confinement a) N β)) atTop
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    (𝓝 (∫ y, f y ∂(gaussianReal 0 (Real.toNNReal (scoreVariance d s β (thermalDensity d s a β))))))
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>/-- The scalar CLT for every critical parameter. -/
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>def CriticalCLT : Prop :=
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  ∀ (d : ℕ) (s : ℝ), 2 ≤ d → s = 2 * (d : ℝ) / 3 → ∀ a β : ℝ, 0 &lt; a → 0 &lt; β → ScalarCLT d s a β
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>theorem sharp_threshold_critical_of_clt (hclt : CriticalCLT) :
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    type_of% @HRS.Whole.sharp_threshold_critical := by
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  intro d s hd hs a β ha hβ ρβ hρβ
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  have hs&#x27; : (d : ℝ) / 2 &lt; s := by rw [hs]; linarith
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hsd : s &lt; d := by rw [hs]; linarith
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hp : biasP d s = 3 / 2 := by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    unfold biasP
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    rw [hs]
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    field_simp
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hclt&#x27; := hclt d s hd hs a β ha hβ
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  obtain rfl := s78_eq_thermalDensity hd hs0 hsd ha hβ hρβ
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  obtain ⟨hprob, ⟨M, hM⟩, -, -, -⟩ := HRS.Whole.S71.sharp_bias_quadratic_proof hd hs&#x27; hsd a β ha hβ
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have hpos : ∀ x, 0 &lt; thermalDensity d s a β x := s78_thermal_pos hρβ.2
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hV : 0 &lt; scoreVariance d s β (thermalDensity d s a β) :=
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    s78_scoreVariance_pos hd hs&#x27; hsd hβ hprob hpos hM
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  refine ⟨hV, fun N hN =&gt; s78_isProb hd hs&#x27; hsd ha hβ hN, ?_⟩
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  intro f
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  set ρ := thermalDensity d s a β with hρdef
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  set ν : Measure ℝ := gaussianReal 0 (Real.toNNReal (scoreVariance d s β ρ)) with hν
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  set c0 : ℝ := 2 * biasConst d s * β ^ ((3 : ℝ) / 2) * scoreVariance d s β ρ with hc0
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  obtain ⟨Kb, hKb0, hKb⟩ := s78_bias_est hd hs&#x27; hsd ha hβ
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have hθ : 0 &lt; biasTheta d s := s78_biasTheta_pos hd hs&#x27; hsd
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  have hP : ∀ n : ℕ, IsProbabilityMeasure (canonicalGibbs (rieszKernel d s) (confinement a) (n + 1) β) :=
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    fun n =&gt; s78_isProb hd hs&#x27; hsd ha hβ (by omega)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  set T : ∀ n : ℕ, EucConfig d (n + 1) → ℝ := fun n X =&gt; Real.sqrt ((n + 1 : ℕ) : ℝ) *
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    (linStat ρ X - pair (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) (n + 1) β)) ρ) with hT
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  have hTm : ∀ n : ℕ, Measurable (T n) := fun n =&gt;
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    measurable_const.mul ((s78_measurable_linStat (by omega) hprob.measurable).sub_const _)
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  have hcl : ∀ g : ℝ →ᵇ ℝ, Tendsto (fun n : ℕ =&gt; ∫ X, g (T n X)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      ∂(canonicalGibbs (rieszKernel d s) (confinement a) (n + 1) β)) atTop (𝓝 (∫ y, g y ∂ν)) :=
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    fun g =&gt; (tendsto_add_atTop_iff_nat 1).2 (hclt&#x27; g)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  set b : ℕ → ℝ := fun n =&gt; Real.sqrt ((n + 1 : ℕ) : ℝ) *
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    (pair (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) (n + 1) β)) ρ -
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      pair (withDensityReal ρ) ρ) with hbdef
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hb : Tendsto b atTop (𝓝 c0) := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    have hlim2 : Tendsto (fun n : ℕ =&gt; ((n + 1 : ℕ) : ℝ) ^ (-biasTheta d s)) atTop (𝓝 0) :=
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      (tendsto_add_atTop_iff_nat 1).2 ((tendsto_rpow_neg_atTop hθ).comp tendsto_natCast_atTop_atTop)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    rw [tendsto_iff_dist_tendsto_zero]
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    refine squeeze_zero (fun _ =&gt; dist_nonneg) (fun n =&gt; ?_) (by have := hlim2.const_mul Kb; rwa [mul_zero] at this)
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    have h1 := hKb (n + 1) (by omega)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    rw [s78_E_eq hd hs&#x27; hsd ha hβ (by omega : 1 ≤ n + 1), hp] at h1
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    rw [Real.dist_eq]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    have e1 : ((n + 1 : ℕ) : ℝ) ^ ((3 : ℝ) / 2 - 1) = Real.sqrt ((n + 1 : ℕ) : ℝ) := by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      rw [Real.sqrt_eq_rpow]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      norm_num
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    rw [e1] at h1
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    exact h1
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  have hsh := s78_shift (fun n : ℕ =&gt; canonicalGibbs (rieszKernel d s) (confinement a) (n + 1) β) T hTm ν
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    hcl b c0 hb f
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  have hlim : ∫ y, f (y + c0) ∂ν = ∫ y, f y ∂(gaussianReal c0 (Real.toNNReal (scoreVariance d s β ρ))) := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    have hm := integral_map (μ := ν) (φ := fun y : ℝ =&gt; y + c0) (measurable_id.add_const c0).aemeasurable
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      (f := f) f.continuous.aestronglyMeasurable
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    rw [← hm, hν, gaussianReal_map_add_const, zero_add]
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  rw [hlim] at hsh
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  refine (tendsto_add_atTop_iff_nat 1).1 ?_
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  refine hsh.congr fun n =&gt; ?_
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  refine integral_congr_ae (Filter.Eventually.of_forall fun X =&gt; ?_)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  simp only [hT, hbdef]
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  congr 1
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  ring
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-! ### Derivation of the scalar CLT from S4.5 -/
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>/-- The feature family `φ_0 = ρ`, `φ_j = 0` (`j ≥ 1`). -/
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>def s78_phi (ρ : Euc d → ℝ) : ℕ → Euc d → ℝ := fun j =&gt; if j = 0 then ρ else fun _ =&gt; 0
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>theorem s78_memCb_zero (J : ℕ) : MemCb J (fun _ : Euc d =&gt; (0 : ℝ)) := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  refine ⟨contDiff_const, fun j _ =&gt; ⟨0, ?_⟩⟩
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  rintro _ ⟨x, rfl⟩
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  simp [iteratedFDeriv_fun_zero]
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>theorem s78_cbNorm_zero (J : ℕ) : cbNorm J (fun _ : Euc d =&gt; (0 : ℝ)) = 0 := by
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  unfold cbNorm
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  simp [iteratedFDeriv_fun_zero]
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>theorem s78_phi_summable (J : ℕ) {ρ : Euc d → ℝ} (hρ : MemCb J ρ) :
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    IsSummableFeatureFamily J (s78_phi ρ) := by
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  refine ⟨fun j =&gt; ?_, ?_⟩
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  · unfold s78_phi
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    split_ifs
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    · exact hρ
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    · exact s78_memCb_zero J
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  · refine summable_of_ne_finset_zero (s := {0}) fun j hj =&gt; ?_
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    have : j ≠ 0 := by simpa using hj
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    simp only [s78_phi, if_neg this]
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    exact s78_cbNorm_zero J
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>theorem s78_memCb_thermal (hd : 2 ≤ d) (hs0 : 0 &lt; s) (hsd : s &lt; d) {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β)
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    (J : ℕ) : MemCb J (thermalDensity d s a β) := by
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  obtain ⟨hcd, -, -, -, h5, -⟩ := HRS.MS.Thm.euc_thermal_regularity_proof hd hs0 hsd a β ha hβ
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  refine ⟨hcd.of_le (by exact_mod_cast le_top), fun j _ =&gt; ?_⟩
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  obtain ⟨-, K, hK⟩ := h5 j
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>  exact ⟨K, by rintro _ ⟨x, rfl⟩; exact hK x⟩
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>/-- `R P_μ 0 = 0` a.e. -/
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>theorem s78_responseInverse_zero (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) {β : ℝ} (hβ : 0 &lt; β)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    {ρ : Euc d → ℝ} (hρ : IsProbDensity ρ) {M : ℝ} (hM : ∀ x, ρ x ≤ M) :
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    responseInverse (rieszKernel d s) (withDensityReal ρ) β (fun _ =&gt; (0 : ℝ)) =ᵐ[withDensityReal ρ] 0 := by
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  have := HRS.MS.Wr.wr13a_isProb_density hρ
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>  obtain ⟨-, -, -, hmain⟩ := convolution_susceptibility hd hs hsd ρ hρ M hM β hβ
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  have h0 : MemL2Zero (withDensityReal ρ) (fun _ =&gt; (0 : ℝ)) := ⟨memLp_const (0 : ℝ), by simp⟩
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  obtain ⟨hex, huniq, -⟩ := hmain _ h0
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  have hz : IsResponse (rieszKernel d s) (withDensityReal ρ) β (fun _ =&gt; (0 : ℝ)) (fun _ =&gt; 0) := by
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    refine ⟨h0, ae_of_all _ fun x =&gt; ?_⟩
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    simp [Kop, projMean, pair]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  have hspec : IsResponse (rieszKernel d s) (withDensityReal ρ) β (fun _ =&gt; (0 : ℝ))
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>      (responseInverse (rieszKernel d s) (withDensityReal ρ) β (fun _ =&gt; (0 : ℝ))) := by
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    unfold responseInverse
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    rw [dif_pos hex]
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    exact hex.choose_spec
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  exact huniq _ _ hspec hz
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>theorem s78_cov (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) {a β : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) (i j : ℕ) :
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) β
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>      (s78_phi (thermalDensity d s a β) i) (s78_phi (thermalDensity d s a β) j) =
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>      if i = 0 ∧ j = 0 then scoreVariance d s β (thermalDensity d s a β) else 0 := by
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  obtain ⟨hprob, ⟨M, hM⟩, -, -, -⟩ := HRS.Whole.S71.sharp_bias_quadratic_proof hd hs hsd a β ha hβ
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  by_cases hi : i = 0
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  · by_cases hj : j = 0
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    · subst hi; subst hj
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>      simp only [s78_phi, if_true, and_self]
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      rfl
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    · have hz := s78_responseInverse_zero hd hs hsd hβ hprob hM
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      simp only [s78_phi, hi, hj, if_true, if_false, and_false]
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      unfold susceptibilityCov l2Inner
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      have hz&#x27; : responseInverse (rieszKernel d s) (thermalMeasure d s a β) β (fun _ =&gt; (0 : ℝ)) =ᵐ[thermalMeasure d s a β] 0 := hz
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>      refine (integral_congr_ae (g := fun _ =&gt; (0 : ℝ)) ?_).trans (by simp)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>      exact hz&#x27;.mono fun x hx =&gt; by
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        show _ * _ = (0 : ℝ)
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>        rw [show responseInverse (rieszKernel d s) (thermalMeasure d s a β) β (fun _ =&gt; (0 : ℝ)) x = 0 from hx]
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>        simp
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  · simp only [s78_phi, hi, if_false, false_and]
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    simp [susceptibilityCov, l2Inner, projMean, pair]
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>theorem s78_ext_seq (z w : SeqL2) (h : ∀ i, SeqL2.coord z i = SeqL2.coord w i) : z = w :=
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  lp.ext (funext h)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>theorem s78_ofSeq_lp (f : lp (fun _ : ℕ =&gt; ℝ) 2) :
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    SeqL2.ofSeq (fun j =&gt; (f : ∀ j : ℕ, ℝ) j) = (f : SeqL2) := by
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  have h : Memℓp (fun j =&gt; (f : ∀ j : ℕ, ℝ) j) 2 := lp.memℓp f
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  exact (dif_pos h).trans rfl
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>theorem s78_E_eq_single (x : ℝ) : s78_E x = ((lp.single 2 0 x : lp (fun _ : ℕ =&gt; ℝ) 2) : SeqL2) := by
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  apply s78_ext_seq
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  intro i
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  rw [s78_coord_E]
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  show _ = ((lp.single 2 0 x : lp (fun _ : ℕ =&gt; ℝ) 2) : ∀ j : ℕ, ℝ) i
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  rw [lp.single_apply]
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  by_cases hi : i = 0
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  · subst hi; simp
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  · simp [hi]
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>theorem s78_featureVec_eq {N : ℕ} (ρ : Euc d → ℝ) (ν : Measure (Euc d)) (X : EucConfig d N) :
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    featureVec (s78_phi ρ) ν X = s78_E (Real.sqrt N * (linStat ρ X - pair ν ρ)) := by
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  set T : ℝ := Real.sqrt N * (linStat ρ X - pair ν ρ) with hT
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  have hc : (fun j =&gt; Real.sqrt N * (pair (empirical X) (s78_phi ρ j) - pair ν (s78_phi ρ j))) =
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>      fun j =&gt; (lp.single 2 0 T : lp (fun _ : ℕ =&gt; ℝ) 2) j := by
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    funext j
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    rw [lp.single_apply]
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    by_cases hj : j = 0
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    · subst hj
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      simp [s78_phi, hT, linStat]
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    · simp [s78_phi, hj, pair]
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  rw [s78_E_eq_single]
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  unfold featureVec
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  rw [hc]
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  exact s78_ofSeq_lp _
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>/-- **The scalar CLT follows from S4.5.**  If the frozen `quadratic_static_field` (S4.5) holds, then `ScalarCLT`
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>holds (feature family `φ_0 = ρ_β`, `φ_j = 0`: the `C_b²(ℓ²)` bound gives convergence of the trigonometric
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>moments of `√N(μ_N(ρ_β)-m_N(ρ_β))` to those of `N(0,V_ρ)`, and Lévy&#x27;s theorem finishes). -/
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>theorem s78_criticalCLT_of_static_field (hsf : type_of% @HRS.Whole.quadratic_static_field) :
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    CriticalCLT := by
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  intro d s hd hs a β ha hβ f
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  have hs&#x27; : (d : ℝ) / 2 &lt; s := by rw [hs]; linarith
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  have hsd : s &lt; d := by rw [hs]; linarith
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  have hp : biasP d s = 3 / 2 := by
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    unfold biasP
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    rw [hs]
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    field_simp
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>  obtain ⟨hprob, ⟨M, hM⟩, -, -, -⟩ := HRS.Whole.S71.sharp_bias_quadratic_proof hd hs&#x27; hsd a β ha hβ
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  have hth := HRS.Whole.S71.s71_thermal_equilibrium hd hs0 hsd a β ha hβ
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  have hpos : ∀ x, 0 &lt; thermalDensity d s a β x := s78_thermal_pos hth.2
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  have hV : 0 &lt; scoreVariance d s β (thermalDensity d s a β) :=
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    s78_scoreVariance_pos hd hs&#x27; hsd hβ hprob hpos hM
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  set v : ℝ≥0 := Real.toNNReal (scoreVariance d s β (thermalDensity d s a β)) with hvdef
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>  have hvV : (v : ℝ) = scoreVariance d s β (thermalDensity d s a β) := Real.coe_toNNReal _ hV.le
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  set J : ℕ := d + 3 with hJdef
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  have hJ : (d : ℝ) / 2 + 2 &lt; J := by rw [hJdef]; push_cast; linarith
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  obtain ⟨C, hC⟩ := hsf hd hs0.le hsd a β ha hβ J hJ
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  have hφ := s78_phi_summable J (s78_memCb_thermal hd hs0 hsd ha hβ J)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  set S := featureSum J (s78_phi (thermalDensity d s a β)) with hS
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  have hγ : IsCenteredGaussianSeq (s78_gamma v)
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      (fun i j =&gt; susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) β (s78_phi (thermalDensity d s a β) i) (s78_phi (thermalDensity d s a β) j)) := by
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    refine ⟨s78_gamma_centered v, fun i j =&gt; ⟨(s78_gamma_cov v i j).1, ?_⟩⟩
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    beta_reduce
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    rw [(s78_gamma_cov v i j).2, s78_cov hd hs&#x27; hsd ha hβ i j]
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    split_ifs &lt;;&gt; simp [hvV]
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>  set ε : ℕ → ℝ := fun n =&gt; C * (S + S ^ 2) * Real.sqrt (deltaN d s (n + 2)) with hεdef
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  have hε : Tendsto ε atTop (𝓝 0) := by
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    have hp1 : 0 &lt; biasP d s - 1 := by rw [hp]; norm_num
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    have h1 : Tendsto (fun n : ℕ =&gt; ((n + 2 : ℕ) : ℝ) ^ (-(biasP d s - 1))) atTop (𝓝 0) :=
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      (tendsto_add_atTop_iff_nat 2).2 ((tendsto_rpow_neg_atTop hp1).comp tendsto_natCast_atTop_atTop)
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>    have h2 : Tendsto (fun n : ℕ =&gt; deltaN d s (n + 2)) atTop (𝓝 0) := by
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      refine h1.congr fun n =&gt; ?_
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      rw [s78_deltaN_eq hs&#x27;]
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>      congr 1
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>      ring
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    have h3 := (Real.continuous_sqrt.tendsto 0).comp h2
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    rw [Real.sqrt_zero] at h3
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    simpa using h3.const_mul (C * (S + S ^ 2))
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  have hP : ∀ n : ℕ, IsProbabilityMeasure (canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β) :=
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    fun n =&gt; s78_isProb hd hs&#x27; hsd ha hβ (by omega)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  set T : ∀ n : ℕ, EucConfig d (n + 2) → ℝ := fun n X =&gt; Real.sqrt ((n + 2 : ℕ) : ℝ) *
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    (linStat (thermalDensity d s a β) X - pair (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β)) (thermalDensity d s a β)) with hT
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  have hTm : ∀ n : ℕ, Measurable (T n) := fun n =&gt;
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    measurable_const.mul ((s78_measurable_linStat (by omega) hprob.measurable).sub_const _)
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  have hsm : ∀ n : ℕ, smoothDist 2
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      ((canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β).map fun X =&gt; s78_E (T n X))
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      (s78_gamma v) ≤ ε n := by
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>    intro n
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    have hc := (hC (s78_phi (thermalDensity d s a β)) hφ (n + 2) (by omega) (s78_gamma v) hγ).2.2.1
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>    have e : featureVec (s78_phi (thermalDensity d s a β))
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>        (firstMarginal (canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β)) =
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>        fun X =&gt; s78_E (T n X) := funext fun X =&gt; s78_featureVec_eq _ _ X
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    simp only [law] at hc
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    rw [e] at hc
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    exact hc
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  have key := s78_weak_of_trig (fun n : ℕ =&gt; canonicalGibbs (rieszKernel d s) (confinement a) (n + 2) β) T hTm
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    (gaussianReal 0 v) ε hε
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    (fun t n =&gt; s78_trig_dist _ (hTm n) v Real.contDiff_cos s78_cos_bound (hsm n) t)
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    (fun t n =&gt; s78_trig_dist _ (hTm n) v Real.contDiff_sin s78_sin_bound (hsm n) t) f
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  exact (tendsto_add_atTop_iff_nat 2).1 key
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>/-- **S7.8, critical case, conditional on S4.5**: the frozen `sharp_threshold_critical` follows from the frozen
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>`quadratic_static_field` (S4.5), which is the only missing input. -/
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>theorem sharp_threshold_critical_of_static_field (hsf : type_of% @HRS.Whole.quadratic_static_field) :
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    type_of% @HRS.Whole.sharp_threshold_critical :=
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  sharp_threshold_critical_of_clt (s78_criticalCLT_of_static_field hsf)
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>end HRS.Whole.S78
+</span></code></pre></main></body></html>

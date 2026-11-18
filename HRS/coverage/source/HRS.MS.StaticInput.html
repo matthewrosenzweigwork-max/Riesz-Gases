@@ -1,0 +1,109 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.StaticInput · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.StaticInput</code></h1><p><a href="../../lean/HRS/MS/StaticInput.lean">Open the unaltered Lean file</a> · 108 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Bias
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.WrStatic
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MS.WrCavAux2
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MS.WrPoleAux3
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MS.WrInsAux2
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>/-!
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a># HRS.MS.StaticInput -- assembly of S7.2 `static_input` and `static_input_uniform_beta`
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Helper prefix `si_`, namespace `HRS.MS.Wr`.  The statements are exactly the frozen
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`HRS.Whole.static_input_uniform_beta` and `HRS.Whole.static_input` (no adjustment).  The constant is the
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>maximum of the constants of the five conjuncts of `HRS.Whole.StaticInputConclusion`:
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* (1) `GibbsWellDefined`: `euclidean_pressure_proof` at `L = 0`, `B = 0`, `θ = 0`, `b⁺ := β⁺ + 1` (no constant);
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* (2) `HasMarginalDensityBounds`: `wr13d_marginal_density_bounds`;
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* (3) linear variance: `wr14b_linear`;
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* (4) pole bundle: `wr13a_pole_bundle` (`β ∈ [0, β⁺]`) for `CavityWellDefined` and the two density bounds,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  `wr13b_pole_variance_clause` (`β ∈ (0, β⁺]`) for the pole variance;
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* (5) cavity TV: `wr13c2_cavity_tv` (`β ∈ [β⁻, β⁺]`, `β⁻ &gt; 0`).
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>`static_input` is the case `β⁻ = β⁺ = β`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>-/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>set_option linter.style.longLine false
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>open MeasureTheory ProbabilityTheory Filter Topology
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>noncomputable section
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>namespace HRS.MS.Wr
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>/-- **Proposition S7.2, uniform in `β`**. -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>theorem static_input_uniform_beta_proof : type_of% @HRS.Whole.static_input_uniform_beta := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  intro d s hd hs hsd βm βp M hβm hβ
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    have : (1 : ℝ) ≤ (d : ℝ) / 2 := by
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      linarith
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    linarith
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hβp0 : 0 ≤ βp := hβm.le.trans hβ
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  obtain ⟨C1, h1⟩ := wr14b_linear hd hs0 hsd hβm hβ M
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨C2, h2⟩ := wr13d_marginal_density_bounds hd hs0 hsd hβm hβ M
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  obtain ⟨C3, hC31, h3⟩ := wr13a_pole_bundle hd hs0 hsd hβp0 M
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  obtain ⟨C4, hC40, h4⟩ := wr13b_pole_variance_clause hd hs0 hsd βp M
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  obtain ⟨C5, hC50, h5⟩ := wr13c2_cavity_tv hd hs0 hsd hβm βp M
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨θ0, hθ0, C0, hP⟩ := euclidean_pressure_proof hd hs0.le hsd M 0 βm (βp + 1) 0 hβm
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (by linarith)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hB0 : HRS.Whole.IsBoundedPairKernel s 0 (fun _ _ : Euc d =&gt; (0 : ℝ)) :=
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    ⟨measurable_const, fun _ _ =&gt; rfl, fun x y _ =&gt; by simp⟩
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  set C : ℝ := max C1 (max C2 (max C3 (max C4 C5))) with hCdef
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hC1 : C1 ≤ C := le_max_left _ _
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hC2 : C2 ≤ C := (le_max_left _ _).trans (le_max_right _ _)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hC3 : C3 ≤ C := (le_max_left _ _).trans ((le_max_right _ _).trans (le_max_right _ _))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hC4 : C4 ≤ C :=
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (le_max_left _ _).trans ((le_max_right _ _).trans ((le_max_right _ _).trans (le_max_right _ _)))
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hC5 : C5 ≤ C :=
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (le_max_right _ _).trans ((le_max_right _ _).trans ((le_max_right _ _).trans (le_max_right _ _)))
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  refine ⟨C, fun ρ hρ hM β hβmem N hN =&gt; ?_⟩
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨hβ1, hβ2⟩ := hβmem
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hβpos : 0 &lt; β := hβm.trans_le hβ1
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hδ : 0 ≤ deltaN d s N := HRS.deltaN_nonneg s (by omega)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hN&#x27; : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  obtain ⟨hmeas3, hle3, hpole3⟩ := h3 ρ hρ hM β hβpos.le hβ2 N hN
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  unfold HRS.Whole.StaticInputConclusion
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  · have := (hP ρ hρ hM (fun h =&gt; absurd h hs0.ne&#x27;) (fun _ _ =&gt; 0) hB0 N hN β
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      ⟨hβ1, hβ2.trans (by linarith)⟩ 0 (by simpa using hθ0.le)).1
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    have e : (fun x y : Euc d =&gt; HRS.Whole.rieszKernel d s (x - y) - 0 * (fun _ _ : Euc d =&gt; (0 : ℝ)) x y) =
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>        fun x y =&gt; HRS.Whole.rieszKernel d s (x - y) := by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      funext x y
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      simp
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    rwa [e] at this
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  · exact wr14b_hmdb_mono (h2 ρ hρ hM β ⟨hβ1, hβ2⟩ N hN) hC2 (by gcongr)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  · intro f hf
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    refine (h1 ρ hρ hM β ⟨hβ1, hβ2⟩ N hN f hf).trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have hI : 0 ≤ ∫ x, f x ^ 2 ∂(HRS.Whole.withDensityReal ρ) := integral_nonneg fun x =&gt; sq_nonneg _
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    gcongr
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  · intro x t ht
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    obtain ⟨hcwd, hfirst, hsecond⟩ := hpole3 x t ht
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    refine ⟨hcwd, ?_, ?_, ?_⟩
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    · refine hfirst.trans (withDensity_mono (Filter.Eventually.of_forall fun y =&gt; ?_))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      exact ENNReal.ofReal_le_ofReal (by gcongr)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    · intro h3N
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      refine (hsecond h3N).trans (withDensity_mono (Filter.Eventually.of_forall fun yz =&gt; ?_))
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      exact ENNReal.ofReal_le_ofReal (by gcongr)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    · intro f hf hint
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      refine (h4 ρ hρ hM β hβpos hβ2 N hN x t ht f hf hint).trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      have hI : 0 ≤ ∫ y, |f y| ^ 2 * Real.exp (-(t * (β / N)) * HRS.Whole.rieszKernel d s (x - y))
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>          ∂(HRS.Whole.withDensityReal ρ) :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        integral_nonneg fun y =&gt; mul_nonneg (sq_nonneg _) (Real.exp_pos _).le
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      have hN1 : (0 : ℝ) ≤ (N : ℝ) - 1 := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        have : (1 : ℝ) ≤ N := by exact_mod_cast (by omega : 1 ≤ N)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        linarith
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      gcongr
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  · refine (h5 ρ hρ hM β hβ1 hβ2 N hN).trans ?_
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    exact mul_le_mul_of_nonneg_right hC5 (Real.sqrt_nonneg _)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>/-- **Proposition S7.2**: the case `β⁻ = β⁺ = β` of the uniform version. -/
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>theorem static_input_proof : type_of% @HRS.Whole.static_input := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  intro d s hd hs hsd β M hβ
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  obtain ⟨C, hC⟩ := static_input_uniform_beta_proof hd hs hsd β β M hβ le_rfl
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  exact ⟨C, fun ρ hρ hM N hN =&gt; hC ρ hρ hM β ⟨le_rfl, le_rfl⟩ N hN⟩
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>end HRS.MS.Wr
+</span></code></pre></main></body></html>

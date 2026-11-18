@@ -1,0 +1,207 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.BilipV · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.BilipV</code></h1><p><a href="../../lean/HRS/MS/BilipV.lean">Open the unaltered Lean file</a> · 206 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.BilipVAux3
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.FlowE
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># MS-BILIP-V: clause (v) of Lemma S.A.32 and the final assembly `uloc_bilip_proof`
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`bilip_v_const` (Milestone 1): clause (v) from the content of (i), (ii) with an arbitrary constant `E`;
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`uloc_bilip_proof` (Milestone 2): the frozen statement `uloc_bilip` verbatim.  Route: `BilipVPlan.md`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open Set MeasureTheory
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open scoped ENNReal ContDiff
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open HRS HRS.Whole HRS.Whole.AppendixA HRS.Whole.AppendixALemmas
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>namespace HRS.MS.BilipV
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>variable {d : ℕ}
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>/-- the content of conjunct (i) of `uloc_bilip` with the constant `E` at one time `τ` -/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>def BvI (m : ℕ) (E : ℝ) (Ψ Ψinv : ℝ → Euc d → Euc d) (τ : ℝ) : Prop :=
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  (∀ x, Ψinv τ (Ψ τ x) = x) ∧ (∀ y, Ψ τ (Ψinv τ y) = y) ∧
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>    ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (Ψ τ) ∧
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (Ψinv τ) ∧
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    (∀ x, ‖fderiv ℝ (Ψ τ) x‖ ≤ Real.exp (E * τ)) ∧
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (∀ y, ‖fderiv ℝ (Ψinv τ) y‖ ≤ Real.exp (E * τ)) ∧
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    ∀ j : ℕ, 2 ≤ j → j ≤ m + 1 → ∀ x : Euc d,
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>      ‖iteratedFDeriv ℝ j (Ψ τ) x‖ ≤ E * Real.exp (E * m * τ) ∧
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>      ‖iteratedFDeriv ℝ j (Ψinv τ) x‖ ≤ E * Real.exp (E * m * τ)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>/-- the `C_b` content of conjunct (ii) of `uloc_bilip` with the constant `E` at one time `τ` -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>def BvII (m : ℕ) (E : ℝ) (χ : Euc d → ℝ) (Ψinv : ℝ → Euc d → Euc d) (τ : ℝ) : Prop :=
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  ∀ z : Euc d, MemCb (m + 1) (fun x =&gt; χ (Ψinv τ x - z)) ∧
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    cbNorm (m + 1) (fun x =&gt; χ (Ψinv τ x - z)) ≤ E * Real.exp (E * m * τ)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>theorem bv_lip_of_fderiv {f : Euc d → Euc d} {m : ℕ}
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (hf : ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) f) {L : ℝ} (h : ∀ x, ‖fderiv ℝ f x‖ ≤ L) :
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    ∀ x x&#x27;, ‖f x - f x&#x27;‖ ≤ L * ‖x - x&#x27;‖ := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  intro x x&#x27;
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have hd : Differentiable ℝ f := hf.differentiable (by exact_mod_cast Nat.succ_ne_zero m)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  exact (convex_univ (𝕜 := ℝ) (E := Euc d)).norm_image_sub_le_of_norm_fderiv_le (f := f) (C := L)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (fun y _ =&gt; hd y) (fun y _ =&gt; h y) (mem_univ x&#x27;) (mem_univ x)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>/-- Milestone 1: clause (v) of S.A.32, from the content of (i), (ii) with an arbitrary constant `E`. -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem bilip_v_const (m : ℕ) (T : ℝ) (hT : 0 &lt; T) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (E : ℝ) (hE : 0 &lt; E) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    ∃ K0 c : ℝ, 0 &lt; K0 ∧ 0 &lt; c ∧ ∀ C : ℝ, K0 ≤ C → ∀ Ψ Ψinv : ℝ → Euc d → Euc d,
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      ∀ τ ∈ Set.Icc (0 : ℝ) T, BvI m E Ψ Ψinv τ → BvII m E χ Ψinv τ →
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        ∀ F : Euc d → ℝ,
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>          ENNReal.ofReal (c * Real.exp (-(C * (m + d) * τ))) * ulocNormE m χ F ≤
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>            ⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x) ∧
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>          (⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x)) ≤
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>            ENNReal.ofReal (C * Real.exp (C * (m + d) * τ)) * ulocNormE m χ F := by
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  set L : ℝ := Real.exp (E * T) with hL
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hL1 : 1 ≤ L := Real.one_le_exp (by positivity)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  set B : ℝ := E * Real.exp (E * m * T) with hB
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hB0 : 0 ≤ B := by positivity
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  set D : ℝ := max 1 (max L B) with hD
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hD1 : 1 ≤ D := le_max_left _ _
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hDL : L ≤ D := (le_max_left _ _).trans (le_max_right _ _)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hDB : B ≤ D := (le_max_right _ _).trans (le_max_right _ _)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨K, hK, hcore⟩ := bv_core m χ hχ L D B hL1 hD1 hB0
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  refine ⟨K, 1 / K, hK, by positivity, fun C hC Ψ Ψinv τ hτ hI hII F =&gt; ?_⟩
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨hinv1, hinv2, hcd1, hcd2, hfd1, hfd2, hiter⟩ := hI
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hτ0 : 0 ≤ τ := hτ.1
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hτT : τ ≤ T := hτ.2
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hexpL : Real.exp (E * τ) ≤ L := Real.exp_le_exp.2 (by nlinarith)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hdat : BvData m χ L D B (Ψ τ) (Ψinv τ) := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    refine ⟨hinv2, bv_lip_of_fderiv hcd1 fun x =&gt; (hfd1 x).trans hexpL,
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      bv_lip_of_fderiv hcd2 fun x =&gt; (hfd2 x).trans hexpL, hcd2, ?_, ?_⟩
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    · intro x i h1 h2
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      by_cases hi : i = 1
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      · subst hi
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>        rw [norm_iteratedFDeriv_one (𝕜 := ℝ)]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        exact (hfd2 x).trans (hexpL.trans hDL)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      · refine ((hiter i (by omega) h2 x).2).trans ?_
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        refine le_trans ?_ hDB
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        have : E * m * τ ≤ E * m * T := by
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          have : (0 : ℝ) ≤ E * m := by positivity
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>          exact mul_le_mul_of_nonneg_left hτT this
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        exact mul_le_mul_of_nonneg_left (Real.exp_le_exp.2 this) hE.le
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    · intro z
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      refine ⟨(hII z).1, (hII z).2.trans ?_⟩
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      have : E * m * τ ≤ E * m * T := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        have : (0 : ℝ) ≤ E * m := by positivity
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        exact mul_le_mul_of_nonneg_left hτT this
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      exact mul_le_mul_of_nonneg_left (Real.exp_le_exp.2 this) hE.le
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  obtain ⟨hup, hlow⟩ := hcore (Ψ τ) (Ψinv τ) hdat F
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hC0 : 0 &lt; C := lt_of_lt_of_le hK hC
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hmd : (0 : ℝ) ≤ C * (m + d) * τ := by positivity
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  constructor
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  · -- lower bound
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have h1 : 1 / K * Real.exp (-(C * (m + d) * τ)) ≤ 1 / K :=
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      mul_le_of_le_one_right (by positivity) (Real.exp_le_one_iff.2 (by linarith))
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    calc ENNReal.ofReal (1 / K * Real.exp (-(C * (m + d) * τ))) * ulocNormE m χ F
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        ≤ ENNReal.ofReal (1 / K) * ulocNormE m χ F := by gcongr
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      _ ≤ ENNReal.ofReal (1 / K) * (ENNReal.ofReal K *
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>            ⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x)) := by gcongr
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      _ = ⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x) := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity), one_div, inv_mul_cancel₀ hK.ne&#x27;,
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>            ENNReal.ofReal_one, one_mul]
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  · refine hup.trans ?_
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    gcongr
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    calc K ≤ C := hC
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      _ = C * 1 := (mul_one C).symm
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      _ ≤ C * Real.exp (C * (m + d) * τ) :=
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>          mul_le_mul_of_nonneg_left (Real.one_le_exp hmd) hC0.le
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>/-- Milestone 2: Lemma S.A.32 (`uloc_bilip`), statement verbatim. -/
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>theorem uloc_bilip_proof (m : ℕ) (T Λ : ℝ) (hT : 0 &lt; T) (χ χh : Euc d → ℝ) (hχ : IsUlocCutoff χ)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    (hχh : IsCutoffRad 6 8 χh) :
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    ∃ C c : ℝ, 0 &lt; c ∧ ∀ b : ℝ → Euc d → Euc d, IsDriftBounds T m Λ b →
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      (∃ Ψ, IsNegDriftFlow T b Ψ) ∧
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      ∀ Ψ : ℝ → Euc d → Euc d, IsNegDriftFlow T b Ψ →
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        ∃ Ψinv : ℝ → Euc d → Euc d, ∀ τ ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>          -- (i)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>          ((∀ x, Ψinv τ (Ψ τ x) = x) ∧ (∀ y, Ψ τ (Ψinv τ y) = y) ∧
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>            ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (Ψ τ) ∧
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>            ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (Ψinv τ) ∧
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>            (∀ x, ‖fderiv ℝ (Ψ τ) x‖ ≤ Real.exp (C * τ)) ∧
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>            (∀ y, ‖fderiv ℝ (Ψinv τ) y‖ ≤ Real.exp (C * τ)) ∧
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>            ∀ j : ℕ, 2 ≤ j → j ≤ m + 1 → ∀ x : Euc d,
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>              ‖iteratedFDeriv ℝ j (Ψ τ) x‖ ≤ C * Real.exp (C * m * τ) ∧
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>              ‖iteratedFDeriv ℝ j (Ψinv τ) x‖ ≤ C * Real.exp (C * m * τ)) ∧
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          -- (ii)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          (∀ z : Euc d, (∀ x, HasDerivWithinAt (fun τ&#x27; =&gt; χ (Ψinv τ&#x27; x - z))
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>              (inner ℝ (b τ x) (gradient (fun y =&gt; χ (Ψinv τ y - z)) x)) (Set.Icc (0 : ℝ) T) τ) ∧
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>            MemCb (m + 1) (fun x =&gt; χ (Ψinv τ x - z)) ∧
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>            cbNorm (m + 1) (fun x =&gt; χ (Ψinv τ x - z)) ≤ C * Real.exp (C * m * τ)) ∧
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>          -- (iii)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>          (∀ z : Euc d, ∀ x y : Euc d, x ∈ tsupport (fun x =&gt; χ (Ψinv τ x - z)) →
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>            y ∈ tsupport (fun y =&gt; 1 - χh (Ψinv τ y - z)) →
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>            4 * Real.exp (-(C * τ)) ≤ ‖x - y‖) ∧
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          -- (iv)
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          ((⋃ z : Fin d → ℤ, Ψ τ &#x27;&#x27; latticeCell z) = Set.univ ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>            (∀ y : Euc d, {z : Fin d → ℤ | y ∈ Ψ τ &#x27;&#x27; latticeCell z}.encard ≤
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>              ((⌊C * Real.exp (C * d * τ)⌋₊ : ℕ) : ℕ∞)) ∧
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            (∀ G : Euc d → ℝ≥0∞, Measurable G →
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>              ∫⁻ x, G x ≤ ∑&#x27; z : Fin d → ℤ, ∫⁻ x in Ψ τ &#x27;&#x27; latticeCell z, G x ∧
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>              (∑&#x27; z : Fin d → ℤ, ∫⁻ x in Ψ τ &#x27;&#x27; latticeCell z, G x) ≤
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>                ENNReal.ofReal (C * Real.exp (C * d * τ)) * ∫⁻ x, G x) ∧
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>            ∀ (A : Set (Euc d)) (ρ : ℝ), 0 ≤ ρ → Metric.ediam A ≤ ENNReal.ofReal ρ →
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>              {z : Fin d → ℤ | (A ∩ tsupport (fun x =&gt; χ (Ψinv τ x - latticePt z))).Nonempty}.encard ≤
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>                ((⌊C * (1 + ρ) ^ d * Real.exp (C * d * τ)⌋₊ : ℕ) : ℕ∞)) ∧
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>          -- (v)
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>          (∀ F : Euc d → ℝ,
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>            ENNReal.ofReal (c * Real.exp (-(C * (m + d) * τ))) * ulocNormE m χ F ≤
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>              ⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x) ∧
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>            (⨆ z : Euc d, sobolevNormE (m : ℝ) (fun x =&gt; χ (Ψinv τ x - z) * F x)) ≤
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>              ENNReal.ofReal (C * Real.exp (C * (m + d) * τ)) * ulocNormE m χ F) := by
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  by_cases hΛ : 0 ≤ Λ
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  swap
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  · exact ⟨1, 1, one_pos, fun b hb =&gt; absurd (FlowD.Λ_nonneg&#x27; hT.le hb) hΛ⟩
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  obtain ⟨E, hE, hEprop⟩ := FlowE.uloc_bilip_i_ii m T Λ hT χ χh hχ hχh
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  obtain ⟨CD, hCD, hDprop⟩ := FlowD.flow_covering_separation d Λ hΛ χ χh hχ hχh
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  obtain ⟨K0, c, hK0, hc, hVprop⟩ := bilip_v_const m T hT χ hχ E hE
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  set C : ℝ := max (max E CD) K0 with hCdef
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  have hEC : E ≤ C := (le_max_left _ _).trans (le_max_left _ _)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have hCDC : CD ≤ C := (le_max_right _ _).trans (le_max_left _ _)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have hKC : K0 ≤ C := le_max_right _ _
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  have hC0 : 0 &lt; C := lt_of_lt_of_le hE hEC
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  refine ⟨C, c, hc, fun b hb =&gt; ?_⟩
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  obtain ⟨hex, hrest⟩ := hEprop b hb
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  refine ⟨hex, fun Ψ hΨ =&gt; ?_⟩
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  obtain ⟨Ψinv, hΨinv⟩ := hrest Ψ hΨ
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  refine ⟨Ψinv, fun τ hτ =&gt; ?_⟩
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  obtain ⟨hi, hii⟩ := hΨinv τ hτ
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hτ0 : 0 ≤ τ := hτ.1
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  have hinvall : ∀ τ ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      (∀ x, Ψinv τ (Ψ τ x) = x) ∧ (∀ y, Ψ τ (Ψinv τ y) = y) :=
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    fun τ&#x27; hτ&#x27; =&gt; ⟨((hΨinv τ&#x27; hτ&#x27;).1).1, ((hΨinv τ&#x27; hτ&#x27;).1).2.1⟩
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have hlipI := FlowD.inv_lip hT.le hb hΨ Ψinv hinvall τ hτ
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have hlipΨ := FlowA.flow_lipschitz hT.le hb hΨ τ hτ
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  obtain ⟨hiii, hiv⟩ := hDprop Ψ Ψinv τ hτ0 (hinvall τ hτ).1 (hinvall τ hτ).2 hlipI hlipΨ
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  have hmτ : (0 : ℝ) ≤ m * τ := by positivity
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  have hdτ : (0 : ℝ) ≤ d * τ := by positivity
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have hexp1 : Real.exp (E * τ) ≤ Real.exp (C * τ) := Real.exp_le_exp.2 (by nlinarith)
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hexp2 : E * Real.exp (E * m * τ) ≤ C * Real.exp (C * m * τ) :=
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    mul_le_mul hEC (Real.exp_le_exp.2 (by nlinarith)) (Real.exp_pos _).le hC0.le
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  have mono1 : CD * Real.exp (CD * d * τ) ≤ C * Real.exp (C * d * τ) :=
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    mul_le_mul hCDC (Real.exp_le_exp.2 (by nlinarith)) (Real.exp_pos _).le hC0.le
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hiBv : BvI m E Ψ Ψinv τ := hi
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hiiBv : BvII m E χ Ψinv τ := fun z =&gt; ⟨(hii z).2.1, (hii z).2.2⟩
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  obtain ⟨a1, a2, a3, a4, a5, a6, a7⟩ := hi
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  refine ⟨⟨a1, a2, a3, a4, fun x =&gt; (a5 x).trans hexp1, fun y =&gt; (a6 y).trans hexp1,
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    fun j hj hjm x =&gt; ⟨(a7 j hj hjm x).1.trans hexp2, (a7 j hj hjm x).2.trans hexp2⟩⟩,
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    fun z =&gt; ⟨(hii z).1, (hii z).2.1, (hii z).2.2.trans hexp2⟩,
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    fun z x y hx hy =&gt; ?_, ?_, hVprop C hKC Ψ Ψinv τ hτ hiBv hiiBv⟩
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  · refine le_trans ?_ (hiii z x y hx hy)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    have : Real.exp (-(C * τ)) ≤ Real.exp (-(CD * τ)) := Real.exp_le_exp.2 (by nlinarith)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    linarith
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  · obtain ⟨iv1, iv2, iv3, iv4⟩ := hiv
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    refine ⟨iv1, fun y =&gt; (iv2 y).trans ?_, fun G hG =&gt; ⟨(iv3 G hG).1, (iv3 G hG).2.trans ?_⟩,
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      fun A ρ hρ hA =&gt; (iv4 A ρ hρ hA).trans ?_⟩
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    · exact_mod_cast Nat.floor_le_floor mono1
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    · gcongr
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    · have : CD * (1 + ρ) ^ d * Real.exp (CD * d * τ) ≤ C * (1 + ρ) ^ d * Real.exp (C * d * τ) := by
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        have h1p : 0 ≤ (1 + ρ) ^ d := by positivity
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        calc CD * (1 + ρ) ^ d * Real.exp (CD * d * τ) = (CD * Real.exp (CD * d * τ)) * (1 + ρ) ^ d := by
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>              ring
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>          _ ≤ (C * Real.exp (C * d * τ)) * (1 + ρ) ^ d := mul_le_mul_of_nonneg_right mono1 h1p
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>          _ = _ := by ring
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      exact_mod_cast Nat.floor_le_floor this
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>example := (@uloc_bilip_proof : type_of% @HRS.Whole.AppendixALemmas.uloc_bilip)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>end HRS.MS.BilipV
+</span></code></pre></main></body></html>

@@ -1,0 +1,834 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.R2MtAux3 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.R2MtAux3</code></h1><p><a href="../../lean/HRS/MS/R2MtAux3.lean">Open the unaltered Lean file</a> · 833 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.R2MtAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># HRS.MS.R2MtAux3 -- Step C of `round2_moment_transfer` (S9.2): second moment of `N F^k` under `μ^{⊗N}`, tail, main theorem
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Packet S92, namespace `HRS.MS.R2Mt`, helper prefix `s92_`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* `s92_ES`: Efron--Stein for `μ^{⊗N}` (Wu&#x27;s inequality with `W ≡ 1`); `s92_var_D_le`, `s92_row_moment`, `s92_lin2`:
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  variance of `D_N` through the rows `row_i` of `HRS.MS.Wr` and the second moment of an independent centred sum.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `s92_second_moment`: `∫ |N F^k|² dμ^{⊗N} ≤ 100 ∫∫ k² dμ dμ` for symmetric measurable `k ∈ L²(μ⊗μ)` with integrable sections.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `s92_tail_Q`, `s92_tail_key`, `s92_tail`: the tail `lim_j sup_N ‖N F^{h_j-h}‖_{L^r(P_N)} = 0` (plain and centred).
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  Route (replaces the Marcinkiewicz--Zygmund/Rosenthal step of the brief, which is not needed): the `L²(μ^{⊗N})`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  bound above gives smallness in probability under `μ^{⊗N}`, transported to `Q` by `dQ/dμ^N ∈ L²(μ^{⊗N})`, and
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  combined with the uniform moment bound of Step A (`s92_moment_Q`) for the kernel `h_j - h` (envelope `(C₁B+B)(1+W_s)`).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `round2_moment_transfer_proof : type_of% @HRS.Whole.round2_moment_transfer` (statement unchanged); tie in
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `HRS/MS/R2Tie.lean`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>-/
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>set_option linter.style.longLine false
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open MeasureTheory ProbabilityTheory Function Set Filter
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open scoped ENNReal NNReal Topology
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>noncomputable section
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>namespace HRS.MS.R2Mt
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open HRS.Whole HRS.MS.Wr HRS.External
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>variable {d N : ℕ}
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>/-! ### Efron--Stein for the product measure -/
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>theorem s92_ES {E : Type*} [MeasurableSpace E] {n : ℕ} (μ : Measure E) [IsProbabilityMeasure μ]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (F : (Fin n → E) → ℝ) (hF : Measurable F) :
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    evariance F (Measure.pi fun _ : Fin n =&gt; μ) ≤
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∑ i, ∫⁻ x, evariance (fun z =&gt; F (update x i z)) μ ∂(Measure.pi fun _ : Fin n =&gt; μ) := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have hW : Measurable (fun _ : Fin n → E =&gt; (1 : ℝ≥0∞)) := measurable_const
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hsite : ∀ i x, siteKernel μ (fun _ : Fin n → E =&gt; (1 : ℝ≥0∞)) i x = μ := by
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    intro i x
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    rw [siteKernel_apply hW]
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    simp [normalizer]
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have h := wu_resampling μ (fun _ : Fin n → E =&gt; (1 : ℝ≥0∞)) hW (fun _ =&gt; one_pos) 1
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (fun _ =&gt; by simp) (by simp) (fun _ _ =&gt; 0) (fun _ _ =&gt; le_rfl)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (fun i j _ x y _ A _ =&gt; by simp [hsite]) 0 (fun i =&gt; by simp) F hF
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  simpa [hsite] using h
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>theorem s92_pairEnergy_eq (k : Euc d → Euc d → ℝ) (X : EucConfig d N) (μ : Measure (Euc d)) :
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    HRS.Whole.pairEnergy k X μ = (1 / 2) * centeredPairFunctional k X μ := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  unfold HRS.Whole.pairEnergy centeredPairFunctional
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  ring
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- Variance of `D_N` by the rows: `Var D_N ≤ ∑_i E‖(2/N²) row_i‖²`. -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>theorem s92_var_D_le {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (hm : Measurable (Function.uncurry k)) (hsym : ∀ x y, k x y = k y x) (hN : 0 &lt; N) :
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    evariance (fun X : EucConfig d N =&gt; centeredPairFunctional k X μ) (Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      ∑ i : Fin N, ∫⁻ X, ‖(2 / (N : ℝ) ^ 2) * wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  refine (s92_ES μ _ (wr14a_measurable_D hm μ)).trans (Finset.sum_le_sum fun i _ =&gt; ?_)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hrowm : Measurable (fun X : EucConfig d N =&gt; ‖(2 / (N : ℝ) ^ 2) * wr14a_row k μ i X‖ₑ ^ 2) :=
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    ((measurable_enorm.comp ((wr14a_measurable_row hm μ i).const_mul _))).pow_const 2
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  calc ∫⁻ x, evariance (fun z =&gt; centeredPairFunctional k (update x i z) μ) μ ∂(Measure.pi fun _ : Fin N =&gt; μ)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      ≤ ∫⁻ x, ∫⁻ z, ‖(2 / (N : ℝ) ^ 2) * wr14a_row k μ i (update x i z)‖ₑ ^ 2 ∂μ
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>          ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        refine lintegral_mono fun x =&gt; ?_
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        refine (evariance_le_lintegral_sub μ ((wr14a_measurable_D hm μ).comp
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>          (measurable_update x)).aestronglyMeasurable (wr14a_rest k μ i x)).trans (le_of_eq ?_)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>        refine lintegral_congr fun z =&gt; ?_
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        congr 2
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>        change centeredPairFunctional k (update x i z) μ - wr14a_rest k μ i x = _
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>        rw [wr14a_D_eq_row_add_rest hsym μ hN i (update x i z), wr14a_rest_update]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>        ring
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    _ = ∫⁻ X, ‖(2 / (N : ℝ) ^ 2) * wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        (lintegral_pi_update μ i hrowm).symm
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-! ### Second moment of an independent centred sum -/
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>theorem s92_lintegral_sq_eq {Ω : Type*} [MeasurableSpace Ω] {ν : Measure Ω} {f : Ω → ℝ} (hf : MemLp f 2 ν) :
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    ∫⁻ x, ‖f x‖ₑ ^ 2 ∂ν = ENNReal.ofReal (∫ x, f x ^ 2 ∂ν) := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hint : Integrable (fun x =&gt; f x ^ 2) ν := (memLp_two_iff_integrable_sq hf.aestronglyMeasurable).1 hf
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  rw [ofReal_integral_eq_lintegral_ofReal hint (Filter.Eventually.of_forall fun x =&gt; sq_nonneg _)]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  refine lintegral_congr fun x =&gt; ?_
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  rw [← ofReal_norm, Real.norm_eq_abs, ← ENNReal.ofReal_pow (abs_nonneg _), sq_abs]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>theorem s92_lin2 {E : Type*} [MeasurableSpace E] {n : ℕ} (μ : Measure E) [IsProbabilityMeasure μ]
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    {φ : E → ℝ} (hφ : Measurable φ) (h0 : ∫ y, φ y ∂μ = 0) (S : Finset (Fin n)) :
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    ∫⁻ x : Fin n → E, ‖∑ j ∈ S, φ (x j)‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin n =&gt; μ) ≤
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      (S.card : ℝ≥0∞) * ∫⁻ y, ‖φ y‖ₑ ^ 2 ∂μ := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  by_cases htop : ∫⁻ y, ‖φ y‖ₑ ^ 2 ∂μ = ⊤
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  · rcases S.eq_empty_or_nonempty with rfl | hne
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    · simp
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    · rw [htop]
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      have : (S.card : ℝ≥0∞) ≠ 0 := by simp [hne.card_pos.ne&#x27;]
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      rw [ENNReal.mul_top this]; exact le_top
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  · have hmem : MemLp φ 2 μ := memLp_two_of_lintegral_lt_top μ hφ.aestronglyMeasurable (lt_top_iff_ne_top.2 htop)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    set π : Measure (Fin n → E) := Measure.pi fun _ : Fin n =&gt; μ with hπ
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    set X : Fin n → (Fin n → E) → ℝ := fun j x =&gt; φ (x j) with hXdef
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have hX : ∀ j, MemLp (X j) 2 π := fun j =&gt;
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      hmem.comp_measurePreserving (measurePreserving_eval (fun _ : Fin n =&gt; μ) j)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have hind : iIndepFun (fun (j : Fin n) (x : Fin n → E) =&gt; x j) π :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      iIndepFun_pi (fun _ =&gt; aemeasurable_id)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    have hindφ : iIndepFun X π := hind.comp (fun _ =&gt; φ) (fun _ =&gt; hφ)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have hvar := IndepFun.variance_sum (s := S) (fun j _ =&gt; hX j) (fun i _ j _ hij =&gt; hindφ.indepFun hij)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have hmean : ∀ j, ∫ x, X j x ∂π = 0 := fun j =&gt; by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      simp only [hXdef]
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      rw [hπ, integral_comp_eval hφ.aestronglyMeasurable, h0]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    have hmeanSq : ∀ j, ∫ x, (X j x) ^ 2 ∂π = ∫ y, φ y ^ 2 ∂μ := fun j =&gt; by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      simp only [hXdef]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      have := integral_comp_eval (μ := fun _ : Fin n =&gt; μ) (i := j) (f := fun y =&gt; φ y ^ 2)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        (hφ.pow_const 2).aestronglyMeasurable
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      simpa using this
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have hT : MemLp (∑ j ∈ S, X j) 2 π := memLp_finsetSum&#x27; S (fun j _ =&gt; hX j)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    have hTmean : ∫ x, (∑ j ∈ S, X j) x ∂π = 0 := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      have : (∑ j ∈ S, X j) = fun x =&gt; ∑ j ∈ S, X j x := by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        funext x; simp [Finset.sum_apply]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      rw [this, integral_finsetSum _ (fun j _ =&gt; (hX j).integrable one_le_two)]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      exact Finset.sum_eq_zero fun j _ =&gt; hmean j
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have h1 : variance (∑ j ∈ S, X j) π = ∫ x, ((∑ j ∈ S, X j) x) ^ 2 ∂π := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      rw [variance_of_integral_eq_zero hT.aestronglyMeasurable.aemeasurable hTmean]
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have h2 : ∀ j, variance (X j) π = ∫ y, φ y ^ 2 ∂μ := fun j =&gt; by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      rw [variance_of_integral_eq_zero (hX j).aestronglyMeasurable.aemeasurable (hmean j), hmeanSq j]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    have hsum : ∫ x, ((∑ j ∈ S, X j) x) ^ 2 ∂π = S.card * ∫ y, φ y ^ 2 ∂μ := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      rw [← h1, hvar]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      simp [h2]
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    have e1 : ∫⁻ x, ‖∑ j ∈ S, φ (x j)‖ₑ ^ 2 ∂π = ENNReal.ofReal (∫ x, ((∑ j ∈ S, X j) x) ^ 2 ∂π) := by
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      rw [← s92_lintegral_sq_eq hT]
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      refine lintegral_congr fun x =&gt; ?_
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      simp [hXdef, Finset.sum_apply]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    rw [e1, hsum, s92_lintegral_sq_eq hmem, ENNReal.ofReal_mul (Nat.cast_nonneg _)]
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    simp
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>/-! ### Second moment of a row -/
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>theorem s92_enorm_sq (a : ℝ) : ‖a‖ₑ ^ 2 = ENNReal.ofReal (a ^ 2) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  rw [← ofReal_norm, Real.norm_eq_abs, ← ENNReal.ofReal_pow (abs_nonneg _), sq_abs]
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>theorem s92_enorm_sq_add_le (a b : ℝ) : ‖a + b‖ₑ ^ 2 ≤ 2 * ‖a‖ₑ ^ 2 + 2 * ‖b‖ₑ ^ 2 := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  rw [s92_enorm_sq, s92_enorm_sq, s92_enorm_sq]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  have h : ENNReal.ofReal (2 * a ^ 2 + 2 * b ^ 2) = 2 * ENNReal.ofReal (a ^ 2) + 2 * ENNReal.ofReal (b ^ 2) := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    rw [ENNReal.ofReal_add (by positivity) (by positivity), ENNReal.ofReal_mul (by norm_num),
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      ENNReal.ofReal_mul (by norm_num)]
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    simp
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  rw [← h]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  exact ENNReal.ofReal_le_ofReal (by nlinarith [sq_nonneg (a - b)])
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>theorem s92_enorm_sq_sub_le (a b : ℝ) : ‖a - b‖ₑ ^ 2 ≤ 2 * ‖a‖ₑ ^ 2 + 2 * ‖b‖ₑ ^ 2 := by
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have := s92_enorm_sq_add_le a (-b)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  simpa [sub_eq_add_neg] using this
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>theorem s92_cK_measurable {μ : Measure (Euc d)} [SFinite μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (hm : Measurable (Function.uncurry k)) : Measurable (Function.uncurry (wr14a_cK k μ)) := by
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hH := wr14a_measurable_Hc hm μ
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  unfold wr14a_cK
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  exact ((hm.sub (hH.comp measurable_fst)).sub (hH.comp measurable_snd)).add_const _
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>theorem s92_integral_cK {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    (hsec : ∀ x, Integrable (k x) μ) (hHint : Integrable (wr14a_Hc k μ) μ) (w : Euc d) :
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    ∫ y, wr14a_cK k μ w y ∂μ = 0 := by
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  unfold wr14a_cK
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  have h2 : Integrable (fun y =&gt; k w y - wr14a_Hc k μ w) μ := (hsec w).sub (integrable_const _)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have h1 : Integrable (fun y =&gt; k w y - wr14a_Hc k μ w - wr14a_Hc k μ y) μ := h2.sub hHint
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [integral_add h1 (integrable_const _), integral_sub h2 hHint,
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>    integral_sub (hsec w) (integrable_const _)]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  simp only [integral_const, probReal_univ, smul_eq_mul, one_mul]
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have : ∫ y, wr14a_Hc k μ y ∂μ = wr14a_h0 k μ := rfl
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  rw [this]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  unfold wr14a_Hc
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  ring
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>theorem s92_row_moment {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    (hm : Measurable (Function.uncurry k)) (hsec : ∀ x, Integrable (k x) μ)
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    (hHint : Integrable (wr14a_Hc k μ) μ) (i : Fin N) :
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    ∫⁻ X, ‖wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      2 * ((N - 1 : ℕ) : ℝ≥0∞) * ∫⁻ w, ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ ∂μ +
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>        2 * ∫⁻ w, ‖wr14a_Hc k μ w‖ₑ ^ 2 ∂μ := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have hHm := wr14a_measurable_Hc hm μ
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hcm := s92_cK_measurable (μ := μ) hm
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  have hrowm : Measurable (fun X : EucConfig d N =&gt; ‖wr14a_row k μ i X‖ₑ ^ 2) :=
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    (measurable_enorm.comp (wr14a_measurable_row hm μ i)).pow_const 2
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  rw [lintegral_pi_update μ i hrowm]
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hupd : ∀ (x : EucConfig d N) (w : Euc d), wr14a_row k μ i (update x i w) =
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      ∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j) - wr14a_Hc k μ w := by
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    intro x w
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    unfold wr14a_row
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    rw [update_self]
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    congr 1
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    exact Finset.sum_congr rfl fun j hj =&gt; by rw [update_of_ne (Finset.ne_of_mem_erase hj)]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  simp_rw [hupd]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hjm : Measurable (Function.uncurry fun (x : EucConfig d N) (w : Euc d) =&gt;
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j) - wr14a_Hc k μ w‖ₑ ^ 2) := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    refine (measurable_enorm.comp ?_).pow_const 2
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    refine (Finset.measurable_sum _ fun j _ =&gt; ?_).sub (hHm.comp measurable_snd)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    exact hcm.comp (measurable_snd.prodMk ((measurable_pi_apply j).comp measurable_fst))
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  rw [lintegral_lintegral_swap hjm.aemeasurable]
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hpt : ∀ w, ∫⁻ x, ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j) - wr14a_Hc k μ w‖ₑ ^ 2
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        ∂(Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      2 * (((N - 1 : ℕ) : ℝ≥0∞) * ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ) + 2 * ‖wr14a_Hc k μ w‖ₑ ^ 2 := by
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    intro w
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have hcard : ((Finset.univ.erase i).card : ℝ≥0∞) = ((N - 1 : ℕ) : ℝ≥0∞) := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      rw [Finset.card_erase_of_mem (Finset.mem_univ i)]; simp
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    have hlin := s92_lin2 μ (φ := wr14a_cK k μ w) (hcm.comp (measurable_const.prodMk measurable_id))
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      (s92_integral_cK hsec hHint w) (Finset.univ.erase i)
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    rw [hcard] at hlin
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    calc ∫⁻ x, ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j) - wr14a_Hc k μ w‖ₑ ^ 2
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>          ∂(Measure.pi fun _ : Fin N =&gt; μ)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>        ≤ ∫⁻ x, (2 * ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j)‖ₑ ^ 2 + 2 * ‖wr14a_Hc k μ w‖ₑ ^ 2)
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>          ∂(Measure.pi fun _ : Fin N =&gt; μ) := lintegral_mono fun x =&gt; s92_enorm_sq_sub_le _ _
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      _ = 2 * ∫⁻ x, ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j)‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>          + 2 * ‖wr14a_Hc k μ w‖ₑ ^ 2 := by
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>        rw [lintegral_add_right _ measurable_const, lintegral_const_mul&#x27; _ _ (by norm_num), lintegral_const,
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>          measure_univ, mul_one]
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      _ ≤ _ := by gcongr
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  calc ∫⁻ w, ∫⁻ x, ‖∑ j ∈ Finset.univ.erase i, wr14a_cK k μ w (x j) - wr14a_Hc k μ w‖ₑ ^ 2
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>        ∂(Measure.pi fun _ : Fin N =&gt; μ) ∂μ
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      ≤ ∫⁻ w, (2 * (((N - 1 : ℕ) : ℝ≥0∞) * ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ) + 2 * ‖wr14a_Hc k μ w‖ₑ ^ 2) ∂μ :=
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        lintegral_mono hpt
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    _ = _ := by
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        have hm1 : Measurable (fun w =&gt; ‖wr14a_Hc k μ w‖ₑ ^ 2) := (measurable_enorm.comp hHm).pow_const 2
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>        have hm2 : Measurable (fun w =&gt; ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ) :=
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>          ((measurable_enorm.comp hcm).pow_const 2).lintegral_prod_right&#x27;
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        rw [lintegral_add_right _ (hm1.const_mul _), lintegral_const_mul&#x27; _ _ (by norm_num),
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>          lintegral_const_mul _ hm2, lintegral_const_mul _ hm1]
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        ring
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-! ### Norm comparisons -/
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>/-- Jensen for a probability measure: `‖∫ f‖² ≤ ∫ ‖f‖²`. -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>theorem s92_enorm_integral_sq_le {α : Type*} [MeasurableSpace α] (ν : Measure α) [IsProbabilityMeasure ν]
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (f : α → ℝ) (hf : Measurable f) : ‖∫ x, f x ∂ν‖ₑ ^ 2 ≤ ∫⁻ x, ‖f x‖ₑ ^ 2 ∂ν := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  have h1 : ‖∫ x, f x ∂ν‖ₑ ≤ ∫⁻ x, ‖f x‖ₑ ∂ν := enorm_integral_le_lintegral_enorm _
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  have h2 : ∫⁻ x, ‖f x‖ₑ ∂ν ≤ (∫⁻ x, ‖f x‖ₑ ^ (2 : ℝ) ∂ν) ^ (1 / (2 : ℝ)) := by
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    have := ENNReal.lintegral_mul_le_Lp_mul_Lq ν Real.HolderConjugate.two_two
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      (measurable_enorm.comp hf).aemeasurable (measurable_const (a := (1 : ℝ≥0∞))).aemeasurable
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    simpa using this
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  calc ‖∫ x, f x ∂ν‖ₑ ^ 2 ≤ (∫⁻ x, ‖f x‖ₑ ∂ν) ^ 2 := pow_le_pow_left&#x27; h1 2
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    _ ≤ ((∫⁻ x, ‖f x‖ₑ ^ (2 : ℝ) ∂ν) ^ (1 / (2 : ℝ))) ^ 2 := pow_le_pow_left&#x27; h2 2
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    _ = ∫⁻ x, ‖f x‖ₑ ^ 2 ∂ν := by
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        simp only [ENNReal.rpow_two]
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>        norm_num
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>section Norms
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>variable {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>theorem s92_SH_le (hm : Measurable (Function.uncurry k)) :
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    ∫⁻ w, ‖wr14a_Hc k μ w‖ₑ ^ 2 ∂μ ≤ ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ :=
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  lintegral_mono fun x =&gt; s92_enorm_integral_sq_le μ (k x) (wr14a_measurable_h_x hm x)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>theorem s92_h0_sq_le (hm : Measurable (Function.uncurry k)) :
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    ‖wr14a_h0 k μ‖ₑ ^ 2 ≤ ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ :=
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  (s92_enorm_integral_sq_le μ (wr14a_Hc k μ) (wr14a_measurable_Hc hm μ)).trans (s92_SH_le hm)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>theorem s92_Scc_le (hm : Measurable (Function.uncurry k)) :
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    ∫⁻ w, ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ ∂μ ≤ 16 * ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ := by
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  have hHm := wr14a_measurable_Hc hm μ
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  set S2 := ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ with hS2
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  set SH := ∫⁻ w, ‖wr14a_Hc k μ w‖ₑ ^ 2 ∂μ with hSH
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have hSH := s92_SH_le (μ := μ) hm
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hh0 := s92_h0_sq_le (μ := μ) hm
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have hpt : ∀ w y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ≤ 4 * ‖k w y‖ₑ ^ 2 + 4 * ‖wr14a_Hc k μ w‖ₑ ^ 2 +
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>      4 * ‖wr14a_Hc k μ y‖ₑ ^ 2 + 4 * ‖wr14a_h0 k μ‖ₑ ^ 2 := by
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    intro w y
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    unfold wr14a_cK
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    have e : k w y - wr14a_Hc k μ w - wr14a_Hc k μ y + wr14a_h0 k μ =
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>        (k w y + -wr14a_Hc k μ w) + (-wr14a_Hc k μ y + wr14a_h0 k μ) := by ring
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    rw [e]
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    refine (s92_enorm_sq_add_le _ _).trans ?_
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    have h1 := s92_enorm_sq_add_le (k w y) (-wr14a_Hc k μ w)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    have h2 := s92_enorm_sq_add_le (-wr14a_Hc k μ y) (wr14a_h0 k μ)
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    have en : ∀ a : ℝ, ‖-a‖ₑ = ‖a‖ₑ := fun a =&gt; by rw [← ofReal_norm, ← ofReal_norm, norm_neg]
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    rw [en] at h1
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    rw [en] at h2
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    calc 2 * ‖k w y + -wr14a_Hc k μ w‖ₑ ^ 2 + 2 * ‖-wr14a_Hc k μ y + wr14a_h0 k μ‖ₑ ^ 2
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>        ≤ 2 * (2 * ‖k w y‖ₑ ^ 2 + 2 * ‖wr14a_Hc k μ w‖ₑ ^ 2) +
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>          2 * (2 * ‖wr14a_Hc k μ y‖ₑ ^ 2 + 2 * ‖wr14a_h0 k μ‖ₑ ^ 2) := by gcongr
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>      _ = _ := by ring
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  have hm1 : Measurable (fun w =&gt; ‖wr14a_Hc k μ w‖ₑ ^ 2) := (measurable_enorm.comp hHm).pow_const 2
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>  have hkm : ∀ w, Measurable (fun y =&gt; ‖k w y‖ₑ ^ 2) := fun w =&gt;
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    (measurable_enorm.comp (wr14a_measurable_h_x hm w)).pow_const 2
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  calc ∫⁻ w, ∫⁻ y, ‖wr14a_cK k μ w y‖ₑ ^ 2 ∂μ ∂μ
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>      ≤ ∫⁻ w, ∫⁻ y, (4 * ‖k w y‖ₑ ^ 2 + 4 * ‖wr14a_Hc k μ w‖ₑ ^ 2 +
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>          4 * ‖wr14a_Hc k μ y‖ₑ ^ 2 + 4 * ‖wr14a_h0 k μ‖ₑ ^ 2) ∂μ ∂μ :=
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>        lintegral_mono fun w =&gt; lintegral_mono fun y =&gt; hpt w y
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    _ = ∫⁻ w, (4 * ∫⁻ y, ‖k w y‖ₑ ^ 2 ∂μ + 4 * ‖wr14a_Hc k μ w‖ₑ ^ 2 + 4 * SH + 4 * ‖wr14a_h0 k μ‖ₑ ^ 2) ∂μ := by
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>        refine lintegral_congr fun w =&gt; ?_
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>        have m1 : Measurable (fun y =&gt; 4 * ‖k w y‖ₑ ^ 2) := (hkm w).const_mul 4
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>        have m2 : Measurable (fun y =&gt; 4 * ‖wr14a_Hc k μ y‖ₑ ^ 2) := hm1.const_mul 4
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>        rw [lintegral_add_right _ measurable_const, lintegral_add_right _ m2,
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>          lintegral_add_right _ measurable_const, lintegral_const_mul _ (hkm w), lintegral_const,
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>          lintegral_const_mul _ hm1, lintegral_const, measure_univ]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>        simp only [mul_one]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>        rfl
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    _ ≤ 16 * S2 := by
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>        have hS : Measurable (fun w =&gt; ∫⁻ y, ‖k w y‖ₑ ^ 2 ∂μ) :=
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>          ((measurable_enorm.comp hm).pow_const 2).lintegral_prod_right&#x27;
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>        have m1 : Measurable (fun w =&gt; 4 * ∫⁻ y, ‖k w y‖ₑ ^ 2 ∂μ) := hS.const_mul 4
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>        have m2 : Measurable (fun w =&gt; 4 * ‖wr14a_Hc k μ w‖ₑ ^ 2) := hm1.const_mul 4
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>        rw [lintegral_add_right _ measurable_const, lintegral_add_right _ measurable_const,
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>          lintegral_add_right _ m2, lintegral_const_mul _ hS,
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>          lintegral_const, lintegral_const, lintegral_const_mul _ hm1, measure_univ]
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>        simp only [mul_one]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>        calc 4 * S2 + 4 * SH + 4 * SH + 4 * ‖wr14a_h0 k μ‖ₑ ^ 2 ≤ 4 * S2 + 4 * S2 + 4 * S2 + 4 * S2 := by
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>              gcongr
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>          _ = 16 * S2 := by ring
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>end Norms
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>/-! ### The mean of `D_N` under `μ^{⊗N}` -/
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>theorem s92_pair_law {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {i j : Fin N} (hij : i ≠ j) :
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    (Measure.pi fun _ : Fin N =&gt; μ).map (fun X : EucConfig d N =&gt; (X i, X j)) = μ.prod μ := by
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  have hind : iIndepFun (fun (j : Fin N) (x : EucConfig d N) =&gt; x j) (Measure.pi fun _ : Fin N =&gt; μ) :=
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    iIndepFun_pi (fun _ =&gt; aemeasurable_id)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have h := (indepFun_iff_map_prod_eq_prod_map_map (measurable_pi_apply i).aemeasurable
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>    (measurable_pi_apply j).aemeasurable).1 (hind.indepFun hij)
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  rw [(measurePreserving_eval (fun _ : Fin N =&gt; μ) i).map_eq,
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    (measurePreserving_eval (fun _ : Fin N =&gt; μ) j).map_eq] at h
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  exact h
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>theorem s92_integral_pair {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    (hm : Measurable (Function.uncurry k)) (hint : Integrable (Function.uncurry k) (μ.prod μ))
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    {i j : Fin N} (hij : i ≠ j) :
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    Integrable (fun X : EucConfig d N =&gt; k (X i) (X j)) (Measure.pi fun _ : Fin N =&gt; μ) ∧
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>      ∫ X : EucConfig d N, k (X i) (X j) ∂(Measure.pi fun _ : Fin N =&gt; μ) = wr14a_h0 k μ := by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>  have hlaw := s92_pair_law (μ := μ) hij
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  have hmeas : AEMeasurable (fun X : EucConfig d N =&gt; (X i, X j)) (Measure.pi fun _ : Fin N =&gt; μ) :=
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    ((measurable_pi_apply i).prodMk (measurable_pi_apply j)).aemeasurable
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  have hint&#x27; : Integrable (Function.uncurry k)
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>      ((Measure.pi fun _ : Fin N =&gt; μ).map (fun X : EucConfig d N =&gt; (X i, X j))) := by
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    rw [hlaw]; exact hint
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  refine ⟨(integrable_map_measure hm.aestronglyMeasurable hmeas).1 hint&#x27;, ?_⟩
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  have h := integral_map hmeas (φ := fun X : EucConfig d N =&gt; (X i, X j)) (f := Function.uncurry k)
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    (μ := Measure.pi fun _ : Fin N =&gt; μ) hm.aestronglyMeasurable
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  rw [hlaw, integral_prod _ hint] at h
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  exact h.symm
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>theorem s92_integral_D {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    (hm : Measurable (Function.uncurry k)) (hint : Integrable (Function.uncurry k) (μ.prod μ))
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    (hHint : Integrable (wr14a_Hc k μ) μ) (hN : 0 &lt; N) :
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    ∫ X : EucConfig d N, centeredPairFunctional k X μ ∂(Measure.pi fun _ : Fin N =&gt; μ) =
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>      -wr14a_h0 k μ / N := by
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  set π : Measure (EucConfig d N) := Measure.pi fun _ : Fin N =&gt; μ with hπ
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  have hI1 : ∀ i j : Fin N, j ∈ Finset.univ.erase i → Integrable (fun X : EucConfig d N =&gt; k (X i) (X j)) π :=
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    fun i j hj =&gt; (s92_integral_pair hm hint (Finset.ne_of_mem_erase hj).symm).1
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  have hI2 : ∀ i : Fin N, Integrable (fun X : EucConfig d N =&gt; ∫ y, k (X i) y ∂μ) π := fun i =&gt;
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    (measurePreserving_eval (fun _ : Fin N =&gt; μ) i).integrable_comp_of_integrable hHint
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  have hint1 : Integrable (fun X : EucConfig d N =&gt; ∑ i, ∑ j ∈ Finset.univ.erase i, k (X i) (X j)) π :=
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    integrable_finsetSum _ fun i _ =&gt; integrable_finsetSum _ fun j hj =&gt; hI1 i j hj
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have hint2 : Integrable (fun X : EucConfig d N =&gt; ∑ i, ∫ y, k (X i) y ∂μ) π :=
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    integrable_finsetSum _ fun i _ =&gt; hI2 i
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  have hm1 : ∫ X, ∑ i, ∑ j ∈ Finset.univ.erase i, k (X i) (X j) ∂π = (N : ℝ) * ((N : ℝ) - 1) * wr14a_h0 k μ := by
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>    rw [integral_finsetSum _ (fun i _ =&gt; integrable_finsetSum _ fun j hj =&gt; hI1 i j hj)]
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    have : ∀ i : Fin N, ∫ X, ∑ j ∈ Finset.univ.erase i, k (X i) (X j) ∂π = ((N : ℝ) - 1) * wr14a_h0 k μ := by
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>      intro i
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>      rw [integral_finsetSum _ (fun j hj =&gt; hI1 i j hj)]
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>      rw [Finset.sum_congr rfl (fun j hj =&gt; (s92_integral_pair hm hint (Finset.ne_of_mem_erase hj).symm).2)]
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>      simp [Finset.card_erase_of_mem, Nat.cast_sub hN]
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>    rw [Finset.sum_congr rfl (fun i _ =&gt; this i)]
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    simp
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    ring
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>  have hm2 : ∫ X, ∑ i, ∫ y, k (X i) y ∂μ ∂π = (N : ℝ) * wr14a_h0 k μ := by
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    rw [integral_finsetSum _ (fun i _ =&gt; hI2 i)]
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    have : ∀ i : Fin N, ∫ X, ∫ y, k (X i) y ∂μ ∂π = wr14a_h0 k μ := by
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>      intro i
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>      have := integral_comp_eval (μ := fun _ : Fin N =&gt; μ) (i := i) (f := wr14a_Hc k μ)
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>        (wr14a_measurable_Hc hm μ).aestronglyMeasurable
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>      exact this
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    rw [Finset.sum_congr rfl (fun i _ =&gt; this i)]
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    simp
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  unfold centeredPairFunctional
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  have hA : Integrable (fun X : EucConfig d N =&gt; 1 / (N : ℝ) ^ 2 * ∑ i, ∑ j ∈ Finset.univ.erase i, k (X i) (X j)) π :=
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    hint1.const_mul _
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  have hB : Integrable (fun X : EucConfig d N =&gt; 2 * (1 / (N : ℝ) * ∑ i, ∫ y, k (X i) y ∂μ)) π :=
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    (hint2.const_mul _).const_mul _
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>  have hAB : Integrable (fun X : EucConfig d N =&gt; 1 / (N : ℝ) ^ 2 * ∑ i, ∑ j ∈ Finset.univ.erase i, k (X i) (X j) -
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      2 * (1 / (N : ℝ) * ∑ i, ∫ y, k (X i) y ∂μ)) π := hA.sub hB
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  rw [integral_add hAB (integrable_const _), integral_sub hA hB, integral_const_mul,
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    integral_const_mul, integral_const_mul, hm1, hm2]
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  simp only [integral_const, probReal_univ, smul_eq_mul, one_mul]
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  have : ∫ x, ∫ y, k x y ∂μ ∂μ = wr14a_h0 k μ := rfl
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  rw [this]
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>  field_simp
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  ring
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>/-! ### The second moment bound -/
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>theorem s92_enorm_mul_sq (c r : ℝ) : ‖c * r‖ₑ ^ 2 = ENNReal.ofReal (c ^ 2) * ‖r‖ₑ ^ 2 := by
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  rw [s92_enorm_sq, s92_enorm_sq, ← ENNReal.ofReal_mul (sq_nonneg _)]
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  congr 1; ring
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>section Var
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>variable {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>theorem s92_row_le (hm : Measurable (Function.uncurry k)) (hsec : ∀ x, Integrable (k x) μ)
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    (hHint : Integrable (wr14a_Hc k μ) μ) (hN : 0 &lt; N) (i : Fin N) :
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    ∫⁻ X, ‖wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>      ENNReal.ofReal (34 * N) * ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ := by
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  set S2 := ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ with hS2
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  have h1 := s92_row_moment (N := N) hm hsec hHint i
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  have h2 := s92_Scc_le (μ := μ) hm
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  have h3 := s92_SH_le (μ := μ) hm
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  have hcast : ((N - 1 : ℕ) : ℝ≥0∞) = ENNReal.ofReal ((N : ℝ) - 1) := by
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    rw [← ENNReal.ofReal_natCast, Nat.cast_sub (by omega)]; simp
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  have hN1 : (1 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  calc _ ≤ 2 * ((N - 1 : ℕ) : ℝ≥0∞) * (16 * S2) + 2 * S2 := h1.trans (add_le_add (by gcongr) (by gcongr))
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    _ = ENNReal.ofReal (32 * ((N : ℝ) - 1) + 2) * S2 := by
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>        have e : ENNReal.ofReal (32 * ((N : ℝ) - 1) + 2) = 32 * ENNReal.ofReal ((N : ℝ) - 1) + 2 := by
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>          rw [ENNReal.ofReal_add (by linarith) (by norm_num), ENNReal.ofReal_mul (by norm_num)]
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>          simp
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>        rw [hcast, e]
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>        ring
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    _ ≤ ENNReal.ofReal (34 * N) * S2 := by
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>        gcongr
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>        linarith
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>theorem s92_var_D_bound (hm : Measurable (Function.uncurry k)) (hsym : ∀ x y, k x y = k y x)
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    (hsec : ∀ x, Integrable (k x) μ) (hHint : Integrable (wr14a_Hc k μ) μ) (hN : 0 &lt; N) :
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    evariance (fun X : EucConfig d N =&gt; centeredPairFunctional k X μ) (Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>      ENNReal.ofReal (136 / (N : ℝ) ^ 2) * ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ := by
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  set S2 := ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ with hS2
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  refine (s92_var_D_le hm hsym hN).trans ?_
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  calc ∑ i : Fin N, ∫⁻ X, ‖(2 / (N : ℝ) ^ 2) * wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ)
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>      = ∑ i : Fin N, ENNReal.ofReal ((2 / (N : ℝ) ^ 2) ^ 2) *
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>          ∫⁻ X, ‖wr14a_row k μ i X‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) := by
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>        refine Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>        simp_rw [s92_enorm_mul_sq]
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>        rw [lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    _ ≤ ∑ _i : Fin N, ENNReal.ofReal ((2 / (N : ℝ) ^ 2) ^ 2) * (ENNReal.ofReal (34 * N) * S2) :=
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>        Finset.sum_le_sum fun i _ =&gt; mul_le_mul&#x27; le_rfl (s92_row_le hm hsec hHint hN i)
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>    _ = ENNReal.ofReal (136 / (N : ℝ) ^ 2) * S2 := by
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, ← mul_assoc, ← mul_assoc,
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>          ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (Nat.cast_nonneg _),
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>          ← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>        congr 2
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>        field_simp
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>        ring
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>/-- **Second moment of `N F^k` under `μ^{⊗N}`**: `∫ (N F^k)² dμ^{⊗N} ≤ 100 ‖k‖²_{L²(μ⊗μ)}`. -/
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>theorem s92_second_moment (hm : Measurable (Function.uncurry k)) (hsym : ∀ x y, k x y = k y x)
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    (hsec : ∀ x, Integrable (k x) μ) (hint : Integrable (Function.uncurry k) (μ.prod μ))
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    (hHint : Integrable (wr14a_Hc k μ) μ) (hN : 0 &lt; N) :
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>    ∫⁻ X : EucConfig d N, ‖(N : ℝ) * HRS.Whole.pairEnergy k X μ‖ₑ ^ 2 ∂(Measure.pi fun _ : Fin N =&gt; μ) ≤
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>      100 * ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ := by
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  set S2 := ∫⁻ x, ∫⁻ y, ‖k x y‖ₑ ^ 2 ∂μ ∂μ with hS2
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>  set π : Measure (EucConfig d N) := Measure.pi fun _ : Fin N =&gt; μ with hπ
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>  have hvar := s92_var_D_bound hm hsym hsec hHint hN
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  have hmean := s92_integral_D hm hint hHint hN
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  have hh0 := s92_h0_sq_le (μ := μ) hm
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  have hDm : Measurable (fun X : EucConfig d N =&gt; centeredPairFunctional k X μ) := wr14a_measurable_D hm μ
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>  have e1 : ∀ X : EucConfig d N, ‖(N : ℝ) * HRS.Whole.pairEnergy k X μ‖ₑ ^ 2 =
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>      ENNReal.ofReal (((N : ℝ) / 2) ^ 2) * ‖centeredPairFunctional k X μ‖ₑ ^ 2 := by
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    intro X
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    rw [← s92_enorm_mul_sq, s92_pairEnergy_eq]
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>    congr 2; ring
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>  simp_rw [e1]
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>  rw [lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top]
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  set m : ℝ := -wr14a_h0 k μ / N with hm_def
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>  have hevar : evariance (fun X : EucConfig d N =&gt; centeredPairFunctional k X μ) π =
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>      ∫⁻ X, ‖centeredPairFunctional k X μ - m‖ₑ ^ 2 ∂π := by
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    unfold evariance
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    rw [hmean]
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  have hD2 : ∫⁻ X, ‖centeredPairFunctional k X μ‖ₑ ^ 2 ∂π ≤
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>      2 * evariance (fun X : EucConfig d N =&gt; centeredPairFunctional k X μ) π + 2 * ‖m‖ₑ ^ 2 := by
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>    have hpt : ∀ X : EucConfig d N, ‖centeredPairFunctional k X μ‖ₑ ^ 2 ≤
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>        2 * ‖centeredPairFunctional k X μ - m‖ₑ ^ 2 + 2 * ‖m‖ₑ ^ 2 := by
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      intro X
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>      have := s92_enorm_sq_add_le (centeredPairFunctional k X μ - m) m
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>      rwa [sub_add_cancel] at this
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>    calc ∫⁻ X, ‖centeredPairFunctional k X μ‖ₑ ^ 2 ∂π
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        ≤ ∫⁻ X, (2 * ‖centeredPairFunctional k X μ - m‖ₑ ^ 2 + 2 * ‖m‖ₑ ^ 2) ∂π := lintegral_mono hpt
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>      _ = 2 * ∫⁻ X, ‖centeredPairFunctional k X μ - m‖ₑ ^ 2 ∂π + 2 * ‖m‖ₑ ^ 2 := by
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>          rw [lintegral_add_right _ measurable_const, lintegral_const_mul&#x27; _ _ (by norm_num), lintegral_const,
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>            measure_univ, mul_one]
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      _ = _ := by rw [hevar]
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  have hm2 : ‖m‖ₑ ^ 2 ≤ ENNReal.ofReal (1 / (N : ℝ) ^ 2) * S2 := by
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>    have : m = (-1 / (N : ℝ)) * wr14a_h0 k μ := by rw [hm_def]; ring
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>    rw [this, s92_enorm_mul_sq]
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    have e : (-1 / (N : ℝ)) ^ 2 = 1 / (N : ℝ) ^ 2 := by rw [div_pow]; norm_num
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    rw [e]
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    exact mul_le_mul&#x27; le_rfl hh0
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>  have hfinal : ENNReal.ofReal (((N : ℝ) / 2) ^ 2) *
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>      (2 * (ENNReal.ofReal (136 / (N : ℝ) ^ 2) * S2) + 2 * (ENNReal.ofReal (1 / (N : ℝ) ^ 2) * S2)) =
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>      ENNReal.ofReal (137 / 2) * S2 := by
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    have e : ((N : ℝ) / 2) ^ 2 * (2 * (136 / (N : ℝ) ^ 2) + 2 * (1 / (N : ℝ) ^ 2)) = 137 / 2 := by
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>      field_simp; ring
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    have hl : ENNReal.ofReal (137 / 2) = ENNReal.ofReal (((N : ℝ) / 2) ^ 2) *
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>        (2 * ENNReal.ofReal (136 / (N : ℝ) ^ 2) + 2 * ENNReal.ofReal (1 / (N : ℝ) ^ 2)) := by
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      rw [← e, ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_add (by positivity) (by positivity),
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>        ENNReal.ofReal_mul (by norm_num), ENNReal.ofReal_mul (by norm_num)]
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>      simp
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    rw [hl]
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    ring
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  calc ENNReal.ofReal (((N : ℝ) / 2) ^ 2) * ∫⁻ X, ‖centeredPairFunctional k X μ‖ₑ ^ 2 ∂π
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>      ≤ ENNReal.ofReal (((N : ℝ) / 2) ^ 2) *
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>          (2 * (ENNReal.ofReal (136 / (N : ℝ) ^ 2) * S2) + 2 * (ENNReal.ofReal (1 / (N : ℝ) ^ 2) * S2)) :=
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>        mul_le_mul&#x27; le_rfl (hD2.trans (add_le_add (mul_le_mul&#x27; le_rfl hvar) (mul_le_mul&#x27; le_rfl hm2)))
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>    _ = ENNReal.ofReal (137 / 2) * S2 := hfinal
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    _ ≤ 100 * S2 := by
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>        gcongr
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>        rw [show (100 : ℝ≥0∞) = ENNReal.ofReal 100 by simp]
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>        exact ENNReal.ofReal_le_ofReal (by norm_num)
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>end Var
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>/-! ### The tail at the level of `Q` -/
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>theorem s92_withDensity_set_le {α : Type*} [MeasurableSpace α] (ν : Measure α) {ψ : α → ℝ≥0∞}
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    (hψ : Measurable ψ) {A : Set α} (hA : MeasurableSet A) :
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    (ν.withDensity ψ) A ≤ (∫⁻ x, ψ x ^ (2 : ℝ) ∂ν) ^ (1 / (2 : ℝ)) * (ν A) ^ (1 / (2 : ℝ)) := by
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>  rw [withDensity_apply _ hA, ← lintegral_indicator hA]
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>  have hind : Measurable (A.indicator (fun _ =&gt; (1 : ℝ≥0∞))) := measurable_const.indicator hA
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  have h := ENNReal.lintegral_mul_le_Lp_mul_Lq ν Real.HolderConjugate.two_two hψ.aemeasurable hind.aemeasurable
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  have e1 : ∫⁻ x, A.indicator ψ x ∂ν = ∫⁻ x, (ψ * A.indicator (fun _ =&gt; (1 : ℝ≥0∞))) x ∂ν := by
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>    refine lintegral_congr fun x =&gt; ?_
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>    by_cases hx : x ∈ A &lt;;&gt; simp [hx]
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>  have e2 : ∫⁻ x, (A.indicator (fun _ =&gt; (1 : ℝ≥0∞)) x) ^ (2 : ℝ) ∂ν = ν A := by
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    have : ∀ x, (A.indicator (fun _ =&gt; (1 : ℝ≥0∞)) x) ^ (2 : ℝ) = A.indicator (fun _ =&gt; (1 : ℝ≥0∞)) x := by
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>      intro x; by_cases hx : x ∈ A &lt;;&gt; simp [hx]
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    simp_rw [this]
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>    rw [lintegral_indicator_const hA, one_mul]
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>  rw [e1]
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>  rw [e2] at h
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>  exact h
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>theorem s92_tail_Q {α : Type*} [MeasurableSpace α] (ν : Measure α) [IsProbabilityMeasure ν] {ψ : α → ℝ≥0∞}
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    (hψ : Measurable ψ) [IsProbabilityMeasure (ν.withDensity ψ)] {X : α → ℝ} (hX : Measurable X) (m : ℕ)
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>    {ε : ℝ} (hε : 0 &lt; ε) {C2 Aψ : ℝ} (hC2 : ∫⁻ x, ‖X x‖ₑ ^ (2 * m) ∂(ν.withDensity ψ) ≤ ENNReal.ofReal C2)
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    (hA : (∫⁻ x, ψ x ^ (2 : ℝ) ∂ν) ^ (1 / (2 : ℝ)) ≤ ENNReal.ofReal Aψ) {s : ℝ≥0∞}
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    (hs : ∫⁻ x, ‖X x‖ₑ ^ 2 ∂ν ≤ s) :
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>    ∫⁻ x, ‖X x‖ₑ ^ m ∂(ν.withDensity ψ) ≤ ENNReal.ofReal ε ^ m +
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>      (ENNReal.ofReal C2) ^ (1 / (2 : ℝ)) *
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>        (ENNReal.ofReal Aψ * (ENNReal.ofReal (ε ^ (-2 : ℤ)) * s) ^ (1 / (2 : ℝ))) ^ (1 / (2 : ℝ)) := by
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>  refine (s92_tail_split (ν.withDensity ψ) hX m).trans (add_le_add le_rfl ?_)
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  have hAm : MeasurableSet {x | ε &lt; |X x|} := measurableSet_lt measurable_const hX.abs
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>  have hνA : ν {x | ε &lt; |X x|} ≤ ENNReal.ofReal (ε ^ (-2 : ℤ)) * s := by
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    have hsub : {x | ε &lt; |X x|} ⊆ {x | ENNReal.ofReal (ε ^ 2) ≤ ‖X x‖ₑ ^ 2} := by
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>      intro x hx
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>      simp only [Set.mem_setOf_eq] at hx ⊢
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>      rw [s92_enorm_sq]
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>      exact ENNReal.ofReal_le_ofReal (by nlinarith [abs_nonneg (X x), sq_abs (X x)])
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    have hmk := meas_ge_le_lintegral_div (μ := ν) ((measurable_enorm.comp hX).pow_const 2).aemeasurable
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      (ε := ENNReal.ofReal (ε ^ 2)) (by simp [hε.ne&#x27;]) ENNReal.ofReal_ne_top
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>    calc ν {x | ε &lt; |X x|} ≤ ν {x | ENNReal.ofReal (ε ^ 2) ≤ ‖X x‖ₑ ^ 2} := measure_mono hsub
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      _ ≤ (∫⁻ x, ‖X x‖ₑ ^ 2 ∂ν) / ENNReal.ofReal (ε ^ 2) := hmk
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>      _ ≤ s / ENNReal.ofReal (ε ^ 2) := by gcongr
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>      _ = ENNReal.ofReal (ε ^ (-2 : ℤ)) * s := by
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>          rw [div_eq_mul_inv, mul_comm, ← ENNReal.ofReal_inv_of_pos (by positivity)]
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>          congr 2
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>  have hQA : (ν.withDensity ψ) {x | ε &lt; |X x|} ≤ ENNReal.ofReal Aψ *
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>      (ENNReal.ofReal (ε ^ (-2 : ℤ)) * s) ^ (1 / (2 : ℝ)) :=
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    (s92_withDensity_set_le ν hψ hAm).trans (mul_le_mul&#x27; hA (ENNReal.rpow_le_rpow hνA (by norm_num)))
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  exact mul_le_mul&#x27; (ENNReal.rpow_le_rpow hC2 (by norm_num)) (ENNReal.rpow_le_rpow hQA (by norm_num))
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>/-! ### The kernels `h_j - h` -/
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>section Kernel
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>variable {s : ℝ}
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>theorem s92_finiteRank_meas {m : ℕ} {c : Fin m → Fin m → ℝ} {u : Fin m → Euc d → ℝ}
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>    (hu : IsR2FiniteRankData c u) : Measurable (Function.uncurry (r2FiniteRankKernel c u)) := by
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>  unfold r2FiniteRankKernel
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>  refine Finset.measurable_sum _ fun a _ =&gt; Finset.measurable_sum _ fun b _ =&gt; ?_
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  exact (measurable_const.mul ((hu.smooth a).continuous.measurable.comp measurable_fst)).mul
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    ((hu.smooth b).continuous.measurable.comp measurable_snd)
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>theorem s92_finiteRank_symm {m : ℕ} {c : Fin m → Fin m → ℝ} {u : Fin m → Euc d → ℝ}
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>    (hu : IsR2FiniteRankData c u) (x y : Euc d) :
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>    r2FiniteRankKernel c u x y = r2FiniteRankKernel c u y x := by
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>  unfold r2FiniteRankKernel
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>  rw [Finset.sum_comm]
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>  refine Finset.sum_congr rfl fun a _ =&gt; Finset.sum_congr rfl fun b _ =&gt; ?_
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>  rw [hu.symm b a]; ring
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>theorem s92_diff_kernel {B C₁ : ℝ} {μ : Measure (Euc d)} {h : Euc d → Euc d → ℝ}
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    {hj : ℕ → Euc d → Euc d → ℝ} (hh : IsBoundedPairKernel s B h) (ha : IsRound2Approx s C₁ B μ h hj) (j : ℕ) :
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    IsBoundedPairKernel s (C₁ * B + B) (fun x y =&gt; hj j x y - h x y) where
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>  measurable := by
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>    obtain ⟨m, c, u, hu, e⟩ := ha.finiteRank j
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>    have h1 : Measurable (Function.uncurry (hj j)) := by
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>      rw [e]; exact s92_finiteRank_meas hu
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>    exact h1.sub hh.measurable
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>  symm := by
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>    obtain ⟨m, c, u, hu, e⟩ := ha.finiteRank j
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>    intro x y
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>    rw [e, s92_finiteRank_symm hu x y, hh.symm x y]
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>  bound := by
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>    intro x y hxy
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>    have h1 := ha.envelope j x y hxy
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>    have h2 := hh.bound x y hxy
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>    calc |hj j x y - h x y| ≤ |hj j x y| + |h x y| := abs_sub _ _
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>      _ ≤ C₁ * B * (1 + rieszWeight s (x - y)) + B * (1 + rieszWeight s (x - y)) := add_le_add h1 h2
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>      _ = (C₁ * B + B) * (1 + rieszWeight s (x - y)) := by ring
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>theorem s92_kernel_integrable (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (M : ℝ) {ρ : Euc d → ℝ}
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>    (hρ : HRS.Whole.IsProbDensity ρ) (hM : ∀ x, ρ x ≤ M) {B : ℝ} {k : Euc d → Euc d → ℝ}
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    (hk : IsBoundedPairKernel s B k) :
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>    (∀ x, Integrable (k x) (HRS.Whole.withDensityReal ρ)) ∧
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>      Integrable (Function.uncurry k) ((HRS.Whole.withDensityReal ρ).prod (HRS.Whole.withDensityReal ρ)) ∧
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>      Integrable (wr14a_Hc k (HRS.Whole.withDensityReal ρ)) (HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>  haveI := s92_isProb_mu hρ
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>  have hB : 0 ≤ B := wr14a_nonneg_of_bound hd (s := s) hk.bound
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>  have hν : HRS.Whole.withDensityReal ρ ≤ ENNReal.ofReal 1 • HRS.Whole.withDensityReal ρ := by simp
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>  have h1 : ∀ x, Integrable (k x) (HRS.Whole.withDensityReal ρ) := fun x =&gt;
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>    wr14a_integrable_of_env_bound hd hs0 hsd M hρ hM hν zero_le_one hB (wr14a_measurable_h_x hk.measurable x)
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>      (fun y hy =&gt; hk.bound x y (Ne.symm hy))
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>  have h2 : Integrable (Function.uncurry k)
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>      ((HRS.Whole.withDensityReal ρ).prod (HRS.Whole.withDensityReal ρ)) :=
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>    wr14a_pair_integrable hd hs0 hsd M hρ hM hν zero_le_one inferInstance hB hk.measurable hk.bound
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>  exact ⟨h1, h2, h2.integral_prod_left⟩
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>end Kernel
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>theorem s92_S2_eq {μ : Measure (Euc d)} [SFinite μ] {f : Euc d → Euc d → ℝ}
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    (hf : Measurable (Function.uncurry f)) :
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>    ∫⁻ x, ∫⁻ y, ‖f x y‖ₑ ^ 2 ∂μ ∂μ =
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>      (eLpNorm (fun p : Euc d × Euc d =&gt; f p.1 p.2) (ENNReal.ofReal 2) (μ.prod μ)) ^ 2 := by
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>  have hm : Measurable (fun p : Euc d × Euc d =&gt; f p.1 p.2) := hf
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top hm.aestronglyMeasurable]
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>  rw [ENNReal.toReal_ofReal (by norm_num : (0 : ℝ) ≤ 2)]
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>  rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>  norm_num
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>  exact (lintegral_prod (fun p : Euc d × Euc d =&gt; ‖f p.1 p.2‖ₑ ^ 2)
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>    ((measurable_enorm.comp hm).pow_const 2).aemeasurable).symm
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>theorem s92_G_tendsto {c1 c2 c3 : ℝ≥0∞} (h1 : c1 ≠ ⊤) (h2 : c2 ≠ ⊤) (h3 : c3 ≠ ⊤) {f : ℕ → ℝ≥0∞}
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>    (hf : Tendsto f atTop (𝓝 0)) :
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>    Tendsto (fun j =&gt; c1 * (c2 * (c3 * f j) ^ (1 / (2 : ℝ))) ^ (1 / (2 : ℝ))) atTop (𝓝 0) := by
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>  have hc : Continuous fun x : ℝ≥0∞ =&gt; c1 * (c2 * (c3 * x) ^ (1 / (2 : ℝ))) ^ (1 / (2 : ℝ)) :=
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>    (ENNReal.continuous_const_mul h1).comp
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>      (ENNReal.continuous_rpow_const.comp ((ENNReal.continuous_const_mul h2).comp
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>        (ENNReal.continuous_rpow_const.comp (ENNReal.continuous_const_mul h3))))
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>  have h0 : c1 * (c2 * (c3 * (0 : ℝ≥0∞)) ^ (1 / (2 : ℝ))) ^ (1 / (2 : ℝ)) = 0 := by
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>    simp [ENNReal.zero_rpow_of_pos (by norm_num : (0 : ℝ) &lt; 1 / 2)]
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>  have := (hc.tendsto 0).comp hf
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>  rw [h0] at this
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>  exact this
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>/-! ### The tail theorem -/
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>theorem s92_psi_L2 {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {G : Euc d → Euc d → ℝ} {b A0 : ℝ}
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    (hW : GibbsWellDefined G N b μ) (hW2 : GibbsWellDefined G N (2 * b) μ)
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>    (h1 : |Real.log (pairNormalizer G N b μ)| ≤ A0) (h2 : |Real.log (pairNormalizer G N (2 * b) μ)| ≤ A0) :
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>    (∫⁻ X, (s92_dens G N b μ X) ^ (2 : ℝ) ∂(Measure.pi fun _ : Fin N =&gt; μ)) ^ (1 / (2 : ℝ)) ≤
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>      ENNReal.ofReal (Real.exp (3 * A0 / 2)) := by
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>  have e : ∀ X, (s92_dens G N b μ X) ^ (2 : ℝ) = (s92_dens G N b μ X) ^ 2 := fun X =&gt; ENNReal.rpow_two _
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  simp_rw [e]
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>  rw [s92_dens_sq_lintegral hW hW2]
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>  have hle := s92_psi_sq_le hW.normalizer_pos hW2.normalizer_pos h1 h2
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>  calc _ ≤ (ENNReal.ofReal (Real.exp (3 * A0))) ^ (1 / (2 : ℝ)) := ENNReal.rpow_le_rpow hle (by norm_num)
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    _ = ENNReal.ofReal (Real.exp (3 * A0 / 2)) := by
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>      rw [ENNReal.ofReal_rpow_of_nonneg (Real.exp_pos _).le (by norm_num), ← Real.exp_mul]
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>      congr 2; ring
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>theorem s92_exists_real_le {ε : ℝ≥0∞} (hε : 0 &lt; ε) : ∃ θ : ℝ, 0 &lt; θ ∧ ENNReal.ofReal θ ≤ ε := by
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>  by_cases ht : ε = ⊤
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>  · exact ⟨1, one_pos, by simp [ht]⟩
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>  · refine ⟨ε.toReal, ENNReal.toReal_pos hε.ne&#x27; ht, ?_⟩
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>    rw [ENNReal.ofReal_toReal ht]
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>/-- **The key estimate of Step C**: for every `θ &gt; 0`, eventually in `j`, for all `N ≥ 2`,
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>`‖N F^{h_j - h}‖_{L^r(P_N)} ≤ θ`. -/
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>theorem s92_tail_key {ι : Type*} (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (M L b p K B r C₁ : ℝ)
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>    (hb : 0 &lt; b) (hp : 1 &lt; p) (hr : 1 ≤ r) {ρ : Euc d → ℝ} (hρ : IsRound2Density d s M L ρ)
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>    {P : ι → ∀ N, Measure (EucConfig d N)}
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>    (hP : ∀ i N, 2 ≤ N → HasR2ActualDensity s b p K (HRS.Whole.withDensityReal ρ) (P i N))
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>    {h : Euc d → Euc d → ℝ} {hj : ℕ → Euc d → Euc d → ℝ} (hh : IsBoundedPairKernel s B h)
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>    (ha : IsRound2Approx s C₁ B (HRS.Whole.withDensityReal ρ) h hj) {θ : ℝ} (hθ : 0 &lt; θ) :
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>    ∀ᶠ j in atTop, ∀ (i : ι) (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>      eLpNorm (fun X : EucConfig d N =&gt; (N : ℝ) *
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>        pairEnergy (fun x y =&gt; hj j x y - h x y) X (HRS.Whole.withDensityReal ρ)) (ENNReal.ofReal r) (P i N) ≤
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>        ENNReal.ofReal θ := by
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>  have hsd : s &lt; d := by
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>    have : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>    linarith
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>  haveI hμ := s92_isProb_mu hρ.prob
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>  set μ := HRS.Whole.withDensityReal ρ with hμdef
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>  have hcp : 1 &lt; Real.conjExponent p := (Real.HolderConjugate.conjExponent hp).symm.lt
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>  set t : ℝ := r * Real.conjExponent p with ht
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>  have ht0 : 0 &lt; t := mul_pos (by linarith) (by linarith)
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>  set m : ℕ := ⌈t⌉₊ with hm
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>  have hm1 : 1 ≤ m := by
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>    have : (0 : ℝ) &lt; m := lt_of_lt_of_le ht0 (Nat.le_ceil t)
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>    exact_mod_cast this
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>  obtain ⟨C2, hC2nn, hC2⟩ := s92_moment_Q hd hs0 hs M L b (C₁ * B + B) hb (2 * m)
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>  obtain ⟨C0, hC0, hnorm⟩ := s92_normalizer_bounds hd hs0 hs M L b (2 * b) hb (by linarith)
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>  set K&#x27; : ℝ := max K 0 with hK&#x27;
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>  set θ&#x27; : ℝ := θ / (K&#x27; ^ (1 / r) + 1) with hθ&#x27;
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>  have hθ&#x27;0 : 0 &lt; θ&#x27; := by positivity
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>  set ε : ℝ := θ&#x27; / 2 with hε
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>  have hε0 : 0 &lt; ε := by positivity
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  -- the smallness of the second moment
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>  set sj : ℕ → ℝ≥0∞ := fun j =&gt; (eLpNorm (fun p : Euc d × Euc d =&gt; hj j p.1 p.2 - h p.1 p.2)
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>    (ENNReal.ofReal 2) (μ.prod μ)) ^ 2 with hsj
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>  have hconv := ha.converges 2 (by norm_num) (by linarith)
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>  have hsjT : Tendsto sj atTop (𝓝 0) := by
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>    have h0 : (0 : ℝ≥0∞) ^ 2 = 0 := by simp
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>    have := ((ENNReal.continuous_pow 2).tendsto 0).comp hconv
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>    rw [h0] at this
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>    exact this
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>  have hfT : Tendsto (fun j =&gt; 100 * sj j) atTop (𝓝 0) := by
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>    have h0 : (100 : ℝ≥0∞) * 0 = 0 := by simp
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>    have := ((ENNReal.continuous_const_mul (by simp : (100 : ℝ≥0∞) ≠ ⊤)).tendsto 0).comp hsjT
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>    rw [h0] at this
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>    exact this
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>  have hGT := s92_G_tendsto (c1 := (ENNReal.ofReal C2) ^ (1 / (2 : ℝ))) (c2 := ENNReal.ofReal (Real.exp (3 * C0 / 2)))
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>    (c3 := ENNReal.ofReal (ε ^ (-2 : ℤ)))
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>    (ENNReal.rpow_ne_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top) ENNReal.ofReal_ne_top
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>    ENNReal.ofReal_ne_top hfT
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>  have hcpos : (0 : ℝ≥0∞) &lt; ENNReal.ofReal (θ&#x27; ^ m / 2) := ENNReal.ofReal_pos.2 (by positivity)
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>  filter_upwards [(tendsto_order.1 hGT).2 _ hcpos] with j hj&#x27;
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>  intro i N hN
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>  have hk := s92_diff_kernel hh ha j
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>  obtain ⟨hsec, hint, hHint⟩ := s92_kernel_integrable hd1 hs0 hsd M hρ.prob hρ.bdd hk
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>  have hW := (hnorm ρ hρ N hN b ⟨le_rfl, by linarith⟩).1
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>  have hW2 := (hnorm ρ hρ N hN (2 * b) ⟨by linarith, le_rfl⟩).1
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>  have hl1 := (hnorm ρ hρ N hN b ⟨le_rfl, by linarith⟩).2
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>  have hl2 := (hnorm ρ hρ N hN (2 * b) ⟨by linarith, le_rfl⟩).2
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>  haveI hQprob := s92_isProb_Q (N := N) hW
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>  haveI hPprob : IsProbabilityMeasure (P i N) := (hP i N hN).1
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>  have hXm : Measurable (fun X : EucConfig d N =&gt; (N : ℝ) *
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>      pairEnergy (fun x y =&gt; hj j x y - h x y) X μ) :=
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>    measurable_const.mul (wr9_measurable_pairEnergy hk.measurable)
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>  -- second moment under the product measure
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>  have h2 := s92_second_moment (N := N) hk.measurable hk.symm hsec hint hHint hN0
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>  rw [s92_S2_eq hk.measurable] at h2
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>  -- Q-level pieces
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>  have hQeq : HRS.Whole.modulatedGibbs (rieszKernel d s) N b μ =
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>      pairGibbs (fun x y =&gt; rieszKernel d s (x - y)) N b μ := rfl
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>  have hGm := wr9_rieszKernel_pair_meas (d := d) s
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>  have hψm := s92_dens_meas (μ := μ) (N := N) hGm b
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>  have hdens := s92_pairGibbs_eq (N := N) hGm hW
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>  have hmom := hC2 ρ hρ _ hk N hN
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>  rw [hQeq, hdens] at hmom
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>  have hA := s92_psi_L2 hW hW2 hl1 hl2
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>  haveI : IsProbabilityMeasure ((Measure.pi fun _ : Fin N =&gt; μ).withDensity (s92_dens (fun x y =&gt; rieszKernel d s (x - y)) N b μ)) := by
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>    rw [← hdens]; exact hQprob
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>  have htail := s92_tail_Q (Measure.pi fun _ : Fin N =&gt; μ) hψm hXm m hε0 hmom hA
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>    (s := 100 * sj j) h2
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>  have hQmom : ∫⁻ X, ‖(N : ℝ) * pairEnergy (fun x y =&gt; hj j x y - h x y) X μ‖ₑ ^ m
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>      ∂((Measure.pi fun _ : Fin N =&gt; μ).withDensity (s92_dens (fun x y =&gt; rieszKernel d s (x - y)) N b μ)) ≤ ENNReal.ofReal (θ&#x27; ^ m) := by
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>    have hε1 : ε ^ m ≤ θ&#x27; ^ m / 2 := by
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>      rw [hε, div_pow]
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>      have h2m : (2 : ℝ) ≤ 2 ^ m := le_self_pow₀ (by norm_num) (by omega)
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>      exact div_le_div_of_nonneg_left (by positivity) (by norm_num) h2m
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>    calc _ ≤ _ := htail
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>      _ ≤ ENNReal.ofReal (θ&#x27; ^ m / 2) + ENNReal.ofReal (θ&#x27; ^ m / 2) := by
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>          refine add_le_add ?_ hj&#x27;.le
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>          rw [← ENNReal.ofReal_pow hε0.le]
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>          exact ENNReal.ofReal_le_ofReal hε1
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>      _ = ENNReal.ofReal (θ&#x27; ^ m) := by
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>          rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>          congr 1; ring
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>  have hQb0 := s92_eLpNorm_le_of_moment ((Measure.pi fun _ : Fin N =&gt; μ).withDensity (s92_dens (fun x y =&gt; rieszKernel d s (x - y)) N b μ)) hXm ht0 m
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>    (Nat.le_ceil t) (by positivity) hQmom
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>  have hroot : (θ&#x27; ^ m) ^ (1 / (m : ℝ)) = θ&#x27; := by
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>    rw [one_div]; exact Real.pow_rpow_inv_natCast hθ&#x27;0.le (by omega)
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>  rw [hroot, ← hdens, ← hQeq] at hQb0
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>  have hdensP : eLpNorm (fun X =&gt; ((P i N).rnDeriv (HRS.Whole.modulatedGibbs (rieszKernel d s) N b μ) X).toReal)
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>      (ENNReal.ofReal p) (HRS.Whole.modulatedGibbs (rieszKernel d s) N b μ) ≤ ENNReal.ofReal K&#x27; :=
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>    (hP i N hN).2.2.trans (ENNReal.ofReal_le_ofReal (le_max_left _ _))
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>  have hPb := s92_transfer _ (P i N) (hP i N hN).2.1 hp (le_max_right _ _) hdensP hXm (by linarith : 0 &lt; r) hQb0
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>  refine hPb.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>  have hκ : 0 ≤ K&#x27; ^ (1 / r) := by positivity
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>  rw [hθ&#x27;, ← mul_div_assoc, div_le_iff₀ (by positivity)]
+</span><span class="line" id="L773"><a class="ln" aria-label="Line 773" href="#L773">773</a>  nlinarith
+</span><span class="line" id="L774"><a class="ln" aria-label="Line 774" href="#L774">774</a>
+</span><span class="line" id="L775"><a class="ln" aria-label="Line 775" href="#L775">775</a>theorem s92_tail {ι : Type*} (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (M L b p K B r C₁ : ℝ)
+</span><span class="line" id="L776"><a class="ln" aria-label="Line 776" href="#L776">776</a>    (hb : 0 &lt; b) (hp : 1 &lt; p) (hr : 1 ≤ r) {ρ : Euc d → ℝ} (hρ : IsRound2Density d s M L ρ)
+</span><span class="line" id="L777"><a class="ln" aria-label="Line 777" href="#L777">777</a>    {P : ι → ∀ N, Measure (EucConfig d N)}
+</span><span class="line" id="L778"><a class="ln" aria-label="Line 778" href="#L778">778</a>    (hP : ∀ i N, 2 ≤ N → HasR2ActualDensity s b p K (HRS.Whole.withDensityReal ρ) (P i N))
+</span><span class="line" id="L779"><a class="ln" aria-label="Line 779" href="#L779">779</a>    {h : Euc d → Euc d → ℝ} {hj : ℕ → Euc d → Euc d → ℝ} (hh : IsBoundedPairKernel s B h)
+</span><span class="line" id="L780"><a class="ln" aria-label="Line 780" href="#L780">780</a>    (ha : IsRound2Approx s C₁ B (HRS.Whole.withDensityReal ρ) h hj) :
+</span><span class="line" id="L781"><a class="ln" aria-label="Line 781" href="#L781">781</a>    R2ActualFTail (ι := ι) (fun _ =&gt; HRS.Whole.withDensityReal ρ) r h hj P := by
+</span><span class="line" id="L782"><a class="ln" aria-label="Line 782" href="#L782">782</a>  have hmain := fun θ (hθ : 0 &lt; θ) =&gt; s92_tail_key hd hs0 hs M L b p K B r C₁ hb hp hr hρ hP hh ha hθ
+</span><span class="line" id="L783"><a class="ln" aria-label="Line 783" href="#L783">783</a>  haveI := s92_isProb_mu hρ.prob
+</span><span class="line" id="L784"><a class="ln" aria-label="Line 784" href="#L784">784</a>  constructor
+</span><span class="line" id="L785"><a class="ln" aria-label="Line 785" href="#L785">785</a>  · rw [ENNReal.tendsto_nhds_zero]
+</span><span class="line" id="L786"><a class="ln" aria-label="Line 786" href="#L786">786</a>    intro ε hε
+</span><span class="line" id="L787"><a class="ln" aria-label="Line 787" href="#L787">787</a>    obtain ⟨θ, hθ, hθε⟩ := s92_exists_real_le hε
+</span><span class="line" id="L788"><a class="ln" aria-label="Line 788" href="#L788">788</a>    filter_upwards [hmain θ hθ] with j hj&#x27;
+</span><span class="line" id="L789"><a class="ln" aria-label="Line 789" href="#L789">789</a>    exact iSup_le fun i =&gt; iSup_le fun N =&gt; (hj&#x27; i N.1 N.2).trans hθε
+</span><span class="line" id="L790"><a class="ln" aria-label="Line 790" href="#L790">790</a>  · rw [ENNReal.tendsto_nhds_zero]
+</span><span class="line" id="L791"><a class="ln" aria-label="Line 791" href="#L791">791</a>    intro ε hε
+</span><span class="line" id="L792"><a class="ln" aria-label="Line 792" href="#L792">792</a>    obtain ⟨θ, hθ, hθε⟩ := s92_exists_real_le hε
+</span><span class="line" id="L793"><a class="ln" aria-label="Line 793" href="#L793">793</a>    filter_upwards [hmain (θ / 2) (by positivity)] with j hj&#x27;
+</span><span class="line" id="L794"><a class="ln" aria-label="Line 794" href="#L794">794</a>    refine iSup_le fun i =&gt; iSup_le fun N =&gt; ?_
+</span><span class="line" id="L795"><a class="ln" aria-label="Line 795" href="#L795">795</a>    have hN := N.2
+</span><span class="line" id="L796"><a class="ln" aria-label="Line 796" href="#L796">796</a>    haveI : IsProbabilityMeasure (P i N.1) := (hP i N.1 hN).1
+</span><span class="line" id="L797"><a class="ln" aria-label="Line 797" href="#L797">797</a>    have hk := s92_diff_kernel hh ha j
+</span><span class="line" id="L798"><a class="ln" aria-label="Line 798" href="#L798">798</a>    have hXm : Measurable (fun X : EucConfig d N.1 =&gt; (N.1 : ℝ) *
+</span><span class="line" id="L799"><a class="ln" aria-label="Line 799" href="#L799">799</a>        pairEnergy (fun x y =&gt; hj j x y - h x y) X (HRS.Whole.withDensityReal ρ)) :=
+</span><span class="line" id="L800"><a class="ln" aria-label="Line 800" href="#L800">800</a>      measurable_const.mul (wr9_measurable_pairEnergy hk.measurable)
+</span><span class="line" id="L801"><a class="ln" aria-label="Line 801" href="#L801">801</a>    have hc := s92_centered_le (P i N.1) hXm hr (by positivity : (0 : ℝ) ≤ θ / 2) (hj&#x27; i N.1 hN)
+</span><span class="line" id="L802"><a class="ln" aria-label="Line 802" href="#L802">802</a>    have e : (fun X : EucConfig d N.1 =&gt; (N.1 : ℝ) *
+</span><span class="line" id="L803"><a class="ln" aria-label="Line 803" href="#L803">803</a>        (pairEnergy (fun x y =&gt; hj j x y - h x y) X (HRS.Whole.withDensityReal ρ) -
+</span><span class="line" id="L804"><a class="ln" aria-label="Line 804" href="#L804">804</a>          ∫ Y, pairEnergy (fun x y =&gt; hj j x y - h x y) Y (HRS.Whole.withDensityReal ρ) ∂(P i N.1))) =
+</span><span class="line" id="L805"><a class="ln" aria-label="Line 805" href="#L805">805</a>        fun X =&gt; (N.1 : ℝ) * pairEnergy (fun x y =&gt; hj j x y - h x y) X (HRS.Whole.withDensityReal ρ) -
+</span><span class="line" id="L806"><a class="ln" aria-label="Line 806" href="#L806">806</a>          ∫ Y, (N.1 : ℝ) * pairEnergy (fun x y =&gt; hj j x y - h x y) Y (HRS.Whole.withDensityReal ρ) ∂(P i N.1) := by
+</span><span class="line" id="L807"><a class="ln" aria-label="Line 807" href="#L807">807</a>      funext X
+</span><span class="line" id="L808"><a class="ln" aria-label="Line 808" href="#L808">808</a>      rw [integral_const_mul, mul_sub]
+</span><span class="line" id="L809"><a class="ln" aria-label="Line 809" href="#L809">809</a>    show eLpNorm (fun X : EucConfig d N.1 =&gt; (N.1 : ℝ) *
+</span><span class="line" id="L810"><a class="ln" aria-label="Line 810" href="#L810">810</a>        (pairEnergy (fun x y =&gt; hj j x y - h x y) X (HRS.Whole.withDensityReal ρ) -
+</span><span class="line" id="L811"><a class="ln" aria-label="Line 811" href="#L811">811</a>          ∫ Y, pairEnergy (fun x y =&gt; hj j x y - h x y) Y (HRS.Whole.withDensityReal ρ) ∂(P i N.1)))
+</span><span class="line" id="L812"><a class="ln" aria-label="Line 812" href="#L812">812</a>        (ENNReal.ofReal r) (P i N.1) ≤ ε
+</span><span class="line" id="L813"><a class="ln" aria-label="Line 813" href="#L813">813</a>    rw [e]
+</span><span class="line" id="L814"><a class="ln" aria-label="Line 814" href="#L814">814</a>    refine hc.trans ((le_of_eq ?_).trans hθε)
+</span><span class="line" id="L815"><a class="ln" aria-label="Line 815" href="#L815">815</a>    congr 1; ring
+</span><span class="line" id="L816"><a class="ln" aria-label="Line 816" href="#L816">816</a>
+</span><span class="line" id="L817"><a class="ln" aria-label="Line 817" href="#L817">817</a>/-- **Proposition S9.2** (`HRS.Whole.round2_moment_transfer`). -/
+</span><span class="line" id="L818"><a class="ln" aria-label="Line 818" href="#L818">818</a>theorem round2_moment_transfer_proof : type_of% @HRS.Whole.round2_moment_transfer := by
+</span><span class="line" id="L819"><a class="ln" aria-label="Line 819" href="#L819">819</a>  intro d hd s hs0 hs M L b p K B hb hp r hr
+</span><span class="line" id="L820"><a class="ln" aria-label="Line 820" href="#L820">820</a>  obtain ⟨CF, hCF0, hCF⟩ := s92_F_bound hd hs0 hs M L b p K B r hb hp hr
+</span><span class="line" id="L821"><a class="ln" aria-label="Line 821" href="#L821">821</a>  obtain ⟨CL, hCL0, hCL⟩ := s92_linear_bound hd hs0 hs M L b p K r hb hp hr
+</span><span class="line" id="L822"><a class="ln" aria-label="Line 822" href="#L822">822</a>  refine ⟨max CF CL, fun ρ hρ P hP =&gt; ⟨fun h hh =&gt; ?_, ?_, fun C₁ h hj hh ha =&gt; ?_⟩⟩
+</span><span class="line" id="L823"><a class="ln" aria-label="Line 823" href="#L823">823</a>  · intro i N hN
+</span><span class="line" id="L824"><a class="ln" aria-label="Line 824" href="#L824">824</a>    obtain ⟨h1, h2⟩ := hCF ρ hρ h hh N hN (P N) (hP N hN)
+</span><span class="line" id="L825"><a class="ln" aria-label="Line 825" href="#L825">825</a>    exact ⟨h1.trans (ENNReal.ofReal_le_ofReal (le_max_left _ _)),
+</span><span class="line" id="L826"><a class="ln" aria-label="Line 826" href="#L826">826</a>      h2.trans (ENNReal.ofReal_le_ofReal (le_max_left _ _))⟩
+</span><span class="line" id="L827"><a class="ln" aria-label="Line 827" href="#L827">827</a>  · intro i N hN a A ha hA
+</span><span class="line" id="L828"><a class="ln" aria-label="Line 828" href="#L828">828</a>    have hA0 : 0 ≤ A := (abs_nonneg _).trans (hA 0)
+</span><span class="line" id="L829"><a class="ln" aria-label="Line 829" href="#L829">829</a>    exact (hCL ρ hρ N hN (P N) (hP N hN) a A ha hA).trans
+</span><span class="line" id="L830"><a class="ln" aria-label="Line 830" href="#L830">830</a>      (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right (le_max_right _ _) hA0))
+</span><span class="line" id="L831"><a class="ln" aria-label="Line 831" href="#L831">831</a>  · exact s92_tail (ι := Unit) hd hs0 hs M L b p K B r C₁ hb hp hr hρ (P := fun _ =&gt; P) (fun _ N hN =&gt; hP N hN) hh ha
+</span><span class="line" id="L832"><a class="ln" aria-label="Line 832" href="#L832">832</a>
+</span><span class="line" id="L833"><a class="ln" aria-label="Line 833" href="#L833">833</a>end HRS.MS.R2Mt
+</span></code></pre></main></body></html>

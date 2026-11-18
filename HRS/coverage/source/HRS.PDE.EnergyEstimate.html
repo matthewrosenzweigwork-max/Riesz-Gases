@@ -1,0 +1,619 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.EnergyEstimate · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.EnergyEstimate</code></h1><p><a href="../../lean/HRS/PDE/EnergyEstimate.lean">Open the unaltered Lean file</a> · 618 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.EnergyDrift
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.EnergyTorusLimit
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># The form estimate of Proposition 3.13 / 3.14 (assembly)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`energy_form_estimate`, `energy_torus` and `energy_form_estimate_R2c` live here (rather than in
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`Energy.lean`) because their proofs use `Galerkin.lean`, which imports `Energy.lean`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>noncomputable section
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open scoped ENNReal NNReal BigOperators ComplexConjugate
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS.PDE
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>variable {d : ℕ}
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>/-! ### Multinomial expansion of the `H^m` inner product -/
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>/-- The weight `∏_i (2πk_i)^{2α_i}`. -/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>abbrev wtP (α : Fin d → ℕ) (k : Lattice d) : ℝ := ∏ i, (2 * Real.pi * (k i : ℝ)) ^ (2 * α i)
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem sobWeight_nat_eq_sum (m : ℕ) (k : Lattice d) :
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    sobWeight (m : ℝ) k = ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * wtP α k := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  have h1 : sobWeight (m : ℝ) k = (1 + ∑ i, (2 * Real.pi * (k i : ℝ)) ^ 2) ^ m := by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    rw [sobWeight_natCast, four_pi_enorm_sq]
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  rw [h1, one_add_sum_pow]
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  refine Finset.sum_congr rfl fun α _ =&gt; ?_
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  congr 1
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  exact Finset.prod_congr rfl fun i _ =&gt; by rw [← pow_mul]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>theorem bilinForm_box {n : ℕ} (w : Lattice d → ℝ) (G F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    bilinForm w G F = ∑ k ∈ boxFin d n, ((w k : ℝ) : ℂ) * (G k * conj (F k)) := by
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  unfold bilinForm
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  refine tsum_eq_sum fun k hk =&gt; ?_
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  rw [eq_zero_of_isTrigPoly hF hk]; simp
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>theorem hsInner_box {n : ℕ} (r : ℝ) (G F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    hsInner r G F = ∑ k ∈ boxFin d n, ((sobWeight r k : ℝ) : ℂ) * (G k * conj (F k)) := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  unfold hsInner
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  refine tsum_eq_sum fun k hk =&gt; ?_
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  rw [eq_zero_of_isTrigPoly hF hk]; simp
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>theorem re_bilinForm_box {n : ℕ} (w : Lattice d → ℝ) (G F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (bilinForm w G F).re = ∑ k ∈ boxFin d n, w k * (G k * conj (F k)).re := by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  rw [bilinForm_box w G F hF, Complex.re_sum]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  exact Finset.sum_congr rfl fun k _ =&gt; Complex.re_ofReal_mul _ _
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>theorem hsInner_eq_sum_bilin {n : ℕ} (m : ℕ) (G F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (hsInner (m : ℝ) G F).re =
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * (bilinForm (wtP α) G F).re := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have e : (hsInner (m : ℝ) G F).re =
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      ∑ k ∈ boxFin d n, sobWeight (m : ℝ) k * (G k * conj (F k)).re := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    rw [hsInner_box _ G F hF, Complex.re_sum]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    exact Finset.sum_congr rfl fun k _ =&gt; Complex.re_ofReal_mul _ _
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  rw [e]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  simp_rw [re_bilinForm_box _ G F hF, Finset.mul_sum]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  rw [Finset.sum_comm]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  refine Finset.sum_congr rfl fun k _ =&gt; ?_
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  rw [sobWeight_nat_eq_sum, Finset.sum_mul]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  exact Finset.sum_congr rfl fun α _ =&gt; by ring
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>theorem bilinForm_laplace (α : Fin d → ℕ) (F : Coeff d) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    bilinForm (wtP α) (laplaceCoeff F) F = ((-gradDerivL2Sq α F : ℝ) : ℂ) := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  unfold bilinForm gradDerivL2Sq
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  rw [← tsum_neg, Complex.ofReal_tsum]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  refine tsum_congr fun k =&gt; ?_
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  unfold laplaceCoeff
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have : (F k * conj (F k)) = ((‖F k‖ ^ 2 : ℝ) : ℂ) := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    rw [Complex.mul_conj&#x27;]; push_cast; ring
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hc : (F k * conj (F k)) = ((‖F k‖ ^ 2 : ℝ) : ℂ) := this
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  rw [show ((wtP α k : ℝ) : ℂ) * (-(((4 * Real.pi ^ 2 * Lattice.enorm k ^ 2 : ℝ) : ℂ)) * F k *
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      conj (F k)) = -(((4 * Real.pi ^ 2 * Lattice.enorm k ^ 2 : ℝ) : ℂ)) * ((wtP α k : ℝ) : ℂ) *
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      (F k * conj (F k)) by ring, hc]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  push_cast
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  ring
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>theorem gradDerivL2Sq_box {n : ℕ} (α : Fin d → ℕ) (F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    gradDerivL2Sq α F = ∑ k ∈ boxFin d n,
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      (4 * Real.pi ^ 2 * Lattice.enorm k ^ 2) * wtP α k * ‖F k‖ ^ 2 := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  unfold gradDerivL2Sq
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  refine tsum_eq_sum fun k hk =&gt; ?_
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  rw [eq_zero_of_isTrigPoly hF hk]; simp
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>theorem sum_mw_gradDerivL2Sq {n : ℕ} (m : ℕ) (F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * gradDerivL2Sq α F =
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      hsNormSq ((m : ℝ) + 1) F - hsNormSq (m : ℝ) F := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  rw [hsNormSq_of_isTrigPoly hF, hsNormSq_of_isTrigPoly hF, ← Finset.sum_sub_distrib]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  simp_rw [gradDerivL2Sq_box _ F hF, Finset.mul_sum]
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  rw [Finset.sum_comm]
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  refine Finset.sum_congr rfl fun k _ =&gt; ?_
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  rw [sobWeight_add, sobWeight_one, sobWeight_nat_eq_sum]
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  have : ∀ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) *
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      ((4 * Real.pi ^ 2 * Lattice.enorm k ^ 2) * wtP α k * ‖F k‖ ^ 2) =
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      ((4 * Real.pi ^ 2 * Lattice.enorm k ^ 2) * ‖F k‖ ^ 2) *
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>        ((multinomialWeight m α : ℝ) * wtP α k) := fun α _ =&gt; by ring
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  rw [Finset.sum_congr rfl this, ← Finset.mul_sum, ← sobWeight_nat_eq_sum]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  ring
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>theorem bilinForm_forwardGen {n : ℕ} (D : DynData d) (ρ : Torus d → ℝ) (w : Lattice d → ℝ)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    bilinForm w (forwardGen D ρ F) F = ((D.invβ : ℝ) : ℂ) * bilinForm w (laplaceCoeff F) F +
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      bilinForm w (transportCoeff D ρ F) F - bilinForm w (nonlocalCoeff D ρ F) F := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  simp only [bilinForm_box w _ F hF]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  rw [Finset.mul_sum, ← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  refine Finset.sum_congr rfl fun k _ =&gt; ?_
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  simp only [forwardGen]
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  ring
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>/-- The expansion of `Re ⟨𝓛F, F⟩_{H^m}` into viscous, transport and nonlocal parts. -/
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>theorem re_hsInner_forwardGen {n : ℕ} (D : DynData d) (ρ : Torus d → ℝ) (m : ℕ) (F : Coeff d)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (hF : IsTrigPoly n F) :
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    (hsInner (m : ℝ) (forwardGen D ρ F) F).re =
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      -D.invβ * ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * gradDerivL2Sq α F +
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) *
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        (bilinForm (wtP α) (transportCoeff D ρ F) F).re -
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) *
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        (bilinForm (wtP α) (nonlocalCoeff D ρ F) F).re := by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  rw [hsInner_eq_sum_bilin m _ F hF, Finset.mul_sum, ← Finset.sum_add_distrib,
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    ← Finset.sum_sub_distrib]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  refine Finset.sum_congr rfl fun α _ =&gt; ?_
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  rw [bilinForm_forwardGen D ρ _ F hF, bilinForm_laplace]
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  simp only [Complex.sub_re, Complex.add_re, Complex.re_ofReal_mul, Complex.ofReal_re]
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  ring
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>theorem sum_mw_pos (m : ℕ) : 0 &lt; ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) := by
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have h0 : (0 : Fin d → ℕ) ∈ multiIndices d m := by simp [multiIndices]
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  refine lt_of_lt_of_le ?_ (Finset.single_le_sum (f := fun α =&gt; (multinomialWeight m α : ℝ))
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (fun α _ =&gt; Nat.cast_nonneg _) h0)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have := one_le_multinomialWeight m 0 h0
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  exact_mod_cast this
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>/-- Viscous and transport parts of the form estimate. -/
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>theorem re_hsInner_le_basic {n : ℕ} (D : DynData d) (ρ : Torus d → ℝ) (m : ℕ) (F : Coeff d)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    (hF : IsTrigPoly n F) (CT : ℝ)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    (hT : ∀ α ∈ multiIndices d m,
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      |(bilinForm (wtP α) (transportCoeff D ρ F) F).re| ≤ CT * hsNormSq (m : ℝ) F) :
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    (hsInner (m : ℝ) (forwardGen D ρ F) F).re ≤
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      -(D.invβ / 2) * ∑ α ∈ multiIndices d m, gradDerivL2Sq α F -
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      (D.invβ / 2) * (hsNormSq ((m : ℝ) + 1) F - hsNormSq (m : ℝ) F) +
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CT * hsNormSq (m : ℝ) F -
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) *
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>        (bilinForm (wtP α) (nonlocalCoeff D ρ F) F).re := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  rw [re_hsInner_forwardGen D ρ m F hF]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have hX := sum_mw_gradDerivL2Sq m F hF
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have hXG : ∑ α ∈ multiIndices d m, gradDerivL2Sq α F ≤
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * gradDerivL2Sq α F := by
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    refine Finset.sum_le_sum fun α hα =&gt; ?_
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    have h1 : (1 : ℝ) ≤ multinomialWeight m α := by exact_mod_cast one_le_multinomialWeight m α hα
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have := gradDerivL2Sq_nonneg α F
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    nlinarith
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hTsum : ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) *
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      (bilinForm (wtP α) (transportCoeff D ρ F) F).re ≤
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CT * hsNormSq (m : ℝ) F := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    rw [mul_assoc, Finset.sum_mul]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    refine Finset.sum_le_sum fun α hα =&gt; ?_
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    have h0 : (0 : ℝ) ≤ multinomialWeight m α := Nat.cast_nonneg _
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    exact mul_le_mul_of_nonneg_left ((le_abs_self _).trans (hT α hα)) h0
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have hν := D.hβ
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [← hX] at *
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  nlinarith [mul_le_mul_of_nonneg_left hXG hν]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>/-! ### Transport and R1 parts as constants independent of the data -/
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>theorem transport_part (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    ∃ CT : ℝ, 0 ≤ CT ∧ ∀ (D : DynData d), D.s = s → MatBound MB D.M → VHyp m VB D.V →
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      ∀ μ : Torus d → ℝ, IsProbDensity μ → Torus.IsCk (m + 3) μ → Torus.cbNorm (m + 3) μ ≤ Λ →
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>      ∀ (n : ℕ) (F : Coeff d), IsRealCoeff F → IsTrigPoly n F → ∀ α ∈ multiIndices d m,
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>        |(bilinForm (wtP α) (transportCoeff D μ F) F).re| ≤ CT * hsNormSq (m : ℝ) F := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  obtain ⟨B, hB⟩ := exists_driftFuns hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  obtain ⟨C0, hC0⟩ := transport_form_bound hd m B
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  refine ⟨max C0 0, le_max_right _ _, ?_⟩
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  intro D hDs hM hV μ hp hCk hΛ n F hFr hF α hα
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  obtain ⟨b, hb1, hb2, hb3⟩ := hB D hDs hM hV μ hp hCk hΛ
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have e : transportCoeff D μ F = fun k =&gt; ∑ j, mulCoeff (coeffOf (b j)) (derivCoeff j F) k := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    funext k; simp only [transportCoeff, hb3]
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  rw [e]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  exact (hC0 b hb1 hb2 α hα n F hFr hF).trans
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (mul_le_mul_of_nonneg_right (le_max_left _ _) (hsNormSq_nonnegE _ _))
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>theorem r1_part (s : ℝ) (hs : s ≤ (d : ℝ) - 2) (m : ℕ) (MB Λ : ℝ) :
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    ∃ CR : ℝ, 0 ≤ CR ∧ ∀ (D : DynData d), D.s = s → MatBound MB D.M →
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      ∀ μ : Torus d → ℝ, Torus.IsCk (m + 3) μ → Torus.cbNorm (m + 3) μ ≤ Λ →
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      ∀ (n : ℕ) (F : Coeff d), IsTrigPoly n F → ∀ α ∈ multiIndices d m,
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        |(bilinForm (wtP α) (nonlocalCoeff D μ F) F).re| ≤ CR * hsNormSq (m : ℝ) F := by
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  classical
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  refine ⟨(1 + ∑ α&#x27; ∈ multiIndices d m, r1Const d s MB Λ α&#x27;) / 2, by
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    have : 0 ≤ ∑ α&#x27; ∈ multiIndices d m, r1Const d s MB Λ α&#x27; :=
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      Finset.sum_nonneg fun α&#x27; _ =&gt; r1Const_nonneg s MB Λ α&#x27;
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    positivity, ?_⟩
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  intro D hDs hM μ hμ hΛ n F hF α hα
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  have hαm : ∑ i, α i ≤ m := (Finset.mem_filter.mp hα).2
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hμ&#x27; : ContDiff ℝ ((m + 3 : ℕ) : WithTop ℕ∞) (Torus.lift μ) := by
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    unfold Torus.IsCk at hμ; push_cast; exact hμ
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  set H := hsNormSq (m : ℝ) F with hH
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have hA : ∑ k ∈ boxFin d n, ‖multiDerivCoeff α F k‖ ^ 2 ≤ H :=
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    sum_sq_multiDeriv_le α m hαm F (memHs_of_isTrigPolyE hF _) _
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  have hBd : ∑ k ∈ boxFin d n, ‖multiDerivCoeff α (nonlocalCoeff D μ F) k‖ ^ 2 ≤
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      r1Const d s MB Λ α * H :=
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    nonlocal_R1_fixed s hs m MB Λ D hDs hM μ hμ&#x27; hΛ α hαm F hF _
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  have hr : r1Const d s MB Λ α ≤ ∑ α&#x27; ∈ multiIndices d m, r1Const d s MB Λ α&#x27; :=
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    Finset.single_le_sum (f := fun α&#x27; =&gt; r1Const d s MB Λ α&#x27;) (fun α&#x27; _ =&gt; r1Const_nonneg s MB Λ α&#x27;) hα
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have hH0 : 0 ≤ H := hsNormSq_nonnegE _ _
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  have e : bilinForm (wtP α) (nonlocalCoeff D μ F) F =
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      ∑ k ∈ boxFin d n, conj (multiDerivCoeff α F k) * multiDerivCoeff α (nonlocalCoeff D μ F) k :=
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    bilinForm_weight_eq α _ F hF
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  calc |(bilinForm (wtP α) (nonlocalCoeff D μ F) F).re|
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      ≤ ‖bilinForm (wtP α) (nonlocalCoeff D μ F) F‖ := Complex.abs_re_le_norm _
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    _ ≤ ∑ k ∈ boxFin d n, ‖multiDerivCoeff α F k‖ * ‖multiDerivCoeff α (nonlocalCoeff D μ F) k‖ := by
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>        rw [e]
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>        refine (norm_sum_le _ _).trans (le_of_eq (Finset.sum_congr rfl fun k _ =&gt; ?_))
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>        rw [norm_mul, RCLike.norm_conj]
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    _ ≤ ∑ k ∈ boxFin d n, (‖multiDerivCoeff α F k‖ ^ 2 +
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>          ‖multiDerivCoeff α (nonlocalCoeff D μ F) k‖ ^ 2) / 2 := by
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>        refine Finset.sum_le_sum fun k _ =&gt; ?_
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        nlinarith [sq_nonneg (‖multiDerivCoeff α F k‖ - ‖multiDerivCoeff α (nonlocalCoeff D μ F) k‖)]
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    _ = (∑ k ∈ boxFin d n, ‖multiDerivCoeff α F k‖ ^ 2 +
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>          ∑ k ∈ boxFin d n, ‖multiDerivCoeff α (nonlocalCoeff D μ F) k‖ ^ 2) / 2 := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        rw [← Finset.sum_div, Finset.sum_add_distrib]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    _ ≤ (H + r1Const d s MB Λ α * H) / 2 := by linarith
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    _ ≤ _ := by nlinarith
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-! ### Assembly over the regimes -/
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>theorem H1_sub_nonneg {n : ℕ} (m : ℕ) (F : Coeff d) (hF : IsTrigPoly n F) :
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    0 ≤ hsNormSq ((m : ℝ) + 1) F - hsNormSq (m : ℝ) F := by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  rw [← sum_mw_gradDerivL2Sq m F hF]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  exact Finset.sum_nonneg fun α _ =&gt; mul_nonneg (Nat.cast_nonneg _) (gradDerivL2Sq_nonneg α F)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>theorem neg_sum_le_of_abs (m : ℕ) (N : (Fin d → ℕ) → ℝ) (CR H : ℝ)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    (h : ∀ α ∈ multiIndices d m, |N α| ≤ CR * H) :
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    -∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * N α ≤
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CR * H := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  rw [mul_assoc, Finset.sum_mul, ← Finset.sum_neg_distrib]
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  refine Finset.sum_le_sum fun α hα =&gt; ?_
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  have h0 : (0 : ℝ) ≤ multinomialWeight m α := Nat.cast_nonneg _
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  rw [neg_mul_eq_mul_neg]
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  exact mul_le_mul_of_nonneg_left ((neg_le_abs _).trans (h α hα)) h0
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>theorem neg_sum_le_of_R2 (m : ℕ) (N W : (Fin d → ℕ) → ℝ) (CN H : ℝ)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    (hW : ∀ α ∈ multiIndices d m, 0 ≤ W α)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (h : ∀ α ∈ multiIndices d m, -N α ≤ -(1 / 2) * W α + CN * H) :
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    -∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * N α ≤
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      -(1 / 2) * ∑ α ∈ multiIndices d m, W α +
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CN * H := by
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  rw [mul_assoc, Finset.sum_mul, Finset.mul_sum, ← Finset.sum_neg_distrib, ← Finset.sum_add_distrib]
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>  refine Finset.sum_le_sum fun α hα =&gt; ?_
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have h1 : (1 : ℝ) ≤ multinomialWeight m α := by exact_mod_cast one_le_multinomialWeight m α hα
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  have h0 : (0 : ℝ) ≤ multinomialWeight m α := Nat.cast_nonneg _
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  rw [neg_mul_eq_mul_neg]
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  calc (multinomialWeight m α : ℝ) * -N α ≤ (multinomialWeight m α : ℝ) * (-(1 / 2) * W α + CN * H) :=
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>        mul_le_mul_of_nonneg_left (h α hα) h0
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    _ = (multinomialWeight m α : ℝ) * (-(1 / 2) * W α) + (multinomialWeight m α : ℝ) * (CN * H) := by ring
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    _ ≤ -(1 / 2) * W α + (multinomialWeight m α : ℝ) * (CN * H) := by
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        have := hW α hα
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>        nlinarith
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>/-- The statement of `energy_form_estimate` for a given regime and constant. -/
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>def FormEst (d : ℕ) (s : ℝ) (m : ℕ) (R : Regime) (MB Λ VB : ℝ) (C : ℝ) : Prop :=
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  ∀ (D : DynData d) (ν₀ T : ℝ) (μ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    (_ : AdjointData s m R MB Λ VB D ν₀ T μ)
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    (lam : Fin d → ℝ) (q : Fin d → Euc d) (_ : R.IsR2 → IsSymDiag D.M lam q)
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    (r : ℝ) (_ : r ∈ Set.Icc 0 T) (n : ℕ) (F : Coeff d) (_ : IsRealCoeff F) (_ : IsTrigPoly n F),
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    (R.IsR2 → WeightedDissipationFinite D m q (μ r) F) ∧
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    (hsInner (m : ℝ) (forwardGen D (μ r) F) F).re ≤
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      energyRHS R (R.lambdaM C ν₀ (thetaOrder d s)) D m lam q (μ r) F
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>theorem formEst_R1 (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m .R1 MB Λ VB C := by
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  by_cases hs : s ≤ (d : ℝ) - 2
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  · obtain ⟨CT, hCT0, hCT⟩ := transport_part hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    obtain ⟨CR, hCR0, hCR⟩ := r1_part s hs m MB Λ
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    have hc0 := sum_mw_pos (d := d) m
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    refine ⟨(∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * (CT + CR) + 1, by positivity, ?_⟩
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    intro D ν₀ T μ A lam q _ r hr n F hFr hF
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    refine ⟨fun h =&gt; absurd h (by simp [Regime.IsR2]), ?_⟩
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    have hp := A.hμ.prob r hr
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    have hk := A.hμ.smooth r hr
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    have hb := A.hμ.bound r hr
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    have hbasic := re_hsInner_le_basic D (μ r) m F hF CT
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      (hCT D A.hs A.hM A.hV (μ r) hp hk hb n F hFr hF)
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    have hNl := neg_sum_le_of_abs m _ CR (hsNormSq (m : ℝ) F)
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      (hCR D A.hs A.hM (μ r) hk hb n F hF)
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    have hX := H1_sub_nonneg m F hF
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    have hH := hsNormSq_nonnegE (m : ℝ) F
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    have hν := D.hβ
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    have h1 : 0 ≤ (D.invβ / 2) * (hsNormSq ((m : ℝ) + 1) F - hsNormSq (m : ℝ) F) :=
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      mul_nonneg (by positivity) hX
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    have hno : ¬ Regime.R1.IsR2 := by simp [Regime.IsR2]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    simp only [energyRHS, Regime.lambdaM]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    rw [if_neg hno, sub_zero]
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    have h2 : (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CT * hsNormSq (m : ℝ) F +
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>        (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CR * hsNormSq (m : ℝ) F ≤
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>        ((∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * (CT + CR) + 1) *
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>          hsNormSq (m : ℝ) F := by nlinarith
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    have h3 : -(D.invβ / 2) * ∑ α ∈ multiIndices d m, gradDerivL2Sq α F =
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>        -((D.invβ / 2) * ∑ α ∈ multiIndices d m, gradDerivL2Sq α F) := by ring
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    linarith
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    intro D ν₀ T μ A
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    exact absurd A.regime hs
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>theorem formEst_R2_gen (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (Rg : Regime)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>    (hR2 : Rg.IsR2) (hlam : ∀ C ν θ, Rg.lambdaM C ν θ = C) (MB Λ VB : ℝ)
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    (Extra : DynData d → (Torus d → ℝ) → Prop)
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    (hExtra : ∀ (D : DynData d) (ν₀ T : ℝ) (μ : ℝ → Torus d → ℝ),
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      AdjointData s m Rg MB Λ VB D ν₀ T μ → ∀ r ∈ Set.Icc 0 T, Extra D (μ r))
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    (CN : ℝ)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    (hN : ∀ (D : DynData d), D.s = s → MatBound MB D.M → Torus.SymNonpos D.M →
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      ∀ (lam : Fin d → ℝ) (q : Fin d → Euc d), IsSymDiag D.M lam q →
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      ∀ μ : Torus d → ℝ, IsProbDensity μ → Torus.IsCk (m + 3) μ → Torus.cbNorm (m + 3) μ ≤ Λ →
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>      Extra D μ → ∀ (n : ℕ) (F : Coeff d), IsRealCoeff F → IsTrigPoly n F →
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>      ∀ α ∈ multiIndices d m,
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        (∀ l, Summable fun k =&gt; symbolK d D.s (q l) k *
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>          ‖mulCoeff (coeffOf fun x =&gt; Real.sqrt (μ x)) (multiDerivCoeff α F) k‖ ^ 2) ∧
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>        -(bilinForm (wtP α) (nonlocalCoeff D μ F) F).re ≤
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>          -(1 / 2) * ∑ l, lam l * quadForm (symbolK d D.s (q l))
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>              (mulCoeff (coeffOf fun x =&gt; Real.sqrt (μ x)) (multiDerivCoeff α F)) +
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>            CN * hsNormSq (m : ℝ) F) :
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m Rg MB Λ VB C := by
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  obtain ⟨CT, hCT0, hCT⟩ := transport_part hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  have hc0 := sum_mw_pos (d := d) m
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  refine ⟨(∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * (CT + max CN 0) + 1,
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    by positivity, ?_⟩
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  intro D ν₀ T μ A lam q hq r hr n F hFr hF
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  have hdiag := hq hR2
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  have hsn := regime_symNonpos hR2 A.regime
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>  have hp := A.hμ.prob r hr
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  have hk := A.hμ.smooth r hr
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  have hb := A.hμ.bound r hr
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  have hall := fun α hα =&gt; hN D A.hs A.hM hsn lam q hdiag (μ r) hp hk hb (hExtra D ν₀ T μ A r hr)
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    n F hFr hF α hα
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  refine ⟨fun _ α hα =&gt; (hall α hα).1, ?_⟩
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hbasic := re_hsInner_le_basic D (μ r) m F hF CT
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    (hCT D A.hs A.hM A.hV (μ r) hp hk hb n F hFr hF)
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  set W : (Fin d → ℕ) → ℝ := fun α =&gt; ∑ l, lam l * quadForm (symbolK d D.s (q l))
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    (mulCoeff (coeffOf fun x =&gt; Real.sqrt (μ r x)) (multiDerivCoeff α F)) with hW
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  have hW0 : ∀ α ∈ multiIndices d m, 0 ≤ W α := fun α _ =&gt;
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    Finset.sum_nonneg fun l _ =&gt; mul_nonneg (hdiag.nonneg l)
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>      (quadForm_symbolK_nonneg hd D.hs0 D.hsd _ _)
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  have hH := hsNormSq_nonnegE (m : ℝ) F
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  have hNl := neg_sum_le_of_R2 m (fun α =&gt; (bilinForm (wtP α) (nonlocalCoeff D (μ r) F) F).re) W
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    (max CN 0) (hsNormSq (m : ℝ) F) hW0 (fun α hα =&gt; by
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>      refine (hall α hα).2.trans ?_
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>      have := mul_le_mul_of_nonneg_right (le_max_left CN 0) hH
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>      simp only [hW]
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      linarith)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  have hX := H1_sub_nonneg m F hF
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have h1 : 0 ≤ (D.invβ / 2) * (hsNormSq ((m : ℝ) + 1) F - hsNormSq (m : ℝ) F) :=
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    mul_nonneg (by have := D.hβ; positivity) hX
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  have h2 : (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * CT * hsNormSq (m : ℝ) F +
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>      (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * max CN 0 * hsNormSq (m : ℝ) F ≤
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>      ((∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * (CT + max CN 0) + 1) *
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>        hsNormSq (m : ℝ) F := by nlinarith
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  have hwd : weightedDissipation D m lam q (μ r) F = ∑ α ∈ multiIndices d m, W α := rfl
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  simp only [energyRHS, hlam]
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  rw [if_pos hR2, hwd]
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  linarith
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>theorem formEst_R2a (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m .R2a MB Λ VB C := by
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  by_cases hs1 : (d : ℝ) - 2 &lt; s
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  · obtain ⟨C2, hC2⟩ := nonlocal_R2_bound hd s hs1 hsd m MB Λ 1 one_pos
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    refine formEst_R2_gen hd s hs0 hsd m .R2a trivial (fun _ _ _ =&gt; rfl) MB Λ VB
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>      (fun D _ =&gt; Torus.symPart D.M = 0) (fun D ν₀ T μ A r hr =&gt; A.regime.2) (max C2 0) ?_
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    intro D hs hM hsn lam q hdiag μ hp hk hb hex n F hFr hF α hα
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    obtain ⟨h1, h2⟩ := hC2 D hs hM hsn lam q hdiag μ hp hk hb (Or.inl hex) α hα n F hFr hF
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    have := mul_le_mul_of_nonneg_right (le_max_left C2 0) (hsNormSq_nonnegE (m : ℝ) F)
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    rw [if_pos hex]
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>    linarith
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    intro D ν₀ T μ A
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    exact absurd A.regime.1 hs1
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>theorem formEst_R2b (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (lam0 MB Λ VB : ℝ) :
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m (.R2b lam0) MB Λ VB C := by
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>  by_cases hc : (d : ℝ) - 2 &lt; s ∧ 0 &lt; lam0
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  · obtain ⟨hs1, hl0⟩ := hc
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    obtain ⟨C2, hC2⟩ := nonlocal_R2_bound hd s hs1 hsd m MB Λ lam0 hl0
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    refine formEst_R2_gen hd s hs0 hsd m (.R2b lam0) trivial (fun _ _ _ =&gt; rfl) MB Λ VB
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      (fun _ μ&#x27; =&gt; ∀ x, lam0 ≤ μ&#x27; x) (fun D ν₀ T μ A r hr =&gt; A.regime.2.2.2 r hr)
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>      (max C2 0 * (1 + lam0⁻¹)) ?_
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    intro D hs hM hsn lam q hdiag μ hp hk hb hex n F hFr hF α hα
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    obtain ⟨h1, h2⟩ := hC2 D hs hM hsn lam q hdiag μ hp hk hb (Or.inr hex) α hα n F hFr hF
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    have hH := hsNormSq_nonnegE (m : ℝ) F
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    have hite : (1 + (if Torus.symPart D.M = 0 then (0 : ℝ) else lam0⁻¹)) ≤ 1 + lam0⁻¹ := by
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>      split_ifs
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>      · have : 0 ≤ lam0⁻¹ := by positivity
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>        linarith
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      · exact le_rfl
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    have h3 : C2 * (1 + (if Torus.symPart D.M = 0 then (0 : ℝ) else lam0⁻¹)) ≤
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>        max C2 0 * (1 + lam0⁻¹) := by
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>      have hpos : 0 ≤ 1 + (if Torus.symPart D.M = 0 then (0 : ℝ) else lam0⁻¹) := by
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>        split_ifs
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>        · norm_num
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        · have : 0 ≤ lam0⁻¹ := by positivity
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>          linarith
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      calc _ ≤ max C2 0 * (1 + (if Torus.symPart D.M = 0 then (0 : ℝ) else lam0⁻¹)) :=
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>            mul_le_mul_of_nonneg_right (le_max_left _ _) hpos
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>        _ ≤ _ := mul_le_mul_of_nonneg_left hite (le_max_right _ _)
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    have := mul_le_mul_of_nonneg_right h3 hH
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    linarith
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>    intro D ν₀ T μ A
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    exact absurd ⟨A.regime.1, A.regime.2.2.1⟩ hc
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>theorem formEst_R2c (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m .R2c MB Λ VB C := by
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>  by_cases hc : (d : ℝ) - 2 &lt; s ∧ s ≤ (d : ℝ) - 1
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  · obtain ⟨hs1, hs2⟩ := hc
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    obtain ⟨C2, hC2⟩ := nonlocal_R2c_bound hd s hs1 hs2 m MB Λ
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    refine formEst_R2_gen hd s hs0 hsd m .R2c trivial (fun _ _ _ =&gt; rfl) MB Λ VB
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>      (fun _ _ =&gt; True) (fun _ _ _ _ _ _ _ =&gt; trivial) (max C2 0) ?_
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    intro D hs hM hsn lam q hdiag μ hp hk hb _ n F hFr hF α hα
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    obtain ⟨h1, h2⟩ := hC2 D hs hM hsn lam q hdiag μ hp hk hb α hα n F hFr hF
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    have := mul_le_mul_of_nonneg_right (le_max_left C2 0) (hsNormSq_nonnegE (m : ℝ) F)
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    linarith
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    intro D ν₀ T μ A
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    exact absurd ⟨A.regime.1, A.regime.2.1⟩ hc
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>theorem neg_sum_le_of_abs&#x27; (m : ℕ) (N : (Fin d → ℕ) → ℝ) (Bd : ℝ)
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    (h : ∀ α ∈ multiIndices d m, |N α| ≤ Bd) :
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    -∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) * N α ≤
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>      (∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ)) * Bd := by
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  rw [Finset.sum_mul, ← Finset.sum_neg_distrib]
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  refine Finset.sum_le_sum fun α hα =&gt; ?_
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  have h0 : (0 : ℝ) ≤ multinomialWeight m α := Nat.cast_nonneg _
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  rw [neg_mul_eq_mul_neg]
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>  exact mul_le_mul_of_nonneg_left ((neg_le_abs _).trans (h α hα)) h0
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>theorem formEst_R3 (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m .R3 MB Λ VB C := by
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  by_cases hs1 : (d : ℝ) - 2 &lt; s
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>  · obtain ⟨CT, hCT0, hCT⟩ := transport_part hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    obtain ⟨C3, hC3⟩ := nonlocal_R3_bound hd s hs1 hsd m MB Λ
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    have hc0 := sum_mw_pos (d := d) m
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    set c₀ : ℝ := ∑ α ∈ multiIndices d m, (multinomialWeight m α : ℝ) with hc₀
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    set e : ℝ := thetaOrder d s / (2 - thetaOrder d s) with he
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    have hθ0 : 0 &lt; thetaOrder d s := by unfold thetaOrder; linarith
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>    have hθ2 : 0 &lt; 2 - thetaOrder d s := by unfold thetaOrder; linarith
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>    have he0 : 0 ≤ e := div_nonneg hθ0.le hθ2.le
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    have hm1 : (0 : ℝ) &lt; ((m : ℝ) + 1) ^ d := by positivity
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    set δ : ℝ := 2 * ((m : ℝ) + 1) ^ d / c₀ with hδ
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    have hδ0 : 0 &lt; δ := by positivity
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    set B0 : ℝ := c₀ * max C3 0 * δ ^ (-e) with hB0
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>    have hB00 : 0 ≤ B0 := by positivity
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    have hA0 : 0 ≤ c₀ * CT + 1 / 2 := by positivity
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>    refine ⟨c₀ * CT + 1 / 2 + B0 + 1, by positivity, ?_⟩
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    intro D ν₀ T μ A lam q _ r hr n F hFr hF
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>    refine ⟨fun h =&gt; absurd h (by simp [Regime.IsR2]), ?_⟩
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    obtain ⟨-, hν₀, hνν⟩ := A.regime
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    have hp := A.hμ.prob r hr
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>    have hk := A.hμ.smooth r hr
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    have hb := A.hμ.bound r hr
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    have hbasic := re_hsInner_le_basic D (μ r) m F hF CT
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>      (hCT D A.hs A.hM A.hV (μ r) hp hk hb n F hFr hF)
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    set m₁ : ℝ := min ν₀ 1 with hm₁
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    have hm₁0 : 0 &lt; m₁ := lt_min hν₀ one_pos
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    have hm₁1 : m₁ ≤ 1 := min_le_right _ _
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    have hm₁ν : m₁ ≤ ν₀ := min_le_left _ _
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>    set ν&#x27; : ℝ := δ * m₁ with hν&#x27;
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    have hν&#x27;0 : 0 &lt; ν&#x27; := mul_pos hδ0 hm₁0
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>    set H := hsNormSq (m : ℝ) F with hH
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>    set H1 := hsNormSq ((m : ℝ) + 1) F with hH1
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>    have hH0 : 0 ≤ H := hsNormSq_nonnegE _ _
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    have hX := H1_sub_nonneg m F hF
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    have hNl := neg_sum_le_of_abs&#x27; m _ (ν&#x27; / (4 * ((m : ℝ) + 1) ^ d) * H1 + C3 * ν&#x27; ^ (-e) * H)
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>      (fun α hα =&gt; hC3 D A.hs A.hM (μ r) hk hb ν&#x27; hν&#x27;0 α hα n F hFr hF)
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>    -- the arithmetic
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    have hκ : c₀ * (ν&#x27; / (4 * ((m : ℝ) + 1) ^ d)) = m₁ / 2 := by
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>      rw [hν&#x27;, hδ]; field_simp; norm_num
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    have hpow : ν&#x27; ^ (-e) ≤ δ ^ (-e) * (1 + ν₀ ^ (-e)) := by
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      rw [hν&#x27;, Real.mul_rpow hδ0.le hm₁0.le]
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hδ0.le _)
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>      have hν0e : 0 ≤ ν₀ ^ (-e) := Real.rpow_nonneg hν₀.le _
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>      rcases le_total ν₀ 1 with h | h
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>      · rw [hm₁, min_eq_left h]; linarith
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>      · rw [hm₁, min_eq_right h, Real.one_rpow]; linarith
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    have hpe : 0 ≤ ν₀ ^ (-e) := Real.rpow_nonneg hν₀.le _
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>    have hE : c₀ * (C3 * ν&#x27; ^ (-e) * H) ≤ B0 * (1 + ν₀ ^ (-e)) * H := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>      have h1 : C3 * ν&#x27; ^ (-e) ≤ max C3 0 * (δ ^ (-e) * (1 + ν₀ ^ (-e))) := by
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>        calc C3 * ν&#x27; ^ (-e) ≤ max C3 0 * ν&#x27; ^ (-e) :=
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>              mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.rpow_nonneg hν&#x27;0.le _)
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>          _ ≤ _ := mul_le_mul_of_nonneg_left hpow (le_max_right _ _)
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>      calc c₀ * (C3 * ν&#x27; ^ (-e) * H) = c₀ * (C3 * ν&#x27; ^ (-e)) * H := by ring
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>        _ ≤ c₀ * (max C3 0 * (δ ^ (-e) * (1 + ν₀ ^ (-e)))) * H :=
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>            mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left h1 hc0.le) hH0
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>        _ = _ := by rw [hB0]; ring
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    have hβ : 0 ≤ D.invβ := D.hβ
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    have h1 : (m₁ / 2) * (H1 - H) ≤ (D.invβ / 2) * (H1 - H) :=
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>      mul_le_mul_of_nonneg_right (by linarith) hX
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>    have h2 : (m₁ / 2) * H ≤ (1 / 2) * H := mul_le_mul_of_nonneg_right (by linarith) hH0
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>    have h3 : (c₀ * CT + 1 / 2 + B0 * (1 + ν₀ ^ (-e))) * H ≤
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>        (c₀ * CT + 1 / 2 + B0 + 1) * (1 + ν₀ ^ (-e)) * H := by
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>      refine mul_le_mul_of_nonneg_right ?_ hH0
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>      nlinarith
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    have h4 : c₀ * (ν&#x27; / (4 * ((m : ℝ) + 1) ^ d) * H1) = (m₁ / 2) * (H1 - H) + (m₁ / 2) * H := by
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>      rw [← mul_assoc, hκ]; ring
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    have hno : ¬ Regime.R3.IsR2 := by simp [Regime.IsR2]
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    simp only [energyRHS, Regime.lambdaM]
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>    rw [if_neg hno, sub_zero]
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>    have h5 : c₀ * (ν&#x27; / (4 * ((m : ℝ) + 1) ^ d) * H1 + C3 * ν&#x27; ^ (-e) * H) =
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>        (m₁ / 2) * (H1 - H) + (m₁ / 2) * H + c₀ * (C3 * ν&#x27; ^ (-e) * H) := by
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>      rw [mul_add, h4]
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    have h6 : -(D.invβ / 2) * ∑ α ∈ multiIndices d m, gradDerivL2Sq α F =
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>        -((D.invβ / 2) * ∑ α ∈ multiIndices d m, gradDerivL2Sq α F) := by ring
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    nlinarith
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    intro D ν₀ T μ A
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>    exact absurd A.regime.1 hs1
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>/-! ### The theorems -/
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>/-- **Form estimate** (the engine of Prop 3.13 for the Galerkin route; all `m ∈ ℕ`, `m = 0`
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>included): under the hypotheses of Prop 3.9 at level `m` there is `C` (depending only on
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>`d, s, m, |M|, Λ, ‖V‖_{C^{m+3}}` and, in R2b, `λ₀`) such that for every real trigonometric
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>polynomial `F` and every time `r ∈ [0,T]`
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>(the diagonalisation `S = -∑ λ_l q_l q_lᵀ`, which exists only when `S ≤ 0`, is required only in
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>regime R2, where `S ≤ 0` holds; in R1/R3 `S` is arbitrary and `lam, q` play no role),
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>`Re ⟨𝓛^r F, F⟩_{H^m} ≤ Λ_m ‖F‖²_{H^m} - (ν/2)∑_{|α|≤m}‖∇∂^αF‖² - ½ 1_{R2} ∑_{|α|≤m}∑_l λ_l B_l(√μ^r∂^αF, √μ^r∂^αF)`
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>with `Λ_m = Regime.lambdaM R C ν₀ θ` (`B:eq:LambdaM`), and the retained forms are finite. -/
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>theorem energy_form_estimate (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ)
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>    (R : Regime) (MB Λ VB : ℝ) :
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : DynData d) (ν₀ T : ℝ) (μ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>      (_ : AdjointData s m R MB Λ VB D ν₀ T μ)
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>      (lam : Fin d → ℝ) (q : Fin d → Euc d) (_ : R.IsR2 → IsSymDiag D.M lam q)
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>      (r : ℝ) (_ : r ∈ Set.Icc 0 T) (n : ℕ) (F : Coeff d) (_ : IsRealCoeff F) (_ : IsTrigPoly n F),
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>      (R.IsR2 → WeightedDissipationFinite D m q (μ r) F) ∧
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      (hsInner m (forwardGen D (μ r) F) F).re ≤
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>        energyRHS R (R.lambdaM C ν₀ (thetaOrder d s)) D m lam q (μ r) F := by
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  have key : ∃ C : ℝ, 0 &lt; C ∧ FormEst d s m R MB Λ VB C := by
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    cases R with
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    | R1 =&gt; exact formEst_R1 hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    | R2a =&gt; exact formEst_R2a hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    | R2b lam0 =&gt; exact formEst_R2b hd s hs0 hsd m lam0 MB Λ VB
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    | R2c =&gt; exact formEst_R2c hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>    | R3 =&gt; exact formEst_R3 hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>  obtain ⟨C, hC, h⟩ := key
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>  exact ⟨C, hC, h⟩
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>/-- Proposition 3.13 `B:prop:energy-torus` (lines 1865–1871), literal form: under the hypotheses of
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>Prop 3.9 (level `m ≥ 1`), for a solution `F` of `B:eq:adjoint-forward` regular enough for the
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>derivative to exist (`F ∈ C([0,t];H^{m+2})`), for all `τ ∈ [0,t]`,
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>`d/dτ ½‖F(τ)‖²_{H^m} ≤ Λ_m‖F(τ)‖²_{H^m} - (ν/2)∑_{|α|≤m}‖∇∂^αF‖²_{L²} - ½∑_{|α|≤m}∑_l λ_l B_l(√μ∂^αF,√μ∂^αF)`
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>(`B:eq:energy-torus`), the last sum present only in regime R2; `Λ_m` as in `B:eq:LambdaM`, with the
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>same constant `C` as in `energy_form_estimate`.  In particular `B:eq:adjoint-torus-bound` follows by
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>Grönwall (`adjoint_torus_bound_of_regular` in `WellPosed.lean`). -/
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>theorem energy_torus (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m)
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>    (R : Regime) (MB Λ VB : ℝ) :
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : DynData d) (ν₀ T : ℝ) (μ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>      (_ : AdjointData s m R MB Λ VB D ν₀ T μ)
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>      (lam : Fin d → ℝ) (q : Fin d → Euc d) (_ : R.IsR2 → IsSymDiag D.M lam q)
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>      (t : ℝ) (_ : t ∈ Set.Ioc 0 T) (φc : Coeff d) (F : ℝ → Coeff d)
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>      (_ : IsForwardSolution D μ t φc F) (_ : ContinuousInHs (m + 2) F t)
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>      (_ : ∀ τ ∈ Set.Icc 0 t, IsRealCoeff (F τ)),
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>      ∀ τ ∈ Set.Icc 0 t,
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>        (R.IsR2 → WeightedDissipationFinite D m q (μ (t - τ)) (F τ)) ∧
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>        HasDerivWithinAt (fun τ&#x27; =&gt; (1 / 2) * hsNormSq m (F τ&#x27;))
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>          (hsInner m (forwardGen D (μ (t - τ)) (F τ)) (F τ)).re (Set.Icc 0 t) τ ∧
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>        (hsInner m (forwardGen D (μ (t - τ)) (F τ)) (F τ)).re ≤
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>          energyRHS R (R.lambdaM C ν₀ (thetaOrder d s)) D m lam q (μ (t - τ)) (F τ) := by
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>  obtain ⟨C, hC, h⟩ := energy_form_estimate hd s hs0 hsd m R MB Λ VB
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  refine ⟨C, hC, ?_⟩
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>  intro D ν₀ T μ A lam q hq t ht φc F hF hcont hreal τ hτ
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>  have hr : t - τ ∈ Set.Icc 0 T := ET.tsub_mem_Icc ht hτ
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>  have hderiv := ET.energy_deriv hd s hs0 hsd m A ht hF hcont τ hτ
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>  have hG : MemHs ((m : ℝ) + 2) (F τ) := hcont.1 τ hτ
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>  have hform := fun n : ℕ =&gt; h D ν₀ T μ A lam q hq (t - τ) hr n (truncCoeff n (F τ))
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>    (ET.isRealCoeff_truncCoeff (hreal τ hτ) n) (isTrigPoly_truncCoeff n (F τ))
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>  by_cases hR : R.IsR2
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>  · have hlam : ∀ l, 0 ≤ lam l := (hq hR).nonneg
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>    have key := ET.form_limit_R2 hd s hs0 hsd m MB Λ VB D A.hs A.hM A.hV (μ (t - τ))
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>      (A.hμ.prob _ hr) (A.hμ.smooth _ hr) (A.hμ.bound _ hr) lam hlam q
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>      (R.lambdaM C ν₀ (thetaOrder d s)) (F τ) hG (fun n =&gt; by
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>        refine ⟨(hform n).1 hR, ?_⟩
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>        have := (hform n).2
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>        simpa only [energyRHS, if_pos hR] using this)
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>    refine ⟨fun _ =&gt; key.1, hderiv, ?_⟩
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>    simpa only [energyRHS, if_pos hR] using key.2
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>  · refine ⟨fun h&#x27; =&gt; absurd h&#x27; hR, hderiv, ?_⟩
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>    have key := ET.form_limit_nonR2 hd s hs0 hsd m MB Λ VB D A.hs A.hM A.hV (μ (t - τ))
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>      (A.hμ.prob _ hr) (A.hμ.smooth _ hr) (A.hμ.bound _ hr)
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>      (R.lambdaM C ν₀ (thetaOrder d s)) (F τ) hG (fun n =&gt; by
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>        have := (hform n).2
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>        simpa only [energyRHS, if_neg hR, sub_zero] using this)
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>    simpa only [energyRHS, if_neg hR, sub_zero] using key
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>/-- Proposition 3.14 `B:prop:R2c` (lines 1942–1944), energy half: for `d-2 &lt; s ≤ d-1` (`0 &lt; θ ≤ 1`),
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>`S ≤ 0`, under `B:eq:coeff-hypothesis` but **without** any lower bound on `μ`, the form estimate
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>holds with `Λ_m = C` uniformly in `β ∈ (0,∞]` (constant independent of `β` and of `inf μ`), and
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>with no dissipation retained (line 1951: &quot;no dissipation retained and no use of `inf μ`&quot;). -/
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>theorem energy_form_estimate_R2c (hd : 1 ≤ d) (s : ℝ) (hs1 : (d : ℝ) - 2 &lt; s)
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>    (hs2 : s ≤ (d : ℝ) - 1) (m : ℕ) (MB Λ VB : ℝ) :
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : DynData d) (ν₀ T : ℝ) (μ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>      (_ : AdjointData s m .R2c MB Λ VB D ν₀ T μ)
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>      (r : ℝ) (_ : r ∈ Set.Icc 0 T) (n : ℕ) (F : Coeff d) (_ : IsRealCoeff F) (_ : IsTrigPoly n F),
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>      (hsInner m (forwardGen D (μ r) F) F).re ≤ C * hsNormSq m F := by
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>  by_cases hs0 : 0 ≤ s
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  · have hsd : s &lt; d := by linarith
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>    obtain ⟨C, hC, h⟩ := formEst_R2c hd s hs0 hsd m MB Λ VB
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    refine ⟨C, hC, ?_⟩
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>    intro D ν₀ T μ A r hr n F hFr hF
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>    obtain ⟨lam, q, hdiag⟩ := exists_symDiag (regime_symNonpos (R := .R2c) trivial A.regime)
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>    have h1 := (h D ν₀ T μ A lam q (fun _ =&gt; hdiag) r hr n F hFr hF).2
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>    refine h1.trans ?_
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>    exact energyRHS_le hd .R2c _ D m lam q (fun _ l =&gt; hdiag.nonneg l) (μ r) F
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>  · refine ⟨1, one_pos, ?_⟩
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>    intro D ν₀ T μ A
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>    exact absurd (A.hs ▸ D.hs0) hs0
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>end HRS.PDE
+</span></code></pre></main></body></html>

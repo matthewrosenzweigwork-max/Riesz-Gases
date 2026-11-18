@@ -1,0 +1,623 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.Sec7Static · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.Sec7Static</code></h1><p><a href="../../lean/HRS/Sections/Sec7Static.lean">Open the unaltered Lean file</a> · 622 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Equilibrium.StaticLimits
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Prob.Gaussian
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Section 7 (static and abstract rows): statements (SPEC-7)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Specification file (statements with `sorry` proofs).  Sources (`HRS_periodic_main_20261008T010000Z.tex`):
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* Lemma 7.4 `M:N:thm:static-edge` (TeX L7850-7868): scalar cubic contraction;
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Proposition 7.7 `M:F:thm:static` (TeX L8263-8272): static field correction;
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* Proposition 7.15 `M:O:prop:tilt` (TeX L9592-9608): transfer under a bounded smooth initial weight;
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Proposition 7.16 `M:O:prop:slow` (TeX L9625-9627): a leading initial limit does not determine its
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  first correction.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>## Representation decisions
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `Q_{N,β}(μ)` is `HRS.modulatedGibbs (periodicRiesz d s) N β μ`; at `β = 0` it is `μ^{⊗N}` by definition
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  (`gibbsNormalizer` is `1`), which is the convention `Q_{N,0}(μ) = μ^{⊗N}` of the lemma.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* The one-body resolvent `R_{β,μ}P_μ φ` is `HRS.responseInverse (periodicRiesz d s) μ β φ` (an a.e.-class,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  the solution of the response equation `h + β K_μ h = P_μ φ`, `μ(h) = 0`).  Where a point value is needed
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  (Proposition 7.7, `ℓ_x`), the continuous representative `responseRep` is used.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* `C_b^k(B)` is `HRS.MemCb k` (all derivatives of order `≤ k` bounded) with norm `HRS.cbNorm k`
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  (sum of suprema, TeX L510), and the unit ball `HRS.CbUnitBall`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* Gaussian laws on `ℝ^p` are `ProbabilityTheory.multivariateGaussian 0 C` (the covariance matrix is positive
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  semidefinite in all uses, so no junk value occurs); semidefinite covariances are allowed.
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>-/
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>noncomputable section
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>namespace HRS
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>namespace Sec7
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>variable {d : ℕ}
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>/-- The continuous representative `x ↦ (R_{γ,μ} P_μ ψ)(x)` of the response `R_{γ,μ}P_μψ`:
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>`P_μψ(x) - γ (K_μ h)(x)` with `h = responseInverse ..`.  Since `K_μ h` only depends on the `μ`-class of `h`,
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>this is a well-defined everywhere-defined function equal to `h` `μ`-a.e. (the response equation
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>`h + γ K_μ h = P_μ ψ`, TeX L924 / `N:eq:screening-operators` L7838). -/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>def responseRep (g : Torus d → ℝ) (μ : Measure (Torus d)) (γ : ℝ) (ψ : Torus d → ℝ)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (x : Torus d) : ℝ :=
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  projMean μ ψ x - γ * Kop g μ (responseInverse g μ γ ψ) x
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- The `j`-th standard basis vector of `ℝ^p` (as an element of the Euclidean space). -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>def stdVec {p : ℕ} (j : Fin p) : EuclideanSpace ℝ (Fin p) := EuclideanSpace.single j 1
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>/-- The statistics `W_N = (√N (μ_N(φ_a) - E[μ_N(φ_a)]))_a` of Lemma 7.4 under a law `Q` on configurations. -/
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>def centeredStat {p N : ℕ} (Q : Measure (Config d N)) (φ : Fin p → Torus d → ℝ) (X : Config d N) :
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    EuclideanSpace ℝ (Fin p) :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  WithLp.toLp 2 fun a =&gt; Real.sqrt N *
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (pair (empirical X) (φ a) - ∫ Y, pair (empirical Y) (φ a) ∂Q)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- Lemma 7.4 `M:N:thm:static-edge` (TeX L7850-7868), first part (`N:eq:static-edge`).
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>Let `0 ≤ s &lt; d/2`, `β ≥ 0`, `μ = ρ dx` smooth positive, `X_N ∼ Q_{N,β}(μ)`, `φ_1,…,φ_p` fixed tests,
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>`r_a = R_{β,μ}P_μ φ_a`, `C_{ab} = μ(φ_a r_b)`, `κ_{abc} = μ(r_a r_b r_c)`, `W_N` the exactly centred
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>linear statistics and `Z ∼ N(0,C)` (possibly degenerate).  For each `F ∈ C_b^5(ℝ^p)`,
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>`E[F(W_N)] = E[F(Z)] + (6√N)⁻¹ ∑_{a,b,c} κ_{abc} E[∂_{abc}F(Z)] + o(N^{-1/2})`, i.e. `√N` times the
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>remainder tends to `0`; the `o(N^{-1/2})` is for each fixed `F` (TeX: &quot;For each `F ∈ C_b^5`&quot;).
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>`∂_{abc}F(Z)` is `D³F(Z)[e_a,e_b,e_c]`.
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>Standing assumptions: `d ≥ 2` (M L419); smooth positive `μ` (TeX L7835, &quot;smooth positive probability
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>measure&quot;).
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>AMBIGUITY (TeX L7843): &quot;fixed tests `φ_1,…,φ_p`&quot; has no regularity hypothesis; the proof (L7992-8010)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>uses smooth `φ_b` (`∇φ_b = ∇r_b + β∇g*(r_bμ)`, test `v_a·∇φ_b`), so the tests are taken smooth.
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>Technical hypotheses: `hd : 2 ≤ d` is the standing dimension assumption (not in the lemma itself);
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>smoothness of the tests as just discussed. -/
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>theorem static_edge (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ) (hβ : 0 ≤ β)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (p : ℕ) (φ : Fin p → Torus d → ℝ)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    (hφ : ∀ a, Torus.IsSmooth (φ a)) :
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    let μ := withDensityReal ρ
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    let r : Fin p → Torus d → ℝ := fun a =&gt; responseInverse (periodicRiesz d s) μ β (φ a)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    let C : Matrix (Fin p) (Fin p) ℝ := Matrix.of fun a b =&gt; ∫ x, φ a x * r b x ∂μ
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    let κ : Fin p → Fin p → Fin p → ℝ := fun a b c =&gt; ∫ x, r a x * r b x * r c x ∂μ
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    ∀ F : EuclideanSpace ℝ (Fin p) → ℝ, MemCb 5 F →
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      Tendsto (fun N : ℕ =&gt; Real.sqrt N *
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        (∫ X, F (centeredStat (modulatedGibbs (periodicRiesz d s) N β μ) φ X)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>            ∂(modulatedGibbs (periodicRiesz d s) N β μ) -
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>          ∫ z, F z ∂(multivariateGaussian 0 C) -
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          (1 / (6 * Real.sqrt N)) * ∑ a, ∑ b, ∑ c, κ a b c *
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>            ∫ z, iteratedFDeriv ℝ 3 F z ![stdVec a, stdVec b, stdVec c] ∂(multivariateGaussian 0 C)))
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        atTop (𝓝 0) := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  sorry
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>/-- Lemma 7.4 `M:N:thm:static-edge` (TeX L7850-7868), scalar part (`N:eq:char-edge`): for a scalar test
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>`φ` with variance `v = μ(φ r) &gt; 0` and `κ = μ(r³)`, `r = R_{β,μ}P_μφ`,
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>`E[e^{itW_N}] = e^{-vt²/2}(1 + (it)³κ/(6√N)) + o(N^{-1/2})` for fixed `t`, and uniformly for `t` in a fixed
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>compact interval (the fixed-`t` statement is the compact interval `[-|t|,|t|]`).  Same standing assumptions
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>and test regularity as `static_edge` (see its docstring). -/
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>theorem static_edge_char (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ) (hβ : 0 ≤ β)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ) (hφ : Torus.IsSmooth φ) :
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    let μ := withDensityReal ρ
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    let r : Torus d → ℝ := responseInverse (periodicRiesz d s) μ β φ
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    let v : ℝ := ∫ x, φ x * r x ∂μ
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    let κ : ℝ := ∫ x, r x ^ 3 ∂μ
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    0 &lt; v →
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    ∀ T : ℝ, 0 &lt; T → ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N → ∀ t : ℝ, t ∈ Set.Icc (-T) T →
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      ‖∫ X, Complex.exp (Complex.I * (t : ℂ) *
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>            ((Real.sqrt N * (pair (empirical X) φ -
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>              ∫ Y, pair (empirical Y) φ ∂(modulatedGibbs (periodicRiesz d s) N β μ)) : ℝ) : ℂ))
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          ∂(modulatedGibbs (periodicRiesz d s) N β μ) -
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        Complex.exp (-(v : ℂ) * (t : ℂ) ^ 2 / 2) *
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>          (1 + (Complex.I * (t : ℂ)) ^ 3 * (κ : ℂ) / (6 * (Real.sqrt N : ℂ)))‖ ≤ ε / Real.sqrt N := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  sorry
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>/-! ### Proposition 7.7: static field correction -/
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>/-- The element `ℓ_x ∈ E_r` of `F:eq:ell` (TeX L8253-8255): `⟨φ, ℓ_x⟩ = (R_{γ,μ} P_μ φ)(x)`, defined through its
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>real Fourier coefficients `ℓ_x(e_k) = (R_{γ,μ}P_μ e_k)(x)` (`e_k = Torus.realMode k`), with the continuous
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>representative `responseRep`. -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def ellPt (g : Torus d → ℝ) (μ : Measure (Torus d)) (γ : ℝ) (r : ℝ) (x : Torus d) : NegSobolev d r :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  NegSobolev.ofSeq r fun k =&gt; responseRep g μ γ (Torus.realMode k) x
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>/-- Proposition 7.7 `M:F:thm:static` (TeX L8263-8272), `F:eq:static-field`.  Let `μ = ρ dx` be smooth and
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>strictly positive, `γ ≥ 0` (`γ = 0` is the product law `μ^{⊗N}`), `X_N ∼ Q_{N,γ}(μ)`,
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>`W_N = √N(μ_N - E[μ_N]) ∈ E_r`, and `G` a centred Gaussian random element of `E_r` with
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>`Cov(G(φ),G(ψ)) = μ(φ R P_μ ψ)`.  With `K_{γ,μ} = ∫ ℓ_x^{⊗3} dμ(x) ∈ E_r^{⊗̂3}` (`F:eq:K0`), uniformly over
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>the unit ball `‖Φ‖_{C_b^5(E_r)} ≤ 1`,
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>`√N (E Φ(W_N) - E Φ(G)) - (1/6) E⟨D³Φ(G), K_{γ,μ}⟩ → 0`.
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>Here the pairing of the continuous trilinear form `D³Φ(G)` with the Bochner integral `K = ∫ ℓ_x^{⊗3}dμ` is
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>`∫ D³Φ(G)[ℓ_x,ℓ_x,ℓ_x] dμ(x)` (the pairing is continuous on the projective tensor product); the supremum
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>tending to `0` is written `∀ ε &gt; 0, ∃ N₀, ∀ N ≥ N₀, ∀ Φ ∈ ball`.
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>Standing assumptions/AMBIGUITY (TeX L8248-8262): the order `r` of `E_r` is not fixed in the statement; the
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>proof uses `r = 2d + 6` (`b_k = ⟨k⟩^{-d-3}`, TeX L8284-8289; also L8504, L9171), which is imposed
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>(`hr`).  `0 ≤ s &lt; d/2` is the standing assumption of the Hilbert--Schmidt range (TeX L7893, &quot;For the
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>remainder of Sections `N:sec:chaos`-`sec:path-tensor`, assume `s &lt; d/2`&quot;) and `d ≥ 2` (M L419).
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>Technical hypotheses: `G` is a probability measure on `E_r` (a random element). -/
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>theorem static_field (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (r : ℝ)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (hr : r = 2 * (d : ℝ) + 6) (γ : ℝ) (hγ : 0 ≤ γ) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (G : Measure (NegSobolev d r)) [IsProbabilityMeasure G]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (hG : IsCenteredGaussianWithCov r G fun φ ψ =&gt;
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ∫ x, φ x * responseRep (periodicRiesz d s) (withDensityReal ρ) γ ψ x ∂(withDensityReal ρ)) :
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N → ∀ Φ ∈ CbUnitBall (NegSobolev d r) 5,
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      |Real.sqrt N *
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          (∫ X, Φ (zetaE r (modulatedGibbs (periodicRiesz d s) N γ (withDensityReal ρ)) X)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>              ∂(modulatedGibbs (periodicRiesz d s) N γ (withDensityReal ρ)) - ∫ F, Φ F ∂G) -
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        (1 / 6) * ∫ F, ∫ x, iteratedFDeriv ℝ 3 Φ F
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>            ![ellPt (periodicRiesz d s) (withDensityReal ρ) γ r x,
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>              ellPt (periodicRiesz d s) (withDensityReal ρ) γ r x,
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>              ellPt (periodicRiesz d s) (withDensityReal ρ) γ r x] ∂(withDensityReal ρ) ∂G| ≤ ε := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  sorry
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>/-! ### Proposition 7.15: transfer under a bounded smooth initial weight -/
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>/-- The law `γ` tilted by the weight `g`: `g γ / ∫ g dγ` (with a `lintegral` normaliser). -/
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>def weightTilt {α : Type*} [MeasurableSpace α] (γ : Measure α) (g : α → ℝ) : Measure α :=
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  (∫⁻ a, ENNReal.ofReal (g a) ∂γ)⁻¹ • γ.withDensity fun a =&gt; ENNReal.ofReal (g a)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>/-! #### Auxiliary lemmas for Proposition 7.15 (tilted expansions) -/
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>namespace Tilt715Aux
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>theorem cbNorm_nonneg_aux (k : ℕ) (Φ : E → ℝ) : 0 ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  unfold HRS.cbNorm
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  exact Finset.sum_nonneg fun _ _ =&gt; Real.iSup_nonneg fun _ =&gt; norm_nonneg _
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>theorem norm_iter_le_cbNorm {k : ℕ} {Φ : E → ℝ} (hΦ : HRS.MemCb k Φ) {j : ℕ} (hj : j ≤ k) (x : E) :
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    ‖iteratedFDeriv ℝ j Φ x‖ ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have h1 := le_ciSup (hΦ.2 j hj) x
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have h2 : (⨆ z : E, ‖iteratedFDeriv ℝ j Φ z‖) ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    unfold HRS.cbNorm
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    exact Finset.single_le_sum (f := fun i =&gt; ⨆ z : E, ‖iteratedFDeriv ℝ i Φ z‖)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      (fun i _ =&gt; Real.iSup_nonneg fun _ =&gt; norm_nonneg _) (Finset.mem_range.mpr (Nat.lt_succ_of_le hj))
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  exact h1.trans h2
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>theorem abs_le_cbNorm_aux {k : ℕ} {Φ : E → ℝ} (hΦ : HRS.MemCb k Φ) (x : E) :
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    |Φ x| ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  have h := norm_iter_le_cbNorm hΦ (Nat.zero_le k) x
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  rwa [norm_iteratedFDeriv_zero, Real.norm_eq_abs] at h
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>theorem cbNorm_zero_le_aux (k : ℕ) (Φ : E → ℝ) : HRS.cbNorm 0 Φ ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  unfold HRS.cbNorm
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (Nat.succ_le_succ (Nat.zero_le k)))
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    fun _ _ _ =&gt; Real.iSup_nonneg fun _ =&gt; norm_nonneg _
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>theorem memCb_mul_bound {Φ Ψ : E → ℝ} (hΦ : HRS.MemCb 5 Φ) (hΨ : HRS.MemCb 5 Ψ) :
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    HRS.MemCb 5 (fun x =&gt; Ψ x * Φ x) ∧
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      HRS.cbNorm 5 (fun x =&gt; Ψ x * Φ x) ≤ 63 * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ := by
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  have hcd : ContDiff ℝ ((5 : ℕ) : WithTop ℕ∞) (fun x =&gt; Ψ x * Φ x) := hΨ.1.mul hΦ.1
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hpt : ∀ n : ℕ, n ≤ 5 → ∀ x : E, ‖iteratedFDeriv ℝ n (fun x =&gt; Ψ x * Φ x) x‖ ≤
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      2 ^ n * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ := by
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    intro n hn x
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    refine (norm_iteratedFDeriv_mul_le hΨ.1 hΦ.1 x (n := n) (by exact_mod_cast hn)).trans ?_
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    have hsum : ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) = 2 ^ n := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      exact_mod_cast Nat.sum_range_choose n
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    calc ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * ‖iteratedFDeriv ℝ i Ψ x‖ *
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>          ‖iteratedFDeriv ℝ (n - i) Φ x‖
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>        ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ := by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>          refine Finset.sum_le_sum fun i hi =&gt; ?_
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>          have hi&#x27; : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>          have h1 := norm_iter_le_cbNorm hΨ (show i ≤ 5 by omega) x
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>          have h2 := norm_iter_le_cbNorm hΦ (show n - i ≤ 5 by omega) x
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>          have h0 : (0 : ℝ) ≤ (n.choose i : ℝ) := Nat.cast_nonneg _
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>          exact mul_le_mul (mul_le_mul_of_nonneg_left h1 h0) h2 (norm_nonneg _)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>            (mul_nonneg h0 (cbNorm_nonneg_aux 5 Ψ))
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      _ = 2 ^ n * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>          rw [← Finset.sum_mul, ← Finset.sum_mul, hsum]
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  have hbdd : ∀ n : ℕ, n ≤ 5 → BddAbove (Set.range fun x : E =&gt;
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      ‖iteratedFDeriv ℝ n (fun x =&gt; Ψ x * Φ x) x‖) := fun n hn =&gt;
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    ⟨2 ^ n * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ, by rintro _ ⟨x, rfl⟩; exact hpt n hn x⟩
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  refine ⟨⟨hcd, hbdd⟩, ?_⟩
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  unfold HRS.cbNorm
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  calc ∑ j ∈ Finset.range (5 + 1), ⨆ x : E, ‖iteratedFDeriv ℝ j (fun x =&gt; Ψ x * Φ x) x‖
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      ≤ ∑ j ∈ Finset.range (5 + 1), 2 ^ j * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ :=
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>        Finset.sum_le_sum fun j hj =&gt; ciSup_le fun x =&gt;
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>          hpt j (Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)) x
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    _ = 63 * HRS.cbNorm 5 Ψ * HRS.cbNorm 5 Φ := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>        simp [Finset.sum_range_succ]
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        ring
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>theorem memCb_comp_clm {q : ℕ} (π₀ : E →L[ℝ] EuclideanSpace ℝ (Fin q)) {w : EuclideanSpace ℝ (Fin q) → ℝ}
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    (hw : HRS.MemCb 5 w) : HRS.MemCb 5 (fun x =&gt; w (π₀ x)) := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  refine ⟨hw.1.comp π₀.contDiff, fun j hj =&gt; ?_⟩
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  obtain ⟨M, hM⟩ := hw.2 j hj
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  refine ⟨M * ‖π₀‖ ^ j, ?_⟩
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  rintro _ ⟨x, rfl⟩
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>  show ‖iteratedFDeriv ℝ j (w ∘ π₀) x‖ ≤ _
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  rw [ContinuousLinearMap.iteratedFDeriv_comp_right π₀ hw.1 x (by exact_mod_cast hj)]
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  have hMx : ‖iteratedFDeriv ℝ j w (π₀ x)‖ ≤ M := hM ⟨π₀ x, rfl⟩
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  calc ‖(iteratedFDeriv ℝ j w (π₀ x)).compContinuousLinearMap fun _ =&gt; π₀‖
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      ≤ ‖iteratedFDeriv ℝ j w (π₀ x)‖ * ∏ _i : Fin j, ‖π₀‖ :=
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    _ = ‖iteratedFDeriv ℝ j w (π₀ x)‖ * ‖π₀‖ ^ j := by simp
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    _ ≤ M * ‖π₀‖ ^ j := mul_le_mul_of_nonneg_right hMx (by positivity)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>theorem integral_weightTilt_aux [MeasurableSpace E] [BorelSpace E] {γ : Measure E}
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    [IsProbabilityMeasure γ] {G : E → ℝ}
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    (hG : Continuous G) (hG0 : ∀ x, 0 ≤ G x) (hGi : Integrable G γ) (F : E → ℝ) :
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    ∫ x, F x ∂(Sec7.weightTilt γ G) = (∫ x, G x * F x ∂γ) / (∫ x, G x ∂γ) := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  have hmeas : Measurable (fun x =&gt; ENNReal.ofReal (G x)) :=
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    ENNReal.measurable_ofReal.comp hG.measurable
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  have hint0 : 0 ≤ ∫ x, G x ∂γ := integral_nonneg hG0
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  have hlin : (∫⁻ a, ENNReal.ofReal (G a) ∂γ).toReal = ∫ x, G x ∂γ := by
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    rw [← ofReal_integral_eq_lintegral_ofReal hGi (Filter.Eventually.of_forall hG0),
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      ENNReal.toReal_ofReal hint0]
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  unfold Sec7.weightTilt
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  rw [integral_smul_measure, integral_withDensity_eq_integral_toReal_smul hmeas
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (Filter.Eventually.of_forall fun x =&gt; ENNReal.ofReal_lt_top) F, ENNReal.toReal_inv, hlin]
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  have hcongr : (∫ x, (ENNReal.ofReal (G x)).toReal • F x ∂γ) = ∫ x, G x * F x ∂γ := by
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    refine integral_congr_ae (Filter.Eventually.of_forall fun x =&gt; ?_)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    simp only [smul_eq_mul, ENNReal.toReal_ofReal (hG0 x)]
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  rw [hcongr, smul_eq_mul, div_eq_inv_mul]
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>theorem ratio_error {z₀ z Num Den a α β e1 e2 δ M1 M2 M3 M4 E1 E2 : ℝ} (hz₀ : 0 &lt; z₀)
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    (hz : z₀ ≤ z) (hzM : z ≤ M4) (hD : z₀ / 2 ≤ Den) (hδ0 : 0 ≤ δ) (hδ1 : δ ≤ 1)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    (hNum : Num = a + δ * α + e1) (hDen : Den = z + δ * β + e2)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    (ha : |a| ≤ M1) (hα : |α| ≤ M2) (hβ : |β| ≤ M3) (he1 : |e1| ≤ E1) (he2 : |e2| ≤ E2)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    (hM1 : 0 ≤ M1) (hM2 : 0 ≤ M2) (hM3 : 0 ≤ M3) (hM4 : 0 ≤ M4) (hE2 : 0 ≤ E2) :
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    |Num / Den - (a / z + δ * (α / z - a * β / z ^ 2))| ≤
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>      (2 / z₀ ^ 3) * (M2 * M4 + M1 * M3) * (M3 * δ ^ 2 + E2) + (2 / z₀ ^ 2) * (M4 * E1 + M1 * E2) := by
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  have hzpos : 0 &lt; z := lt_of_lt_of_le hz₀ hz
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  have hDpos : 0 &lt; Den := lt_of_lt_of_le (by positivity) hD
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have hkey : Num / Den - (a / z + δ * (α / z - a * β / z ^ 2)) =
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>      δ * (α * z - a * β) * (z - Den) / (Den * z ^ 2) + (e1 * z - a * e2) / (Den * z) := by
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    rw [hNum]
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    field_simp
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    rw [hDen]
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    ring
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  have hzD : z - Den = -(δ * β + e2) := by linarith
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  have hK : 0 ≤ M2 * M4 + M1 * M3 := by positivity
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  have hX : |α * z - a * β| ≤ M2 * M4 + M1 * M3 := by
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    calc |α * z - a * β| ≤ |α * z| + |a * β| := abs_sub _ _
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>      _ = |α| * |z| + |a| * |β| := by rw [abs_mul, abs_mul]
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>      _ ≤ M2 * M4 + M1 * M3 := by
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>        rw [abs_of_pos hzpos]
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>        exact add_le_add (mul_le_mul hα hzM hzpos.le hM2) (mul_le_mul ha hβ (abs_nonneg _) hM1)
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  have hY : |δ * β + e2| ≤ M3 * δ + E2 := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    calc |δ * β + e2| ≤ |δ * β| + |e2| := abs_add_le _ _
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>      _ = δ * |β| + |e2| := by rw [abs_mul, abs_of_nonneg hδ0]
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>      _ ≤ δ * M3 + E2 := add_le_add (mul_le_mul_of_nonneg_left hβ hδ0) he2
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>      _ = M3 * δ + E2 := by ring
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  have hT1 : |δ * (α * z - a * β) * (z - Den) / (Den * z ^ 2)| ≤
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      δ * (M2 * M4 + M1 * M3) * (M3 * δ + E2) / ((z₀ / 2) * z₀ ^ 2) := by
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    have hnum : |δ * (α * z - a * β) * (z - Den)| ≤ δ * (M2 * M4 + M1 * M3) * (M3 * δ + E2) := by
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      rw [abs_mul, abs_mul, abs_of_nonneg hδ0, hzD, abs_neg]
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>      exact mul_le_mul (mul_le_mul_of_nonneg_left hX hδ0) hY (abs_nonneg _) (mul_nonneg hδ0 hK)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    rw [abs_div, abs_of_pos (mul_pos hDpos (pow_pos hzpos 2))]
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    refine div_le_div₀ (mul_nonneg (mul_nonneg hδ0 hK) (add_nonneg (mul_nonneg hM3 hδ0) hE2)) hnum
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      (by positivity) ?_
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    exact mul_le_mul hD (pow_le_pow_left₀ hz₀.le hz 2) (by positivity) hDpos.le
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  have hT2 : |(e1 * z - a * e2) / (Den * z)| ≤ (M4 * E1 + M1 * E2) / ((z₀ / 2) * z₀) := by
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    have hE1 : 0 ≤ E1 := le_trans (abs_nonneg _) he1
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    have hnum : |e1 * z - a * e2| ≤ M4 * E1 + M1 * E2 := by
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      calc |e1 * z - a * e2| ≤ |e1 * z| + |a * e2| := abs_sub _ _
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>        _ = |e1| * |z| + |a| * |e2| := by rw [abs_mul, abs_mul]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>        _ ≤ E1 * M4 + M1 * E2 := by
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>          rw [abs_of_pos hzpos]
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>          exact add_le_add (mul_le_mul he1 hzM hzpos.le hE1) (mul_le_mul ha he2 (abs_nonneg _) hM1)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>        _ = M4 * E1 + M1 * E2 := by ring
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    rw [abs_div, abs_of_pos (mul_pos hDpos hzpos)]
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    refine div_le_div₀ (by positivity) hnum (by positivity) ?_
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    exact mul_le_mul hD hz (by positivity) hDpos.le
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  have hb1 : δ * (M2 * M4 + M1 * M3) * (M3 * δ + E2) / ((z₀ / 2) * z₀ ^ 2) ≤
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>      (2 / z₀ ^ 3) * (M2 * M4 + M1 * M3) * (M3 * δ ^ 2 + E2) := by
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    have e : δ * (M2 * M4 + M1 * M3) * (M3 * δ + E2) / ((z₀ / 2) * z₀ ^ 2) =
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>        (2 / z₀ ^ 3) * (M2 * M4 + M1 * M3) * (δ * (M3 * δ + E2)) := by
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>      field_simp
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>    rw [e]
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>    nlinarith
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  have hb2 : (M4 * E1 + M1 * E2) / ((z₀ / 2) * z₀) = (2 / z₀ ^ 2) * (M4 * E1 + M1 * E2) := by
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    field_simp
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  rw [hkey]
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  calc |δ * (α * z - a * β) * (z - Den) / (Den * z ^ 2) + (e1 * z - a * e2) / (Den * z)|
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      ≤ |δ * (α * z - a * β) * (z - Den) / (Den * z ^ 2)| + |(e1 * z - a * e2) / (Den * z)| :=
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        abs_add_le _ _
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    _ ≤ δ * (M2 * M4 + M1 * M3) * (M3 * δ + E2) / ((z₀ / 2) * z₀ ^ 2) +
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>        (M4 * E1 + M1 * E2) / ((z₀ / 2) * z₀) := add_le_add hT1 hT2
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    _ ≤ (2 / z₀ ^ 3) * (M2 * M4 + M1 * M3) * (M3 * δ ^ 2 + E2) +
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        (2 / z₀ ^ 2) * (M4 * E1 + M1 * E2) := by
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>        rw [← hb2]
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>        exact add_le_add hb1 le_rfl
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>theorem abs_integral_le_cb [MeasurableSpace E] {k : ℕ} {Φ : E → ℝ} (hΦ : HRS.MemCb k Φ)
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    (μ : Measure E) [IsProbabilityMeasure μ] : |∫ x, Φ x ∂μ| ≤ HRS.cbNorm k Φ := by
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  have h := norm_integral_le_of_norm_le_const (μ := μ) (f := Φ) (C := HRS.cbNorm k Φ)
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    (ae_of_all _ fun x =&gt; by rw [Real.norm_eq_abs]; exact abs_le_cbNorm_aux hΦ x)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  rw [Real.norm_eq_abs] at h
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  simpa using h
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>theorem integrable_memCb [MeasurableSpace E] [BorelSpace E] {k : ℕ} {Φ : E → ℝ} (hΦ : HRS.MemCb k Φ)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    (μ : Measure E) [IsFiniteMeasure μ] : MeasureTheory.Integrable Φ μ :=
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  MeasureTheory.Integrable.of_bound (hΦ.1.continuous.aestronglyMeasurable) (HRS.cbNorm k Φ)
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    (ae_of_all _ fun x =&gt; by rw [Real.norm_eq_abs]; exact abs_le_cbNorm_aux hΦ x)
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>theorem memCb_one : HRS.MemCb 5 (fun _ : E =&gt; (1 : ℝ)) := by
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  refine ⟨contDiff_const, fun j _ =&gt; ⟨1, ?_⟩⟩
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  rintro _ ⟨x, rfl⟩
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  by_cases hj0 : j = 0
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  · subst hj0
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    dsimp only
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    rw [norm_iteratedFDeriv_zero]
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    simp
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  · rw [iteratedFDeriv_const_of_ne hj0]
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    simp
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>theorem cbNorm_one_pos : 1 ≤ HRS.cbNorm 5 (fun _ : E =&gt; (1 : ℝ)) := by
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  have h0 : HRS.cbNorm 0 (fun _ : E =&gt; (1 : ℝ)) = 1 := by
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    unfold HRS.cbNorm
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    simp [norm_iteratedFDeriv_zero]
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  have h1 := cbNorm_zero_le_aux (E := E) 5 (fun _ : E =&gt; (1 : ℝ))
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  rw [h0] at h1
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  exact h1
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>end Tilt715Aux
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>/-- Proposition 7.15 `M:O:prop:tilt` (TeX L9592-9608).  `E` is a Banach path space with a bounded (linear,
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>`docs/ISSUES.md` Q3) time-zero observation `π₀ : E → ℝ^r`; the family `(X_N)` (laws `ν i N`, `i` ranging over
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>an index set, the TeX&#x27;s &quot;family&quot;) and centred Gaussian laws `γ i` satisfy the base expansion
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>`|E F(X_N) - E F(Z) - N^{-1/2} 𝒜(F)| ≤ r_N ‖F‖_{C_b^5(E)}` with `r_N = o(N^{-1/2})` and bounded linear
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>functionals `𝒜 i` on `C_b^5(E)` (`‖𝒜‖ ≤ A`).  For `w ∈ C_b^5(ℝ^r)` nonnegative with
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>`z = E w(π₀Z) ≥ z₀ &gt; 0`, the reweighted expectation `E_N^w[F(X_N)] = E[w(π₀X_N)F(X_N)]/E[w(π₀X_N)]`
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>satisfies, for all `N` large, uniformly in `F ∈ C_b^5(E)` and in the family index,
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>`E_N^w F = E[wF(Z)]/z + N^{-1/2}{𝒜((w∘π₀)F)/z - E[w(π₀Z)F(Z)]𝒜(w∘π₀)/z²} + O((r_N+N^{-1})‖F‖_{C_b^5})`
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>(first conjunct), and the new leading path law is that of `Z` tilted by `w(π₀Z)` (TeX L9598): `E_N^w F` is within
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>`C(N^{-1/2} + r_N)‖F‖_{C_b^5}` of `∫ F d(weightTilt γ (w∘π₀))` (second conjunct; `E[wF(Z)]/z` is this integral).
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>The constant `C` depends only on `z₀` (i.e. `z⁻¹`), `w`, `π₀`, `A` (chosen before the family and `r_N`);
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>the threshold `N₀` depends only on the sequence `r_N` (and `C, z₀, w, π₀, A`), not on the family (TeX proof
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>L9609-9613: the denominator is `≥ z/2` &quot;for all sufficiently large `N`&quot;).  The statement with a single `Z` is the case of a one-point index set.
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>`𝒜` is a function on all functions `E → ℝ` (junk off `C_b^5`); additivity, homogeneity and the bound are
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>assumed on `C_b^5(E)` only.
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>Technical hypotheses: `E` second countable/Borel for measurability of `C_b^5` functions; `ν`, `γ`
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>probability measures. -/
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>theorem tilt_transfer {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace E]
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    [BorelSpace E] (q : ℕ) (π₀ : E →L[ℝ] EuclideanSpace ℝ (Fin q))
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    (w : EuclideanSpace ℝ (Fin q) → ℝ) (hw : MemCb 5 w) (hwnn : ∀ x, 0 ≤ w x)
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>    (z₀ : ℝ) (hz₀ : 0 &lt; z₀) (A : ℝ) (hA : 0 ≤ A) :
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    ∃ C : ℝ, ∀ rN : ℕ → ℝ, Tendsto (fun N : ℕ =&gt; Real.sqrt N * rN N) atTop (𝓝 0) →
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>      ∃ N₀ : ℕ, ∀ {ι : Type} (ν : ι → ℕ → Measure E) (γ : ι → Measure E)
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>      (𝒜 : ι → (E → ℝ) → ℝ),
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>      (∀ i N, IsProbabilityMeasure (ν i N)) → (∀ i, IsProbabilityMeasure (γ i)) →
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      (∀ i, IsCenteredGaussian (γ i)) →
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>      (∀ i, ∀ F G : E → ℝ, MemCb 5 F → MemCb 5 G → 𝒜 i (F + G) = 𝒜 i F + 𝒜 i G) →
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>      (∀ i, ∀ (c : ℝ) (F : E → ℝ), MemCb 5 F → 𝒜 i (c • F) = c * 𝒜 i F) →
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>      (∀ i, ∀ F : E → ℝ, MemCb 5 F → |𝒜 i F| ≤ A * cbNorm 5 F) →
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>      (∀ i N, 1 ≤ N → ∀ F : E → ℝ, MemCb 5 F →
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>        |∫ x, F x ∂(ν i N) - ∫ x, F x ∂(γ i) - (Real.sqrt N)⁻¹ * 𝒜 i F| ≤ rN N * cbNorm 5 F) →
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      (∀ i, z₀ ≤ ∫ x, w (π₀ x) ∂(γ i)) →
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>      ∀ N ≥ N₀, 1 ≤ N → ∀ i, ∀ F : E → ℝ, MemCb 5 F →
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>        |(∫ x, w (π₀ x) * F x ∂(ν i N)) / (∫ x, w (π₀ x) ∂(ν i N)) -
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>            ((∫ x, w (π₀ x) * F x ∂(γ i)) / (∫ x, w (π₀ x) ∂(γ i)) +
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>              (Real.sqrt N)⁻¹ * (𝒜 i (fun x =&gt; w (π₀ x) * F x) / (∫ x, w (π₀ x) ∂(γ i)) -
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>                (∫ x, w (π₀ x) * F x ∂(γ i)) / (∫ x, w (π₀ x) ∂(γ i)) ^ 2 *
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>                  𝒜 i (fun x =&gt; w (π₀ x))))| ≤
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>          C * (rN N + (N : ℝ)⁻¹) * cbNorm 5 F ∧
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>        |(∫ x, w (π₀ x) * F x ∂(ν i N)) / (∫ x, w (π₀ x) ∂(ν i N)) -
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>            ∫ x, F x ∂(weightTilt (γ i) fun x =&gt; w (π₀ x))| ≤
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>          C * ((Real.sqrt N)⁻¹ + rN N) * cbNorm 5 F := by
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  obtain ⟨K0, hK0⟩ : ∃ K0 : ℝ, K0 = HRS.cbNorm 5 (fun x =&gt; w (π₀ x)) := ⟨_, rfl⟩
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  have hG : HRS.MemCb 5 (fun x =&gt; w (π₀ x)) := Tilt715Aux.memCb_comp_clm π₀ hw
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>  have hK0nn : 0 ≤ K0 := hK0 ▸ Tilt715Aux.cbNorm_nonneg_aux 5 _
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>  have hz3 : (0 : ℝ) ≤ 128 / z₀ ^ 3 := div_nonneg (by norm_num) (pow_nonneg hz₀.le 3)
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>  have hz2 : (0 : ℝ) ≤ 128 / z₀ ^ 2 := div_nonneg (by norm_num) (pow_nonneg hz₀.le 2)
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>  obtain ⟨C₁, hC₁⟩ : ∃ C₁ : ℝ, C₁ = (128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0 + K0) +
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>      (128 / z₀ ^ 2) * K0 ^ 2 := ⟨_, rfl⟩
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  obtain ⟨C₂, hC₂⟩ : ∃ C₂ : ℝ, C₂ = 63 * A * K0 / z₀ + A * K0 ^ 2 / z₀ ^ 2 := ⟨_, rfl⟩
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  have hC₁nn : 0 ≤ C₁ := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    rw [hC₁]
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    exact add_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hz3 hA) (sq_nonneg _))
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>      (add_nonneg (mul_nonneg hA hK0nn) hK0nn)) (mul_nonneg hz2 (sq_nonneg _))
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  have hC₂nn : 0 ≤ C₂ := by
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>    rw [hC₂]
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    exact add_nonneg (div_nonneg (mul_nonneg (mul_nonneg (by norm_num) hA) hK0nn) hz₀.le)
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      (div_nonneg (mul_nonneg hA (sq_nonneg _)) (pow_nonneg hz₀.le 2))
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  refine ⟨C₁ + C₂, fun rN hrN =&gt; ?_⟩
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  -- the threshold: `√N⁻¹ (A K0) + rN K0 &lt; z₀/2` and `N ≥ 1`
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>  have hsqrt_inv : Tendsto (fun N : ℕ =&gt; (Real.sqrt N)⁻¹) atTop (𝓝 0) :=
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>    tendsto_inv_atTop_zero.comp (Real.tendsto_sqrt_atTop.comp tendsto_natCast_atTop_atTop)
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>  have hrN0 : Tendsto (fun N : ℕ =&gt; rN N) atTop (𝓝 0) := by
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    have h := hsqrt_inv.mul hrN
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    rw [zero_mul] at h
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    refine h.congr&#x27; (eventually_atTop.2 ⟨1, fun N hN =&gt; ?_⟩)
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    have hne : Real.sqrt N ≠ 0 := (Real.sqrt_pos.2 (by exact_mod_cast (show 0 &lt; N by omega))).ne&#x27;
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    rw [← mul_assoc, inv_mul_cancel₀ hne, one_mul]
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  have hev : ∀ᶠ N : ℕ in atTop, (Real.sqrt N)⁻¹ * (A * K0) + rN N * K0 &lt; z₀ / 2 := by
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    have h := (hsqrt_inv.mul_const (A * K0)).add (hrN0.mul_const K0)
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    rw [show (0 : ℝ) * (A * K0) + 0 * K0 = 0 by ring] at h
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    exact (tendsto_order.1 h).2 (z₀ / 2) (half_pos hz₀)
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  obtain ⟨N₀, hN₀⟩ := eventually_atTop.1 (hev.and (eventually_ge_atTop 1))
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  refine ⟨N₀, fun {ι} ν γ 𝒜 hνP hγP hγG hadd hsm hbd hexp hz N hN hN1 i F hF =&gt; ?_⟩
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  obtain ⟨hthr, -⟩ := hN₀ N hN
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  haveI := hνP i N
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  haveI := hγP i
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast (show 0 &lt; N by omega)
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  have hsq1 : (1 : ℝ) ≤ Real.sqrt N := by
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    rw [show (1 : ℝ) = Real.sqrt 1 from Real.sqrt_one.symm]
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    exact Real.sqrt_le_sqrt (by exact_mod_cast hN1)
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  set δ := (Real.sqrt N)⁻¹ with hδdef
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>  have hδ0 : 0 ≤ δ := inv_nonneg.mpr (Real.sqrt_nonneg _)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>  have hδ1 : δ ≤ 1 := inv_le_one_of_one_le₀ hsq1
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>  have hδsq : δ ^ 2 = (N : ℝ)⁻¹ := by
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    rw [hδdef, inv_pow, Real.sq_sqrt hNr.le]
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  -- `rN N ≥ 0`, from the expansion for the constant test function `1`
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>  have hrNnn : 0 ≤ rN N := by
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    have h1 := hexp i N hN1 (fun _ =&gt; (1 : ℝ)) Tilt715Aux.memCb_one
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    have e1 : ∫ x, (1 : ℝ) ∂(ν i N) = 1 := by simp
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    have e2 : ∫ x, (1 : ℝ) ∂(γ i) = 1 := by simp
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    rw [e1, e2, sub_self, zero_sub, abs_neg] at h1
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    have hcb := Tilt715Aux.cbNorm_one_pos (E := E)
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>    by_contra hneg
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>    push_neg at hneg
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    have h2 : rN N * HRS.cbNorm 5 (fun _ : E =&gt; (1 : ℝ)) &lt; 0 :=
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>      mul_neg_of_neg_of_pos hneg (by linarith)
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    have h3 := abs_nonneg ((Real.sqrt N)⁻¹ * 𝒜 i (fun _ : E =&gt; (1 : ℝ)))
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    linarith
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  have hG_cb : HRS.cbNorm 5 (fun x =&gt; w (π₀ x)) = K0 := hK0.symm
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  have hcbFnn : 0 ≤ HRS.cbNorm 5 F := Tilt715Aux.cbNorm_nonneg_aux 5 F
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  set Num := ∫ x, w (π₀ x) * F x ∂(ν i N) with hNum_def
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>  set Den := ∫ x, w (π₀ x) ∂(ν i N) with hDen_def
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>  set a := ∫ x, w (π₀ x) * F x ∂(γ i) with ha_def
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>  set z := ∫ x, w (π₀ x) ∂(γ i) with hz_def
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>  set α := 𝒜 i (fun x =&gt; w (π₀ x) * F x) with hα_def
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  set β := 𝒜 i (fun x =&gt; w (π₀ x)) with hβ_def
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>  set cbF := HRS.cbNorm 5 F with hcbF_def
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>  have hGF : HRS.MemCb 5 (fun x =&gt; w (π₀ x) * F x) := (Tilt715Aux.memCb_mul_bound hF hG).1
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  have hGFb : HRS.cbNorm 5 (fun x =&gt; w (π₀ x) * F x) ≤ 63 * K0 * cbF := by
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    have h := (Tilt715Aux.memCb_mul_bound hF hG).2
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    rw [← hK0] at h
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    exact h
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>  have hzle : z₀ ≤ z := hz i
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  have hz_le : z ≤ K0 := by
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    calc z ≤ |z| := le_abs_self _
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>      _ ≤ K0 := by
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>        rw [hz_def, ← hG_cb]
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>        exact Tilt715Aux.abs_integral_le_cb hG (γ i)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>  have hGcont : Continuous (fun x =&gt; w (π₀ x)) := hG.1.continuous
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  have hG0 : ∀ x, 0 ≤ w (π₀ x) := fun x =&gt; hwnn _
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  have hGint : MeasureTheory.Integrable (fun x =&gt; w (π₀ x)) (γ i) :=
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>    Tilt715Aux.integrable_memCb hG (γ i)
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>  have ha_bd : |a| ≤ K0 * cbF := by
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>    rw [ha_def]
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    have h := MeasureTheory.norm_integral_le_of_norm_le_const (μ := γ i)
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      (f := fun x =&gt; w (π₀ x) * F x) (C := K0 * cbF)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      (MeasureTheory.ae_of_all _ fun x =&gt; by
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>        rw [Real.norm_eq_abs, abs_mul]
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>        exact mul_le_mul (Tilt715Aux.abs_le_cbNorm_aux hG x |&gt;.trans (le_of_eq hG_cb))
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>          (Tilt715Aux.abs_le_cbNorm_aux hF x) (abs_nonneg _) hK0nn)
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    rw [Real.norm_eq_abs] at h
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    simpa using h
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>  have hα_bd : |α| ≤ A * (63 * K0 * cbF) := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    have h := hbd i (fun x =&gt; w (π₀ x) * F x) hGF
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    exact h.trans (mul_le_mul_of_nonneg_left hGFb hA)
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  have hβ_bd : |β| ≤ A * K0 := by
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    have h := hbd i (fun x =&gt; w (π₀ x)) hG
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    rw [hG_cb] at h
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>    exact h
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>  have he1 : |Num - a - δ * α| ≤ rN N * (63 * K0 * cbF) := by
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>    have h := hexp i N hN1 (fun x =&gt; w (π₀ x) * F x) hGF
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    exact h.trans (mul_le_mul_of_nonneg_left hGFb hrNnn)
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>  have he2 : |Den - z - δ * β| ≤ rN N * K0 := by
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    have h := hexp i N hN1 (fun x =&gt; w (π₀ x)) hG
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>    rw [hG_cb] at h
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>    exact h
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>  have hDen_ge : z₀ / 2 ≤ Den := by
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>    have h1 : |δ * β| ≤ δ * (A * K0) := by
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>      rw [abs_mul, abs_of_nonneg hδ0]
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      exact mul_le_mul_of_nonneg_left hβ_bd hδ0
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    have h2 := abs_le.mp he2
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    have h3 := abs_le.mp h1
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    linarith [h2.1, h2.2, h3.1, h3.2, hthr, hzle]
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  have hR := Tilt715Aux.ratio_error (z₀ := z₀) (z := z) (Num := Num) (Den := Den) (a := a)
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>    (α := α) (β := β) (e1 := Num - a - δ * α) (e2 := Den - z - δ * β) (δ := δ)
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    (M1 := K0 * cbF) (M2 := A * (63 * K0 * cbF)) (M3 := A * K0) (M4 := K0)
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    (E1 := rN N * (63 * K0 * cbF)) (E2 := rN N * K0) hz₀ hzle hz_le hDen_ge hδ0 hδ1
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    (by ring) (by ring) ha_bd hα_bd hβ_bd he1 he2 (mul_nonneg hK0nn hcbFnn)
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    (mul_nonneg hA (mul_nonneg (mul_nonneg (by norm_num) hK0nn) hcbFnn)) (mul_nonneg hA hK0nn)
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    hK0nn (mul_nonneg hrNnn hK0nn)
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  -- the bracket
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>  have hbracket : (128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0 * δ ^ 2 + rN N * K0) +
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>      (128 / z₀ ^ 2) * K0 ^ 2 * rN N ≤ C₁ * (δ ^ 2 + rN N) := by
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>    have e : C₁ * (δ ^ 2 + rN N) -
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>        ((128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0 * δ ^ 2 + rN N * K0) +
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>          (128 / z₀ ^ 2) * K0 ^ 2 * rN N) =
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>        (128 / z₀ ^ 3) * A * K0 ^ 2 * K0 * δ ^ 2 + (128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0) * rN N +
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>          (128 / z₀ ^ 2) * K0 ^ 2 * δ ^ 2 := by
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>      rw [hC₁]
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>      ring
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    have hnn : 0 ≤ (128 / z₀ ^ 3) * A * K0 ^ 2 * K0 * δ ^ 2 +
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>        (128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0) * rN N + (128 / z₀ ^ 2) * K0 ^ 2 * δ ^ 2 := by
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>      refine add_nonneg (add_nonneg ?_ ?_) ?_
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>      · exact mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hz3 hA) (sq_nonneg _)) hK0nn) (sq_nonneg _)
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>      · exact mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hz3 hA) (sq_nonneg _))
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>          (mul_nonneg hA hK0nn)) hrNnn
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>      · exact mul_nonneg (mul_nonneg hz2 (sq_nonneg _)) (sq_nonneg _)
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    linarith
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>  have key1 : |Num / Den - (a / z + δ * (α / z - a * β / z ^ 2))| ≤ cbF * C₁ * (δ ^ 2 + rN N) := by
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    calc |Num / Den - (a / z + δ * (α / z - a * β / z ^ 2))|
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>        ≤ (2 / z₀ ^ 3) * (A * (63 * K0 * cbF) * K0 + K0 * cbF * (A * K0)) * (A * K0 * δ ^ 2 + rN N * K0) +
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>            (2 / z₀ ^ 2) * (K0 * (rN N * (63 * K0 * cbF)) + K0 * cbF * (rN N * K0)) := hR
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>      _ = cbF * ((128 / z₀ ^ 3) * A * K0 ^ 2 * (A * K0 * δ ^ 2 + rN N * K0) +
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>            (128 / z₀ ^ 2) * K0 ^ 2 * rN N) := by ring
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>      _ ≤ cbF * (C₁ * (δ ^ 2 + rN N)) := mul_le_mul_of_nonneg_left hbracket hcbFnn
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>      _ = cbF * C₁ * (δ ^ 2 + rN N) := by ring
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>  constructor
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>  · -- first conjunct
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    have e_inside : a / z + δ * (α / z - a / z ^ 2 * β) = a / z + δ * (α / z - a * β / z ^ 2) := by
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>      ring
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>    rw [e_inside]
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    refine key1.trans ?_
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    rw [hδsq]
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>    have hpos : 0 ≤ C₂ * (rN N + (N : ℝ)⁻¹) * cbF :=
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      mul_nonneg (mul_nonneg hC₂nn (add_nonneg hrNnn (inv_nonneg.mpr hNr.le))) hcbFnn
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>    have e3 : (C₁ + C₂) * (rN N + (N : ℝ)⁻¹) * cbF =
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>        cbF * C₁ * ((N : ℝ)⁻¹ + rN N) + C₂ * (rN N + (N : ℝ)⁻¹) * cbF := by ring
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>    rw [e3]
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>    linarith
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>  · -- second conjunct
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>    have hint : ∫ x, F x ∂(Sec7.weightTilt (γ i) fun x =&gt; w (π₀ x)) = a / z :=
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>      Tilt715Aux.integral_weightTilt_aux hGcont hG0 hGint F
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    rw [hint]
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>    have hzpos : 0 &lt; z := lt_of_lt_of_le (by linarith) hzle
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>    have hX : |δ * (α / z - a * β / z ^ 2)| ≤ δ * (cbF * C₂) := by
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>      rw [abs_mul, abs_of_nonneg hδ0]
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>      refine mul_le_mul_of_nonneg_left ?_ hδ0
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>      calc |α / z - a * β / z ^ 2| ≤ |α / z| + |a * β / z ^ 2| := abs_sub _ _
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>        _ = |α| / z + |a| * |β| / z ^ 2 := by
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>            rw [abs_div, abs_div, abs_mul, abs_of_pos hzpos, abs_of_pos (pow_pos hzpos 2)]
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>        _ ≤ (A * (63 * K0 * cbF)) / z₀ + (K0 * cbF) * (A * K0) / z₀ ^ 2 := by
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>            refine add_le_add (div_le_div₀ (mul_nonneg hA (by positivity)) ?_ hz₀ hzle) ?_
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>            · exact hα_bd.trans (le_refl _)
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>            · refine div_le_div₀ (mul_nonneg (mul_nonneg hK0nn hcbFnn) (mul_nonneg hA hK0nn)) ?_
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>                (pow_pos hz₀ 2) (pow_le_pow_left₀ hz₀.le hzle 2)
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>              exact mul_le_mul ha_bd hβ_bd (abs_nonneg _) (mul_nonneg hK0nn hcbFnn)
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>        _ = cbF * C₂ := by rw [hC₂]; ring
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>    have hfin : |Num / Den - a / z| ≤ cbF * C₁ * (δ ^ 2 + rN N) + δ * (cbF * C₂) := by
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>      have hsplit : Num / Den - a / z = (Num / Den - (a / z + δ * (α / z - a * β / z ^ 2))) +
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>          δ * (α / z - a * β / z ^ 2) := by ring
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>      rw [hsplit]
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>      exact (abs_add_le _ _).trans (add_le_add key1 hX)
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>    refine hfin.trans ?_
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>    have h1 : 0 ≤ C₁ * δ * (1 - δ) := mul_nonneg (mul_nonneg hC₁nn hδ0) (by linarith)
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>    have e5 : (C₁ + C₂) * (δ + rN N) * cbF - (cbF * C₁ * (δ ^ 2 + rN N) + δ * (cbF * C₂)) =
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>        cbF * (C₁ * δ * (1 - δ)) + cbF * (C₂ * rN N) := by ring
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>    have h3 : 0 ≤ cbF * (C₁ * δ * (1 - δ)) := mul_nonneg hcbFnn h1
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    have h4 : 0 ≤ cbF * (C₂ * rN N) := mul_nonneg hcbFnn (mul_nonneg hC₂nn hrNnn)
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    linarith
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>/-! ### Proposition 7.16: slow initial rates -/
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>/-- Proposition 7.16 `M:O:prop:slow` (TeX L9625-9627), with the construction of its proof (L9628-9636).
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>Fix `d ≥ 2`, `0 ≤ s &lt; d/2`, `β &gt; 0`, `m &gt; d/2`.  For every positive sequence `a_N → 0` with `√N a_N → ∞`
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>(an arbitrarily slow rate) there are preparations `f_N` (probability measures on `𝕋^{dN}`) such that
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>* homogeneous periodic: `f_N` is invariant under simultaneous translation of all particles;
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>* uniformly bounded density relative to the fixed positive-temperature Gibbs ensemble
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>  `Q_{N,β}(dx)` (`= P_{N,β}` with `V = 0` because `ĝ(0) = 0`);
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>* exact first-marginal centring: the first marginal is Haar measure;
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>* the initial fluctuation field `η_N^0 = √N(μ_N - dx) ∈ E_m` converges in law to a probability measure `L`;
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>and yet there are `Φ ∈ C_b^5(E_m)` and `c &gt; 0` with `|E_{f_N}Φ(η_N^0) - L(Φ)| ≥ c a_N` for all large `N`;
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>since `√N a_N → ∞`, no expansion `E Φ(η_N^0) = L(Φ) + O(N^{-1/2})` with the fixed reference `L` holds.
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>This is the formal reading of &quot;do not imply an expansion with a remainder of order `N^{-1/2}`; the error
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>can tend to zero arbitrarily more slowly&quot; (the convergence of the error to `0` is the convergence in law).
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>AMBIGUITY (TeX L9625-9627): the statement is informal; the limit reference is the law `L` of the leading
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>initial limit (in the TeX proof, the Gaussian tilted by `1 + ε e^{-|z|²}`), left existentially quantified;
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>the preparation class includes only the upper density bound (the TeX proof also gives a lower bound). -/
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>theorem slow_correction (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ)
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    (hβ : 0 &lt; β) (m : ℝ) (hm : (d : ℝ) / 2 &lt; m) (a : ℕ → ℝ) (ha_pos : ∀ N, 0 &lt; a N)
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>    (ha0 : Tendsto a atTop (𝓝 0)) (ha : Tendsto (fun N : ℕ =&gt; Real.sqrt N * a N) atTop atTop) :
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>    ∃ (f : ∀ N : ℕ, Measure (Config d N)) (L : Measure (NegSobolev d m))
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>      (Φ : NegSobolev d m → ℝ) (c : ℝ),
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>      (∀ N, IsProbabilityMeasure (f N)) ∧ IsProbabilityMeasure L ∧
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>      (∀ N, ∀ b : Torus d, (f N).map (fun X i =&gt; X i + b) = f N) ∧
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>      (∃ B : ℝ, ∀ N, f N ≪ modulatedGibbs (periodicRiesz d s) N β volume ∧
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>        ∀ᵐ X ∂(modulatedGibbs (periodicRiesz d s) N β volume),
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>          (f N).rnDeriv (modulatedGibbs (periodicRiesz d s) N β volume) X ≤ ENNReal.ofReal B) ∧
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>      (∀ N, 1 ≤ N → firstMarginal (f N) = volume) ∧
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>      (∀ G : NegSobolev d m → ℝ, Continuous G → (∃ M, ∀ x, |G x| ≤ M) →
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>        Tendsto (fun N : ℕ =&gt; ∫ X, G (etaE m X volume) ∂(f N)) atTop (𝓝 (∫ y, G y ∂L))) ∧
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>      MemCb 5 Φ ∧ 0 &lt; c ∧
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>      ∃ N₀ : ℕ, ∀ N ≥ N₀, c * a N ≤ |∫ X, Φ (etaE m X volume) ∂(f N) - ∫ y, Φ y ∂L| := by
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>  sorry
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>end Sec7
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>end HRS
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>end
+</span></code></pre></main></body></html>

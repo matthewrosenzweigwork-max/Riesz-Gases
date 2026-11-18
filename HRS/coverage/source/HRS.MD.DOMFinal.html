@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MD.DOMFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MD.DOMFinal</code></h1><p><a href="../../lean/HRS/MD/DOMFinal.lean">Open the unaltered Lean file</a> · 148 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.MD.DOMFinal — packet DOM: assembly of `normal_form_domain_proof`
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>Approximants `Fn = χ_{1/(n+1)} · (F_N(ψ) - c)`, `c = E F_N(ψ)`.
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>-/
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.MD.DOMDct
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.MD.DOMMeas
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.MD.DOMSpec
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open scoped ENNReal
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>noncomputable section
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>namespace HRS.MD.DOMProof
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open HRS.Q84d HRS.MD.DOM
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>section Aux
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>variable {d : ℕ} {s : ℝ} {N : ℕ}
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>theorem domp_measurable_chi (ε : ℝ) : Measurable (chi ε : Config d N → ℝ) := by
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  unfold chi
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  refine Finset.measurable_prod _ fun p _ =&gt; ?_
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have h1 : Continuous (fun X : Config d N =&gt; ε⁻¹ * sT (X p.1 - X p.2)) :=
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    continuous_const.mul (domp_continuous_sT.comp ((continuous_apply p.1).sub (continuous_apply p.2)))
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  exact (domp_th_smooth.continuous.comp h1).measurable
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>theorem domp_isOpen_noncollision : IsOpen ((collisionSet d N)ᶜ) := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  have : (collisionSet d N) = ⋃ a : Fin N, ⋃ b : Fin N, ⋃ (_ : a ≠ b), {X : Config d N | X a = X b} := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    ext X; simp [collisionSet]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  rw [isOpen_compl_iff, this]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  refine isClosed_iUnion_of_finite fun a =&gt; isClosed_iUnion_of_finite fun b =&gt;
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    isClosed_iUnion_of_finite fun _ =&gt; ?_
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  exact isClosed_eq (continuous_apply a) (continuous_apply b)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>theorem domp_aestronglyMeasurable_particleGen (V : Torus d → ℝ) (β : ℝ) (hsd : s &lt; d)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    {μ : Measure (Config d N)} (hnc : ∀ᵐ X ∂μ, X ∉ collisionSet d N) {Φ : Config d N → ℝ}
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hΦ : Measurable Φ)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (hsm : ∀ X : Config d N, X ∉ collisionSet d N → ∀ i, ContDiffAt ℝ 2 (slice Φ X i) 0) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    AEStronglyMeasurable (particleGen d s V β Φ) μ := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have h := domp_measurable_particleGen (s := s) V β hsd hΦ
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (domp_isOpen_noncollision (d := d) (N := N)) (fun X hX i =&gt; hsm X hX i)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  refine (h.aemeasurable.congr ?_).aestronglyMeasurable
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  filter_upwards [hnc] with X hX
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  exact Set.indicator_of_mem (show X ∈ (collisionSet d N)ᶜ from hX) _
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>theorem domp_configGrad_centered {μ : Measure (Config d N)} (Φ : Config d N → ℝ) (X : Config d N)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    (i : Fin N) : configGrad (centeredUnder μ Φ) X i = configGrad Φ X i := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  unfold configGrad centeredUnder
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  exact domp_gradient_sub_const _ _ _
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>theorem domp_enorm_sq_le {E : Type*} [NormedAddCommGroup E] {v : E} {B : ℝ} (h : ‖v‖ ≤ B) :
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    ‖v‖ₑ ^ 2 ≤ ENNReal.ofReal (B ^ 2) := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  rw [← ofReal_norm, ← ENNReal.ofReal_pow (norm_nonneg _)]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  exact ENNReal.ofReal_le_ofReal (pow_le_pow_left₀ (norm_nonneg _) h 2)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>end Aux
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>variable {d : ℕ}
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>/-- **4.16-DOM, proved.** -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>theorem normal_form_domain_proof {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (V : Torus d → ℝ) (hV : Torus.IsSmooth V) (ρ : Torus d → ℝ)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (hρ : IsThermalDensity (periodicRiesz d s) V β ρ) (hρs : SmoothPosDensity ρ) :
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ∀ (f : Torus d → ℝ) (K₁ : ℝ) (ψ : Torus d → Torus d → ℝ), Torus.IsSmooth f →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      IsPairCorrector d s V β ρ f K₁ ψ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        IsInClosedGenerator d s V β (canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>          (centeredUnder (canonicalGibbs (periodicRiesz d s) V N β) (Fstat ψ))
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          (particleGen d s V β (Fstat (N := N) ψ)) := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  intro f K₁ ψ hf hψ N hN
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hs1 : 1 ≤ s := by rw [hcrit]; linarith
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hsd : s &lt; d := by rw [hcrit]; linarith
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  set μ := canonicalGibbs (periodicRiesz d s) V N β with hμ
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  set c : ℝ := ∫ X, Fstat (N := N) ψ X ∂μ with hc
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨C, hC0, hC⟩ := domp_diff_bounds hd hcrit hV hβ hN1 hψ c
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨Xc, hXc0, hXc⟩ := domp_chi_deriv hs1 (d := d) (N := N)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  set ε : ℕ → ℝ := fun n =&gt; ((n : ℝ) + 1)⁻¹ with hε
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hεpos : ∀ n, 0 &lt; ε n := fun n =&gt; by simp only [hε]; positivity
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hεlim : Tendsto ε atTop (𝓝 0) :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    tendsto_inv_atTop_zero.comp (tendsto_atTop_add_const_right _ 1 tendsto_natCast_atTop_atTop)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hac : μ ≪ (volume : Measure (Config d N)) := q84d_gibbs_ac
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hnc : ∀ᵐ X ∂μ, X ∉ collisionSet d N :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    hac.ae_le (q84d_ae_not_collision (d := d) (N := N) (by omega))
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hint8 : Integrable (fun X : Config d N =&gt; Pw s X ^ 8) μ :=
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    domp_integrable_Pw_pow hd hcrit hV hβ hN1 8
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hFm : Measurable (Fstat (N := N) ψ) := Q84e.q84e_measurable_Fstat hψ.measurable
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hFem : ∀ n, Measurable (Fe (ε n) c (Fstat (N := N) ψ)) := fun n =&gt;
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (domp_measurable_chi _).mul (hFm.sub_const c)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hslF : ∀ X : Config d N, X ∉ collisionSet d N → ∀ i, ContDiffAt ℝ 2 (slice (Fstat ψ) X i) 0 :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    fun X hX i =&gt; domp_Fstat_slice hψ.symm hψ.size.smooth X
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      (fun a b hab hXab =&gt; hX ⟨a, b, hab, hXab⟩) i
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  have hslFe : ∀ n, ∀ X : Config d N, X ∉ collisionSet d N → ∀ i,
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      ContDiffAt ℝ 2 (slice (Fe (ε n) c (Fstat ψ)) X i) 0 := fun n X hX i =&gt; by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have h1 := (hXc (ε n) (hεpos n) X hX i).1
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    have h2 := hslF X hX i
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    exact h1.mul (h2.sub contDiffAt_const)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hGm : AEStronglyMeasurable (particleGen d s V β (Fstat (N := N) ψ)) μ :=
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    domp_aestronglyMeasurable_particleGen V β hsd hnc hFm hslF
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hGem : ∀ n, AEStronglyMeasurable (particleGen d s V β (Fe (ε n) c (Fstat (N := N) ψ))) μ :=
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    fun n =&gt; domp_aestronglyMeasurable_particleGen V β hsd hnc (hFem n) (hslFe n)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  refine ⟨fun n =&gt; Fe (ε n) c (Fstat ψ), fun n =&gt; ⟨domp_contDiff_Fe_lift hψ.size.smooth (hεpos n) c,
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    Kset (ε n) d N, domp_isCompact_Kset _, domp_Kset_disjoint (hεpos n),
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    fun X hX =&gt; domp_Fe_zero_outside (hεpos n) c _ X hX⟩, ?_, ?_, ?_⟩
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  · -- `Fn → F` in `L²`
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have key := domp_tendsto_eLpNorm hint8 hnc hεlim
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      (h := fun n X =&gt; Fe (ε n) c (Fstat (N := N) ψ) X - (Fstat ψ X - c))
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      (fun n =&gt; ((hFem n).sub (hFm.sub_const c)).aestronglyMeasurable) (C := C) (fun n =&gt; by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        filter_upwards [hnc] with X hX
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>        have hb := hC (ε n) (hεpos n) X hX
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        refine ⟨by simpa [Real.norm_eq_abs] using hb.2.1, fun hN&#x27; =&gt; (hb.1 hN&#x27;).1⟩)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    exact key
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  · -- `𝓛 Fn → 𝓛 F` in `L²`
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    have key := domp_tendsto_eLpNorm hint8 hnc hεlim
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      (h := fun n X =&gt; particleGen d s V β (Fe (ε n) c (Fstat (N := N) ψ)) X -
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        particleGen d s V β (Fstat (N := N) ψ) X)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      (fun n =&gt; (hGem n).sub hGm) (C := C) (fun n =&gt; by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>        filter_upwards [hnc] with X hX
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        have hb := hC (ε n) (hεpos n) X hX
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        refine ⟨by simpa [Real.norm_eq_abs] using hb.2.2.2, fun hN&#x27; =&gt; (hb.1 hN&#x27;).2.2⟩)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    exact key
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  · -- `∇ Fn → ∇ F` in `L²`
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    have hK : (0 : ℝ) ≤ N * C ^ 2 := by positivity
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    have key := domp_tendsto_lintegral hint8 hnc hεlim hK
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      (fun n X =&gt; ∑ i, ‖configGrad (Fe (ε n) c (Fstat (N := N) ψ)) X i -
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        configGrad (Fstat (N := N) ψ) X i‖ₑ ^ 2) (fun n =&gt; by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        filter_upwards [hnc] with X hX
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        have hb := hC (ε n) (hεpos n) X hX
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        refine ⟨?_, fun hN&#x27; =&gt; ?_⟩
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        · calc ∑ i, ‖configGrad (Fe (ε n) c (Fstat (N := N) ψ)) X i -
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>                configGrad (Fstat (N := N) ψ) X i‖ₑ ^ 2
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>              ≤ ∑ _i : Fin N, ENNReal.ofReal (C ^ 2 * Pw s X ^ 8) := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>                refine Finset.sum_le_sum fun i _ =&gt; ?_
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>                have := domp_enorm_sq_le (hb.2.2.1 i)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>                refine this.trans (le_of_eq ?_)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>                congr 1; ring
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>            _ = ENNReal.ofReal (N * C ^ 2 * Pw s X ^ 8) := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>                rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>                  ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (Nat.cast_nonneg N)]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>                congr 1; ring
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>        · refine Finset.sum_eq_zero fun i _ =&gt; ?_
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>          rw [(hb.1 hN&#x27;).2.1 i]; simp)
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    simpa only [domp_configGrad_centered] using key
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>end HRS.MD.DOMProof
+</span></code></pre></main></body></html>

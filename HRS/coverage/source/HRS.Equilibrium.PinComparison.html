@@ -1,0 +1,585 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.PinComparison · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.PinComparison</code></h1><p><a href="../../lean/HRS/Equilibrium/PinComparison.lean">Open the unaltered Lean file</a> · 584 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.PinComparison -- proof of Lemma 4.10 (`pin_comparison`, EQ-01b)
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>Downstream of `PairCorrection` (the proof uses the pole-volume bounds `twopole_vol` etc. proved
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>there, through `HRS.Equilibrium.PinStep`).  The abstract weighted Dobrushin comparison is
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>`HRS.External.WeakPointwise`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Route (source lines 4503-4550, function-side form): one pin step by the weighted Dobrushin
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>comparison (`pin_step_set`), then dimension changes `n → n+1` by disintegration over the extra
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>coordinate (`pinned_marginal_succ`) and the pin step with one pin.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>-/
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.Equilibrium.PinStep
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>set_option linter.style.longLine false
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>namespace PinAux
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>open HRS.External HRS.External.RefMarg
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>section Mixture
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>variable {ι : Type*} [MeasurableSpace ι] {μ : Measure ι}
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>/-- Two-sided comparison of a mixture. -/
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>theorem mixture_le {ω a e : ι → ℝ≥0∞} {c ε : ℝ≥0∞} (hω : Measurable ω) (he : Measurable e)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (hω1 : ∫⁻ x, ω x ∂μ = 1) (hae : ∀ x, a x ≤ c + e x) (hea : ∀ x, c ≤ a x + e x)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (hε : ∫⁻ x, ω x * e x ∂μ ≤ ε) :
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    ∫⁻ x, ω x * a x ∂μ ≤ c + ε ∧ c ≤ ∫⁻ x, ω x * a x ∂μ + ε := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have hc : ∫⁻ x, ω x * c ∂μ = c := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    rw [lintegral_mul_const _ hω, hω1, one_mul]
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  constructor
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  · calc ∫⁻ x, ω x * a x ∂μ ≤ ∫⁻ x, ω x * (c + e x) ∂μ := lintegral_mono fun x =&gt; mul_le_mul&#x27; le_rfl (hae x)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      _ = ∫⁻ x, (ω x * c + ω x * e x) ∂μ := by simp_rw [mul_add]
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      _ = ∫⁻ x, ω x * c ∂μ + ∫⁻ x, ω x * e x ∂μ := lintegral_add_left (hω.mul_const c) _
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      _ ≤ c + ε := by rw [hc]; exact add_le_add le_rfl hε
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  · calc c = ∫⁻ x, ω x * c ∂μ := hc.symm
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      _ ≤ ∫⁻ x, ω x * (a x + e x) ∂μ := lintegral_mono fun x =&gt; mul_le_mul&#x27; le_rfl (hea x)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      _ = ∫⁻ x, (ω x * a x + ω x * e x) ∂μ := by simp_rw [mul_add]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      _ = ∫⁻ x, ω x * a x ∂μ + ∫⁻ x, ω x * e x ∂μ := lintegral_add_right _ (hω.mul he)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      _ ≤ ∫⁻ x, ω x * a x ∂μ + ε := add_le_add le_rfl hε
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>end Mixture
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>section DimStep2
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>variable {d : ℕ}
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-- The pin weight of the unpinned ensemble is a constant times a measurable function. -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>theorem pinWeight_eq {μ : Measure (Torus d)} [IsProbabilityMeasure μ] (V : WeakPotential μ)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    {lam : ℝ} (hlam : 0 ≤ lam) {B : Type*} [Fintype B] (a : B → Torus d) (n : ℕ) (x : Torus d) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    pinWeight V lam a n x
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      = (fieldNorm V (pinField V lam a) lam n * (fieldNorm V (pinField V lam a) lam (n + 1))⁻¹) *
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>          (ENNReal.ofReal (Real.exp (pinField V lam a x)) * ENNReal.ofReal (cavU V lam n a x)) := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  unfold pinWeight
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  rw [lintegral_fieldWeight_pinsWith V hlam a n x]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  ring
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>theorem measurable_pinWeight {μ : Measure (Torus d)} [IsProbabilityMeasure μ] (V : WeakPotential μ)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    {lam : ℝ} (hlam : 0 ≤ lam) {B : Type*} [Fintype B] (a : B → Torus d) (n : ℕ) :
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    Measurable (pinWeight V lam a n) := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have : pinWeight V lam a n = fun x =&gt;
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      (fieldNorm V (pinField V lam a) lam n * (fieldNorm V (pinField V lam a) lam (n + 1))⁻¹) *
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>          (ENNReal.ofReal (Real.exp (pinField V lam a x)) * ENNReal.ofReal (cavU V lam n a x)) :=
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    funext fun x =&gt; pinWeight_eq V hlam a n x
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  rw [this]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  exact measurable_const.mul
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    ((ENNReal.measurable_ofReal.comp (isField_pinField V hlam a).measurable.exp).mul
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      (ENNReal.measurable_ofReal.comp (measurable_cavU V hlam n a)))
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>/-- The law of the extra coordinate is `μ` with density the pin weight. -/
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>theorem marginal_eq_pinWeight {μ : Measure (Torus d)} [IsProbabilityMeasure μ] (V : WeakPotential μ)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    {lam : ℝ} (hlam : 0 ≤ lam) {B : Type*} [Fintype B] (a : B → Torus d) {n : ℕ} (i : Fin (n + 1)) :
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (pinnedLaw V lam (n + 1) a).map (fun y =&gt; y i) = μ.withDensity (pinWeight V lam a n) := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  rw [marginal_eq_withDensity V hlam a i]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  congr 1
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  funext x
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  exact (pinWeight_eq V hlam a n x).symm
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>end DimStep2
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>section IeBound
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>variable {d : ℕ} {μ : Measure (Torus d)} [IsProbabilityMeasure μ] {q : Torus d → ℝ}
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>theorem e_eq (hq0 : ∀ z, 0 ≤ q z) (hint : ∀ x, Integrable (fun z =&gt; q (z - x)) μ) {c0 : ℝ}
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (hc0 : 0 ≤ c0) (B : Set (Torus d)) (x : Torus d) :
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    ENNReal.ofReal (∫ z in B, c0 * (1 + q (z - x)) ∂μ)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      = ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  refine ofReal_integral_eq_lintegral_ofReal ?_ (Filter.Eventually.of_forall fun z =&gt; ?_)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  · exact (((integrable_const (1 : ℝ)).add (hint x)).const_mul c0).integrableOn
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  · have := hq0 (z - x); positivity
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>theorem measurable_e (hqm : Measurable q) {c0 : ℝ} (B : Set (Torus d)) :
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    Measurable (fun x : Torus d =&gt; ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ) := by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have : Measurable (fun p : Torus d × Torus d =&gt; ENNReal.ofReal (c0 * (1 + q (p.2 - p.1)))) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    refine ENNReal.measurable_ofReal.comp (measurable_const.mul (measurable_const.add ?_))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    exact hqm.comp (measurable_snd.sub measurable_fst)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  exact this.lintegral_prod_right&#x27; (ν := μ.restrict B)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>/-- `∫ ω e dμ ≤ K c₀ (1 + γ₀) μ(B)` when `ω μ ≤ K μ`. -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>theorem Ie_bound (hqm : Measurable q) (hq0 : ∀ z, 0 ≤ q z) {ω : Torus d → ℝ≥0∞} (hω : Measurable ω) {K : ℝ} (hK : 0 ≤ K)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (hωK : μ.withDensity ω ≤ ENNReal.ofReal K • μ) {c0 γ₀ : ℝ} (hc0 : 0 ≤ c0) (hγ₀ : 0 ≤ γ₀)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    (hrow : ∀ z, ∫⁻ y, ENNReal.ofReal (q (z - y)) ∂μ ≤ ENNReal.ofReal γ₀)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (B : Set (Torus d)) (hB : MeasurableSet B) :
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    ∫⁻ x, ω x * (∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ) ∂μ
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      ≤ ENNReal.ofReal (K * c0 * (1 + γ₀)) * μ B := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  have hem := measurable_e (μ := μ) hqm (c0 := c0) B
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have hwd : ∫⁻ x, (∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ) ∂(μ.withDensity ω)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      = ∫⁻ x, ω x * (∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ) ∂μ := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [lintegral_withDensity_eq_lintegral_mul _ hω hem]; rfl
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  rw [← hwd]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  calc ∫⁻ x, ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ ∂(μ.withDensity ω)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      ≤ ∫⁻ x, ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ ∂(ENNReal.ofReal K • μ) :=
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        lintegral_mono&#x27; hωK le_rfl
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    _ = ENNReal.ofReal K * ∫⁻ x, ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ ∂μ := by
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        rw [lintegral_smul_measure, smul_eq_mul]
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    _ = ENNReal.ofReal K * ∫⁻ z in B, ∫⁻ x, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ ∂μ := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>        congr 1
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        refine lintegral_lintegral_swap ?_
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        have : Measurable (Function.uncurry fun (x z : Torus d) =&gt; ENNReal.ofReal (c0 * (1 + q (z - x)))) := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>          refine ENNReal.measurable_ofReal.comp (measurable_const.mul (measurable_const.add ?_))
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>          exact hqm.comp (measurable_snd.sub measurable_fst)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        exact this.aemeasurable
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    _ ≤ ENNReal.ofReal K * ∫⁻ z in B, ENNReal.ofReal c0 * (1 + ENNReal.ofReal γ₀) ∂μ := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>        gcongr with z
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        calc ∫⁻ x, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂μ
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            = ∫⁻ x, ENNReal.ofReal c0 * (1 + ENNReal.ofReal (q (z - x))) ∂μ := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>              refine lintegral_congr fun x =&gt; ?_
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>              have := hq0 (z - x)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>              rw [ENNReal.ofReal_mul hc0, ENNReal.ofReal_add zero_le_one this, ENNReal.ofReal_one]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>          _ = ENNReal.ofReal c0 * (∫⁻ x, 1 ∂μ + ∫⁻ x, ENNReal.ofReal (q (z - x)) ∂μ) := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>              rw [lintegral_const_mul&#x27; _ _ ENNReal.ofReal_ne_top,
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>                lintegral_add_left measurable_const]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>          _ ≤ ENNReal.ofReal c0 * (1 + ENNReal.ofReal γ₀) := by
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>              gcongr
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>              · simp
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>              · exact hrow z
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    _ = ENNReal.ofReal (K * c0 * (1 + γ₀)) * μ B := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        rw [setLIntegral_const, ENNReal.ofReal_mul (mul_nonneg hK hc0),
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          ENNReal.ofReal_mul hK, ENNReal.ofReal_add zero_le_one hγ₀, ENNReal.ofReal_one]
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        ring
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>end IeBound
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>section RealEnn
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>variable {α : Type*} [MeasurableSpace α]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>theorem le_add_of_abs_real_le {P Q : Measure α} [IsFiniteMeasure P] [IsFiniteMeasure Q] {B : Set α}
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    {E : ℝ} (h : |P.real B - Q.real B| ≤ E) : P B ≤ Q B + ENNReal.ofReal E := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [abs_le] at h
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hE : 0 ≤ E := by linarith [h.1, h.2, abs_nonneg (P.real B - Q.real B)]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have h1 : P B = ENNReal.ofReal (P.real B) := (ENNReal.ofReal_toReal (measure_ne_top _ _)).symm
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have h2 : Q B = ENNReal.ofReal (Q.real B) := (ENNReal.ofReal_toReal (measure_ne_top _ _)).symm
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  rw [h1, h2, ← ENNReal.ofReal_add measureReal_nonneg hE]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  exact ENNReal.ofReal_le_ofReal (by linarith)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>theorem abs_real_le_of_le_add {P Q : Measure α} [IsFiniteMeasure P] [IsFiniteMeasure Q] {B : Set α}
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    {E : ℝ} (hE : 0 ≤ E) (h1 : P B ≤ Q B + ENNReal.ofReal E) (h2 : Q B ≤ P B + ENNReal.ofReal E) :
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    |P.real B - Q.real B| ≤ E := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have a1 : P.real B ≤ Q.real B + E := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    have := ENNReal.toReal_mono (ENNReal.add_ne_top.2 ⟨measure_ne_top _ _, ENNReal.ofReal_ne_top⟩) h1
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    rwa [ENNReal.toReal_add (measure_ne_top _ _) ENNReal.ofReal_ne_top,
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      ENNReal.toReal_ofReal hE] at this
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have a2 : Q.real B ≤ P.real B + E := by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    have := ENNReal.toReal_mono (ENNReal.add_ne_top.2 ⟨measure_ne_top _ _, ENNReal.ofReal_ne_top⟩) h2
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    rwa [ENNReal.toReal_add (measure_ne_top _ _) ENNReal.ofReal_ne_top,
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      ENNReal.toReal_ofReal hE] at this
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  rw [abs_le]; constructor &lt;;&gt; linarith
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>end RealEnn
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>section DimStep3
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>variable {d : ℕ}
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>theorem dim_step {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (q : Torus d → ℝ) (hq0 : ∀ z, 0 ≤ q z)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    (hqm : Measurable q) (Cq : ℝ)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (hqenv : ∀ z, z ≠ 0 → q z ≤ Cq * (1 + Torus.eucDist z 0 ^ (-s)))
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (hdec : ∃ k : Torus d → ℝ, Torus.IsSmooth k ∧ ∃ c : ℝ, ∀ z, z ≠ 0 →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      periodicRiesz d s z = q z + k z + c) (a : ℕ) :
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    ∃ C3 : ℝ, 0 ≤ C3 ∧
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      ∀ (V : WeakPotential (withDensityReal ρ)) (_ : ∀ x y, V.q x y = q (x - y))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        (_ : V.γ = pinGamma β) (_ : V.M = β * pinGamma β + 1) (_ : V.M&#x27; = 1)
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        (_ : ∀ z, ∫⁻ y, ENNReal.ofReal (q (z - y)) ∂(withDensityReal ρ) ≤ ENNReal.ofReal (pinGamma β))
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>        (N n : ℕ), a + 1 ≤ N → n + 1 ≤ N → ∀ (i : Fin (n + 1)) (j : Fin n) (B : Set (Torus d)),
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>        MeasurableSet B →
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>        |((pinnedLaw V (β / N) (n + 1) (fun e : Empty =&gt; e.elim)).map
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>              (fun y =&gt; y (i.succAbove j))).real B
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>          - ((pinnedLaw V (β / N) n (fun e : Empty =&gt; e.elim)).map (fun y =&gt; y j)).real B|
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>          ≤ C3 * (β / N) * (withDensityReal ρ).real B := by
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have : IsProbabilityMeasure (withDensityReal ρ) := PoleCavityAux.isProbabilityMeasure_mu hρ
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  obtain ⟨C, hC0, hC⟩ := pin_step_set hd hcrit β hβ ρ hρ q hq0 hqm Cq hqenv hdec a
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  set γ₀ := pinGamma β with hγ₀def
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  have hγ₀ : 0 &lt; γ₀ := pinGamma_pos hβ
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  set Kc : ℝ := Real.exp ((β * γ₀ + 1) + 1 + β * (1 + 0) * γ₀) with hKc
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  refine ⟨Kc * C * (1 + γ₀), by positivity, ?_⟩
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  intro V hVq hVγ hVM hVM&#x27; hrow N n hNa hn1 i j B hB
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  have hlam : 0 ≤ β / N := by positivity
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  have hnz : NeZero n := ⟨(Fin.pos j).ne&#x27;⟩
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  set lam : ℝ := β / N with hlamdef
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  set E0 : Empty → Torus d := fun e =&gt; e.elim with hE0
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  -- the mixture
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  have hmix := pinned_marginal_succ V hlam E0 i j hB
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  have hω := measurable_pinWeight V hlam E0 n
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hω1 := lintegral_pinWeight V hlam E0 i j
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  have hωKm : (withDensityReal ρ).withDensity (pinWeight V lam E0 n) ≤ ENNReal.ofReal Kc • withDensityReal ρ := by
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    rw [← marginal_eq_pinWeight V hlam E0 i]
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    have := pinned_marginal_le (μ := withDensityReal ρ) V hβ.le (by omega : 0 &lt; N) (by omega : n + 1 ≤ N) E0 i
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    have e : V.M + V.M&#x27; + β * (1 + (Fintype.card Empty : ℝ)) * V.γ
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        = (β * γ₀ + 1) + 1 + β * (1 + 0) * γ₀ := by rw [hVM, hVM&#x27;, hVγ]; simp
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    rw [e] at this
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    exact this
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  -- pointwise pin step for the extra coordinate
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  have hγnn : 0 ≤ γ₀ := hγ₀.le
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  have hlamβ : lam ≤ β := by
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    rw [hlamdef, div_le_iff₀ hNpos]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    have : (1 : ℝ) ≤ N := by exact_mod_cast (by omega : 1 ≤ N)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    nlinarith
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  have hint : ∀ x, Integrable (fun z =&gt; q (z - x)) (withDensityReal ρ) := fun x =&gt; by
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    have := integrable_q_left V x
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    simpa [hVq] using this
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  have hx : ∀ x, |((pinnedLaw V lam n (pinsWith E0 x)).map (fun y =&gt; y j)).real B
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      - ((pinnedLaw V lam n E0).map (fun y =&gt; y j)).real B|
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>      ≤ ∫ z in B, (C * lam) * (1 + q (z - x)) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    intro x
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    have hψ := isField_pinField V hlam E0
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    have hψ&#x27; := isField_pinField V hlam (pinsWith E0 x)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    have := hC V hVq hVγ hVM hVM&#x27; N n 1 hNa (by omega) (by omega) (fun _ =&gt; x) _ _ _ _ hψ hψ&#x27;
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      (by simp [hVM&#x27;, hVγ]; nlinarith [mul_nonneg hβ.le hγnn])
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      (by
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>        simp [hVM&#x27;, hVγ]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        nlinarith [mul_nonneg (sub_nonneg.2 hlamβ) hγnn])
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>      (fun z =&gt; by
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>        rw [pinField_pinsWith, sub_sub_cancel_left, abs_neg, abs_of_nonneg
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          (mul_nonneg hlam (V.q_nonneg _ _))]
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>        simp [pinDelta, hVq, hlamdef])
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>      j B hB
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    refine this.trans (le_of_eq ?_)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    simp [hlamdef]
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  have hP1 := isProb_pinnedLaw V hlam (n + 1) E0
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  have hP0 := isProb_pinnedLaw V hlam n E0
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  have hPx : ∀ x, IsProbabilityMeasure (pinnedLaw V lam n (pinsWith E0 x)) :=
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    fun x =&gt; isProb_pinnedLaw V hlam n _
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  set c0 : ℝ := C * lam with hc0
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hc0nn : 0 ≤ c0 := mul_nonneg hC0 hlam
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have hKc0 : 0 ≤ Kc := (Real.exp_pos _).le
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  have he_eq := fun x =&gt; e_eq (μ := withDensityReal ρ) hq0 hint hc0nn B x
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  have hae : ∀ x, ((pinnedLaw V lam n (pinsWith E0 x)).map (fun y =&gt; y j)) B
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>      ≤ ((pinnedLaw V lam n E0).map (fun y =&gt; y j)) B
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>        + ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    intro x
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    rw [← he_eq x]
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    haveI := hPx x
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    exact le_add_of_abs_real_le (hx x)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  have hea : ∀ x, ((pinnedLaw V lam n E0).map (fun y =&gt; y j)) B
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>      ≤ ((pinnedLaw V lam n (pinsWith E0 x)).map (fun y =&gt; y j)) B
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>        + ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    intro x
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    rw [← he_eq x]
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    haveI := hPx x
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    exact le_add_of_abs_real_le (by rw [abs_sub_comm]; exact hx x)
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  have hεb := Ie_bound (μ := withDensityReal ρ) hqm hq0 hω hKc0 hωKm hc0nn hγnn hrow B hB
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  obtain ⟨h1, h2⟩ := mixture_le (μ := withDensityReal ρ) (a := fun x =&gt;
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      ((pinnedLaw V lam n (pinsWith E0 x)).map (fun y =&gt; y j)) B)
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    (e := fun x =&gt; ∫⁻ z in B, ENNReal.ofReal (c0 * (1 + q (z - x))) ∂(withDensityReal ρ))
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    hω (measurable_e hqm B) hω1 hae hea hεb
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  rw [← hmix] at h1 h2
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  have hεe : ENNReal.ofReal (Kc * c0 * (1 + γ₀)) * (withDensityReal ρ) B
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>      = ENNReal.ofReal (Kc * c0 * (1 + γ₀) * (withDensityReal ρ).real B) := by
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    have hμB : (withDensityReal ρ) B = ENNReal.ofReal ((withDensityReal ρ).real B) :=
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>      (ENNReal.ofReal_toReal (measure_ne_top _ _)).symm
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    rw [hμB, ← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  rw [hεe] at h1 h2
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  have hεnn : 0 ≤ Kc * c0 * (1 + γ₀) * (withDensityReal ρ).real B := by
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    have : 0 ≤ (withDensityReal ρ).real B := measureReal_nonneg
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    positivity
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  refine (abs_real_le_of_le_add hεnn h1 h2).trans (le_of_eq ?_)
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  rw [hc0]; ring
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>end DimStep3
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>section Chain
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>variable {d : ℕ}
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>open Classical in
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>/-- Coordinate-free value of the `n`-particle unpinned marginal on `B`. -/
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>def cavM {μ : Measure (Torus d)} (V : WeakPotential μ) (lam : ℝ) (n : ℕ) (B : Set (Torus d)) : ℝ :=
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  if h : 0 &lt; n then ((pinnedLaw V lam n (fun e : Empty =&gt; e.elim)).map (fun y =&gt; y ⟨0, h⟩)).real B
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  else 0
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>theorem coord_eq_cavM {μ : Measure (Torus d)} [IsProbabilityMeasure μ] (V : WeakPotential μ)
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    (lam : ℝ) {n : ℕ} (k : Fin n) (B : Set (Torus d)) :
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    ((pinnedLaw V lam n (fun e : Empty =&gt; e.elim)).map (fun y =&gt; y k)).real B = cavM V lam n B := by
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  have hn : 0 &lt; n := Fin.pos k
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  haveI : NeZero n := ⟨hn.ne&#x27;⟩
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  unfold cavM
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  rw [dif_pos hn]
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have h1 := pinnedLaw_marginal_eq V (lam := lam) n k
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have h2 := pinnedLaw_marginal_eq V (lam := lam) n ⟨0, hn⟩
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  rw [h1, h2]
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>theorem chain_unpinned {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (q : Torus d → ℝ) (hq0 : ∀ z, 0 ≤ q z)
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    (hqm : Measurable q) (Cq : ℝ)
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    (hqenv : ∀ z, z ≠ 0 → q z ≤ Cq * (1 + Torus.eucDist z 0 ^ (-s)))
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    (hdec : ∃ k : Torus d → ℝ, Torus.IsSmooth k ∧ ∃ c : ℝ, ∀ z, z ≠ 0 →
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>      periodicRiesz d s z = q z + k z + c) (a : ℕ) :
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    ∃ C3 : ℝ, 0 ≤ C3 ∧
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>      ∀ (V : WeakPotential (withDensityReal ρ)) (_ : ∀ x y, V.q x y = q (x - y))
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>        (_ : V.γ = pinGamma β) (_ : V.M = β * pinGamma β + 1) (_ : V.M&#x27; = 1)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>        (_ : ∀ z, ∫⁻ y, ENNReal.ofReal (q (z - y)) ∂(withDensityReal ρ) ≤ ENNReal.ofReal (pinGamma β))
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>        (N : ℕ) (n0 : ℕ) (j : ℕ), a + 1 ≤ N → 1 ≤ n0 → n0 + j ≤ N → ∀ (B : Set (Torus d)),
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>        MeasurableSet B →
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>        |cavM V (β / N) (n0 + j) B - cavM V (β / N) n0 B|
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>          ≤ j * (C3 * (β / N) * (withDensityReal ρ).real B) := by
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  have : IsProbabilityMeasure (withDensityReal ρ) := PoleCavityAux.isProbabilityMeasure_mu hρ
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  obtain ⟨C3, hC3, hdim⟩ := dim_step hd hcrit β hβ ρ hρ q hq0 hqm Cq hqenv hdec a
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  refine ⟨C3, hC3, ?_⟩
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  intro V hVq hVγ hVM hVM&#x27; hrow N n0 j hNa hn0 hN B hB
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  induction j with
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  | zero =&gt; simp
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  | succ j ih =&gt;
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    have hih := ih (by omega)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    have hn : 0 &lt; n0 + j := by omega
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    have hstep := hdim V hVq hVγ hVM hVM&#x27; hrow N (n0 + j) hNa (by omega) ⟨0, by omega⟩ ⟨0, hn⟩ B hB
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    rw [coord_eq_cavM, coord_eq_cavM] at hstep
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    have e : n0 + (j + 1) = n0 + j + 1 := rfl
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    rw [e]
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    calc |cavM V (β / N) (n0 + j + 1) B - cavM V (β / N) n0 B|
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>        ≤ |cavM V (β / N) (n0 + j + 1) B - cavM V (β / N) (n0 + j) B|
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>          + |cavM V (β / N) (n0 + j) B - cavM V (β / N) n0 B| := abs_sub_le _ _ _
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      _ ≤ C3 * (β / N) * (withDensityReal ρ).real B + j * (C3 * (β / N) * (withDensityReal ρ).real B) :=
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>          add_le_add hstep hih
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      _ = ((j + 1 : ℕ) : ℝ) * (C3 * (β / N) * (withDensityReal ρ).real B) := by push_cast; ring
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>end Chain
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>theorem min_aux {t K C&#x27; C x : ℝ} (ht : t ≤ C&#x27; * x) (htK : t ≤ K) (hx : 0 ≤ x) (hCC&#x27; : C&#x27; ≤ C)
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    (hCK : K ≤ C) : t ≤ C * min 1 x := by
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  by_cases hx1 : x ≤ 1
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  · rw [min_eq_right hx1]
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    exact ht.trans (mul_le_mul_of_nonneg_right hCC&#x27; hx)
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  · push Not at hx1
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    rw [min_eq_left hx1.le, mul_one]
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    exact htK.trans hCK
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>theorem small_aux {t K C x : ℝ} {a N : ℕ} (hN : 1 ≤ N) (hNa : N ≤ a) (ht : t ≤ K) (hK : 0 ≤ K)
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    (hx : 1 / (N : ℝ) ≤ x) (hC : K * (a + 1) ≤ C) : t ≤ C * min 1 x := by
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  have hNr : (1 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  have hNa&#x27; : (N : ℝ) ≤ a := by exact_mod_cast hNa
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>  have h1 : 1 / ((a : ℝ) + 1) ≤ min 1 x := by
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    refine le_min ?_ ?_
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    · rw [div_le_one (by positivity)]; linarith [Nat.cast_nonneg (α := ℝ) a]
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    · refine le_trans ?_ hx
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      exact one_div_le_one_div_of_le (by linarith) (by linarith)
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  calc t ≤ K := ht
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    _ = K * (a + 1) * (1 / ((a : ℝ) + 1)) := by field_simp
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    _ ≤ C * min 1 x := by
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>        refine mul_le_mul hC h1 (by positivity) ?_
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>        exact hK.trans (by nlinarith [Nat.cast_nonneg (α := ℝ) a, hC, hK])
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>end PinAux
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>section Main
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>open PinAux HRS.External HRS.External.RefMarg in
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>/-- Lemma 4.10 `M:Q:lem:pin` (restatement of `HRS.pin_comparison`, proved here because the proof
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>uses the volume estimates proved after the statement in `PairCorrection`). -/
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>theorem pin_comparison_proof (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    ∃ γ₀ : ℝ, 0 &lt; γ₀ ∧ ∀ (q : Torus d → ℝ) (Cq : ℝ), Measurable q → (∀ z, 0 ≤ q z) →
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>      (∀ z, q (-z) = q z) →
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      (∃ k : Torus d → ℝ, Torus.IsSmooth k ∧ ∃ c : ℝ, ∀ z, z ≠ 0 → periodicRiesz d s z = q z + k z + c) →
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      (∀ z, z ≠ 0 → q z ≤ Cq * (1 + Torus.eucDist z 0 ^ (-s))) →
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      (∀ x, ∫⁻ y, ENNReal.ofReal (q (x - y)) ∂(withDensityReal ρ) ≤ ENNReal.ofReal γ₀) →
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      ∀ a j : ℕ, ∃ C : ℝ, ∀ N : ℕ, j + 2 ≤ N → ∀ h : Torus d → ℝ, Measurable h →
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>        (∀ x, |h x| ≤ 1) → ∀ (A : Fin a → Torus d) (i : Fin (N - j)),
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>          coordMarginal (pinnedReference q (fun x =&gt; β * convMeasure q (withDensityReal ρ) x + h x)
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>              (withDensityReal ρ) (N - j) (β / N) A) i ≪ withDensityReal ρ ∧
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>          weakRefMarginal q h (withDensityReal ρ) β N ≪ withDensityReal ρ ∧
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>          ∀ᵐ z ∂(withDensityReal ρ),
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>            |((coordMarginal (pinnedReference q
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>                  (fun x =&gt; β * convMeasure q (withDensityReal ρ) x + h x)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>                  (withDensityReal ρ) (N - j) (β / N) A) i).rnDeriv (withDensityReal ρ) z).toReal -
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>              ((weakRefMarginal q h (withDensityReal ρ) β N).rnDeriv
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>                (withDensityReal ρ) z).toReal| ≤
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>              C * min 1 ((1 / (N : ℝ)) * (1 + ∑ k, q (z - A k))) := by
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  have hprob : IsProbabilityMeasure (withDensityReal ρ) := PoleCavityAux.isProbabilityMeasure_mu hρ
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  refine ⟨pinGamma β, pinGamma_pos hβ, ?_⟩
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  intro q Cq hqm hq0 hqe hdec hqenv hrow a j
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  obtain ⟨C1, hC1, hstep⟩ := pin_step_set hd hcrit β hβ ρ hρ q hq0 hqm Cq hqenv hdec a
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  obtain ⟨C3, hC3, hchain⟩ := chain_unpinned hd hcrit β hβ ρ hρ q hq0 hqm Cq hqenv hdec a
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>  set γ₀ := pinGamma β with hγ₀def
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  have hγ₀ : 0 &lt; γ₀ := pinGamma_pos hβ
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>  set K0 : ℝ := Real.exp ((β * γ₀ + 1) + 1 + β * (1 + a) * γ₀) with hK0
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>  have hK0pos : 0 &lt; K0 := Real.exp_pos _
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>  refine ⟨max (β * (C1 + j * C3)) (K0 * (a + 1)), ?_⟩
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  intro N hN h hhm hh1 A i
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  have hNpos : 0 &lt; N := by omega
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast hNpos
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  obtain ⟨V, hVq, hVφ, hVγ, hVM, hVM&#x27;⟩ := exists_weakPotential (withDensityReal ρ) β γ₀ hγ₀ q h
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    hqm hq0 hqe hrow hhm hh1 hβ
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  have hlam : 0 ≤ β / N := by positivity
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  set E0 : Empty → Torus d := fun e =&gt; e.elim with hE0
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  have hnz : NeZero (N - j) := ⟨(Fin.pos i).ne&#x27;⟩
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  have hid1 : coordMarginal (pinnedReference q (fun x =&gt; β * convMeasure q (withDensityReal ρ) x + h x)
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>      (withDensityReal ρ) (N - j) (β / N) A) i = (pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i) := by
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    rw [pinnedReference_eq_pinnedLaw (withDensityReal ρ) V q _ hVq hVφ (N - j) hlam A]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    rfl
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  have hid2 : weakRefMarginal q h (withDensityReal ρ) β N
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>      = (pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩) := by
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    unfold weakRefMarginal firstMarginal
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    rw [dif_pos hNpos, pinnedReference_eq_pinnedLaw (withDensityReal ρ) V q _ hVq hVφ N hlam,
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>      pinnedLaw_isEmpty V (β / N) N (Fin.elim0 : Fin 0 → Torus d), pinnedLaw_isEmpty V (β / N) N E0]
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>  have hac1 : coordMarginal (pinnedReference q (fun x =&gt; β * convMeasure q (withDensityReal ρ) x + h x)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>      (withDensityReal ρ) (N - j) (β / N) A) i ≪ withDensityReal ρ := by
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    unfold pinnedReference
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    exact coordMarginal_tilt_ac _ _ _ i
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  have hac2 : weakRefMarginal q h (withDensityReal ρ) β N ≪ withDensityReal ρ := by
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    unfold weakRefMarginal firstMarginal pinnedReference
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    rw [dif_pos hNpos]
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    exact coordMarginal_tilt_ac _ _ _ ⟨0, hNpos⟩
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  refine ⟨hac1, hac2, ?_⟩
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>  rw [hid1, hid2]
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>  have hP1 := isProb_pinnedLaw V hlam (N - j) A
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  have hP2 := isProb_pinnedLaw V hlam N E0
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  -- density bounds
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  have hbA : ((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i))
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>      ≤ ENNReal.ofReal K0 • withDensityReal ρ := by
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    have := pinned_marginal_le (μ := withDensityReal ρ) V hβ.le hNpos (by omega : N - j ≤ N) A i
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    have e : V.M + V.M&#x27; + β * (1 + (Fintype.card (Fin a) : ℝ)) * V.γ
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>        = (β * γ₀ + 1) + 1 + β * (1 + a) * γ₀ := by rw [hVM, hVM&#x27;, hVγ]; simp
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    rw [e] at this
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>    exact this
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>  have hbN : ((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩))
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>      ≤ ENNReal.ofReal K0 • withDensityReal ρ := by
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    have := pinned_marginal_le (μ := withDensityReal ρ) V hβ.le hNpos (le_refl N) E0 ⟨0, hNpos⟩
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    refine this.trans (Measure.le_iff&#x27;.2 fun B =&gt; ?_)
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>    simp only [Measure.smul_apply, smul_eq_mul]
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    refine mul_le_mul&#x27; (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 ?_)) le_rfl
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    rw [hVM, hVM&#x27;, hVγ]
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>    simp
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    have : (0 : ℝ) ≤ a := Nat.cast_nonneg a
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    nlinarith [mul_nonneg hβ.le hγ₀.le, mul_nonneg (mul_nonneg hβ.le hγ₀.le) this]
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>  have hρA := ae_rnDeriv_le_of_le (hid1 ▸ hac1) hK0pos.le hbA
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>  have hρN := ae_rnDeriv_le_of_le (hid2 ▸ hac2) hK0pos.le hbN
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  have hK : ∀ᵐ z ∂(withDensityReal ρ),
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>      |(((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).rnDeriv (withDensityReal ρ) z).toReal
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>        - (((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).rnDeriv
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>            (withDensityReal ρ) z).toReal| ≤ K0 := by
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>    filter_upwards [hρA, hρN] with z h1 h2
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    rw [abs_le]
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    constructor &lt;;&gt; nlinarith [ENNReal.toReal_nonneg (a := (((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).rnDeriv (withDensityReal ρ) z)),
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>      ENNReal.toReal_nonneg (a := (((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).rnDeriv (withDensityReal ρ) z))]
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>  by_cases hNa : a + 1 ≤ N
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>  · -- large N
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>    have hnN : N - j ≤ N := by omega
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    have hintq : ∀ x, Integrable (fun z =&gt; q (z - x)) (withDensityReal ρ) := fun x =&gt; by
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      have := integrable_q_left V x
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      simpa [hVq] using this
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>    have hgi : Integrable (fun z =&gt; 1 + ∑ k, q (z - A k)) (withDensityReal ρ) :=
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>      (integrable_const (1 : ℝ)).add (integrable_finsetSum _ fun k _ =&gt; hintq (A k))
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    have hg1 : ∀ z, 1 ≤ 1 + ∑ k, q (z - A k) := fun z =&gt; by
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>      have : 0 ≤ ∑ k, q (z - A k) := Finset.sum_nonneg fun k _ =&gt; hq0 _
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>      linarith
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>    have hC1nn := hC1
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    have hjC3 : 0 ≤ (j : ℝ) * C3 := mul_nonneg (Nat.cast_nonneg j) hC3
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    set Ψ : Torus d → ℝ := fun z =&gt; (C1 + j * C3) * (β / N) * (1 + ∑ k, q (z - A k)) with hΨ
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    have hΨi : Integrable Ψ (withDensityReal ρ) := hgi.const_mul _
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    have hset : ∀ B, MeasurableSet B →
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>        |((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).real B
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>          - ((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).real B|
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>          ≤ ∫ z in B, Ψ z ∂(withDensityReal ρ) := by
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>      intro B hB
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>      have hlamβ : β / N * a ≤ β := by
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>        rw [div_mul_eq_mul_div, div_le_iff₀ hNr]
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>        have : (a : ℝ) ≤ N := by exact_mod_cast (by omega : a ≤ N)
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>        nlinarith
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>      have hS1 := hstep V hVq hVγ hVM hVM&#x27; N (N - j) a hNa hnN (Nat.le_succ a) A
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>        (pinField V (β / N) A) (pinField V (β / N) E0) _ _ (isField_pinField V hlam A)
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>        (isField_pinField V hlam E0)
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>        (by simp [hVM&#x27;, hVγ]; nlinarith [mul_nonneg hγ₀.le (sub_nonneg.2 hlamβ)])
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>        (by simp [hVM&#x27;, hVγ]; nlinarith [mul_nonneg hβ.le hγ₀.le])
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>        (fun z =&gt; by
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>          have : pinField V (β / N) E0 z - pinField V (β / N) A z
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>              = (β / N) * ∑ k, V.q z (A k) := by
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>            simp [pinField]
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>          rw [this, abs_of_nonneg (mul_nonneg hlam (Finset.sum_nonneg fun k _ =&gt; V.q_nonneg _ _))]
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>          simp [pinDelta, hVq])
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>        i B hB
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>      have e1 : ((fieldLaw V (pinField V (β / N) E0) (β / N) (N - j)).map (fun x =&gt; x i)).real B
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>          = cavM V (β / N) (N - j) B := coord_eq_cavM V (β / N) i B
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>      have hch := hchain V hVq hVγ hVM hVM&#x27; hrow N (N - j) j hNa (by omega) (by omega) B hB
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>      have e0 : N - j + j = N := by omega
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      rw [e0] at hch
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>      have e2 : cavM V (β / N) N B
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>          = ((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).real B := by
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>        unfold cavM; rw [dif_pos hNpos]
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>      rw [e2] at hch
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>      have hS1&#x27; : |cavM V (β / N) (N - j) B
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>          - ((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).real B|
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>          ≤ ∫ z in B, C1 * (β / N) * (1 + ∑ k, q (z - A k)) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>        rw [← e1]; exact hS1
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>      have hI1 : Integrable (fun z =&gt; C1 * (β / N) * (1 + ∑ k, q (z - A k))) (withDensityReal ρ) :=
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>        hgi.const_mul _
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>      have hI2 : Integrable (fun z =&gt; ((j : ℝ) * C3 * (β / N)) * (1 + ∑ k, q (z - A k)))
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>          (withDensityReal ρ) := hgi.const_mul _
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>      have hdec : ∀ z, Ψ z = C1 * (β / N) * (1 + ∑ k, q (z - A k))
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>          + ((j : ℝ) * C3 * (β / N)) * (1 + ∑ k, q (z - A k)) := fun z =&gt; by simp only [hΨ]; ring
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>      have hintΨ : ∫ z in B, Ψ z ∂(withDensityReal ρ)
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>          = (∫ z in B, C1 * (β / N) * (1 + ∑ k, q (z - A k)) ∂(withDensityReal ρ))
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>            + ∫ z in B, ((j : ℝ) * C3 * (β / N)) * (1 + ∑ k, q (z - A k)) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>        simp_rw [hdec]
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>        exact integral_add hI1.integrableOn hI2.integrableOn
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      have hlow : ((j : ℝ) * (C3 * (β / N) * (withDensityReal ρ).real B))
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>          ≤ ∫ z in B, ((j : ℝ) * C3 * (β / N)) * (1 + ∑ k, q (z - A k)) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>        have hc : 0 ≤ (j : ℝ) * C3 * (β / N) := by positivity
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>        have := setIntegral_mono (μ := withDensityReal ρ) (s := B)
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>          (f := fun _ =&gt; ((j : ℝ) * C3 * (β / N))) (g := fun z =&gt; ((j : ℝ) * C3 * (β / N)) * (1 + ∑ k, q (z - A k)))
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>          (integrableOn_const (by exact measure_ne_top _ _)) hI2.integrableOn
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>          (fun z =&gt; by
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>            have := hg1 z
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>            nlinarith)
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>        rw [setIntegral_const, smul_eq_mul] at this
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>        calc ((j : ℝ) * (C3 * (β / N) * (withDensityReal ρ).real B))
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>            = (withDensityReal ρ).real B * ((j : ℝ) * C3 * (β / N)) := by ring
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>          _ ≤ _ := this
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      calc |((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).real B
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>            - ((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).real B|
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>          ≤ |((pinnedLaw V (β / N) N E0).map (fun y =&gt; y ⟨0, hNpos⟩)).real B - cavM V (β / N) (N - j) B|
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>            + |cavM V (β / N) (N - j) B - ((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).real B| :=
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>            abs_sub_le _ _ _
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>        _ ≤ ((j : ℝ) * (C3 * (β / N) * (withDensityReal ρ).real B))
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>            + ∫ z in B, C1 * (β / N) * (1 + ∑ k, q (z - A k)) ∂(withDensityReal ρ) := by
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>            exact add_le_add hch hS1&#x27;
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>        _ ≤ ∫ z in B, Ψ z ∂(withDensityReal ρ) := by rw [hintΨ]; linarith
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>    have hν1 := hid1 ▸ hac1
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>    have hν2 := hid2 ▸ hac2
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>    have hsetρ := ae_abs_rnDeriv_sub_le (μ := withDensityReal ρ) hν1 hν2 hΨi hset
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>    filter_upwards [hsetρ, hK] with z hz1 hz2
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>    rw [abs_sub_comm] at hz1
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>    refine min_aux (t := |(((pinnedLaw V (β / N) (N - j) A).map (fun y =&gt; y i)).rnDeriv
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>        (withDensityReal ρ) z).toReal - (((pinnedLaw V (β / N) N E0).map
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>          (fun y =&gt; y ⟨0, hNpos⟩)).rnDeriv (withDensityReal ρ) z).toReal|)
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>      (K := K0) (C&#x27; := β * (C1 + j * C3)) (x := (1 / (N : ℝ)) * (1 + ∑ k, q (z - A k)))
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>      ?_ hz2 ?_ (le_max_left _ _) (le_trans (by nlinarith [Nat.cast_nonneg (α := ℝ) a, hK0pos]) (le_max_right _ _))
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    · refine hz1.trans (le_of_eq ?_)
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>      simp only [hΨ]; field_simp
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>    · have := hg1 z
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>      have : 0 ≤ ∑ k, q (z - A k) := Finset.sum_nonneg fun k _ =&gt; hq0 _
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>      positivity
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>  · -- small N
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>    push Not at hNa
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>    filter_upwards [hK] with z hz
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>    refine small_aux (a := a) (N := N) (by omega) (by omega) hz hK0pos.le ?_ (le_max_right _ _)
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>    have h0 : 0 ≤ ∑ k, q (z - A k) := Finset.sum_nonneg fun k _ =&gt; hq0 _
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>    rw [one_div]
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>    have : (1 : ℝ) / N ≤ 1 / N * (1 + ∑ k, q (z - A k)) := by
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>      nlinarith [one_div_nonneg.2 hNr.le]
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>    simpa [one_div] using this
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>end Main
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>end HRS
+</span></code></pre></main></body></html>

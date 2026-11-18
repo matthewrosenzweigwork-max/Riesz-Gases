@@ -1,0 +1,356 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.AppendixBKernel · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.AppendixBKernel</code></h1><p><a href="../../lean/HRS/Whole/AppendixBKernel.lean">Open the unaltered Lean file</a> · 355 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Adjoint
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.AppendixBEnergy
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Appendix S.B (whole-space supplement): screened kernel bounds and same-function symmetrization
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>(SPEC-WB)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Source: HRS whole-space supplement (S), Appendix S.B:
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* S.B.4 `B:lem:screened` (S L11310-11331): `screened_far` (item (i)), `screened_local` and
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  `screened_local_global` (item (ii)), `screened_pairing` and `screened_pairing_pos` (item (iii)), `screened_comm_local`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `screened_comm_cell` (item (iv));
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S.B.8 `B:lem:same-function` (S L11504-11512): `same_function_rd`, `same_function_rd_weighted`
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  (items (i), (ii)).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>## Representation decisions
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* `K_g ∈ {∂_i g *}` (order `θ - 1 = s + 1 - d`) acts on functions through the distributional
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  convolution `∂_i g * v := ∂_i (g * v)`: `IsGradKernelRep d s i v w` says `w` represents it
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  (`∫ w φ = -∫ v (g * ∂_iφ)` for Schwartz `φ`); for `s &lt; d-1` this is the absolutely convergent
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  integral.  Far-field terms (kernel nonsingular) use the plain Bochner integral `gradGConvPlain`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  with integrability asserted in the conclusion.
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* The *advected cutoffs* `χ_z^τ, χ̂_z^τ` (`B:eq:advected-cutoffs`, S L10082-10090) are
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `advCutoff χ Ψ τ z = χ(Ψ_τ^{-1}(·) - z)` where `Ψ` is any flow of `-b` (`IsNegDriftFlow`) of a drift
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  `b` satisfying the bounds `B:eq:drift-bounds-rd` (`IsAdvectingDrift`, with constant `Cb`).  The drift
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  of the supplement, `b^τ = M ∇g * μ^{t-τ} - ∇V`, satisfies these bounds with `Cb = Cb(d, s, m, |M|, Λ,
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  Λ_V, |∇V(0)|)` (Lemma `B:lem:coefficient-bounds`), so the constants &quot;`C_T` depending on
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  `(d,s,m,|M|,Λ,Λ_V,|∇V(0)|,ν̄,T)`&quot; are represented as constants depending on `(d, s, m, Λ, Cb, T)`; the
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  statements hold for every drift with these bounds (the proof uses nothing else).  The lattice
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  `z ∈ ℤ^d` indexes the cells (`latticePt`).  `ω_z = ⟨z⟩^{-(d+3)}` is `cellWeight`.
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* Norms are in `ℝ≥0∞` where the quantity may be infinite (`sobolevNormE`, `eLpNorm`); the weighted sup
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `‖⟨·⟩^{d+3}a‖_∞ ≤ Λ` is the pointwise bound.
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>* `θ - 1 = s + 1 - d` is the order of `∂_i g *`, so `(θ-1)^+ = max (s + 1 - d) 0`.
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>-/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>noncomputable section
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>namespace HRS.Whole
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>variable {d : ℕ}
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-! ### Definitions -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>/-- `w` represents `∂_i g * v = ∂_i (g * v)` in the sense of distributions: for every Schwartz `φ`,
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>`∫ w φ = -∫ v (g * ∂_iφ)` (both integrals absolutely convergent), `g` the Riesz kernel `rieszKernel d s`
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>(even, so `(g * ∂_iφ)(y) = ∫ g(x-y) ∂_iφ(x) dx`). -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>def IsGradKernelRep (d : ℕ) (s : ℝ) (i : Fin d) (v w : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  ∀ φ : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    Integrable (fun x =&gt; w x * φ x) ∧
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    Integrable (fun y =&gt; v y * convFun (rieszKernel d s)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      (fun x =&gt; fderiv ℝ φ x (EuclideanSpace.single i 1)) y) ∧
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    ∫ x, w x * φ x = -∫ y, v y * convFun (rieszKernel d s)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      (fun x =&gt; fderiv ℝ φ x (EuclideanSpace.single i 1)) y
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>/-- The drift bounds `B:eq:drift-bounds-rd` (S L10078-10080) of the advecting drift `b^τ` on `[0,T]`:
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>`b` continuous in `(τ,x)`, `C^{m+1}` in `x`, `‖∇^{⊗j}b^τ‖_∞ ≤ Cb` for `1 ≤ j ≤ m+1`,
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>`|b^τ(x)| ≤ Cb (1+|x|)`. -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>structure IsAdvectingDrift (m : ℕ) (Cb T : ℝ) (b : ℝ → Euc d → Euc d) : Prop where
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  cont : ContinuousOn (fun p : ℝ × Euc d =&gt; b p.1 p.2) (Set.Icc 0 T ×ˢ Set.univ)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  smooth : ∀ τ ∈ Set.Icc 0 T, ContDiff ℝ (m + 1) (b τ)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  deriv_bdd : ∀ τ ∈ Set.Icc 0 T, ∀ j : ℕ, 1 ≤ j → j ≤ m + 1 → ∀ x,
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    ‖iteratedFDeriv ℝ j (b τ) x‖ ≤ Cb
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  growth : ∀ τ ∈ Set.Icc 0 T, ∀ x, ‖b τ x‖ ≤ Cb * (1 + ‖x‖)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>/-- `Ψ` is the flow of `-b` on `[0,T]`: `∂_τ Ψ_τ(x) = -b^τ(Ψ_τ(x))`, `Ψ_0 = id`, each `Ψ_τ` a
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>bijection (a bi-Lipschitz diffeomorphism by `B:lem:uloc-bilip`). -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>structure IsNegDriftFlow (T : ℝ) (b : ℝ → Euc d → Euc d) (Ψ : ℝ → Euc d → Euc d) : Prop where
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  init : ∀ x, Ψ 0 x = x
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  ode : ∀ x, ∀ τ ∈ Set.Icc 0 T,
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    HasDerivWithinAt (fun τ&#x27; =&gt; Ψ τ&#x27; x) (-(b τ (Ψ τ x))) (Set.Icc 0 T) τ
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  bij : ∀ τ ∈ Set.Icc 0 T, Function.Bijective (Ψ τ)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-- The cutoff pair of `B:eq:advected-cutoffs` (S L10083): `χ ∈ C_c^∞(B(0,2);[0,1])` with `χ ≡ 1` on
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>`B̄(0,1)` and `χ̂ ∈ C_c^∞(B(0,8);[0,1])` with `χ̂ ≡ 1` on `B̄(0,6)`. -/
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>def IsCutoffPair (χ χh : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  (ContDiff ℝ ∞ χ ∧ HasCompactSupport χ ∧ tsupport χ ⊆ Metric.ball 0 2 ∧
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (∀ x, χ x ∈ Set.Icc (0 : ℝ) 1) ∧ ∀ x ∈ Metric.closedBall (0 : Euc d) 1, χ x = 1) ∧
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  (ContDiff ℝ ∞ χh ∧ HasCompactSupport χh ∧ tsupport χh ⊆ Metric.ball 0 8 ∧
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (∀ x, χh x ∈ Set.Icc (0 : ℝ) 1) ∧ ∀ x ∈ Metric.closedBall (0 : Euc d) 6, χh x = 1)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>/-- The advected cutoff `χ_z^τ(x) = χ(Ψ_τ^{-1}(x) - z)` (`B:eq:advected-cutoffs`). -/
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>def advCutoff (χ : Euc d → ℝ) (Ψ : ℝ → Euc d → Euc d) (τ : ℝ) (z : Euc d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  χ (Function.invFun (Ψ τ) x - z)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>/-- The cell weight `ω_z = ⟨z⟩^{-(d+3)}`, `z ∈ ℤ^d` (`B:eq:screened-cell-kernel`). -/
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>def cellWeight (d : ℕ) (z : Fin d → ℤ) : ℝ := jbracket (latticePt z) ^ (-((d : ℝ) + 3))
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>/-- The cell `Q_{z&#x27;}^τ = Ψ_τ(z&#x27; + [0,1]^d)` of the bounded-overlap cover of `ℝ^d`
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>(`B:lem:uloc-bilip`(iv), S L11013-11020; `B:lem:screened` proof, S L11336-11338). -/
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>def flowCell (Ψ : ℝ → Euc d → Euc d) (τ : ℝ) (z : Fin d → ℤ) : Set (Euc d) :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  Ψ τ &#x27;&#x27; {y | ∀ i, 0 ≤ (y - latticePt z) i ∧ (y - latticePt z) i ≤ 1}
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>/-- The order `(θ-1)^+ = max (s+1-d) 0` of `∂_i g *`. -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>def kgOrder (d : ℕ) (s : ℝ) : ℝ := max (s + 1 - d) 0
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>/-! ### S.B.4 -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>/-- Lemma S.B.4(i) (`B:lem:screened`, `B:item:screened-far`, TeX S L11313-11326): far field and weighted
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>cell kernel.  `0 ≤ s &lt; d`, `m ≥ 0`, `μ` satisfying `S:eq:mf-regularity-whole` at level `m+3` (the
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>decay part is what is used; `IsRegularDensityW (m+3) Λ μ`), an advecting drift `b` with its flow `Ψ`,
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>`0 ≤ τ ≤ T`, and the cutoffs `χ_z^τ, χ̂_z^τ`.  There are nonnegative coefficients `K^τ_{zz&#x27;}`
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>(`z,z&#x27; ∈ ℤ^d`) with `sup_z ∑_{z&#x27;} K^τ_{zz&#x27;} ≤ C_T`, `∑_z ω_z K^τ_{zz&#x27;} ≤ C_T ω_{z&#x27;}`
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>(`B:eq:screened-cell-kernel`) such that for every `0 ≤ j ≤ m+1`, every derivative `∂^α` of order `j`
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>and every `ψ`,
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>`‖χ_z^τ K_g((1-χ̂_z^τ) ∂^αμ ψ)‖₂² ≤ C_T Λ² ∑_{z&#x27;} K^τ_{zz&#x27;} ‖1_{Q_{z&#x27;}^τ} ψ‖₂²` (TeX: `‖χ_{z&#x27;}^τ ψ‖₂²`, see SUSPECTED ISSUE)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>(`B:eq:screened-cell-estimate`), `K_g = ∂_i g *` (plain absolutely convergent integral on the support of
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>`χ_z^τ`: integrability is part of the conclusion whenever the right side is finite).  `C_T` depends only
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>on `d, s, m, Λ, Cb, T` (quantified first); `K^τ` depends on `τ` and the data but not on `j, α, ψ, i`.
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>Technical hypotheses: `ψ` measurable; `Λ ≥ 0` (implied).  The cutoff pair `χ, χ̂` is fixed *before* the
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>constant (TeX S L10081: the cutoffs are fixed once, `C_T` may depend on them).  The &quot;in particular&quot;
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>clause (`LHS ≤ C_T Λ² sup_{z&#x27;} ‖ψ‖_{L²(cell z&#x27;)}²`) follows from the row-sum bound and is not restated.
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>SUSPECTED ISSUE (S L11322-11326, proof L11336-11346): the TeX right side is `∑_{z&#x27;} K^τ_{zz&#x27;}
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>‖χ_{z&#x27;}^τ ψ‖₂²` with `χ_{z&#x27;}^τ` supported in `Ψ_τ(z&#x27;+B(0,2))`, but the proof applies Cauchy-Schwarz on the
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>*cells* `Q_{z&#x27;}^τ = Ψ_τ(z&#x27;+[0,1]^d)` (S L11337-11340), which are not contained in `{χ_{z&#x27;}^τ = 1}` (the
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>cube `[0,1]^d` has diameter `√d`), and for `d ≥ 16` the supports `B(z&#x27;,2)`, `z&#x27; ∈ ℤ^d`, do not even cover
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>`ℝ^d` (`√d/2 ≥ 2`), so the cutoff form fails (take `ψ` supported in a gap).  The statement is therefore
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>drafted with what the proof proves: `‖1_{Q_{z&#x27;}^τ} ψ‖₂²` (`flowCell`) on the right.  (A lattice fine
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>enough for the cutoff would also repair it.) -/
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>theorem screened_far (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (Λ Cb T : ℝ) :
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    ∀ χ χh : Euc d → ℝ, IsCutoffPair χ χh →
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    ∃ C : ℝ, ∀ (b : ℝ → Euc d → Euc d) (Ψ : ℝ → Euc d → Euc d),
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      IsAdvectingDrift m Cb T b → IsNegDriftFlow T b Ψ →
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      ∀ μ : Euc d → ℝ, IsRegularDensityW (m + 3) Λ μ →
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      ∀ τ ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      ∃ Kc : (Fin d → ℤ) → (Fin d → ℤ) → ℝ≥0,
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        (⨆ z, ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        (∀ z&#x27;, ∑&#x27; z, ENNReal.ofReal (cellWeight d z) * (Kc z z&#x27; : ℝ≥0∞) ≤
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>          ENNReal.ofReal C * ENNReal.ofReal (cellWeight d z&#x27;)) ∧
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        ∀ (j : ℕ), j ≤ m + 1 → ∀ (idx : Fin j → Fin d) (i : Fin d) (ψ : Euc d → ℝ), Measurable ψ →
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          ∀ z : Fin d → ℤ,
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>            (eLpNorm (fun x =&gt; advCutoff χ Ψ τ (latticePt z) x *
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>                gradGConvPlain d s (fun y =&gt; (1 - advCutoff χh Ψ τ (latticePt z) y) *
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>                  (partialDeriv idx μ y * ψ y)) x i) 2 volume) ^ 2 ≤
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>              ENNReal.ofReal (C * Λ ^ 2) * ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) *
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>                (eLpNorm ((flowCell Ψ τ z&#x27;).indicator ψ) 2 volume) ^ 2 ∧
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>            (ENNReal.ofReal (C * Λ ^ 2) * ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) *
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>                (eLpNorm ((flowCell Ψ τ z&#x27;).indicator ψ) 2 volume) ^ 2 &lt; ⊤ →
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>              ∀ x ∈ tsupport (advCutoff χ Ψ τ (latticePt z)),
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>                Integrable (fun y =&gt; rieszKernelGrad d s (x - y) i *
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>                  ((1 - advCutoff χh Ψ τ (latticePt z) y) * (partialDeriv idx μ y * ψ y)))) := by
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  sorry
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>/-- Lemma S.B.4(ii), first assertion (`B:lem:screened`, `B:item:screened-local`, TeX S L11327-11328):
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>local bounds.  For `v` supported in a ball of radius `ρ ≥ 1` and any ball `B ⊂ ℝ^d` of radius `≤ ρ`,
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>`‖1_B K_g v‖_{L²} ≤ C ρ^{C₀} ‖v‖_{H^{(θ-1)^+}}`, `C₀ = C₀(d,s)`, `C = C(d,s)`
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>(`kgOrder d s = (θ-1)^+`, `K_g = ∂_i g *`); the existence of the `L²_{loc}` function `K_g v`
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>(`IsGradKernelRep`) is part of the conclusion. -/
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>theorem screened_local (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    ∃ C₀ C : ℝ, ∀ (i : Fin d) (ρ : ℝ), 1 ≤ ρ → ∀ (c : Euc d) (v : Euc d → ℝ),
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      Function.support v ⊆ Metric.closedBall c ρ → sobolevNormE (kgOrder d s) v &lt; ⊤ →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      ∃ w : Euc d → ℝ, IsGradKernelRep d s i v w ∧
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>        ∀ (c&#x27; : Euc d) (r&#x27; : ℝ), r&#x27; ≤ ρ →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          eLpNorm ((Metric.closedBall c&#x27; r&#x27;).indicator w) 2 volume ≤
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>            ENNReal.ofReal (C * ρ ^ C₀) * sobolevNormE (kgOrder d s) v := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  sorry
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>/-- Lemma S.B.4(ii), second assertion (`B:lem:screened`, `B:item:screened-local`, TeX S L11328-11329):
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>if `s ≥ d - 1` the global bound `‖K_g v‖_{L²(ℝ^d)} ≤ C ‖v‖_{H^{θ-1}}` holds with no support restriction
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>(`H^{θ-1} = H^{s+1-d}`; existence of the `L²` function `K_g v` is part of the conclusion). -/
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>theorem screened_local_global (hd : 1 ≤ d) {s : ℝ} (hsd : s &lt; d) (hs1 : (d : ℝ) - 1 ≤ s) :
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    ∃ C : ℝ, ∀ (i : Fin d) (v : Euc d → ℝ), sobolevNormE (s + 1 - d) v &lt; ⊤ →
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      ∃ w : Euc d → ℝ, IsGradKernelRep d s i v w ∧ MemLp w 2 volume ∧
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>        eLpNorm w 2 volume ≤ ENNReal.ofReal C * sobolevNormE (s + 1 - d) v := by
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  sorry
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>/-- Lemma S.B.4(iii) (`B:lem:screened`, `B:item:screened-global`, TeX S L11329-11330), the case
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>`s ≤ d-1` (`2(s+1) &gt; d`; `θ - 1 ≤ 0`): screened pairing, unweighted decaying scale.  For `a` with
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>`‖⟨·⟩^{d+3}a‖_{L^∞} ≤ Λ` and `ψ, w ∈ L²`: `|⟨K_g(aψ), w⟩| ≤ C Λ ‖ψ‖_{L²} ‖w‖_{L²}`, `C = C(d,s)`
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>(`sobolevNormE (kgOrder d s) ψ` is the `L²` norm here).  `K_g(aψ)` is a representative `u`
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>(`IsGradKernelRep`) of the `L²` function (technical hypothesis `u ∈ L²`, so that the pairing with
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>`w ∈ L²` is the genuine integral; automatic for `s &lt; d-1`).  (The &quot;false if `2(s+1) ≤ d`&quot; sentence refers
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>to `B:prop:low-frequency-obstruction`, S.A.14.)  The case `s &gt; d-1` is `screened_pairing_pos`. -/
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>theorem screened_pairing (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s ≤ (d : ℝ) - 1)
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    (h2 : (d : ℝ) &lt; 2 * (s + 1)) :
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    ∃ C : ℝ, ∀ (Λ : ℝ) (a : Euc d → ℝ), (∀ x, jbracket x ^ ((d : ℝ) + 3) * |a x| ≤ Λ) →
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      ∀ (i : Fin d) (ψ w u : Euc d → ℝ), MemLp ψ 2 volume → MemLp w 2 volume →
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>      sobolevNormE (kgOrder d s) ψ &lt; ⊤ → MemLp u 2 volume →
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      IsGradKernelRep d s i (fun y =&gt; a y * ψ y) u →
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        ENNReal.ofReal |∫ x, u x * w x| ≤
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>          ENNReal.ofReal (C * Λ) * sobolevNormE (kgOrder d s) ψ * eLpNorm w 2 volume := by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  sorry
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>/-- Lemma S.B.4(iii) (`B:lem:screened`, `B:item:screened-global`, TeX S L11329-11330), the case
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>`s &gt; d-1` (`θ - 1 &gt; 0`, `K_g` of positive order `s+1-d ∈ (0,1)`), with the repair: the constant contains
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>`‖a‖_{W^{1,∞}}` (`≤ La + Λ`: Lipschitz constant `La` and weighted bound `Λ`), since multiplication by a
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>`W^{1,∞}` function is bounded on `H^{θ-1}`, `0 ≤ θ - 1 &lt; 1`.  For `ψ ∈ H^{θ-1}`, `w ∈ L²`, every
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>representative `u` of `K_g(aψ)` lies in `L²` and
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>`|⟨K_g(aψ), w⟩| ≤ C (La + Λ) ‖ψ‖_{H^{θ-1}} ‖w‖_{L²}`, `C = C(d,s)` (no `u ∈ L²` hypothesis).
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>SUSPECTED ISSUE (S L11327-11330, proof L11362): the TeX asserts the bound with `Λ` alone
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>(`‖⟨·⟩^{d+3}a‖_∞ ≤ Λ`) also for `s &gt; d-1`, applying the local estimate (ii) to `aψ`; for rough `a` this
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>fails (`a = Λ⟨x⟩^{-d-3} cos(λ x_1)`, `ψ` fixed: `‖K_g(aψ)‖ ~ λ^{θ-1}` as `λ → ∞`), because `aψ ∈ H^{θ-1}`
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>does not follow from `ψ ∈ H^{θ-1}` and `a ∈ L^∞`.  In the application `a = ∂^αμ` is smooth. -/
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>theorem screened_pairing_pos (hd : 1 ≤ d) {s : ℝ} (hsd : s &lt; d) (hs1 : (d : ℝ) - 1 &lt; s) :
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    ∃ C : ℝ, ∀ (La Λ : ℝ) (a : Euc d → ℝ), HRS.PDE.ToolboxRd.IsLipschitz La a →
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      (∀ x, jbracket x ^ ((d : ℝ) + 3) * |a x| ≤ Λ) →
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>      ∀ (i : Fin d) (ψ w u : Euc d → ℝ), MemLp ψ 2 volume → MemLp w 2 volume →
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      sobolevNormE (s + 1 - d) ψ &lt; ⊤ →
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      IsGradKernelRep d s i (fun y =&gt; a y * ψ y) u →
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>        MemLp u 2 volume ∧
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>        ENNReal.ofReal |∫ x, u x * w x| ≤
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>          ENNReal.ofReal (C * (La + Λ)) * sobolevNormE (s + 1 - d) ψ * eLpNorm w 2 volume := by
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  sorry
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>/-- Lemma S.B.4(iv), local part (`B:lem:screened`, `B:item:screened-comm`, TeX S L11331): cutoff
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>commutators.  The kernels `∂_ig(x-y) χ_z^τ(x)(χ̂_z^τ(y) - χ_z^τ(y))` and `∂_ig(x-y)(χ_z^τ(x) - χ_z^τ(y))`
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>obey the local bounds of (ii) with constants `C(τ) = C e^{Cdτ}`: for `v` supported in a ball of radius
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>`ρ ≥ 1` and any ball `B` of radius `≤ ρ` (any `z ∈ ℝ^d`, `0 ≤ τ ≤ T`), writing `T₁v = χ_z K_g((χ̂_z -
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>χ_z) v)` and `T₂v = χ_z K_g v - K_g(χ_z v)` (the operators with the two kernels),
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>`‖1_B T_k v‖_{L²} ≤ C e^{Cdτ} ρ^{C₀} ‖v‖_{H^{(θ-1)^+}}` (`k = 1, 2`); the `L²_{loc}` representatives
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>`K_g(·)` exist.  AMBIGUITY: &quot;obey the same `L² → L²` sup-cell bounds as (i)-(ii)&quot; is vague; it is
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>drafted as the local bound (ii) (this statement) and, for `s &lt; d-1` where the kernels are locally
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>integrable, the cell-sum bound of (i) (`screened_comm_cell`).  The constants `C, C₀` depend on the
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>drift bounds `(m, Cb, T)`. -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>theorem screened_comm_local (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (Cb T : ℝ) :
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    ∀ χ χh : Euc d → ℝ, IsCutoffPair χ χh →
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    ∃ C₀ C : ℝ, ∀ (b : ℝ → Euc d → Euc d) (Ψ : ℝ → Euc d → Euc d),
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      IsAdvectingDrift m Cb T b → IsNegDriftFlow T b Ψ →
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      ∀ τ ∈ Set.Icc (0 : ℝ) T, ∀ z : Euc d, ∀ (i : Fin d) (ρ : ℝ), 1 ≤ ρ → ∀ (c : Euc d) (v : Euc d → ℝ),
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      Function.support v ⊆ Metric.closedBall c ρ → sobolevNormE (kgOrder d s) v &lt; ⊤ →
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      ∃ w₁ w₂ w₃ : Euc d → ℝ,
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>        IsGradKernelRep d s i (fun y =&gt; (advCutoff χh Ψ τ z y - advCutoff χ Ψ τ z y) * v y) w₁ ∧
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        IsGradKernelRep d s i v w₂ ∧
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>        IsGradKernelRep d s i (fun y =&gt; advCutoff χ Ψ τ z y * v y) w₃ ∧
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>        ∀ (c&#x27; : Euc d) (r&#x27; : ℝ), r&#x27; ≤ ρ →
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>          eLpNorm ((Metric.closedBall c&#x27; r&#x27;).indicator
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>              (fun x =&gt; advCutoff χ Ψ τ z x * w₁ x)) 2 volume ≤
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>            ENNReal.ofReal (C * Real.exp (C * d * τ) * ρ ^ C₀) * sobolevNormE (kgOrder d s) v ∧
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>          eLpNorm ((Metric.closedBall c&#x27; r&#x27;).indicator
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>              (fun x =&gt; advCutoff χ Ψ τ z x * w₂ x - w₃ x)) 2 volume ≤
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>            ENNReal.ofReal (C * Real.exp (C * d * τ) * ρ ^ C₀) * sobolevNormE (kgOrder d s) v := by
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  sorry
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>/-- Lemma S.B.4(iv), cell-sum part (`B:lem:screened`, `B:item:screened-comm`, TeX S L11331), for
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>`s &lt; d - 1` (kernels locally integrable, so the plain integrals converge absolutely): for the kernels
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>`χ_z^τ(x)(χ̂_z^τ(y) - χ_z^τ(y))` and `(χ_z^τ(x) - χ_z^τ(y))` applied to `∂^αμ ψ`, the same cell estimate as
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>`screened_far` holds with coefficients `K^τ_{zz&#x27;}` satisfying `B:eq:screened-cell-kernel` and constant
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>`C(τ) = C e^{Cdτ}`.  Same hypotheses, quantifiers (the cutoff pair `χ, χ̂` is fixed first, S L10081) and
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>cell convention as `screened_far` (the coefficients are those of the respective kernel; the right side
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>uses the cells `Ψ_τ(z&#x27;+[0,1]^d)`, see `SUSPECTED ISSUE` there).  Both outputs are localised to the cell
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>`χ_z^τ(x)` (the sup-cell bound of S L11329, as in (i)): the global `L²(dx)` norm of the commutator
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>`(χ_z(x)-χ_z(y))`-operator is infinite when `2(s+1) ≤ d` (its far tail is `χ_z(y)`-weighted
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>`|x|^{-s-1}`), so it is not asserted.
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>Statement repair MH-REPAIRS-3 (docs/ISSUES.md, 2026-10-19): the two integrability conjuncts hold for almost every `x`, not for
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>every `x` (the kernel `|x-y|^{-s-1}` is not locally `L²`-integrable against an `L²` datum at every point). -/
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>theorem screened_comm_cell (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs1 : s &lt; (d : ℝ) - 1) (m : ℕ)
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    (Λ Cb T : ℝ) :
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    ∀ χ χh : Euc d → ℝ, IsCutoffPair χ χh →
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    ∃ C : ℝ, ∀ (b : ℝ → Euc d → Euc d) (Ψ : ℝ → Euc d → Euc d),
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      IsAdvectingDrift m Cb T b → IsNegDriftFlow T b Ψ →
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      ∀ μ : Euc d → ℝ, IsRegularDensityW (m + 3) Λ μ →
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>      ∀ τ ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>      ∃ Kc : (Fin d → ℤ) → (Fin d → ℤ) → ℝ≥0,
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        (⨆ z, ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) ≤ ENNReal.ofReal (C * Real.exp (C * d * τ))) ∧
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>        (∀ z&#x27;, ∑&#x27; z, ENNReal.ofReal (cellWeight d z) * (Kc z z&#x27; : ℝ≥0∞) ≤
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>          ENNReal.ofReal (C * Real.exp (C * d * τ)) * ENNReal.ofReal (cellWeight d z&#x27;)) ∧
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>        ∀ (j : ℕ), j ≤ m + 1 → ∀ (idx : Fin j → Fin d) (i : Fin d) (ψ : Euc d → ℝ), Measurable ψ →
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>          ∀ z : Fin d → ℤ,
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>            ENNReal.ofReal (C * Real.exp (C * d * τ) * Λ ^ 2) * ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) *
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>                (eLpNorm ((flowCell Ψ τ z&#x27;).indicator ψ) 2 volume) ^ 2 &lt; ⊤ →
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>            (∀ᵐ x ∂volume, x ∈ tsupport (advCutoff χ Ψ τ (latticePt z)) →
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>              Integrable (fun y =&gt; (advCutoff χh Ψ τ (latticePt z) y -
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>                advCutoff χ Ψ τ (latticePt z) y) * (partialDeriv idx μ y * ψ y) *
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>                rieszKernelGrad d s (x - y) i)) ∧
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>            (∀ᵐ x ∂volume, x ∈ tsupport (advCutoff χ Ψ τ (latticePt z)) →
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>              Integrable (fun y =&gt; (advCutoff χ Ψ τ (latticePt z) x -
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>                advCutoff χ Ψ τ (latticePt z) y) * (partialDeriv idx μ y * ψ y) *
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>                rieszKernelGrad d s (x - y) i)) ∧
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>            (eLpNorm (fun x =&gt; advCutoff χ Ψ τ (latticePt z) x *
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>                ∫ y, (advCutoff χh Ψ τ (latticePt z) y - advCutoff χ Ψ τ (latticePt z) y) *
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>                  (partialDeriv idx μ y * ψ y) * rieszKernelGrad d s (x - y) i) 2 volume) ^ 2 ≤
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>              ENNReal.ofReal (C * Real.exp (C * d * τ) * Λ ^ 2) * ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) *
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>                (eLpNorm ((flowCell Ψ τ z&#x27;).indicator ψ) 2 volume) ^ 2 ∧
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>            (eLpNorm (fun x =&gt; advCutoff χ Ψ τ (latticePt z) x *
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>                ∫ y, (advCutoff χ Ψ τ (latticePt z) x - advCutoff χ Ψ τ (latticePt z) y) *
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>                  (partialDeriv idx μ y * ψ y) * rieszKernelGrad d s (x - y) i) 2 volume) ^ 2 ≤
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>              ENNReal.ofReal (C * Real.exp (C * d * τ) * Λ ^ 2) * ∑&#x27; z&#x27;, (Kc z z&#x27; : ℝ≥0∞) *
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>                (eLpNorm ((flowCell Ψ τ z&#x27;).indicator ψ) 2 volume) ^ 2 := by
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  sorry
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>/-! ### S.B.8: weighted same-function symmetrization -/
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>/-- The symmetrized pairing `⟨ς κ*(aw), w⟩ := ½ ∬ κ(x-y) w(x) w(y) [a(y) ς(x) - a(x) ς(y)] dx dy`
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>(the displayed identity of the proof of `B:lem:same-function`, S L11516-11520, `ς ≡ 1` in (i) and
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>`ς = χ²` in (ii)). -/
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>def symPairing (κ a w ς : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  (1 / 2) * ∫ p : Euc d × Euc d, κ (p.1 - p.2) * w p.1 * w p.2 *
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    (a p.2 * ς p.1 - a p.1 * ς p.2)
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>/-- The `ε`-truncation `∬_{|x-y|&gt;ε} κ(x-y) a(y) w(y) ς(x) w(x) dy dx` of `⟨ς κ*(aw), w⟩`
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>(by oddness of `κ` it equals the symmetrized truncated integral). -/
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>def truncPairing (ε : ℝ) (κ a w ς : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  ∫ p : Euc d × Euc d, if ε &lt; ‖p.1 - p.2‖ then κ (p.1 - p.2) * a p.2 * w p.2 * ς p.1 * w p.1 else 0
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>/-- Lemma S.B.8(i) (`B:lem:same-function`, `B:item:sf-rd`, TeX S L11506-11508): `κ` an odd kernel on `ℝ^d`,
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>smooth away from `0`, `s &gt; d-1` (and `s &lt; d`), `|κ(z)| ≤ K₀ |z|^{-s-1}`, `a ∈ C^{0,1}(ℝ^d)` with
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>`‖⟨·⟩^{d+3} a‖_{L^∞} &lt; ∞` (Lipschitz constant `La`, weighted bound `Λ`; `‖a‖_{C^{0,1}} + ‖⟨·⟩^{d+3}a‖_∞ ≤
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>La + 2Λ`, absorbed in `C`), and `w ∈ L²(ℝ^d)`: the symmetrized integral is absolutely convergent, is the
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>limit of the symmetric truncations (the pairing when the force is not integrable, as in the torus
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>`HRS.PDE.periodic_same_function`), and
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>`|⟨κ*(aw), w⟩| ≤ C K₀ (‖a‖_{C^{0,1}} + ‖⟨·⟩^{d+3}a‖_∞) ‖w‖²_{L²}`, `C = C(d,s)`.
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>Technical hypotheses: `s &lt; d` (standing, `∫_{|z|≤1}|z|^{-s} dz &lt; ∞` is used in the proof);
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>measurability of `κ` (implied by smoothness off `0`) and of `a`. -/
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>theorem same_function_rd (hd : 1 ≤ d) (s : ℝ) (hs1 : (d : ℝ) - 1 &lt; s) (hsd : s &lt; d) :
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    ∃ C : ℝ, ∀ (κ : Euc d → ℝ) (K₀ : ℝ), (∀ z, κ (-z) = -κ z) →
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      ContDiffOn ℝ ∞ κ {z | z ≠ 0} → (∀ z : Euc d, z ≠ 0 → |κ z| ≤ K₀ * ‖z‖ ^ (-s - 1)) →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      ∀ (La Λ : ℝ) (a w : Euc d → ℝ), HRS.PDE.ToolboxRd.IsLipschitz La a →
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>        (∀ x, jbracket x ^ ((d : ℝ) + 3) * |a x| ≤ Λ) → MemLp w 2 volume →
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      Integrable (fun p : Euc d × Euc d =&gt; κ (p.1 - p.2) * w p.1 * w p.2 * (a p.2 - a p.1)) ∧
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      (∀ ε : ℝ, 0 &lt; ε → Integrable (fun p : Euc d × Euc d =&gt;
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>        if ε &lt; ‖p.1 - p.2‖ then κ (p.1 - p.2) * a p.2 * w p.2 * w p.1 else 0)) ∧
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>      Tendsto (fun ε =&gt; truncPairing ε κ a w (fun _ =&gt; 1)) (𝓝[&gt;] 0)
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        (𝓝 (symPairing κ a w (fun _ =&gt; 1))) ∧
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>      |symPairing κ a w (fun _ =&gt; 1)| ≤ C * K₀ * (La + Λ) * ∫ x, w x ^ 2 := by
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  sorry
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>/-- Lemma S.B.8(ii) (`B:lem:same-function`, `B:item:sf-rd-weighted`, TeX S L11509-11511): uniformly local
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>`w`.  With `κ, a` as in (i) and the cutoff `χ = χ_z^τ` of the class `B:eq:advected-cutoffs` (an advecting
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>drift with bounds `(m, Cb, T)`, its flow `Ψ`, `0 ≤ τ ≤ T`, `z ∈ ℝ^d`),
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>`|⟨χ² κ*(aw), w⟩| ≤ C K₀ (‖a‖_{C^{0,1}} + ‖⟨·⟩^{d+3}a‖_∞) ‖χ‖²_{C^{0,1}} sup_{z&#x27;} ‖χ_{z&#x27;}^τ w‖²_{L²} C e^{Cdτ}`
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>(`‖χ‖_{C^{0,1}} ≤ 1 + Lχ` for a Lipschitz constant `Lχ` of `χ_z^τ`; the supremum over the lattice
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>`z&#x27; ∈ ℤ^d`, represented by an upper bound `S ≥ ‖1_{Q_{z&#x27;}^τ} w‖_{L²}` over the cells
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>`Q_{z&#x27;}^τ = Ψ_τ(z&#x27;+[0,1]^d)`; the constant `C` in `C e^{Cdτ}` is the same, as in the TeX).  The cutoff pair
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>`χ, χ̂` is fixed first (S L10081).
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>SUSPECTED ISSUE (S L11509-11511, S L11013-11020): the TeX uses `sup_{z&#x27;} ‖χ_{z&#x27;}^τ w‖` over the lattice
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>`z&#x27; ∈ ℤ^d`, but for `d ≥ 16` the supports `Ψ_τ(z&#x27;+B(0,2))` leave gaps (`√d/2 ≥ 2`) and `w` supported in a
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>gap gives a nonzero left side with a zero right side; the cell version (which is what the bounded-overlap
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>cover of `B:lem:uloc-bilip`(iv) gives) is stated instead.  The symmetrized integral converges absolutely and is the limit of the symmetric
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>truncations.  `C` depends on `d, s, m, Cb, T` (quantified first).  Technical hypotheses: `w` measurable;
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>`S ≥ 0` finite (a bound; if the supremum is infinite the claim is vacuous). -/
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>theorem same_function_rd_weighted (hd : 1 ≤ d) (s : ℝ) (hs1 : (d : ℝ) - 1 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    (m : ℕ) (Cb T : ℝ) :
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>    ∀ χ χh : Euc d → ℝ, IsCutoffPair χ χh →
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    ∃ C : ℝ, ∀ (b : ℝ → Euc d → Euc d) (Ψ : ℝ → Euc d → Euc d),
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>      IsAdvectingDrift m Cb T b → IsNegDriftFlow T b Ψ →
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>      ∀ τ ∈ Set.Icc (0 : ℝ) T, ∀ z : Euc d, ∀ Lχ : ℝ,
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>        HRS.PDE.ToolboxRd.IsLipschitz Lχ (advCutoff χ Ψ τ z) →
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>      ∀ (κ : Euc d → ℝ) (K₀ : ℝ), (∀ z, κ (-z) = -κ z) →
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>      ContDiffOn ℝ ∞ κ {z | z ≠ 0} → (∀ z : Euc d, z ≠ 0 → |κ z| ≤ K₀ * ‖z‖ ^ (-s - 1)) →
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>      ∀ (La Λ : ℝ) (a w : Euc d → ℝ), HRS.PDE.ToolboxRd.IsLipschitz La a →
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>        (∀ x, jbracket x ^ ((d : ℝ) + 3) * |a x| ≤ Λ) → Measurable w →
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      ∀ S : ℝ, 0 ≤ S → (∀ z&#x27; : Fin d → ℤ,
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>        eLpNorm ((flowCell Ψ τ z&#x27;).indicator w) 2 volume ≤ ENNReal.ofReal S) →
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>      Integrable (fun p : Euc d × Euc d =&gt; κ (p.1 - p.2) * w p.1 * w p.2 *
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>        (a p.2 * advCutoff χ Ψ τ z p.1 ^ 2 - a p.1 * advCutoff χ Ψ τ z p.2 ^ 2)) ∧
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      Tendsto (fun ε =&gt; truncPairing ε κ a w (fun x =&gt; advCutoff χ Ψ τ z x ^ 2)) (𝓝[&gt;] 0)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>        (𝓝 (symPairing κ a w (fun x =&gt; advCutoff χ Ψ τ z x ^ 2))) ∧
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      |symPairing κ a w (fun x =&gt; advCutoff χ Ψ τ z x ^ 2)| ≤
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>        C * K₀ * (La + Λ) * (1 + Lχ) ^ 2 * S ^ 2 * (C * Real.exp (C * d * τ)) := by
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  sorry
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>end HRS.Whole
+</span></code></pre></main></body></html>

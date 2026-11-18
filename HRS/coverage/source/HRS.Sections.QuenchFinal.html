@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.QuenchFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.QuenchFinal</code></h1><p><a href="../../lean/HRS/Sections/QuenchFinal.lean">Open the unaltered Lean file</a> · 153 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.QuenchAux14
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Sections.QuenchAux30
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Packet QUENCH (Q27): Proposition 7.13 (final assembly)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Relocation pattern: `Sec7Quench.lean` is not edited; the statements of `quench_modes`,
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`quench_window_tensors`, `quench_equal_temperature` are reproduced verbatim as `&lt;name&gt;_proof`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>noncomputable section
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>namespace Sec7
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>variable {d : ℕ}
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>theorem quench_modes_proof (hd : 2 ≤ d) {s β β₀ : ℝ} (hβ : 0 &lt; β) (hβ₀ : 0 &lt; β₀) (hne : β₀ ≠ β)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ)
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P Z) :
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (∀ (k : PosHalf d) (b : Bool), ∃ B : ℝ≥0 → Ω → ℝ, IsBrownianReal B P ∧
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>        IndepFun (fun ω =&gt; NegSobolev.eval (Z 0 ω) (modeFn k.1 b)) (fun ω =&gt; fun t =&gt; B t ω) P ∧
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>        ∀ᵐ ω ∂P, ∀ t : ℝ≥0, NegSobolev.eval (Z t ω) (modeFn k.1 b) =
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>          NegSobolev.eval (Z 0 ω) (modeFn k.1 b) -
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>            lamMode d s β k.1 * (∫ u in Set.Icc (0 : ℝ) t, NegSobolev.eval (Z u ω) (modeFn k.1 b)) +
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>            Real.sqrt (2 / β) * (2 * Real.pi * Lattice.enorm k.1) * B t ω) ∧
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (∀ (k : PosHalf d) (b : Bool),
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      ∫ ω, NegSobolev.eval (Z 0 ω) (modeFn k.1 b) ^ 2 ∂P = varMode d s β₀ k.1) ∧
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    iIndepFun (fun (kb : PosHalf d × Bool) ω =&gt; fun t : ℝ≥0 =&gt;
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      NegSobolev.eval (Z t ω) (modeFn kb.1.1 kb.2)) P ∧
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (∀ (k : PosHalf d) (b : Bool) (a t r : ℝ), 0 ≤ a → 0 ≤ t → 0 ≤ r →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      ∫ ω, NegSobolev.eval (Z (a + t) ω) (modeFn k.1 b) * NegSobolev.eval (Z (a + r) ω) (modeFn k.1 b) ∂P =
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        varMode d s β k.1 * Real.exp (-lamMode d s β k.1 * |t - r|) +
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>          deltaVar d s β β₀ k.1 * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>            Real.exp (-lamMode d s β k.1 * (t + r))) :=
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  Qch.quench_modes_core hd hβ hβ₀ D hD m P Z hZ
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>example := (@quench_modes_proof : type_of% @HRS.Sec7.quench_modes)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>theorem quench_window_tensors_proof (hd : 2 ≤ d) {s β β₀ : ℝ} (hβ : 0 &lt; β) (hβ₀ : 0 &lt; β₀) (hne : β₀ ≠ β)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ) (hm : (d : ℝ) / 2 + 1 &lt; m)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P Z)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (Zs : ℝ → Ω&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27; Zs) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    let Δ : ℝ → (PathSpace d m T [×2]→L[ℝ] ℝ) → ℝ := fun a M =&gt;
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      ∫ ω, M ![procWin m T a Z ω, procWin m T a Z ω] ∂P -
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        ∫ ω, M ![procWin m T 0 Zs ω, procWin m T 0 Zs ω] ∂P&#x27;
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (0 &lt; lamStar d s β ∧ {k : PosHalf d | lamMode d s β k.1 = lamStar d s β}.Finite ∧
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      {k : PosHalf d | lamMode d s β k.1 = lamStar d s β}.Nonempty) ∧
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    (∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      Summable (fun k : PosHalf d =&gt; |deltaVar d s β β₀ k.1| * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        (‖modePath m T (lamMode d s β k.1) (modeFn k.1 true)‖ ^ 2 +
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>          ‖modePath m T (lamMode d s β k.1) (modeFn k.1 false)‖ ^ 2)) ∧
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, Δ a M =
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>        ∑&#x27; k : PosHalf d, deltaVar d s β β₀ k.1 * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>          (M ![modePath m T (lamMode d s β k.1) (modeFn k.1 true),
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 true)] +
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>            M ![modePath m T (lamMode d s β k.1) (modeFn k.1 false),
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 false)])) ∧
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    (∀ ε : ℝ, 0 &lt; ε → ∃ a₀ : ℝ, ∀ a ≥ a₀, ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, ‖M‖ ≤ 1 →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      |Real.exp (2 * lamStar d s β * a) * Δ a M - slowTensor d s β β₀ m T M| ≤ ε) ∧
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    (∃ M : PathSpace d m T [×2]→L[ℝ] ℝ, slowTensor d s β β₀ m T M ≠ 0) ∧
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    ∃ cT CT : ℝ, 0 &lt; cT ∧ cT ≤ CT ∧ ∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      (∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, ‖M‖ ≤ 1 → |Δ a M| ≤ CT * Real.exp (-2 * lamStar d s β * a)) ∧
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      cT * Real.exp (-2 * lamStar d s β * a) ≤
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>        ⨆ M : {M : PathSpace d m T [×2]→L[ℝ] ℝ // ‖M‖ ≤ 1}, |Δ a M.1|
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a> := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  intro Δ
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hs0 : 0 ≤ s := hD.1 ▸ D.hs0
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hsd : s &lt; d := hD.1 ▸ D.hsd
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  obtain ⟨Y, mf⟩ := Qch.modeField_of_limit hd hβ hβ₀ D hD P Z hZ
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨Ys, mf&#x27;⟩ := Qch.modeField_of_limit hd hβ hβ D hD P&#x27; Zs hZs
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hser : ∀ a : ℝ, 0 ≤ a → ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, Δ a M =
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      ∑&#x27; k : PosHalf d, deltaVar d s β β₀ k.1 * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>          (M ![modePath m T (lamMode d s β k.1) (modeFn k.1 true),
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 true)] +
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>            M ![modePath m T (lamMode d s β k.1) (modeFn k.1 false),
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 false)]) :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    fun a ha M =&gt; Qch.window_series hd hs0 hsd hβ hβ₀ hm mf mf&#x27; hT ha M
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hW : 0 ≤ ∑&#x27; k : PosHalf d, Qch.wk d s β β₀ m T k := tsum_nonneg fun k =&gt; by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    unfold Qch.wk; positivity
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hup : ∀ a : ℝ, 0 ≤ a → ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, ‖M‖ ≤ 1 → |Δ a M| ≤
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      (∑&#x27; k : PosHalf d, Qch.wk d s β β₀ m T k) * Real.exp (-2 * lamStar d s β * a) := by
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    intro a ha M hM
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have h1 := Qch.upper_bound hd hs0 hsd hβ Δ hβ₀ hm hT hser ha M
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have h2 : 0 ≤ Real.exp (-2 * lamStar d s β * a) * ∑&#x27; k, Qch.wk d s β β₀ m T k :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      mul_nonneg (Real.exp_pos _).le hW
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    calc |Δ a M| ≤ ‖M‖ * (Real.exp (-2 * lamStar d s β * a) * ∑&#x27; k, Qch.wk d s β β₀ m T k) := h1
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      _ ≤ 1 * (Real.exp (-2 * lamStar d s β * a) * ∑&#x27; k, Qch.wk d s β β₀ m T k) :=
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>          mul_le_mul_of_nonneg_right hM h2
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      _ = _ := by ring
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  obtain ⟨M0, c0, hM0, hc0, hslow, hΔ0⟩ := Qch.test_form hd hs0 hsd hβ Δ hβ₀ hne hT hser
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  refine ⟨Qch.gap_facts hd hs0 hsd hβ, fun a ha =&gt;
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    ⟨Qch.summable_stmt hd hs0 hsd hβ hβ₀ hm hT ha, fun M =&gt; hser a ha M⟩, ?_, ⟨M0, by rw [hslow]; exact hc0⟩, ?_⟩
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  · intro ε hε
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have ht := Qch.tendsto_tail (m := m) (T := T) hd hs0 hsd hβ hβ₀ hm hT
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have h1 : ∀ᶠ a : ℝ in atTop, (∑&#x27; k, Qch.gk d s β β₀ m T a k) &lt; ε := ht.eventually (gt_mem_nhds hε)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    obtain ⟨a₀, ha₀⟩ := eventually_atTop.1 (h1.and (eventually_ge_atTop (0 : ℝ)))
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    refine ⟨a₀, fun a ha M hM =&gt; ?_⟩
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    obtain ⟨h2, h3⟩ := ha₀ a ha
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    have h4 := Qch.tail_bound hd hs0 hsd hβ Δ hβ₀ hm hT hser h3 M
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have h5 : 0 ≤ ∑&#x27; k, Qch.gk d s β β₀ m T a k :=
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      tsum_nonneg fun k =&gt; Qch.gk_nonneg hd hs0 hsd hβ hβ₀ k
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    calc _ ≤ ‖M‖ * ∑&#x27; k, Qch.gk d s β β₀ m T a k := h4
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      _ ≤ 1 * ∑&#x27; k, Qch.gk d s β β₀ m T a k := mul_le_mul_of_nonneg_right hM h5
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      _ ≤ ε := by linarith
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  · refine ⟨|c0|, |c0| + ∑&#x27; k : PosHalf d, Qch.wk d s β β₀ m T k, abs_pos.2 hc0,
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      le_add_of_nonneg_right hW, fun a ha =&gt; ⟨fun M hM =&gt; ?_, ?_⟩⟩
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    · calc |Δ a M| ≤ (∑&#x27; k : PosHalf d, Qch.wk d s β β₀ m T k) * Real.exp (-2 * lamStar d s β * a) :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>            hup a ha M hM
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        _ ≤ _ := mul_le_mul_of_nonneg_right (by linarith [abs_nonneg c0]) (Real.exp_pos _).le
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    · have hbdd : BddAbove (Set.range fun M : {M : PathSpace d m T [×2]→L[ℝ] ℝ // ‖M‖ ≤ 1} =&gt; |Δ a M.1|) :=
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        ⟨_, by rintro _ ⟨M, rfl⟩; exact hup a ha M.1 M.2⟩
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      refine le_ciSup_of_le hbdd ⟨M0, hM0⟩ ?_
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      show |c0| * Real.exp (-2 * lamStar d s β * a) ≤ |Δ a M0|
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      rw [hΔ0 a ha, abs_mul, abs_of_pos (Real.exp_pos _)]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      exact le_of_eq (mul_comm _ _)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>example := (@quench_window_tensors_proof : type_of% @HRS.Sec7.quench_window_tensors)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>theorem quench_equal_temperature_proof (hd : 2 ≤ d) {s β : ℝ} (hβ : 0 &lt; β)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ) (hm : (d : ℝ) / 2 + 1 &lt; m)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P Z)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    (Zs : ℝ → Ω&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27; Zs) :
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    ∀ a : ℝ, 0 ≤ a → ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ,
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      ∫ ω, M ![procWin m T a Z ω, procWin m T a Z ω] ∂P =
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        ∫ ω, M ![procWin m T 0 Zs ω, procWin m T 0 Zs ω] ∂P&#x27;
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a> := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  intro a ha M
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hs0 : 0 ≤ s := hD.1 ▸ D.hs0
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hsd : s &lt; d := hD.1 ▸ D.hsd
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  obtain ⟨Y, mf⟩ := Qch.modeField_of_limit hd hβ hβ D hD P Z hZ
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  obtain ⟨Ys, mf&#x27;⟩ := Qch.modeField_of_limit hd hβ hβ D hD P&#x27; Zs hZs
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have h := Qch.window_series hd hs0 hsd hβ hβ hm mf mf&#x27; hT ha M
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have h0 : ∀ k : PosHalf d, deltaVar d s β β k.1 = 0 := fun k =&gt; by unfold deltaVar; exact sub_self _
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  simp only [h0, zero_mul, tsum_zero] at h
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  exact sub_eq_zero.1 h
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>example := (@quench_equal_temperature_proof : type_of% @HRS.Sec7.quench_equal_temperature)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>end Sec7
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>end HRS
+</span></code></pre></main></body></html>

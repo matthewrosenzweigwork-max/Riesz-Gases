@@ -1,0 +1,433 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.Sec6 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.Sec6</code></h1><p><a href="../../lean/HRS/Sections/Sec6.lean">Open the unaltered Lean file</a> · 432 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.Sec5
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Energy.Coercivity
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Sections.ScrnAux1
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># HRS.Sections.Sec6 — Section 6 (mesoscopic observations and screening): statement drafts
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Statement drafts (all proofs are `sorry`) for the rows
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `M:O:prop:screening` (Proposition 6.1, TeX M L7613-7642);
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `M:@remark:L7716` (Remark &quot;Formation at low frequency&quot;, TeX M L7716-7718).
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>## Representation decisions (to be recorded in `docs/ISSUES.md`)
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* The periodic gradient diffusion `O:eq:screen-particles` (M L7566-7569) is the gradient dynamics with
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `V = 0` at inverse temperature `β_N` (`PDE.mfData`, `M = -I`, `invβ = β_N⁻¹`), started from independent
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  uniform (Haar) positions, with global collision-free strong solutions driven by independent Brownian
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  motions independent of the initial positions (`IsVectorBrownian`, `IndepFun`).
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* The mesoscopic test `φ_ℓ(x) = ℓ^{-d/2} ∑_z φ((x - x₀ + z)/ℓ)` (`O:eq:meso-test`) is `mesoTest` (the
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  sum over `ℤ^d` is a finite sum for compactly supported `φ`, `x₀ ∈ ℝ^d`); `Z_{N,ℓ}^t(φ) =
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  √N(μ_N^t - dx)(φ_ℓ)` is `linCoord volume (mesoTest ..) (X t)`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* The limiting Gaussian evolution `Z` (`O:eq:meso-limit-cov`) is the centered Gaussian family with
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  covariance `mesoCovMatrix` (`E[Z^t(φ)Z^u(ψ)] = ∫ φ̂ conj(ψ̂) e^{-(t-u)a_b}[S_b + (1-S_b)e^{-2ua_b}] dξ`
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  for `t ≥ u ≥ 0`, symmetric extension otherwise); the Fourier transform is Mathlib&#x27;s `𝓕`
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  (`φ̂(ξ) = ∫ φ(x) e^{-2πi⟨x,ξ⟩} dx`, the convention of the source, `r = 2π|ξ|`) and the integral is real (its
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  real part is taken).  The stationary Gaussian evolution with spectral density `S_b` is `mesoStatCovMatrix`.
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>* `o_N = C₀ N^{-q/d} + 1_{s=0} log N/(2dN)` is `HRS.oN` (the same expression, `q = d - s`).  The source
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  fixes `C₀` &quot;sufficiently large&quot; so that `F_N^γ(X_N, dx) + o_N ≥ 0` (`O:eq:meso-o`); this is part of the
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  conclusion (`∃ C₀ ≥ 0, ...`).  The two further pointwise inputs `O:eq:meso-comm`, `O:eq:meso-coer` are the
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  periodic commutator/coercivity estimates of Propositions 3.32-3.33 and are not restated.
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* Constants: `C` depends on `d, s, p`, the tests and the compact interval `[b₋,b₊] ⊂ (0,∞)` containing
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `b_N` and `b`; it is chosen before `N`, `β_N`, `ℓ_N`, `b`, the times and the particle system.
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>-/
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>noncomputable section
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>open scoped ENNReal NNReal FourierTransform
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>namespace HRS
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>variable {d : ℕ}
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>/-- The multiplier `a_b(ξ) = b⁻¹ r² + c_{d,s} r^{2-q}`, `r = 2π|ξ|`, `q = d - s` (`O:eq:meso-multipliers`,
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>M L7586-7589). -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>def mesoRate (d : ℕ) (s b : ℝ) (ξ : Euc d) : ℝ :=
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  b⁻¹ * (2 * Real.pi * ‖ξ‖) ^ 2 + rieszConst d s * (2 * Real.pi * ‖ξ‖) ^ (2 - ((d : ℝ) - s))
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- The equal-time spectral density `S_b(ξ) = r^q/(r^q + b c_{d,s})` (`O:eq:meso-multipliers`). -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>def mesoSpectral (d : ℕ) (s b : ℝ) (ξ : Euc d) : ℝ :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  (2 * Real.pi * ‖ξ‖) ^ ((d : ℝ) - s) /
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    ((2 * Real.pi * ‖ξ‖) ^ ((d : ℝ) - s) + b * rieszConst d s)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- The covariance integral `O:eq:meso-limit-cov` (M L7594-7598) for `t ≥ u ≥ 0`:
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`∫_{ℝ^d} φ̂(ξ) conj(ψ̂(ξ)) e^{-(t-u)a_b(ξ)}[S_b(ξ) + (1 - S_b(ξ)) e^{-2u a_b(ξ)}] dξ` (real part). -/
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>def mesoCovIntegral (d : ℕ) (s b t u : ℝ) (φ ψ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  (∫ ξ : Euc d, 𝓕 (fun x =&gt; (φ x : ℂ)) ξ * (starRingEnd ℂ) (𝓕 (fun x =&gt; (ψ x : ℂ)) ξ) *
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (((Real.exp (-(t - u) * mesoRate d s b ξ) *
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      (mesoSpectral d s b ξ + (1 - mesoSpectral d s b ξ) *
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>        Real.exp (-2 * u * mesoRate d s b ξ)) : ℝ) : ℂ))).re
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- The covariance matrix of the centered Gaussian evolution `Z` at times `t_a` and tests `φ_a`:
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>`E[Z^{t_a}(φ_a) Z^{t_c}(φ_c)]` is `mesoCovIntegral` with the later time first. -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>def mesoCovMatrix (d : ℕ) (s b : ℝ) {p : ℕ} (t : Fin p → ℝ) (φ : Fin p → Euc d → ℝ) :
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    Matrix (Fin p) (Fin p) ℝ :=
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  Matrix.of fun a c =&gt;
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    if t c ≤ t a then mesoCovIntegral d s b (t a) (t c) (φ a) (φ c)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    else mesoCovIntegral d s b (t c) (t a) (φ c) (φ a)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>/-- The stationary Gaussian evolution with spectral density `S_b`: covariance
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>`∫ φ̂ conj(ψ̂) e^{-(t-u)a_b} S_b dξ` for `t ≥ u` (the `u → ∞` limit of `mesoCovMatrix`,
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>M L7641-7642, L7711-7713). -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>def mesoStatCovMatrix (d : ℕ) (s b : ℝ) {p : ℕ} (t : Fin p → ℝ) (φ : Fin p → Euc d → ℝ) :
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    Matrix (Fin p) (Fin p) ℝ :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  Matrix.of fun a c =&gt;
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    if t c ≤ t a then
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      (∫ ξ : Euc d, 𝓕 (fun x =&gt; (φ a x : ℂ)) ξ * (starRingEnd ℂ) (𝓕 (fun x =&gt; (φ c x : ℂ)) ξ) *
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>        (((Real.exp (-(t a - t c) * mesoRate d s b ξ) * mesoSpectral d s b ξ : ℝ) : ℂ))).re
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    else
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      (∫ ξ : Euc d, 𝓕 (fun x =&gt; (φ c x : ℂ)) ξ * (starRingEnd ℂ) (𝓕 (fun x =&gt; (φ a x : ℂ)) ξ) *
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (((Real.exp (-(t c - t a) * mesoRate d s b ξ) * mesoSpectral d s b ξ : ℝ) : ℂ))).re
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- The periodized mesoscopic test `φ_ℓ(x) = ℓ^{-d/2} ∑_{z∈ℤ^d} φ((x - x₀ + z)/ℓ)` (`O:eq:meso-test`,
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>M L7576-7578) as a function on the torus (any representative of `x` gives the same value). -/
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>def mesoTest (d : ℕ) (ℓ : ℝ) (x₀ : Euc d) (φ : Euc d → ℝ) : Torus d → ℝ :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  fun x =&gt; ℓ ^ (-(d : ℝ) / 2) *
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    ∑&#x27; z : Lattice d, φ (ℓ⁻¹ • (Torus.rep x - x₀ + Lattice.toEuc z))
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>/-- The admissible exponent bound of `O:eq:kappa-range` (M L7630-7637): the minimum of the four
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>displayed quantities, `q = d - s`. -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>def kappaMax (d : ℕ) (s : ℝ) : ℝ :=
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  min (min (1 / (d : ℝ))
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      ((((d : ℝ) - s) / d - 1 / 2) / ((d : ℝ) / 2 + max ((d : ℝ) - s) 2)))
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (min (1 / ((d : ℝ) * ((d : ℝ) + 3 - min ((d : ℝ) - s) 2)))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      (((d : ℝ) - s) / (2 * d * (((d : ℝ) + ((d : ℝ) - s)) / 2 + 2 - min ((d : ℝ) - s) 2))))
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>/-- Proposition 6.1 (`M:O:prop:screening`, TeX M L7613-7642), the bound `O:eq:screening-bound`.
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>Fix `d ≥ 2`, `0 ≤ s &lt; d/2`, `q = d - s`, finitely many real tests `φ_a ∈ C_c^∞(ℝ^d)`, a center `x₀` and a
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>compact interval `[b₋,b₊] ⊂ (0,∞)`.  There are `C₀ ≥ 0` (so that `F_N^γ(X_N,dx) + o_N ≥ 0` off collisions,
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>`O:eq:meso-o`) and `C` such that for every `N ≥ 2`, `β_N &gt; 0`, `ℓ &gt; 0` (= `ℓ_N`), `b ∈ [b₋,b₊]` with
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>`b_N = β_N ℓ^q ∈ [b₋,b₊]`, every particle system (Haar initial positions, `V = 0`, inverse temperature
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>`β_N`) and every `t_1,…,t_p ≥ 0`:
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>`sup_{‖F‖_{C_b^3} ≤ 1} |E F((Z_{N,ℓ}^{τ_N t_i}(φ_i))_i) - E F((Z^{t_i}(φ_i))_i)|`
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>`≤ C[N^{-1/2}ℓ^{-d/2} + √N o_N ℓ^{-d/2-max(q,2)} + N^{-1/d} ℓ^{-d-3+min(q,2)}`
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>`+ √o_N ℓ^{-(d+q)/2-2+min(q,2)} + ℓ + |b_N - b|]`, `τ_N = ℓ^{2-q}` (`O:eq:meso-scales`).
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>No upper bound on `ℓ` is imposed (the bound is trivial for `ℓ ≥ 1` once `C ≥ 2`).  Technical
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>hypotheses: `hsd : s &lt; d` (implied by `s &lt; d/2`, needed for `PDE.mfData`), `1 ≤ N` is subsumed by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>`2 ≤ N`; the global strong solution (`∀ T&#x27;`) is needed because the times `t_i` are arbitrary.
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): the proof (TeX L7640-7680) uses the exact empirical identity, Itô&#x27;s formula for the Gaussian replacement, and entropy contraction for the invariant Gibbs law (B.15), which need a Brownian filtration, so `X` is assumed a filtered strong solution (`∃ ℱ W&#x27;, IsFilteredSolution P ℱ W&#x27; W X`, the strong-solution adaptedness of A.1 that `IsStrongSolution` records only as measurability, ISSUES D1). -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>theorem screening_comparison (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (hsd : s &lt; d) (p : ℕ) (φ : Fin p → Euc d → ℝ)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    (hφ : ∀ a, ContDiff ℝ (⊤ : ℕ∞) (φ a) ∧ HasCompactSupport (φ a)) (x₀ : Euc d)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (bm bp : ℝ) (hbm : 0 &lt; bm) (hbmp : bm ≤ bp) :
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    ∃ C₀ C : ℝ, 0 ≤ C₀ ∧ 0 ≤ C ∧
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      (∀ N : ℕ, 2 ≤ N → ∀ X : Config d N, X ∉ collisionSet d N →
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        0 ≤ rieszEnergy d s X (volume : Measure (Torus d)) + oN d s C₀ N) ∧
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      ∀ (N : ℕ), 2 ≤ N → ∀ (βN : ℝ) (hβN : 0 &lt; βN) (ℓ b : ℝ), 0 &lt; ℓ →
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        βN * ℓ ^ ((d : ℝ) - s) ∈ Set.Icc bm bp → b ∈ Set.Icc bm bp →
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>          (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          IsVectorBrownian P W →
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>          ProbabilityTheory.IndepFun X₀ (fun ω =&gt; fun t : ℝ≥0 =&gt; W t ω) P →
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          P.map X₀ = Measure.pi (fun _ : Fin N =&gt; (volume : Measure (Torus d))) →
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          (∀ T&#x27; : ℝ, 0 ≤ T&#x27; →
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>            IsStrongSolution P (PDE.mfData d s hs0 hsd (fun _ =&gt; 0) βN hβN) T&#x27; X₀ W X) →
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>          (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>            (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>          ∀ t : Fin p → ℝ, (∀ a, 0 ≤ t a) →
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>            smoothDist 3
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>                (law P fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>                  linCoord (volume : Measure (Torus d)) (mesoTest d ℓ x₀ (φ a))
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>                    (X (ℓ ^ (2 - ((d : ℝ) - s)) * t a).toNNReal ω) : EuclideanSpace ℝ (Fin p)))
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>                (ProbabilityTheory.multivariateGaussian 0 (mesoCovMatrix d s b t φ)) ≤
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>              C * ((N : ℝ) ^ (-(1 : ℝ) / 2) * ℓ ^ (-(d : ℝ) / 2) +
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>                Real.sqrt N * oN d s C₀ N * ℓ ^ (-(d : ℝ) / 2 - max ((d : ℝ) - s) 2) +
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>                (N : ℝ) ^ (-(1 : ℝ) / d) * ℓ ^ (-(d : ℝ) - 3 + min ((d : ℝ) - s) 2) +
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>                Real.sqrt (oN d s C₀ N) *
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>                  ℓ ^ (-((d : ℝ) + ((d : ℝ) - s)) / 2 - 2 + min ((d : ℝ) - s) 2) +
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>                ℓ + |βN * ℓ ^ ((d : ℝ) - s) - b|) := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  sorry
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>/-- Proposition 6.1, `O:eq:kappa-range` and the following two sentences (M L7630-7637): the interval
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>`0 &lt; κ &lt; kappaMax d s` is nonempty for every `0 ≤ s &lt; d/2` (`d ≥ 2`), and it is `κ &lt; 1/6` for
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>`(d,s) = (2,0)` and `κ &lt; 1/21` for `(d,s) = (3,1)`. -/
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>theorem kappaMax_pos_and_values :
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (∀ (d : ℕ) (s : ℝ), 2 ≤ d → 0 ≤ s → s &lt; (d : ℝ) / 2 → 0 &lt; kappaMax d s) ∧
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      kappaMax 2 0 = 1 / 6 ∧ kappaMax 3 1 = 1 / 21 := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  refine ⟨fun d s hd hs0 hs =&gt; ?_, ?_, ?_⟩
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  · have hD : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    have hD0 : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have hq : (0 : ℝ) &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    have hm2 : min ((d : ℝ) - s) 2 ≤ 2 := min_le_right _ _
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    have hmx : (2 : ℝ) ≤ max ((d : ℝ) - s) 2 := le_max_right _ _
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    unfold kappaMax
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have hX : (0 : ℝ) &lt; ((d : ℝ) - s) / d - 1 / 2 := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      have h : (1 / 2 : ℝ) &lt; ((d : ℝ) - s) / d := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        rw [lt_div_iff₀ hD0]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        linarith
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      linarith
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    have hY : (0 : ℝ) &lt; (d : ℝ) / 2 + max ((d : ℝ) - s) 2 := by linarith
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    have hE : (0 : ℝ) &lt; (d : ℝ) + 3 - min ((d : ℝ) - s) 2 := by linarith
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>    refine lt_min (lt_min (div_pos one_pos hD0) (div_pos hX hY))
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      (lt_min (div_pos one_pos (mul_pos hD0 hE)) (div_pos hq (mul_pos (mul_pos two_pos hD0) ?_)))
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    linarith
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  · unfold kappaMax
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    norm_num [min_def, max_def]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  · unfold kappaMax
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    norm_num [min_def, max_def]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>/-- Proposition 6.1, &quot;In particular&quot; (M L7628-7630): for `ℓ_N = N^{-κ}` with `0 &lt; κ &lt; kappaMax d s`, all
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>terms of the right-hand side of `O:eq:screening-bound` other than `|b_N - b|` tend to zero (for every
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>`C₀ ≥ 0`, with `o_N = oN d s C₀ N`). -/
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>theorem screening_error_tendsto (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    (C₀ : ℝ) (hC₀ : 0 ≤ C₀) (κ : ℝ) (hκ : 0 &lt; κ) (hκm : κ &lt; kappaMax d s) :
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    Tendsto (fun N : ℕ =&gt;
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      (N : ℝ) ^ (-(1 : ℝ) / 2) * ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) / 2) +
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>        Real.sqrt N * oN d s C₀ N * ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) / 2 - max ((d : ℝ) - s) 2) +
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        (N : ℝ) ^ (-(1 : ℝ) / d) * ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) - 3 + min ((d : ℝ) - s) 2) +
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>        Real.sqrt (oN d s C₀ N) *
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>          ((N : ℝ) ^ (-κ)) ^ (-((d : ℝ) + ((d : ℝ) - s)) / 2 - 2 + min ((d : ℝ) - s) 2) +
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        (N : ℝ) ^ (-κ)) atTop (𝓝 0) := by
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hD : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  have hD0 : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  have hq : (0 : ℝ) &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hm2 : min ((d : ℝ) - s) 2 ≤ 2 := min_le_right _ _
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  have hmx : (2 : ℝ) ≤ max ((d : ℝ) - s) 2 := le_max_right _ _
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  have hts : (d : ℝ) * (s / d) = s := by field_simp
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hsD : ((d : ℝ) - s) / d = 1 - s / d := by rw [sub_div, div_self hD0.ne&#x27;]
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  unfold kappaMax at hκm
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hY : (0 : ℝ) &lt; (d : ℝ) / 2 + max ((d : ℝ) - s) 2 := by linarith
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have hκa := lt_of_lt_of_le hκm (min_le_left _ _)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hκ1 := lt_of_lt_of_le hκa (min_le_left _ _)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  have hκ2 := lt_of_lt_of_le hκa (min_le_right _ _)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  have hκ3 := lt_of_lt_of_le hκm (le_trans (min_le_right _ _) (min_le_left _ _))
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  have hκ4 := lt_of_lt_of_le hκm (le_trans (min_le_right _ _) (min_le_right _ _))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  have hE : (0 : ℝ) &lt; (d : ℝ) + 3 - min ((d : ℝ) - s) 2 := by linarith
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have hF : (0 : ℝ) &lt; ((d : ℝ) + ((d : ℝ) - s)) / 2 + 2 - min ((d : ℝ) - s) 2 := by linarith
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  rw [lt_div_iff₀ hD0] at hκ1
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  rw [lt_div_iff₀ hY, hsD] at hκ2
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  rw [lt_div_iff₀ (mul_pos hD0 hE)] at hκ3
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  rw [lt_div_iff₀ (mul_pos (mul_pos two_pos hD0) hF)] at hκ4
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  have hκE : κ * ((d : ℝ) + 3 - min ((d : ℝ) - s) 2) &lt; 1 / d := by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    rw [lt_div_iff₀ hD0]
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    linarith
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  have key4 : κ * (((d : ℝ) + ((d : ℝ) - s)) / 2 + 2 - min ((d : ℝ) - s) 2) * 2 &lt; 1 - s / d := by
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    by_contra hc
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    push_neg at hc
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    have := mul_le_mul_of_nonneg_left hc hD0.le
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    linarith
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  have hf1 : -(1 : ℝ) / 2 + (-κ) * (-(d : ℝ) / 2) &lt; 0 := by linarith
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  have hf2 : 1 / 2 + ((s : ℝ) / d - 1) + (-κ) * (-(d : ℝ) / 2 - max ((d : ℝ) - s) 2) &lt; 0 := by
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    linarith
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  have hf3 : -(1 : ℝ) / d + (-κ) * (-(d : ℝ) - 3 + min ((d : ℝ) - s) 2) &lt; 0 := by
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    have e : -(1 : ℝ) / d + (-κ) * (-(d : ℝ) - 3 + min ((d : ℝ) - s) 2) =
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        -(1 / (d : ℝ)) + κ * ((d : ℝ) + 3 - min ((d : ℝ) - s) 2) := by ring
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    rw [e]
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    linarith
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  have hf4 : (s / d - 1) * (1 / 2) + (-κ) * (-((d : ℝ) + ((d : ℝ) - s)) / 2 - 2 +
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      min ((d : ℝ) - s) 2) &lt; 0 := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    linarith
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  have hT1 : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ (-(1 : ℝ) / 2) * ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) / 2))
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      atTop (𝓝 0) := by
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    refine (scrn_rpow_nat_tendsto hf1).congr&#x27; ?_
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    have hx : (0 : ℝ) &lt; N := by exact_mod_cast (show 0 &lt; N by omega)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    exact (scrn_pow_mul_pow hx _ _ _).symm
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  have hT2 : Tendsto (fun N : ℕ =&gt; Real.sqrt N * oN d s C₀ N *
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) / 2 - max ((d : ℝ) - s) 2)) atTop (𝓝 0) := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    refine squeeze_zero&#x27; ?_ ?_ (scrn_logpoly_nat_tendsto C₀ (1 / (2 * (d : ℝ))) hf2)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    · filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      exact mul_nonneg (mul_nonneg (Real.sqrt_nonneg _) (scrn_oN_nonneg hC₀ hN)) (by positivity)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    · filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      refine (scrn_term2_le hC₀ hN).trans_eq ?_
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>      ring
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  have hT3 : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ (-(1 : ℝ) / d) *
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      ((N : ℝ) ^ (-κ)) ^ (-(d : ℝ) - 3 + min ((d : ℝ) - s) 2)) atTop (𝓝 0) := by
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    refine (scrn_rpow_nat_tendsto hf3).congr&#x27; ?_
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    have hx : (0 : ℝ) &lt; N := by exact_mod_cast (show 0 &lt; N by omega)
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    exact (scrn_pow_mul_pow hx _ _ _).symm
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  have hT4 : Tendsto (fun N : ℕ =&gt; Real.sqrt (oN d s C₀ N) *
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      ((N : ℝ) ^ (-κ)) ^ (-((d : ℝ) + ((d : ℝ) - s)) / 2 - 2 + min ((d : ℝ) - s) 2))
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      atTop (𝓝 0) := by
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    refine squeeze_zero&#x27; ?_ ?_ (scrn_logpoly_nat_tendsto (1 + C₀) (1 / (2 * (d : ℝ))) hf4)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    · filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>      exact mul_nonneg (Real.sqrt_nonneg _) (by positivity)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    · filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>      refine (scrn_term4_le hC₀ hN).trans_eq ?_
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>      ring
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  have hT5 : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ (-κ)) atTop (𝓝 0) :=
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    scrn_rpow_nat_tendsto (by linarith)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  have hsum := ((((hT1.add hT2).add hT3).add hT4).add hT5)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  rw [show ((0 : ℝ) + 0 + 0 + 0 + 0) = 0 by ring] at hsum
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  exact hsum
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>/-- Proposition 6.1, last paragraph (M L7639-7642): for every `u_N → ∞`, the vector at rescaled times
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>`u_N + t_i` (fixed nonnegative lags `t_i`) converges to the stationary Gaussian evolution with spectral
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>density `S_b`, in the smooth distance `d_{C³}` (finitely many tests and times).  Regime: `ℓ_N = N^{-κ}`,
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>`0 &lt; κ &lt; kappaMax d s` (the regime in which the error terms of `O:eq:screening-bound` vanish),
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>`b_N = β_N ℓ_N^q → b ∈ (0,∞)`; the systems are indexed by `n ↦ N = n+2`, with the inverse temperature
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>`β_N = βN n`.  The sentence &quot;no sharp occupancy assertion under only `Nℓ^d → ∞`&quot; is a non-claim.
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): the stationary limit is the last paragraph of the proof of Proposition 6.1 (TeX L7680-7690), which reuses the uniform particle errors of `screening_comparison` (Itô/duality identity), so each `X n` is assumed a filtered strong solution (`hfilt`, `IsFilteredSolution`). -/
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>theorem screening_stationary_limit (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    (hsd : s &lt; d) (p : ℕ) (φ : Fin p → Euc d → ℝ)
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    (hφ : ∀ a, ContDiff ℝ (⊤ : ℕ∞) (φ a) ∧ HasCompactSupport (φ a)) (x₀ : Euc d)
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    (κ : ℝ) (hκ : 0 &lt; κ) (hκm : κ &lt; kappaMax d s) (b : ℝ) (hb : 0 &lt; b) (βN : ℕ → ℝ)
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    (hβN : ∀ n, 0 &lt; βN n)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    (hbN : Tendsto (fun n : ℕ =&gt; βN n * (((n + 2 : ℕ) : ℝ) ^ (-κ)) ^ ((d : ℝ) - s)) atTop (𝓝 b))
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    (Ω : ℕ → Type) [∀ n, MeasurableSpace (Ω n)] (P : ∀ n, Measure (Ω n))
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    [∀ n, IsProbabilityMeasure (P n)] (X₀ : ∀ n, Ω n → Config d (n + 2))
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    (W : ∀ n, ℝ≥0 → Ω n → (Fin (n + 2) → Euc d)) (X : ∀ n, ℝ≥0 → Ω n → Config d (n + 2))
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    (hW : ∀ n, IsVectorBrownian (P n) (W n))
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    (hI : ∀ n, ProbabilityTheory.IndepFun (X₀ n) (fun ω =&gt; fun t : ℝ≥0 =&gt; W n t ω) (P n))
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    (hX₀ : ∀ n, (P n).map (X₀ n) = Measure.pi (fun _ : Fin (n + 2) =&gt; (volume : Measure (Torus d))))
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    (hsol : ∀ n, ∀ T&#x27; : ℝ, 0 ≤ T&#x27; →
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      IsStrongSolution (P n) (PDE.mfData d s hs0 hsd (fun _ =&gt; 0) (βN n) (hβN n)) T&#x27; (X₀ n) (W n)
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>        (X n))
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    (hfilt : ∀ n, ∃ (ℱ : MeasureTheory.Filtration ℝ (inferInstance : MeasurableSpace (Ω n)))
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      (W&#x27; : ℝ≥0 → Ω n → (Fin (n + 2) × Fin d) → ℝ), IsFilteredSolution (P n) ℱ W&#x27; (W n) (X n))
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    (u : ℕ → ℝ) (hu0 : ∀ n, 0 ≤ u n) (hu : Tendsto u atTop atTop) (t : Fin p → ℝ)
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    (ht : ∀ a, 0 ≤ t a) :
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    Tendsto (fun n : ℕ =&gt; smoothDist 3
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      (law (P n) fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>        linCoord (volume : Measure (Torus d))
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>          (mesoTest d (((n + 2 : ℕ) : ℝ) ^ (-κ)) x₀ (φ a))
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>          (X n ((((n + 2 : ℕ) : ℝ) ^ (-κ)) ^ (2 - ((d : ℝ) - s)) * (u n + t a)).toNNReal ω) :
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>            EuclideanSpace ℝ (Fin p)))
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      (ProbabilityTheory.multivariateGaussian 0 (mesoStatCovMatrix d s b t φ))) atTop (𝓝 0) := by
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  sorry
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>/-- Remark &quot;Formation at low frequency&quot; (`M:@remark:L7716`, TeX M L7716-7718): at a fixed positive
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>rescaled time `t`, the limit as `ξ → 0` of the equal-time spectral density
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>`S_b(ξ) + (1 - S_b(ξ)) e^{-2t a_b(ξ)}` (`O:eq:meso-limit-cov` at `u = t`) is `1` if `q &lt; 2`, is
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>`e^{-2 c_{d,s} t}` if `q = 2`, and is `0` if `q &gt; 2`, `q = d - s`, `c_{d,s} = rieszConst d s`; in all
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>cases the stationary density `S_b(ξ)` tends to `0` as `ξ → 0`.  Standing assumptions of Section 6:
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>`d ≥ 2`, `0 ≤ s &lt; d/2`, fixed `b &gt; 0`. -/
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>theorem meso_low_frequency (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (b : ℝ)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    (hb : 0 &lt; b) (t : ℝ) (ht : 0 &lt; t) :
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    (((d : ℝ) - s &lt; 2 → Tendsto (fun ξ : Euc d =&gt; mesoSpectral d s b ξ +
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>        (1 - mesoSpectral d s b ξ) * Real.exp (-2 * t * mesoRate d s b ξ)) (𝓝[≠] 0) (𝓝 1)) ∧
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>      ((d : ℝ) - s = 2 → Tendsto (fun ξ : Euc d =&gt; mesoSpectral d s b ξ +
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>        (1 - mesoSpectral d s b ξ) * Real.exp (-2 * t * mesoRate d s b ξ)) (𝓝[≠] 0)
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>          (𝓝 (Real.exp (-2 * rieszConst d s * t)))) ∧
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>      (2 &lt; (d : ℝ) - s → Tendsto (fun ξ : Euc d =&gt; mesoSpectral d s b ξ +
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>        (1 - mesoSpectral d s b ξ) * Real.exp (-2 * t * mesoRate d s b ξ)) (𝓝[≠] 0) (𝓝 0))) ∧
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    Tendsto (fun ξ : Euc d =&gt; mesoSpectral d s b ξ) (𝓝[≠] 0) (𝓝 0) := by
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  have hsd : s &lt; d := by linarith
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  have hq0 : 0 &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  have hc : 0 &lt; rieszConst d s := rieszConst_pos hd hs0 hsd
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  -- the radial variable `u(ξ) = 2π‖ξ‖`
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  set u : Euc d → ℝ := fun ξ =&gt; 2 * Real.pi * ‖ξ‖ with hu_def
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have hu_cont : Continuous u := continuous_const.mul continuous_norm
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hu0 : u 0 = 0 := by simp [hu_def]
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have hupos : ∀ ξ : Euc d, ξ ≠ 0 → 0 &lt; u ξ := fun ξ hξ =&gt; by
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    have : 0 &lt; ‖ξ‖ := norm_pos_iff.mpr hξ
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    simp only [hu_def]
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    positivity
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  have hS_eq : ∀ ξ, mesoSpectral d s b ξ =
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>      (u ξ) ^ ((d : ℝ) - s) / ((u ξ) ^ ((d : ℝ) - s) + b * rieszConst d s) := fun ξ =&gt; rfl
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  have hA_eq : ∀ ξ, mesoRate d s b ξ = b⁻¹ * (u ξ) ^ 2 + rieszConst d s * (u ξ) ^ (2 - ((d : ℝ) - s)) :=
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    fun ξ =&gt; rfl
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  have hpow_cont : ∀ p : ℝ, 0 ≤ p → ContinuousAt (fun ξ =&gt; (u ξ) ^ p) 0 := fun p hp =&gt; by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    have h1 : ContinuousAt (fun x : ℝ =&gt; x ^ p) (u 0) :=
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>      Real.continuousAt_rpow_const _ _ (Or.inr hp)
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    exact h1.comp (f := u) hu_cont.continuousAt
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  -- value of `S` at the origin and its continuity
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>  have hS_cont : ContinuousAt (fun ξ =&gt; mesoSpectral d s b ξ) 0 := by
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    have hden : (u 0) ^ ((d : ℝ) - s) + b * rieszConst d s ≠ 0 := by
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>      rw [hu0, Real.zero_rpow hq0.ne&#x27;]
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>      have : 0 &lt; b * rieszConst d s := mul_pos hb hc
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>      linarith
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    have := ((hpow_cont _ hq0.le).div ((hpow_cont _ hq0.le).add continuousAt_const)
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>      (by simpa using hden) : ContinuousAt (fun ξ =&gt; (u ξ) ^ ((d : ℝ) - s) /
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>        ((u ξ) ^ ((d : ℝ) - s) + b * rieszConst d s)) 0)
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    exact this
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  have hS_val : mesoSpectral d s b 0 = 0 := by
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    rw [hS_eq, hu0, Real.zero_rpow hq0.ne&#x27;, zero_div]
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  have hS0 : Tendsto (fun ξ =&gt; mesoSpectral d s b ξ) (𝓝[≠] 0) (𝓝 0) := by
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    have h := hS_cont.tendsto.mono_left (nhdsWithin_le_nhds (s := {(0 : Euc d)}ᶜ))
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    rw [hS_val] at h
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    exact h
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  refine ⟨⟨?_, ?_, ?_⟩, hS0⟩
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>  · -- `d - s &lt; 2`: the limit is `1`
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    intro hlt
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    have hexp : ContinuousAt (fun ξ =&gt; Real.exp (-2 * t * mesoRate d s b ξ)) 0 := by
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      have hA : ContinuousAt (fun ξ =&gt; mesoRate d s b ξ) 0 := by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>        have e : (fun ξ =&gt; mesoRate d s b ξ) = fun ξ =&gt; b⁻¹ * (u ξ) ^ 2 +
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>            rieszConst d s * (u ξ) ^ (2 - ((d : ℝ) - s)) := funext hA_eq
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>        rw [e]
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>        exact ((continuousAt_const.mul ((hu_cont.pow 2).continuousAt))).add
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>          (continuousAt_const.mul (hpow_cont _ (by linarith)))
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>      exact (Real.continuous_exp.continuousAt).comp (continuousAt_const.mul hA)
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    have hF : ContinuousAt (fun ξ =&gt; mesoSpectral d s b ξ +
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>        (1 - mesoSpectral d s b ξ) * Real.exp (-2 * t * mesoRate d s b ξ)) 0 :=
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>      hS_cont.add ((continuousAt_const.sub hS_cont).mul hexp)
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    have hval : mesoSpectral d s b 0 + (1 - mesoSpectral d s b 0) *
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>        Real.exp (-2 * t * mesoRate d s b 0) = 1 := by
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>      have hA0 : mesoRate d s b 0 = 0 := by
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>        rw [hA_eq, hu0]
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>        simp [Real.zero_rpow (show (2 - ((d : ℝ) - s)) ≠ 0 by linarith)]
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>      rw [hS_val, hA0]
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>      simp
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    have h := hF.tendsto.mono_left (nhdsWithin_le_nhds (s := {(0 : Euc d)}ᶜ))
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    rw [hval] at h
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    exact h
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>  · -- `d - s = 2`: the limit is `exp(-2 c t)`
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    intro heq
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    have hA_const : (fun ξ =&gt; mesoRate d s b ξ) = fun ξ =&gt; b⁻¹ * (u ξ) ^ 2 + rieszConst d s := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      funext ξ
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      rw [hA_eq, heq, sub_self, Real.rpow_zero, mul_one]
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>    have hA : ContinuousAt (fun ξ =&gt; mesoRate d s b ξ) 0 := by
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>      rw [hA_const]
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>      exact (continuousAt_const.mul (hu_cont.pow 2).continuousAt).add continuousAt_const
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    have hexp : ContinuousAt (fun ξ =&gt; Real.exp (-2 * t * mesoRate d s b ξ)) 0 :=
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      (Real.continuous_exp.continuousAt).comp (continuousAt_const.mul hA)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    have hF : ContinuousAt (fun ξ =&gt; mesoSpectral d s b ξ +
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>        (1 - mesoSpectral d s b ξ) * Real.exp (-2 * t * mesoRate d s b ξ)) 0 :=
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>      hS_cont.add ((continuousAt_const.sub hS_cont).mul hexp)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    have hval : mesoSpectral d s b 0 + (1 - mesoSpectral d s b 0) *
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>        Real.exp (-2 * t * mesoRate d s b 0) = Real.exp (-2 * rieszConst d s * t) := by
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      have hA0 : mesoRate d s b 0 = rieszConst d s := by
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>        rw [hA_eq, hu0, heq, sub_self, Real.rpow_zero]
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>        simp
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      rw [hS_val, hA0]
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      simp only [zero_add, sub_zero, one_mul]
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>      congr 1
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>      ring
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    have h := hF.tendsto.mono_left (nhdsWithin_le_nhds (s := {(0 : Euc d)}ᶜ))
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    rw [hval] at h
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    exact h
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>  · -- `2 &lt; d - s`: the limit is `0`, since the rate blows up at the origin
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    intro hgt
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>    have hu_lim : Tendsto u (𝓝[≠] 0) (𝓝[&gt;] 0) := by
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>      rw [tendsto_nhdsWithin_iff]
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>      refine ⟨?_, ?_⟩
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      · have := (hu_cont.tendsto (0 : Euc d)).mono_left (nhdsWithin_le_nhds (s := {(0 : Euc d)}ᶜ))
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        rw [hu0] at this
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>        exact this
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      · filter_upwards [self_mem_nhdsWithin] with ξ hξ
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>        exact hupos ξ hξ
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    have hpow_lim : Tendsto (fun ξ =&gt; (u ξ) ^ (2 - ((d : ℝ) - s))) (𝓝[≠] 0) atTop := by
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>      have hinv : Tendsto (fun ξ =&gt; (u ξ)⁻¹) (𝓝[≠] 0) atTop :=
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>        tendsto_inv_nhdsGT_zero.comp hu_lim
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>      have h2 := (tendsto_rpow_atTop (show 0 &lt; ((d : ℝ) - s) - 2 by linarith)).comp hinv
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      refine h2.congr&#x27; ?_
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      filter_upwards [self_mem_nhdsWithin] with ξ hξ
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      have hp := hupos ξ hξ
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>      simp only [Function.comp]
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>      rw [Real.inv_rpow hp.le, ← Real.rpow_neg hp.le]
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>      congr 1
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>      ring
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    have hA_lim : Tendsto (fun ξ =&gt; mesoRate d s b ξ) (𝓝[≠] 0) atTop := by
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>      have hc&#x27; : Tendsto (fun ξ =&gt; rieszConst d s * (u ξ) ^ (2 - ((d : ℝ) - s))) (𝓝[≠] 0) atTop :=
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>        Tendsto.const_mul_atTop hc hpow_lim
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>      refine tendsto_atTop_mono (fun ξ =&gt; ?_) hc&#x27;
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>      rw [hA_eq]
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>      have : 0 ≤ b⁻¹ * (u ξ) ^ 2 := mul_nonneg (inv_nonneg.mpr hb.le) (sq_nonneg _)
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>      linarith
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    have hE : Tendsto (fun ξ =&gt; Real.exp (-2 * t * mesoRate d s b ξ)) (𝓝[≠] 0) (𝓝 0) := by
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>      have h1 : Tendsto (fun ξ =&gt; -2 * t * mesoRate d s b ξ) (𝓝[≠] 0) atBot :=
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>        Tendsto.const_mul_atTop_of_neg (by linarith) hA_lim
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>      exact Real.tendsto_exp_atBot.comp h1
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>    have h1 : Tendsto (fun _ : Euc d =&gt; (1 : ℝ)) (𝓝[≠] 0) (𝓝 1) := tendsto_const_nhds
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    have hF := hS0.add ((h1.sub hS0).mul hE)
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    have h0 : (0 : ℝ) + (1 - 0) * 0 = 0 := by ring
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    rw [h0] at hF
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    exact hF
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>end HRS
+</span></code></pre></main></body></html>

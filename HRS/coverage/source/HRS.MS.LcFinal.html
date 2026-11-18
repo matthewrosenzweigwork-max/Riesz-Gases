@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.LcFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.LcFinal</code></h1><p><a href="../../lean/HRS/MS/LcFinal.lean">Open the unaltered Lean file</a> · 91 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.LcFinalAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.LcKolmAux2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MS.LcUniqAux2
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MS.LcEngAux3
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MS.LcWtAux4
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.MS.LcFlowAux2
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.Stochastic.Wiener
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.Whole.Adjoint
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>/-!
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a># LC-F: assembly of `HRS.Whole.local_decay` (supplement S4.11)
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`local_decay_proof : type_of% @HRS.Whole.local_decay` (the frozen statement, with `hk : 2 ≤ k`).
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>Proof.  The constant `C` is the one of `lc_engine` (quantified before `ν, c, B`).  Data given on
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>`[0,T]` only are clamped to `c (min · T)`, `B (min · T)` (`lcHyp_clamp`, `lcDecay_clamp`), which agree
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>with the original data on `[0,T]`.  On a probability space with a Brownian filtration
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>(`exists_isBrownianFiltration_type`):
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* existence: `lc_backward` for the clamped data and `f ∈ C^2` with bounded derivatives of order `≤ 2`
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  (from `decayNormE k b f &lt; ⊤`, `k ≥ 2`, `lcf_bdd_iteratedFDeriv`), transported to the original drift by
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  `lcf_solution_congr` (a local backward solution only sees the drift on `[0,t]`);
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* every solution `u` equals `lcSg · t f` on `[0,t]` by `lc_unique` (`‖c‖ ≤ Λc`, `‖B‖ ≤ ΛB` on `[0,t]`);
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* the `C^k` regularity and the bound `decayNormE k b (u r) ≤ ofReal C * decayNormE k b f` are those of
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `lc_engine` for `lcSg`.
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>No statement adjustment is made.
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>-/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open MeasureTheory Set Filter Topology
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open scoped NNReal ENNReal
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open HRS HRS.Whole
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>noncomputable section
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>namespace HRS.MS.Lc
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>/-- **S4.11 `local_decay`**: proof (tie in `LcFinalTie`). -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>theorem local_decay_proof : type_of% @HRS.Whole.local_decay := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  intro d hd s hs Q k hk T νstar bexp Λc ΛB hb
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  obtain ⟨C, hC⟩ := lc_engine.{0} s hs Q k T νstar bexp Λc ΛB hb
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  refine ⟨C, fun ν c B hνc hν hc hB hcb hBs t ht f hf hfd =&gt; ?_⟩
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have hT0 : 0 ≤ T := ht.1.trans ht.2
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  obtain ⟨Ω, mΩ, P, hP, ℱ, W, hW⟩ := exists_isBrownianFiltration_type (Fin d)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  haveI := hP
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  set c&#x27; : ℝ → Euc d := fun v =&gt; c (min v T) with hc&#x27;
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  set B&#x27; : ℝ → Euc d → Euc d := fun v =&gt; B (min v T) with hB&#x27;
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hH : LcHyp Q k Λc ΛB c&#x27; B&#x27; :=
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    lcHyp_clamp hT0 hc hB hcb fun v hv =&gt;
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      ⟨by exact_mod_cast (hBs v hv).1, fun j hj x =&gt; (hBs v hv).2.1 j hj x⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hH2 : LcHyp Q 2 Λc ΛB c&#x27; B&#x27; :=
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    lcHyp_clamp hT0 hc hB hcb fun v hv =&gt;
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      ⟨(hBs v hv).1.of_le (by exact_mod_cast (by omega : 2 + 1 ≤ k + 1)),
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        fun j hj x =&gt; (hBs v hv).2.1 j (by omega) x⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hdec := lcDecay_clamp hT0 (fun v hv =&gt; (hBs v hv).2.2)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  -- the data
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hfk : ContDiff ℝ (k : WithTop ℕ∞) f := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    have : max k 2 = k := Nat.max_eq_left hk
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    rw [this] at hf
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    exact hf
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hf2 : ContDiff ℝ 2 f := hfk.of_le (by exact_mod_cast hk)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  obtain ⟨M0, hM0⟩ := lcf_bdd_iteratedFDeriv hb.le hfd (Nat.zero_le k)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨M1, hM1⟩ := lcf_bdd_iteratedFDeriv hb.le hfd (by omega : 1 ≤ k)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨M2, hM2⟩ := lcf_bdd_iteratedFDeriv hb.le hfd hk
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  have hM : ∀ i ≤ 2, ∀ y, ‖iteratedFDeriv ℝ i f y‖ ≤ max (max M0 M1) M2 := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    intro i hi y
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    interval_cases i
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    · exact (hM0 y).trans ((le_max_left _ _).trans (le_max_left _ _))
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    · exact (hM1 y).trans ((le_max_right _ _).trans (le_max_left _ _))
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    · exact (hM2 y).trans (le_max_right _ _)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hν0 : ∀ r, 0 ≤ ν r := fun r =&gt; (hν r).1
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hνs : ∀ r, ν r ≤ νstar := fun r =&gt; (hν r).2
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  -- the drift agrees on `[0,t]`
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hdr : ∀ r ∈ Icc 0 t, ∀ x : Euc d,
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      -(Torus.matVec Q x) - c&#x27; r + B&#x27; r x = -(Torus.matVec Q x) - c r + B r x := by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    intro r hr x
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    have : min r T = r := min_eq_left (hr.2.trans ht.2)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    simp only [hc&#x27;, hB&#x27;, this]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hsol : IsLocalBackwardSolution ν (fun r x =&gt; -(Torus.matVec Q x) - c r + B r x) t f
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      (fun r =&gt; lcSg P W ν Q c&#x27; B&#x27; r t f) :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    lcf_solution_congr hdr (lc_backward hW hνc hν0 hνs hH2 ht.1 hf2 hM)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  refine ⟨⟨_, hsol⟩, fun u hu r hr =&gt; ?_⟩
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hBn : ∀ r ∈ Icc 0 t, ∀ x, ‖B r x‖ ≤ ΛB := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    intro r hr x
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have := (hBs r ⟨hr.1, hr.2.trans ht.2⟩).2.1 0 (Nat.zero_le _) x
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rwa [norm_iteratedFDeriv_zero] at this
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have huq := lc_unique ht.1 (fun r _ =&gt; hν r) (fun r hr =&gt; hcb r ⟨hr.1, hr.2.trans ht.2⟩) hBn
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    hu hsol
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hueq : u r = lcSg P W ν Q c&#x27; B&#x27; r t f := funext fun x =&gt; huq r hr x
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  rw [hueq]
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  exact hC P ℱ W ν c&#x27; B&#x27; hW hνc hν hH hdec r t hr.1 hr.2 ht.2 f hfk hfd
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>end HRS.MS.Lc
+</span></code></pre></main></body></html>

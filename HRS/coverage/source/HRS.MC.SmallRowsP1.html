@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.SmallRowsP1 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.SmallRowsP1</code></h1><p><a href="../../lean/HRS/MC/SmallRowsP1.lean">Open the unaltered Lean file</a> · 70 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Energy.Modulated
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Torus.Sobolev
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Prob.Gaussian
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MC.L5566
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># Packet SM1: the force of the negative-spectral kernel is not Lipschitz (`M:@remark:L5566`, clause R1)
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Proves `negSpectral_force_not_lipschitz` (statement frozen in `HRS/MC/SmallRowsSpec.lean`).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>set_option maxSynthPendingDepth 3
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS.MC.SmallRows
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>/-- The canonical representative of a torus point lies in the box `[0,1)^d`, hence has norm at
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>most `√d`. -/
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem p_sm1_rep_norm_le {d : ℕ} (x : Torus d) : ‖Torus.rep x‖ ≤ Real.sqrt d := by
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have hcoord : ∀ i : Fin d, ‖Torus.rep x i‖ ≤ 1 := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    intro i
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    have h := (AddCircle.equivIco (1 : ℝ) 0 (x i)).2
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    have h&#x27; : 0 ≤ Torus.rep x i ∧ Torus.rep x i &lt; 1 := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>      simpa [Torus.rep] using h
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    rw [Real.norm_eq_abs, abs_le]
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    constructor &lt;;&gt; linarith [h&#x27;.1, h&#x27;.2]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  rw [EuclideanSpace.norm_eq]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  apply Real.sqrt_le_sqrt
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  calc ∑ i : Fin d, ‖Torus.rep x i‖ ^ 2 ≤ ∑ _i : Fin d, (1 : ℝ) := by
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>        apply Finset.sum_le_sum
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        intro i _
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        have h0 : 0 ≤ ‖Torus.rep x i‖ := norm_nonneg _
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        nlinarith [hcoord i]
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    _ = d := by simp
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>/-! ### Row `M:@remark:L5566`, clause R1 -/
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem negSpectral_force_not_lipschitz {d : ℕ} (hd : 1 ≤ d) {s c : ℝ} (hs1 : -1 &lt; s)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (hs0 : s &lt; 0) (hc : 0 &lt; c) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (∃ M : ℝ, ∀ x : Torus d, |negSpectralKernel d s c x| ≤ M) ∧
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    ¬ ∃ K : ℝ≥0, LipschitzWith K
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        (fun y : Euc d =&gt; Torus.grad (negSpectralKernel d s c) (Torus.mk y)) := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  refine ⟨?_, ?_⟩
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  · obtain ⟨M, hM⟩ := (isCompact_univ (X := Torus d)).exists_bound_of_continuousOn
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      (negSpectralKernel_continuous d hs0 hc).continuousOn
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    exact ⟨M, fun x =&gt; by rw [← Real.norm_eq_abs]; exact hM x (Set.mem_univ x)⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  · rintro ⟨K, hK⟩
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    obtain ⟨x, -, -, hx⟩ := HRS.MC.L5566.negSpectral_grad_unbounded_proof hd hs1 hs0 hc
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      (‖Torus.grad (negSpectralKernel d s c) (Torus.mk 0)‖ + (K : ℝ) * Real.sqrt d)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    have hlip := hK.dist_le_mul (Torus.rep x) 0
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    simp only [Torus.mk_rep, dist_eq_norm, sub_zero] at hlip
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    have h1 : ‖Torus.grad (negSpectralKernel d s c) x - Torus.grad (negSpectralKernel d s c) (Torus.mk 0)‖
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        ≤ (K : ℝ) * Real.sqrt d :=
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      hlip.trans (mul_le_mul_of_nonneg_left (p_sm1_rep_norm_le x) (NNReal.coe_nonneg K))
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have h2 : ‖Torus.grad (negSpectralKernel d s c) x‖
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>        ≤ ‖Torus.grad (negSpectralKernel d s c) x - Torus.grad (negSpectralKernel d s c) (Torus.mk 0)‖
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>          + ‖Torus.grad (negSpectralKernel d s c) (Torus.mk 0)‖ := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      calc ‖Torus.grad (negSpectralKernel d s c) x‖
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>          = ‖(Torus.grad (negSpectralKernel d s c) x - Torus.grad (negSpectralKernel d s c) (Torus.mk 0))
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>              + Torus.grad (negSpectralKernel d s c) (Torus.mk 0)‖ := by rw [sub_add_cancel]
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        _ ≤ _ := norm_add_le _ _
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    linarith
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>end HRS.MC.SmallRows
+</span></code></pre></main></body></html>
