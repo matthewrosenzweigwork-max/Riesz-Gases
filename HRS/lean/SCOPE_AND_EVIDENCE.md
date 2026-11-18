@@ -1,3 +1,5 @@
+> Current source differs by one admitted-declaration removal. See [current-source scope](CURRENT_SOURCE_CHANGES.md). The evidence below describes the historical release.
+
 # Scope, evidence and qualifications
 
 ## What the evidence is

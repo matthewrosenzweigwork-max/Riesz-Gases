@@ -59,7 +59,7 @@ The §6 argument uses `HRS.commutator_coercivity_common_proof`, which applies th
 
 ## Scope of the exposition
 
-The source links below contain the declarations and the analytic lemmas used in these proofs. The distinct truncated-kernel statement in Appendix D.6 is listed with its admitted proof in the index.
+The source links below contain the declarations and the analytic lemmas used in these proofs.
 
 ## Whole space · sharp-scale theorem
 %%%

@@ -28,3 +28,13 @@ def apply_search_labels(reader_dir):
     s=replace_once(s,"searchKey: `${value[0].data.sectionNum ?? ''} ${value[0].data.title}`,",
         '// Modified for the HRS reader: only manuscript titles supply public numbering.\n            searchKey: value[0].data.title,')
     p.write_text(s)
+
+    # Post-release D.6 removal: old native snapshots remain historical inputs.
+    # Filter the neutral legacy resolver alias before either search UI renders it.
+    p=root/'search-box.js';s=p.read_text()
+    s=replace_once(s, '    return candidates;', '''    // HRS current-source removal: retain legacy anchors, do not advertise removed content.
+    return candidates.filter(candidate => {
+        const address = candidate.kind === "semantic" ? candidate.searchable.address : candidate.textMatch.ref;
+        return !/#sample-6(?:$|[?&])/.test(address);
+    });''')
+    p.write_text(s)

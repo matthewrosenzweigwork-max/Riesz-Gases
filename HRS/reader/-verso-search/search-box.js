@@ -498,7 +498,11 @@ export const computeCandidates = (
         });
     }
     candidates.sort((a, b) => b.score - a.score);
-    return candidates;
+    // HRS current-source removal: retain legacy anchors, do not advertise removed content.
+    return candidates.filter(candidate => {
+        const address = candidate.kind === "semantic" ? candidate.searchable.address : candidate.textMatch.ref;
+        return !/#sample-6(?:$|[?&])/.test(address);
+    });
 };
 
 /**

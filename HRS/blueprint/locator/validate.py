@@ -35,8 +35,15 @@ for f,v in links:
  if p.is_dir():p=p/'index.html'
  if u.fragment:
   assert p in ids and unquote(u.fragment) in ids[p],(f,v)
-assert len(targets)==len(set(targets))==335 and len(section)==len(set(section))==143
-assert sorted(claims)==list(range(2,1184)), (len(claims),sorted(set(range(2,1184))-set(claims))[:22])
+assert len(targets)==len(set(targets))==334 and len(section)==len(set(section))==143
+expected_lines=[line for line in range(2,1184) if line!=740]
+assert sorted(claims)==expected_lines, (len(claims),sorted(set(expected_lines)-set(claims))[:22])
+# The removed D.6 card survives only as a neutral historical anchor in Appendix D.
+legacy_id='p-'+hashlib.sha256(b'M:B:lem:fdl-commutator').hexdigest()[:14]
+legacy=html.fromstring((C/'sections/M-D.html').read_bytes()).xpath('//*[@id=$id]',id=legacy_id)
+assert len(legacy)==1 and legacy[0].tag=='span' and not legacy[0].text_content().strip()
+assert 'M:B:lem:fdl-commutator' not in targets
+assert 740 not in claims
 assert len([p for p in files if p.parent.name=='sections'])==24
-out={'status':'PASS','html_pages':len(files),'paper_targets':len(targets),'claim_rows':len(claims),'distinct_sections':24,'subsections':len(section),'numbered_lean_source_files_checked':len(srcfiles),'all_source_lines_exact':True,'math_instances':math,'hrefs_checked_excluding_source_self_line_links':len(links),'all_hrefs_and_anchors_valid':True,'public_path_scan_clean':True,'strict_local_links':True}
+out={'status':'PASS','html_pages':len(files),'paper_targets':len(targets),'neutral_historical_anchors':1,'excluded_historical_ledger_line':740,'claim_rows':len(claims),'distinct_sections':24,'subsections':len(section),'numbered_lean_source_files_checked':len(srcfiles),'all_source_lines_exact':True,'math_instances':math,'hrefs_checked_excluding_source_self_line_links':len(links),'all_hrefs_and_anchors_valid':True,'public_path_scan_clean':True,'strict_local_links':True}
 arg.out.write_text(json.dumps(out,indent=2)+'\n');print(out)

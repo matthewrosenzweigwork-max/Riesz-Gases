@@ -389,39 +389,12 @@ Main paper, lines 12340–12644.
 * Comparison, coercivity, and the Itô bound
 * The truncated commutator estimate
 
-## Truncated commutator
+## Smooth scale truncation
 %%%
 tag := "sample-6"
 %%%
 
-Main paper lemma D.6 · selected declaration. Selected Lean declaration
-
-Statement only (the Lean source uses `sorry`). For the sharp estimate used in §6, see [The sharp sub-Coulomb commutator](reader-anchor:commutator).
-
-Declaration: `HRS.fdl_commutator`.
-
-Source: [`HRS/Appendix/FDL.lean`](source/HRS/Appendix/FDL.lean), line 381.
-
-Exact source excerpt. It may include adjacent declarations or end before the proof does; open the source file for full context.
-
-```
-theorem fdl_commutator (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s < d) {ψ : Euc d → ℝ}
-    (hψ : IsFDLProfile ψ) {b : ℝ} (hb : IsFDLConst ψ s b) :
-    ∃ C₀ C : ℝ, 0 ≤ C₀ ∧ 0 < C ∧
-      ∀ Λ : ℝ, 1 ≤ Λ → ∀ N : ℕ, 2 ≤ N → smearScale d N Λ < 1 / 2 →
-      ∀ ρ : Torus d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ Λ) →
-      ∀ X : Config d N, X ∉ collisionSet d N →
-      ∀ (u : Torus d → Euc d) (K : ℝ), HasTransportBound d s u K →
-      ∀ η : ℝ, smearScale d N Λ ≤ η → η < 1 →
-        |commQuantityWith (Torus.grad (fdlTruncT ψ s b η)) u X (withDensityReal ρ)| ≤
-          C * K * (fdlEnergy ψ s b η X (withDensityReal ρ) + oNΛ d s C₀ Λ N) := by
-  sorry
-
-/-! ### Remark D.7: scope -/
-
-/-- Remark D.7 (`M:B:rem:fdl-scope`, TeX M L12477-12479), the checkable content: the statements of
-```
-Verification status: stated only; no proof claimed.
+[Appendix D: smooth scale truncation](reader-anchor:section-M-D).
 
 # S1. Whole-space fluctuations and the noncompact estimates
 %%%
