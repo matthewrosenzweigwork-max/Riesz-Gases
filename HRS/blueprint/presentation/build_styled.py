@@ -92,6 +92,12 @@ if s11.exists():
  assert installer.is_file(),'S11 native-search installer missing'
  subprocess.run(['python3',str(installer),'--tree',str(a.output)],env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1'),check=True,capture_output=True)
 
+# Reproducible manuscript-first navigation and native search display labels.
+from navigation import run as apply_navigation
+from search_labels import apply_search_labels
+apply_navigation(a.output)
+apply_search_labels(out)
+
 # Offline integrity: every explicit local HTML link/fragment and local resource.
 errors=[];checks=0;docs={f.resolve():H.fromstring(f.read_text()) for f in a.output.rglob('*.html')}
 idsets={f:set(doc.xpath('//*[@id]/@id')) for f,doc in docs.items()}

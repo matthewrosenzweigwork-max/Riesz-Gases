@@ -52,3 +52,18 @@ Full source regeneration of the old editorial baseline remains separate work. Th
 ## Section S11 overlay
 
 When `../s11/content.json` is present, assembly also regenerates the seven S11 cards, copies the manifest-verified companion proof supplement, and installs the separately pinned native search handoff before link validation. Coverage mode copies all source viewers and their referenced source files; without coverage, S11 source links point directly to files. See [the S11 workflow](../s11/README.md). Earlier curated editorial inputs remain frozen. Neither this overlay nor its documentation compilation is a new HRS proof build.
+
+## Manuscript navigation overlay
+
+`navigation.py` applies the manuscript order from `manuscript-navigation.json`
+after the original editorial baseline, whole-space cards, and S11 chapter are
+assembled. It preserves historical URLs and anchors, mathematical expressions,
+and source code, while suppressing the independent reader ordinals in headings,
+Blueprint labels, and navigation. The main manuscript, its appendices, and the
+supplement retain their own labels. With `--with-coverage`, section destinations
+are the coverage section pages; scoped builds use the same section anchors in
+the reader paper index. Feature links return to these sections. The overlay also
+adds the corresponding feature links to coverage pages, idempotently; the frozen
+locator generator and baseline remain historical inputs. `search_labels.py`
+changes only search display templates, not native index records or destinations.
+Both overlays run before all link and search-destination checks.

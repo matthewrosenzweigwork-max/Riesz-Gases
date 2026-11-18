@@ -639,11 +639,14 @@ const textResultToHtml = async (term, match, document, snippetOpts = {}, asOptio
 
     const searchTerm = document.createElement("p");
     let inHeader = true;
-    let headerHl = highlightTextResult(doc.header, term, { contextLength: headerContext }); // Only abbreviate huge headers
+    // Modified for the HRS reader: suppress the generated Verso ordinal;
+    // keep the authored manuscript title, search target, highlighted terms and context.
+    const paperHeader = doc.header.replace(/^\d+(?:\.\d+)*\.\s+/, "");
+    let headerHl = highlightTextResult(paperHeader, term, { contextLength: headerContext }); // Only abbreviate huge headers
     if (!headerHl) {
         inHeader = false;
         headerHl = document.createElement("span");
-        headerHl.append(document.createTextNode(doc.header));
+        headerHl.append(document.createTextNode(paperHeader));
     }
     headerHl.className = "header";
     searchTerm.append(headerHl);
