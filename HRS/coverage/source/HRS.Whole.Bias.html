@@ -1,0 +1,714 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Bias · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Bias</code></h1><p><a href="../../lean/HRS/Whole/Bias.lean">Open the unaltered Lean file</a> · 713 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Static
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Thermal
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Equilibrium.PoleCavity
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Whole.Q34Aux1
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.Whole.Q34Aux2
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Whole.Q34Aux3
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.Whole.Q34Aux4
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.Whole.Q34Aux5
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>import HRS.Whole.Q34Aux6
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>import HRS.Whole.Q34Aux7
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.Whole.Q34Aux8
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.Whole.Q34Aux18
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>/-!
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a># The whole-space marginal bias (spec packet SPEC-W3): Section S7
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>Source: HRS whole-space supplement (S), Section S7 (`S:sec:bias`), standing hypotheses
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>S lines 5267-5312: `d ≥ 2`, `d/2 &lt; s &lt; d`, `g(x) = |x|^{-s}`, `p = d/s ∈ (1,2)`,
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>`δ_N = N^{1-p}`, `A_{d,s} = |S^{d-1}| Γ(2-p) / (2 s p (p-1))` (`S:eq:parameters`); &quot;no factor
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>`1/s` in `g` and no periodic zero-mode convention&quot;; `μ = ρ dx` a probability measure with
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>`ρ ∈ W^{1,∞}(ℝ^d)` (bounded Lipschitz representative), no positive lower bound; the modulated
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>law `S:eq:modulated-law` with `m_N = Q^{(1)} = E[μ_N]`; the response operators
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>`S:eq:response`; the bias measure `S:eq:bias-measure` `b_{β,μ} = 2A β^p (R_{β,μ}P_μρ) μ`;
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>the exponent `S:eq:remainder-exponent`.  Section S7.2 (S lines 5380-5394): `n = N-1`,
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>`λ = β/N`, cavity laws `S:eq:cavity-laws`, `ν_n = (P_n^0)^{(1)}`.
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>* S7.1 `S:thm:sharp-bias` (S lines 5314-5338) with `S:eq:sharp-statistic`,
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  `S:eq:test-remainder`, and the &quot;Quadratic confinement&quot; paragraph (5349-5357).
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>* S7.2 `S:prop:static-input` (5396-5417).
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* S7.3 `S:lem:convolution` (5462-5488).
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* S7.4 `S:prop:conditional-density` (5560-5578), `τ` `S:eq:tau` (5551), `u_Y`
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `S:eq:conditional-potential` (5555).
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>* S7.5 `S:lem:compensated-kernel` (5703-5715).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>* S7.6 `S:prop:sharp-insertion` (5738-5753), `F_{N,x}`, `D_N` `S:eq:insertion-definition`
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  (5673-5676).
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>* S7.7 `S:cor:weighted-remainder` (5924-5939).
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>* S7.8 `S:cor:sharp-threshold` (6011-6032).
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>(S7.9 `S:cor:shifted-field-path` is in `HRS/Whole/Critical.lean`, because it needs the dynamics.)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>## Representation decisions
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>* `δ_N = N^{1-p}` is `HRS.deltaN d s N` (equal to `N^{1-d/s}` for `s &gt; d/2`, `deltaN_eq_bias`).
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>* `|S^{d-1}|` is the existing `HRS.sphereArea` (`HRS/Equilibrium/PoleCavity.lean`).
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* The derivative `F&#x27;_{N,x}(0)` in `D_N` is the right derivative `derivWithin … (Ici 0) 0`
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  (for `t &lt; 0` the tilt need not be integrable); its existence is part of S7.6&#x27;s claim, and so is
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  the well-definedness of the pole laws for `t ∈ [0,1]` (otherwise `log` of a junk-valued
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  normaliser would make the derivative statement vacuous).
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>* Total variation uses the source&#x27;s convention `sup_E |ν(E) - ν&#x27;(E)|` (`tvDist`).
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>* Radon–Nikodym bounds for the pole marginals are measure inequalities
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  `P^{(1)} ≤ μ.withDensity (C e^{-tλ g(x-·)})`, which include absolute continuity.
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>* Variances are `ProbabilityTheory.evariance` (`ℝ≥0∞`); the variance bound of S7.2 carries the
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  source&#x27;s proviso &quot;when its displayed integral is finite&quot; as a hypothesis.
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>* Constants depend only on the displayed parameters; they are quantified before the objects
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  they must not depend on.  For S7.1 the two uniformity assertions of the source (dependence
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  on `d, s, β, ‖ρ‖_∞, ‖∇ρ‖_∞` only; uniformity in `β` on compact subintervals for a fixed
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  background) are two theorems.  `‖∇ρ‖_∞` is a Lipschitz constant `Λ` (`LipschitzWith Λ ρ`); a bound
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  stated for every admissible `Λ` is equivalent to the one for the best constant `‖∇ρ‖_∞`.
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>* Signed measures (S7.7) are Mathlib&#x27;s `SignedMeasure`; `|r|` is `SignedMeasure.totalVariation`.
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  The finiteness of the measures involved (instances) is carried as `[IsProbabilityMeasure …]`
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  hypotheses; it is part of the conclusion of S7.1 (well-definedness of the law).
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>* &quot;Convergence in distribution&quot; in varying probability spaces (S7.8) is stated through
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  `∫ f d(·) → ∫ f dγ` for every bounded continuous `f`, which is weak convergence of the laws.
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>-/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>noncomputable section
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>open scoped ENNReal NNReal BigOperators ContDiff BoundedContinuousFunction
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>namespace HRS.Whole
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>variable {d N : ℕ}
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>/-! ### Parameters `S:eq:parameters` -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-- `p = d/s` (S line 5269). -/
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>def biasP (d : ℕ) (s : ℝ) : ℝ := d / s
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>/-- `A_{d,s} = |S^{d-1}| Γ(2-p) / (2 s p (p-1))` (S line 5271). -/
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>def biasConst (d : ℕ) (s : ℝ) : ℝ :=
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  sphereArea d * Real.Gamma (2 - biasP d s) / (2 * s * biasP d s * (biasP d s - 1))
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- `θ_{d,s} = min{(p-1)²/p, (2-p)/8, 3/(4s)}` (`S:eq:remainder-exponent`, S lines 5309-5310). -/
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>def biasTheta (d : ℕ) (s : ℝ) : ℝ :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  min ((biasP d s - 1) ^ 2 / biasP d s) (min ((2 - biasP d s) / 8) (3 / (4 * s)))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>/-- `τ = (p-1)²/p` (`S:eq:tau`, S line 5551). -/
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>def biasTau (d : ℕ) (s : ℝ) : ℝ := (biasP d s - 1) ^ 2 / biasP d s
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>/-- `M_g = M|S^{d-1}|/(d-s) + 1` (`S:eq:bounded-potential`, S line 5467). -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>def potentialBound (d : ℕ) (s M : ℝ) : ℝ := M * sphereArea d / ((d : ℝ) - s) + 1
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>/-- The density `db_{β,μ}/dμ = 2A_{d,s} β^p R_{β,μ}P_μρ` of the bias measure
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>(`S:eq:bias-measure`, S lines 5300-5302), with `R_{β,μ}P_μρ = responseInverse`. -/
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>def biasDensity (d : ℕ) (s β : ℝ) (ρ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  2 * biasConst d s * β ^ biasP d s * responseInverse (rieszKernel d s) (withDensityReal ρ) β ρ x
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>/-- Auxiliary: `δ_N = N^{1-p}` for `d/2 &lt; s` (S line 5270; unfolds `deltaN`). -/
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>theorem deltaN_eq_bias {s : ℝ} (hs : (d : ℝ) / 2 &lt; s) (N : ℕ) :
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    deltaN d s N = (N : ℝ) ^ (1 - biasP d s) := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  sorry
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- Auxiliary: `θ_{d,s} &gt; 0` for `d/2 &lt; s &lt; d` (S line 5310). -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>theorem biasTheta_pos {s : ℝ} (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) :
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    0 &lt; biasTheta d s := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  sorry
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>/-! ### Cavity and pole laws `S:eq:cavity-laws` (S lines 5383-5394) -/
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>/-- The cavity weight `exp(-λ∑_{i&lt;j} g(y_i-y_j) + β∑_i (g*μ)(y_i))`, `λ = β/N`, on
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>`(ℝ^d)^{N-1}`. -/
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>def cavityWeight (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d))
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    (Y : EucConfig d (N - 1)) : ℝ :=
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  Real.exp (-(β / N) * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j),
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      rieszKernel d s (Y i - Y j) +
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    β * ∑ i, convMeasure (rieszKernel d s) μ (Y i))
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- The cavity normaliser `∫ cavityWeight dμ^{⊗(N-1)}`. -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>def cavityNormalizer (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  ∫ Y : EucConfig d (N - 1), cavityWeight d s N β μ Y ∂(Measure.pi fun _ =&gt; μ)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>/-- The cavity law `P_n^0 ∝ e^{-λ∑_{i&lt;j} g(y_i-y_j) + β∑_i (g*μ)(y_i)} μ^{⊗n}`, `n = N-1`. -/
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>def cavityLaw (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) :
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    Measure (EucConfig d (N - 1)) :=
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  (ENNReal.ofReal (cavityNormalizer d s N β μ))⁻¹ •
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    (Measure.pi fun _ =&gt; μ).withDensity fun Y =&gt; ENNReal.ofReal (cavityWeight d s N β μ Y)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>/-- The pole tilt `e^{-tλ∑_i g(x-y_i)}`. -/
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>def poleWeight (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (x : Euc d) (t : ℝ)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (Y : EucConfig d (N - 1)) : ℝ :=
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  Real.exp (-(t * (β / N)) * ∑ i, rieszKernel d s (x - Y i))
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>/-- `P_n^0[e^{-tλ∑_i g(x-y_i)}]`. -/
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>def poleNormalizer (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) (x : Euc d)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    (t : ℝ) : ℝ :=
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  ∫ Y, poleWeight d s N β x t Y ∂(cavityLaw d s N β μ)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>/-- The pole law `P_n^{x,t} = e^{-tλ∑ g(x-y_i)} / P_n^0[…] · P_n^0`, `x ∈ ℝ^d`, `0 ≤ t ≤ 1`. -/
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>def poleLaw (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) (x : Euc d) (t : ℝ) :
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    Measure (EucConfig d (N - 1)) :=
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  (ENNReal.ofReal (poleNormalizer d s N β μ x t))⁻¹ •
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    (cavityLaw d s N β μ).withDensity fun Y =&gt; ENNReal.ofReal (poleWeight d s N β x t Y)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>/-- `ν_n = (P_n^0)^{(1)}` (S line 5394). -/
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>def cavityMarginal (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) : Measure (Euc d) :=
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  firstMarginal (cavityLaw d s N β μ)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>/-- Well-definedness of the cavity and pole laws: weights integrable, normalisers positive. -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>structure CavityWellDefined (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) (x : Euc d)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (t : ℝ) : Prop where
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  cavity_integrable : Integrable (cavityWeight d s N β μ) (Measure.pi fun _ =&gt; μ)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  cavity_pos : 0 &lt; cavityNormalizer d s N β μ
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  pole_integrable : Integrable (poleWeight d s N β x t) (cavityLaw d s N β μ)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  pole_pos : 0 &lt; poleNormalizer d s N β μ x t
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>/-- Total variation distance with the convention `sup_E |ν(E) - ν&#x27;(E)|` (S line 5416). -/
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>def tvDist {α : Type*} [MeasurableSpace α] (ν ν&#x27; : Measure α) : ℝ :=
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  ⨆ E : {E : Set α // MeasurableSet E}, |(ν E.1).toReal - (ν&#x27; E.1).toReal|
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>/-! ### S7.2 `S:prop:static-input` (S lines 5396-5417) -/
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>section StaticInput
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>variable {s : ℝ}
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-- The conclusions of Proposition S7.2 for one `N` and one constant `C` (S lines 5399-5417):
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>the law `S:eq:modulated-law` is well defined; `S:eq:input-marginal`
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>(`‖dm_N/dμ - 1‖_{L²(μ)} ≤ Cδ_N`, `dm_N/dμ ≤ C`, `N Var[μ_N(f)] ≤ C‖f‖²_{L²(μ)}`); the pole
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>density bounds `S:eq:input-pole-one`, `S:eq:input-pole-two` (the latter used only for `n ≥ 2`);
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>the pole variance bound `S:eq:input-pole-variance` (when its displayed integral is finite); the
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>cavity total-variation bound `S:eq:input-cavity-TV` `‖m_N - ν_n‖_TV ≤ C√(δ_N/N)`.  The pole
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>laws are asserted well defined for `x ∈ ℝ^d`, `t ∈ [0,1]`. -/
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>def StaticInputConclusion (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (ρ : Euc d → ℝ) (C : ℝ) : Prop :=
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  GibbsWellDefined (fun x y =&gt; rieszKernel d s (x - y)) N β (withDensityReal ρ) ∧
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  HasMarginalDensityBounds
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    (firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ)))
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    (withDensityReal ρ) C (C * deltaN d s N) ∧
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  (∀ f : Euc d → ℝ, MemLp f 2 (withDensityReal ρ) →
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    ProbabilityTheory.evariance (linStat f)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>      (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ)) ≤
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      ENNReal.ofReal (C / N * ∫ x, f x ^ 2 ∂(withDensityReal ρ))) ∧
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  (∀ (x : Euc d), ∀ t ∈ Set.Icc (0 : ℝ) 1,
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    CavityWellDefined d s N β (withDensityReal ρ) x t ∧
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    firstMarginal (poleLaw d s N β (withDensityReal ρ) x t) ≤
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      (withDensityReal ρ).withDensity
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>        (fun y =&gt; ENNReal.ofReal (C * Real.exp (-(t * (β / N)) * rieszKernel d s (x - y)))) ∧
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    (3 ≤ N → secondMarginal (poleLaw d s N β (withDensityReal ρ) x t) ≤
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      ((withDensityReal ρ).prod (withDensityReal ρ)).withDensity
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>        (fun yz =&gt; ENNReal.ofReal (C * Real.exp (-(t * (β / N)) *
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>          (rieszKernel d s (x - yz.1) + rieszKernel d s (x - yz.2)))))) ∧
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    ∀ f : Euc d → ℝ, Measurable f →
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      Integrable (fun y =&gt; |f y| ^ 2 * Real.exp (-(t * (β / N)) * rieszKernel d s (x - y)))
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        (withDensityReal ρ) →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      ProbabilityTheory.evariance (fun Y : EucConfig d (N - 1) =&gt; ∑ i, f (Y i))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        (poleLaw d s N β (withDensityReal ρ) x t) ≤
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        ENNReal.ofReal (C * (N - 1) *
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>          ∫ y, |f y| ^ 2 * Real.exp (-(t * (β / N)) * rieszKernel d s (x - y))
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>            ∂(withDensityReal ρ))) ∧
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  tvDist (firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ)))
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    (cavityMarginal d s N β (withDensityReal ρ)) ≤ C * Real.sqrt (deltaN d s N / N)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>/-- Proposition S7.2 (S:S:prop:static-input, TeX S L5396-5417) (S lines 5396-5417): under the bounded-density
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>hypothesis (`d ≥ 2`, `d/2 &lt; s &lt; d`, `β &gt; 0` fixed, `μ = ρ dx` a probability measure with
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>`‖ρ‖_∞ ≤ M`), with constants independent of `x, t, N` (and of `ρ` beyond `M`: the standing
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>hypotheses of S7, S lines 5267-5312, make `M` the only density datum; this is how S3.3 `euc_static`
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>is quantified).  Technical hypothesis: `N ≥ 2` (`n = N-1 ≥ 1` cavity particles). -/
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>theorem static_input (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ)
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → ∀ N, 2 ≤ N →
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      StaticInputConclusion d s N β ρ C := by
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  sorry
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>/-- Proposition S7.2 (S:S:prop:static-input, TeX S L5396-5417), uniformity in `β` (S lines 924-926, the S3.3 source of these inputs, quoted at
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>S lines 5399-5401): the same constant works for `β` in a compact subinterval `[βm,βp] ⊂ (0,∞)`. -/
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>theorem static_input_uniform_beta (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    (βm βp M : ℝ) (hβm : 0 &lt; βm) (hβ : βm ≤ βp) :
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → ∀ β ∈ Set.Icc βm βp,
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>      ∀ N, 2 ≤ N → StaticInputConclusion d s N β ρ C := by
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  sorry
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>end StaticInput
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>/-! ### S7.3 `S:lem:convolution` (S lines 5462-5488) -/
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>section Convolution
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>variable {s : ℝ}
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>/-- `g_H = min{g, H}` (S line 5476). -/
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>def truncKernel (d : ℕ) (s H : ℝ) (z : Euc d) : ℝ := min (rieszKernel d s z) H
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>/-- Lemma S7.3 (S:S:lem:convolution, TeX S L5462-5488), `S:eq:bounded-potential` (S lines 5464-5468): `sup_x (g*μ)(x) ≤ M_g`
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>(and the convolution integral converges), for a probability density with `‖ρ‖_∞ ≤ M`,
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>`d ≥ 2`, `d/2 &lt; s &lt; d`. -/
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>theorem convolution_bounded_potential (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    (ρ : Euc d → ℝ) (hρ : IsProbDensity ρ) (M : ℝ) (hM : ∀ x, ρ x ≤ M) (x : Euc d) :
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    Integrable (fun y =&gt; rieszKernel d s (x - y)) (withDensityReal ρ) ∧
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      convMeasure (rieszKernel d s) (withDensityReal ρ) x ≤ potentialBound d s M := by
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    have : (1 : ℝ) ≤ d / 2 := by
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>      have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      linarith
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    linarith
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  have hM0 : 0 ≤ M := (hρ.nonneg 0).trans (hM 0)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  have hL := Q34.lintegral_kernel_le hd1 hs0 hsd hρ hM x
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  have hrk : ∀ z : Euc d, rieszKernel d s z = ‖z‖ ^ (-s) := Q34.rieszKernel_eq hs0.ne&#x27;
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  have hnn : ∀ y : Euc d, 0 ≤ rieszKernel d s (x - y) := fun y =&gt; by
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    rw [hrk]; exact Real.rpow_nonneg (norm_nonneg _) _
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hmeas : Measurable (fun y : Euc d =&gt; rieszKernel d s (x - y)) :=
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    (Q34.measurable_rieszKernel hs0.ne&#x27;).comp (measurable_const.sub measurable_id)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  have hpos : 0 ≤ M * sphereArea d / ((d : ℝ) - s) + 1 := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    have := Q34.sphereArea_nonneg hd1
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    have : 0 &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    positivity
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  have hL&#x27; : ∫⁻ y, ENNReal.ofReal (rieszKernel d s (x - y)) ∂(withDensityReal ρ) ≤
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>      ENNReal.ofReal (M * sphereArea d / ((d : ℝ) - s) + 1) := by
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    simpa only [hrk] using hL
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  exact Q34.integrable_of_lintegral_le hmeas hnn hpos hL&#x27;
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>/-- Lemma S7.3 (S:S:lem:convolution, TeX S L5462-5488), `S:eq:conv-infty` (S lines 5469-5471): if `|f| ≤ B` and `‖f‖_1 ≤ ε ≤ 1` then
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>`‖g*f‖_∞ ≤ C_B ε^{1-s/d}`; `C_B` depends on `d, s, B` only (quantified before `f`).  The
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>convolution integrals are asserted absolutely convergent.  Technical hypothesis: `f` measurable
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>and integrable (`‖f‖_1` is the Lebesgue integral of `|f|`). -/
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>theorem convolution_sup_bound (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (B : ℝ) :
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    ∃ CB : ℝ, ∀ f : Euc d → ℝ, Measurable f → (∀ x, |f x| ≤ B) → Integrable f →
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>      ∀ ε : ℝ, ε ≤ 1 → ∫ x, |f x| ≤ ε →
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>        (∀ x, Integrable (fun y =&gt; rieszKernel d s (x - y) * f y)) ∧
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        ∀ x, |convFun (rieszKernel d s) f x| ≤ CB * ε ^ (1 - s / d) := by
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    linarith
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  have hrk : ∀ z : Euc d, rieszKernel d s z = ‖z‖ ^ (-s) := Q34.rieszKernel_eq hs0.ne&#x27;
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>  obtain ⟨CB, hCB⟩ := Q34.sup_bound hd1 hs0 hsd B
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  refine ⟨CB, fun f hf hB hfi ε hε1 hε =&gt; ?_⟩
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  simpa only [convFun, hrk] using hCB f hf hB hfi ε hε1 hε
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>/-- Lemma S7.3 (S:S:lem:convolution, TeX S L5462-5488), `S:eq:conv-two` (S lines 5469-5475): under the same hypotheses,
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>`‖g*f‖_{L²(μ)} ≤ C_{B,M} ε^{3/2-s/d}` for every probability density `ρ` with `‖ρ‖_∞ ≤ M`
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>(`μ = ρ dx`); `C_{B,M}` depends on `d, s, B, M` (quantified before `f` and `ρ`). -/
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>theorem convolution_l2_bound (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (B M : ℝ) :
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    ∃ CBM : ℝ, ∀ f : Euc d → ℝ, Measurable f → (∀ x, |f x| ≤ B) → Integrable f →
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>      ∀ ε : ℝ, ε ≤ 1 → ∫ x, |f x| ≤ ε →
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>        ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) →
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>          MemLp (convFun (rieszKernel d s) f) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>          l2Norm (withDensityReal ρ) (convFun (rieszKernel d s) f) ≤
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>            CBM * ε ^ (3 / 2 - s / d) := by
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    linarith
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  have hds : (d : ℝ) &lt; 2 * s := by linarith
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  have hrk : ∀ z : Euc d, rieszKernel d s z = ‖z‖ ^ (-s) := Q34.rieszKernel_eq hs0.ne&#x27;
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  obtain ⟨CBM, hCBM⟩ := Q34.l2_bound hd1 hs0 hsd hds B M
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  refine ⟨CBM, fun f hf hB hfi ε hε1 hε ρ hρ hM =&gt; ?_⟩
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  have := hCBM f hf hB hfi ε hε1 hε ρ hρ hM
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  show MemLp (fun x : Euc d =&gt; ∫ y, rieszKernel d s (x - y) * f y) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    Real.sqrt (∫ x, (∫ y, rieszKernel d s (x - y) * f y) ^ 2 ∂(withDensityReal ρ)) ≤
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>      CBM * ε ^ (3 / 2 - s / d)
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  simpa only [hrk] using this
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>/-- Lemma S7.3 (S:S:lem:convolution, TeX S L5462-5488), `S:eq:truncated-integrals` (S lines 5476-5480): for `g_H = min{g,H}`, `H ≥ 1`,
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>`sup_y ∫ g_H(y-z)² dμ(z) ≤ C H^{2-p}` and `sup_y ∫ (g-g_H)(y-z) dμ(z) ≤ C H^{1-p}`
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>(`C` depends on `d, s, M`, quantified before `ρ`). -/
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>theorem convolution_truncated (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (M : ℝ) :
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → ∀ H : ℝ, 1 ≤ H → ∀ y : Euc d,
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>      Integrable (fun z =&gt; truncKernel d s H (y - z) ^ 2) (withDensityReal ρ) ∧
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      ∫ z, truncKernel d s H (y - z) ^ 2 ∂(withDensityReal ρ) ≤ C * H ^ (2 - biasP d s) ∧
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      Integrable (fun z =&gt; rieszKernel d s (y - z) - truncKernel d s H (y - z)) (withDensityReal ρ) ∧
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      ∫ z, rieszKernel d s (y - z) - truncKernel d s H (y - z) ∂(withDensityReal ρ) ≤
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        C * H ^ (1 - biasP d s) := by
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hds : (d : ℝ) &lt; 2 * s := by linarith
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have hdm : 0 &lt; (d : ℝ) - s := by linarith
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  have h2sd : 0 &lt; 2 * s - (d : ℝ) := by linarith
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  have hsA := Q34.sphereArea_nonneg hd1
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  refine ⟨|M| * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d) + 1 / ((d : ℝ) - s)), ?_⟩
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  intro ρ hρ hM H hH y
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  have hM0 : 0 ≤ M := (hρ.nonneg 0).trans (hM 0)
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  rw [abs_of_nonneg hM0]
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  have hH0 : 0 &lt; H := by linarith
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  have hrk : ∀ z : Euc d, rieszKernel d s z = ‖z‖ ^ (-s) := Q34.rieszKernel_eq hs0.ne&#x27;
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>  have hp : biasP d s = (d : ℝ) / s := rfl
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  have hmeasg : Measurable (fun z : Euc d =&gt; ‖y - z‖ ^ (-s)) :=
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    (measurable_norm.comp (measurable_const.sub measurable_id)).pow_const _
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>  have hmin : Measurable (fun z : Euc d =&gt; min (‖y - z‖ ^ (-s)) H) :=
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    hmeasg.min measurable_const
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  have hg0 : ∀ z : Euc d, 0 ≤ ‖y - z‖ ^ (-s) := fun z =&gt; Real.rpow_nonneg (norm_nonneg _) _
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  have hmin0 : ∀ z : Euc d, 0 ≤ min (‖y - z‖ ^ (-s)) H :=
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    fun z =&gt; le_min (hg0 z) hH0.le
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  have htk : ∀ z : Euc d, truncKernel d s H (y - z) = min (‖y - z‖ ^ (-s)) H := by
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    intro z; simp only [truncKernel, hrk]
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hH2 : 0 ≤ H ^ (2 - (d : ℝ) / s) := Real.rpow_nonneg hH0.le _
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  have hH1 : 0 ≤ H ^ (1 - (d : ℝ) / s) := Real.rpow_nonneg hH0.le _
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  have hA := Q34.trunc_sq_le hd1 hs0 hds hρ hM hH y
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  have hB := Q34.trunc_diff_le hd1 hs0 hsd hρ hM hH y
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  have hA0 : 0 ≤ M * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d)) * H ^ (2 - (d : ℝ) / s) := by
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    have : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    positivity
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  have hB0 : 0 ≤ M * sphereArea d / ((d : ℝ) - s) * H ^ (1 - (d : ℝ) / s) := by positivity
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  obtain ⟨hAi, hAv⟩ := Q34.integrable_of_lintegral_le
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    (μ := withDensityReal ρ) (f := fun z : Euc d =&gt; (min (‖y - z‖ ^ (-s)) H) ^ 2)
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    (hmin.pow_const 2) (fun z =&gt; by have := hmin0 z; positivity) hA0 hA
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  obtain ⟨hBi, hBv⟩ := Q34.integrable_of_lintegral_le
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    (μ := withDensityReal ρ) (f := fun z : Euc d =&gt; ‖y - z‖ ^ (-s) - min (‖y - z‖ ^ (-s)) H)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    (hmeasg.sub hmin) (fun z =&gt; by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>      have := min_le_left (‖y - z‖ ^ (-s)) H
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      linarith) hB0 hB
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  simp only [htk, hrk, hp]
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  refine ⟨hAi, hAv.trans ?_, hBi, hBv.trans ?_⟩
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  · have : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    have h3 : 0 ≤ M * sphereArea d / ((d : ℝ) - s) := by positivity
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    have h4 : 0 ≤ M * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d)) := by positivity
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>    calc M * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d)) * H ^ (2 - (d : ℝ) / s)
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>        ≤ M * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d) + 1 / ((d : ℝ) - s)) *
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>            H ^ (2 - (d : ℝ) / s) := by
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>          have : 0 ≤ 1 / ((d : ℝ) - s) := by positivity
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>          exact mul_le_mul_of_nonneg_right
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>            (mul_le_mul_of_nonneg_left (by linarith) (mul_nonneg hM0 hsA)) hH2
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>      _ = _ := rfl
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  · have : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    have h5 : 0 ≤ M * sphereArea d := by positivity
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>    calc M * sphereArea d / ((d : ℝ) - s) * H ^ (1 - (d : ℝ) / s)
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>        = M * sphereArea d * (1 / ((d : ℝ) - s)) * H ^ (1 - (d : ℝ) / s) := by ring
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>      _ ≤ M * sphereArea d * (1 / (d : ℝ) + 1 / (2 * s - d) + 1 / ((d : ℝ) - s)) *
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>            H ^ (1 - (d : ℝ) / s) := by
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>          have : 0 ≤ 1 / (d : ℝ) + 1 / (2 * s - d) := by positivity
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>          exact mul_le_mul_of_nonneg_right
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>            (mul_le_mul_of_nonneg_left (by linarith) (mul_nonneg hM0 hsA)) hH1
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>/-- Lemma S7.3 (S:S:lem:convolution, TeX S L5462-5488), last part (S lines 5481-5487): `K_μ` is a bounded nonnegative self-adjoint
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>operator on `L²_0(μ)` with `‖K_μ‖ ≤ M_g`, and `R_{β,μ} = (I+βK_μ)⁻¹` exists on `L²_0(μ)` with
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>`‖f‖²/(1+βM_g) ≤ ⟨f, R_{β,μ}f⟩_{L²(μ)} ≤ ‖f‖²` and `‖R_{β,μ}‖ ≤ 1`
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>(`S:eq:positive-inverse`).  `R_{β,μ}f` is the unique (a.e.) `h ∈ L²_0(μ)` with `h + βK_μ h = f`
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>(`IsResponse`, existence and uniqueness are asserted), `‖‖` is `l2Norm`. -/
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>theorem convolution_susceptibility (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    (ρ : Euc d → ℝ) (hρ : IsProbDensity ρ) (M : ℝ) (hM : ∀ x, ρ x ≤ M) (β : ℝ) (hβ : 0 &lt; β) :
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    (∀ f : Euc d → ℝ, MemL2Zero (withDensityReal ρ) f →
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>      MemL2Zero (withDensityReal ρ) (Kop (rieszKernel d s) (withDensityReal ρ) f) ∧
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>      l2Norm (withDensityReal ρ) (Kop (rieszKernel d s) (withDensityReal ρ) f) ≤
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>        potentialBound d s M * l2Norm (withDensityReal ρ) f) ∧
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    (∀ f h : Euc d → ℝ, MemL2Zero (withDensityReal ρ) f → MemL2Zero (withDensityReal ρ) h →
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>      l2Inner (withDensityReal ρ) (Kop (rieszKernel d s) (withDensityReal ρ) f) h =
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>        l2Inner (withDensityReal ρ) f (Kop (rieszKernel d s) (withDensityReal ρ) h)) ∧
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    (∀ f : Euc d → ℝ, MemL2Zero (withDensityReal ρ) f →
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>      0 ≤ l2Inner (withDensityReal ρ) (Kop (rieszKernel d s) (withDensityReal ρ) f) f) ∧
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    ∀ f : Euc d → ℝ, MemL2Zero (withDensityReal ρ) f →
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>      (∃ h, IsResponse (rieszKernel d s) (withDensityReal ρ) β f h) ∧
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>      (∀ h h&#x27;, IsResponse (rieszKernel d s) (withDensityReal ρ) β f h →
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>        IsResponse (rieszKernel d s) (withDensityReal ρ) β f h&#x27; → h =ᵐ[withDensityReal ρ] h&#x27;) ∧
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      (∫ x, f x ^ 2 ∂(withDensityReal ρ)) / (1 + β * potentialBound d s M) ≤
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>        l2Inner (withDensityReal ρ) f (responseInverse (rieszKernel d s) (withDensityReal ρ) β f) ∧
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      l2Inner (withDensityReal ρ) f (responseInverse (rieszKernel d s) (withDensityReal ρ) β f) ≤
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>        ∫ x, f x ^ 2 ∂(withDensityReal ρ) ∧
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>      l2Norm (withDensityReal ρ) (responseInverse (rieszKernel d s) (withDensityReal ρ) β f) ≤
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>        l2Norm (withDensityReal ρ) f := by
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  have hs0 : 0 &lt; s := by
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    linarith
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  have hq : Q34.Q34Hyp d s ρ M := ⟨hd1, hs0, hsd, hρ, hM⟩
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  haveI := Q34.isProbabilityMeasure_nu hρ
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  exact ⟨fun f hf =&gt; Q34.partA hq hf, fun f h hf hh =&gt; Q34.partB hq hf hh,
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    fun f hf =&gt; Q34.partC hq hf, fun f hf =&gt; Q34.partD hq hβ hf⟩
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>end Convolution
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>/-! ### S7.4 `S:prop:conditional-density` (S lines 5560-5578) -/
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>section Conditional
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>variable {s : ℝ}
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>/-- The conditional empirical potential `u_Y(y) = λ∑_{j=2}^n g(y-y_j) - β(g*μ)(y)`
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>(`S:eq:conditional-potential`, S line 5555), as a function of the full cavity configuration
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>`Y = (y_1,…,y_n)` through `(y_2,…,y_n)` (the sum skips the coordinate with index `0`). -/
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>def condPotential (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d))
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    (Y : EucConfig d (N - 1)) (y : Euc d) : ℝ :=
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>  (β / N) * ∑ j : Fin (N - 1), (if (j : ℕ) = 0 then 0 else rieszKernel d s (y - Y j)) -
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    β * convMeasure (rieszKernel d s) μ y
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>/-- Proposition S7.4 (S:S:prop:conditional-density, TeX S L5560-5578) (S lines 5560-5578): there is a version of
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>the one-particle pole density of the form `e^{-tλg(x-y)} A_{N,x,t}(y)` with
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>`sup_y E_{P_n^0}|u_Y(y)| ≤ CN^{-τ}` (`S:eq:potential-uniform`) and
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>`sup_{x, 0≤t≤1} ‖A_{N,x,t} - 1‖_{L^∞(μ)} ≤ CN^{-τ}` (`S:eq:prefactor-uniform`), with constants
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>requiring only the bounded-density hypothesis (and the static inputs); the pole location is
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>unrestricted.  The prefactor `A` is asserted nonnegative a.e. (it is a ratio of densities; this
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>excludes the clamping of `ENNReal.ofReal`).  Technical hypothesis: `N ≥ 2`. -/
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>theorem conditional_density (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → ∀ N, 2 ≤ N →
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>      (∀ y : Euc d,
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>        Integrable (fun Y =&gt; |condPotential d s N β (withDensityReal ρ) Y y|)
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>          (cavityLaw d s N β (withDensityReal ρ)) ∧
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>        ∫ Y, |condPotential d s N β (withDensityReal ρ) Y y|
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>            ∂(cavityLaw d s N β (withDensityReal ρ)) ≤ C * (N : ℝ) ^ (-biasTau d s)) ∧
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      ∀ (x : Euc d), ∀ t ∈ Set.Icc (0 : ℝ) 1, ∃ A : Euc d → ℝ, Measurable A ∧
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>        firstMarginal (poleLaw d s N β (withDensityReal ρ) x t) =
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>          (withDensityReal ρ).withDensity
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>            (fun y =&gt; ENNReal.ofReal (Real.exp (-(t * (β / N)) * rieszKernel d s (x - y)) * A y)) ∧
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>        (∀ᵐ y ∂(withDensityReal ρ), 0 ≤ A y) ∧
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>        ∀ᵐ y ∂(withDensityReal ρ), |A y - 1| ≤ C * (N : ℝ) ^ (-biasTau d s) := by
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  sorry
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>end Conditional
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>/-! ### S7.5 `S:lem:compensated-kernel` (S lines 5703-5715) -/
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>section Compensated
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>variable {s : ℝ}
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>/-- `k_s(u) = e^{-|u|^{-s}} - 1 + |u|^{-s}` (`S:eq:compensated-kernel`, S line 5707). -/
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>def compKernel (d : ℕ) (s : ℝ) (u : Euc d) : ℝ :=
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>  Real.exp (-‖u‖ ^ (-s)) - 1 + ‖u‖ ^ (-s)
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>/-- Lemma S7.5 (S:S:lem:compensated-kernel, TeX S L5703-5715) (S lines 5703-5715), `d ≥ 2`, `d/2 &lt; s &lt; d`:
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>`k_s ≥ 0`, `k_s(u) = |u|^{-2s} ∫_0^1 (1-t) e^{-t|u|^{-s}} dt` (`u ≠ 0`), `k_s ∈ L¹(ℝ^d)`,
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>`∫ k_s = 2A_{d,s}`, and `∫_{|u|&gt;L} k_s ≤ C L^{d-2s}` for `L ≥ 1` (`S:eq:kernel-mass`);
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>`C` depends on `d, s`. -/
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>theorem compensated_kernel (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) :
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    (∀ u, 0 ≤ compKernel d s u) ∧
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    (∀ u : Euc d, u ≠ 0 → compKernel d s u =
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>      ‖u‖ ^ (-(2 * s)) * ∫ t in Set.Icc (0 : ℝ) 1, (1 - t) * Real.exp (-t * ‖u‖ ^ (-s))) ∧
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    Integrable (compKernel d s) (volume : Measure (Euc d)) ∧
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>    ∫ u, compKernel d s u = 2 * biasConst d s ∧
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>    ∃ C : ℝ, ∀ L : ℝ, 1 ≤ L →
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      ∫ u in {u : Euc d | L &lt; ‖u‖}, compKernel d s u ≤ C * L ^ ((d : ℝ) - 2 * s) := by
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>  have hds : (d : ℝ) &lt; 2 * s := by linarith
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>  have hck : ∀ u : Euc d, compKernel d s u = Q34.kk (‖u‖ ^ (-s)) := fun u =&gt; rfl
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>  have hI := Q34.compKernel_integrable_integral hd1 hs0 hsd hds
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>  refine ⟨fun u =&gt; ?_, fun u hu =&gt; ?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>  · rw [hck]; exact Q34.kk_nonneg (Real.rpow_nonneg (norm_nonneg _) _)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  · rw [hck]; exact Q34.compKernel_taylor u hu
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  · exact hI.1
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  · simp only [hck]
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    rw [hI.2]
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    unfold biasConst biasP
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    have : (d : ℝ) / s - 1 ≠ 0 := by
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>      have : 1 &lt; (d : ℝ) / s := by rw [lt_div_iff₀ hs0]; linarith
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>      linarith
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    have : (d : ℝ) / s ≠ 0 := by positivity
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    field_simp
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>  · obtain ⟨C, hC⟩ := Q34.compKernel_tail hd1 hs0 hsd hds
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    exact ⟨C, fun L hL =&gt; by simp only [hck]; exact hC L hL⟩
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>end Compensated
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>/-! ### S7.6 `S:prop:sharp-insertion` (S lines 5738-5753) -/
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>section Insertion
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>variable {s : ℝ}
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>/-- `F_{N,x}(t) = log P_n^0[e^{-tλ∑_i g(x-y_i)}]` (`S:eq:insertion-definition`, S line 5674). -/
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>def insertionPressure (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) (x : Euc d)
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    (t : ℝ) : ℝ :=
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>  Real.log (poleNormalizer d s N β μ x t)
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>/-- `D_N(x) = F_{N,x}(1) - F&#x27;_{N,x}(0)` (S line 5675), with the right derivative at `0`. -/
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>def insertionDefect (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) (x : Euc d) : ℝ :=
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>  insertionPressure d s N β μ x 1 -
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    derivWithin (insertionPressure d s N β μ x) (Set.Ici 0) 0
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>/-- Proposition S7.6 (S:S:prop:sharp-insertion, TeX S L5738-5753), `S:eq:insertion-radius-bound` (S lines
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>5738-5746): for a bounded Lipschitz probability density (`‖ρ‖_∞ ≤ M`, Lipschitz constant
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>`‖∇ρ‖_∞ ≤ Λ`), for every `L ≥ 1` and all sufficiently large `N`,
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>`‖D_N/(nλ^p) - 2A_{d,s}ρ‖_∞ ≤ C(N^{-τ} + ‖∇ρ‖_∞ λ^{1/s} L + L^{-(2s-d)/2} + nλ^p L^{2(d-s)})`,
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>`n = N-1`, `λ = β/N`; the supremum is over the whole space.  The pole laws are well defined for
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>`t ∈ [0,1]` and the derivative `F&#x27;_{N,x}(0)` exists (S line 5677), both asserted.  `C` depends on
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>`d, s, β, M` (quantified before `L` and `ρ`).
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>The threshold `N₀` is chosen before `L` (it depends on `d, s, β, M` only; this is what the proof
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>at S L5833 and the rate corollary `S:eq:insertion-rate` with `L = N^{1/(4s)}` need). -/
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>theorem sharp_insertion_radius (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ)
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    ∃ C : ℝ, ∃ N₀ : ℕ, ∀ L : ℝ, 1 ≤ L → ∀ N, N₀ ≤ N → ∀ ρ : Euc d → ℝ, IsProbDensity ρ →
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>      (∀ x, ρ x ≤ M) → ∀ Λ : ℝ≥0, LipschitzWith Λ ρ → ∀ x : Euc d,
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>        (∀ t ∈ Set.Icc (0 : ℝ) 1, CavityWellDefined d s N β (withDensityReal ρ) x t) ∧
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>        DifferentiableWithinAt ℝ (insertionPressure d s N β (withDensityReal ρ) x) (Set.Ici 0) 0 ∧
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>        |insertionDefect d s N β (withDensityReal ρ) x / ((N - 1 : ℝ) * (β / N) ^ biasP d s) -
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>            2 * biasConst d s * ρ x| ≤
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>          C * ((N : ℝ) ^ (-biasTau d s) + Λ * (β / N) ^ (1 / s) * L +
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>            L ^ (-((2 * s - d) / 2)) + (N - 1 : ℝ) * (β / N) ^ biasP d s * L ^ (2 * ((d : ℝ) - s))) := by
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>  sorry
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>/-- Proposition S7.6 (S:S:prop:sharp-insertion, TeX S L5738-5753), `S:eq:insertion-rate` (S lines 5747-5751): choosing `L = N^{1/(4s)}`,
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>`‖D_N/(nλ^p) - 2A_{d,s}ρ‖_∞ ≤ C N^{-θ_{d,s}}` for all sufficiently large `N` (`C` and the
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>threshold depend on `d, s, β, M` and the Lipschitz constant `Λ ≥ ‖∇ρ‖_∞`). -/
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>theorem sharp_insertion_rate (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ)
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>    (Λ : ℝ≥0) (hβ : 0 &lt; β) :
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    ∃ C : ℝ, ∃ N₀ : ℕ, ∀ N, N₀ ≤ N → ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) →
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>      LipschitzWith Λ ρ → ∀ x : Euc d,
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>        |insertionDefect d s N β (withDensityReal ρ) x / ((N - 1 : ℝ) * (β / N) ^ biasP d s) -
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>            2 * biasConst d s * ρ x| ≤ C * (N : ℝ) ^ (-biasTheta d s) := by
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>  sorry
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>end Insertion
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>/-! ### S7.1 `S:thm:sharp-bias` (S lines 5314-5338) -/
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>section SharpBias
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>variable {s : ℝ}
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>/-- The conclusions of Theorem S7.1 for one `N`, constant `C`: the law is well defined;
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>`R_{β,μ}P_μρ ∈ L²(μ)` (S line 5307); `m_N ≪ μ` with a nonnegative density `φ`;
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>`‖(φ-1)/δ_N - 2A_{d,s}β^p R_{β,μ}P_μρ‖_{L²(μ)} ≤ CN^{-θ}` (`S:eq:sharp-bias`); and for every
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>`φ ∈ L²(μ)`, `m_N(φ)` is defined and
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>`m_N(φ) - μ(φ) = 2A_{d,s}β^p δ_N ⟨P_μφ, R_{β,μ}P_μρ⟩_{L²(μ)} + ℛ_N(φ)` with
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>`|ℛ_N(φ)| ≤ Cδ_N N^{-θ} ‖P_μφ‖_{L²(μ)}` (`S:eq:sharp-statistic`, `S:eq:test-remainder`). -/
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>def SharpBiasConclusion (d : ℕ) (s : ℝ) (N : ℕ) (β : ℝ) (ρ : Euc d → ℝ) (C : ℝ) : Prop :=
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>  GibbsWellDefined (fun x y =&gt; rieszKernel d s (x - y)) N β (withDensityReal ρ) ∧
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  MemLp (responseInverse (rieszKernel d s) (withDensityReal ρ) β ρ) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>  (∃ φ : Euc d → ℝ, Measurable φ ∧ (∀ x, 0 ≤ φ x) ∧
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>    firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ)) =
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>      (withDensityReal ρ).withDensity (fun x =&gt; ENNReal.ofReal (φ x)) ∧
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>    MemLp (fun x =&gt; (φ x - 1) / deltaN d s N - biasDensity d s β ρ x) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>    l2Norm (withDensityReal ρ) (fun x =&gt; (φ x - 1) / deltaN d s N - biasDensity d s β ρ x) ≤
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>      C * (N : ℝ) ^ (-biasTheta d s)) ∧
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>  ∀ φ : Euc d → ℝ, MemLp φ 2 (withDensityReal ρ) →
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    Integrable φ (firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ))) ∧
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>    |∫ x, φ x ∂(firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ))) -
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>        ∫ x, φ x ∂(withDensityReal ρ) -
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>        2 * biasConst d s * β ^ biasP d s * deltaN d s N *
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>          l2Inner (withDensityReal ρ) (projMean (withDensityReal ρ) φ)
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>            (responseInverse (rieszKernel d s) (withDensityReal ρ) β ρ)| ≤
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>      C * deltaN d s N * (N : ℝ) ^ (-biasTheta d s) *
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>        l2Norm (withDensityReal ρ) (projMean (withDensityReal ρ) φ)
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>/-- Theorem S7.1 (S:S:thm:sharp-bias, TeX S L5314-5338) (S lines 5314-5338): `ρ ∈ W^{1,∞}(ℝ^d)` a probability
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>density (bounded, Lipschitz; `‖ρ‖_∞ ≤ M`, Lipschitz constant `Λ ≥ ‖∇ρ‖_∞`), `β &gt; 0` fixed,
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>`d ≥ 2`, `d/2 &lt; s &lt; d`.  The law `S:eq:modulated-law` is well defined and `S:eq:sharp-bias`
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>holds with a constant depending only on `d, s, β, ‖ρ‖_∞, ‖∇ρ‖_∞` (quantified before `ρ`),
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>independent of a support radius and of a positive density lower bound; together with the
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>consequences `S:eq:sharp-statistic`, `S:eq:test-remainder` for every `φ ∈ L²(μ)`.  No compact
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>support, moment, or lower-density hypothesis.  Technical hypothesis: `N ≥ 1` (the source says
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>&quot;for every `N`&quot;; `N = 0` has no meaning). -/
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>theorem sharp_bias (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ) (Λ : ℝ≥0)
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → LipschitzWith Λ ρ →
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>      ∀ N, 1 ≤ N → SharpBiasConclusion d s N β ρ C := by
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>  sorry
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>/-- Theorem S7.1 (S:S:thm:sharp-bias, TeX S L5314-5338), uniformity clause (S lines 5325-5326): for a fixed background `ρ`, the
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>constant is uniform when `β` varies in a prescribed compact subinterval `[β₋,β₊] ⊂ (0,∞)`. -/
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>theorem sharp_bias_uniform_beta (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>    (ρ : Euc d → ℝ) (hρ : IsProbDensity ρ) (M : ℝ) (hM : ∀ x, ρ x ≤ M) (Λ : ℝ≥0)
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>    (hΛ : LipschitzWith Λ ρ) (βm βp : ℝ) (hβm : 0 &lt; βm) (hβ : βm ≤ βp) :
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>    ∃ C : ℝ, ∀ β ∈ Set.Icc βm βp, ∀ N, 1 ≤ N → SharpBiasConclusion d s N β ρ C := by
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>  sorry
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>/-- Theorem S7.1 (S:S:thm:sharp-bias, TeX S L5314-5338), &quot;Quadratic confinement&quot; paragraph (S lines 5349-5357): for `V(x) = a|x|²/2`,
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>`a &gt; 0`, the thermal equilibrium measure `μ_β` satisfies the hypotheses of Theorem S7.1 at every
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>fixed `β &gt; 0` (a probability density, bounded and Lipschitz), the canonical law
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>`S:eq:canonical-law` equals `Q_{N,β}(μ_β)`, and hence `S:eq:sharp-bias` holds for the genuine
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>quadratic trap.  `μ_β` is `thermalDensity d s a β` (existence and uniqueness: S3.4,
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>`thermalDensity_spec`). -/
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>theorem sharp_bias_quadratic (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>    IsProbDensity (thermalDensity d s a β) ∧
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    (∃ M : ℝ, ∀ x, thermalDensity d s a β x ≤ M) ∧
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>    (∃ Λ : ℝ≥0, LipschitzWith Λ (thermalDensity d s a β)) ∧
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>    (∀ N, canonicalGibbs (rieszKernel d s) (confinement a) N β =
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>      modulatedGibbs (rieszKernel d s) N β (thermalMeasure d s a β)) ∧
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>    ∃ C : ℝ, ∀ N, 1 ≤ N → SharpBiasConclusion d s N β (thermalDensity d s a β) C := by
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>  sorry
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>end SharpBias
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>/-! ### S7.7 `S:cor:weighted-remainder` (S lines 5924-5939) -/
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>section Weighted
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>variable {s : ℝ}
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>/-- Corollary S7.7 (S:S:cor:weighted-remainder, TeX S L5924-5939) (S lines 5924-5939): let
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>`r_N = m_N - μ - δ_N b_{β,μ}` (a signed measure; `b_{β,μ} = 2A β^p (R_{β,μ}P_μρ) μ`, the
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>signed measure with density `biasDensity` relative to `μ`).  For every nonnegative measurable `w`
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>with `μ(w²) &lt; ∞`, `∫ w d|r_N| ≤ C δ_N N^{-θ} ‖w‖_{L²(μ)}` (`S:eq:weighted-remainder`); and for
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>every measurable set `E`, `|m_N-μ|(E)/δ_N + |b_{β,μ}|(E) ≤ C√μ(E)` (`S:eq:tail-tightness`).
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>The constant is that of Theorem S7.1 (depends only on `d, s, β, ‖ρ‖_∞, ‖∇ρ‖_∞`); it is chosen
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>before `ρ`.  All quantities are in `ℝ≥0∞` (`∫⁻ w d|r_N|`, total variation measures).
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>Technical hypotheses: `N ≥ 1`; `[IsProbabilityMeasure μ]` and `[IsFiniteMeasure m_N]` are the
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>instances needed to form `toSignedMeasure` (they hold by S7.1: the law is well defined and
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>`μ = ρ dx` is a probability measure; `m_N = firstMarginal …`); `b_{β,μ}` is
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>`μ.withDensityᵥ` of its density, a signed measure because that density is in `L²(μ) ⊂ L¹(μ)`
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>(S7.1; asserted in the conclusion). -/
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>theorem weighted_remainder (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (β M : ℝ) (Λ : ℝ≥0)
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) → LipschitzWith Λ ρ →
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>      ∀ [IsProbabilityMeasure (withDensityReal ρ)] (N : ℕ), 1 ≤ N →
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>      ∀ (mN : Measure (Euc d)) [IsFiniteMeasure mN],
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>        mN = firstMarginal (modulatedGibbs (rieszKernel d s) N β (withDensityReal ρ)) →
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>        MemLp (biasDensity d s β ρ) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>        (∀ w : Euc d → ℝ, Measurable w → (∀ x, 0 ≤ w x) → MemLp w 2 (withDensityReal ρ) →
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>          ∫⁻ x, ENNReal.ofReal (w x) ∂(SignedMeasure.totalVariation
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>              (mN.toSignedMeasure - (withDensityReal ρ).toSignedMeasure -
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>                (deltaN d s N) • (withDensityReal ρ).withDensityᵥ (biasDensity d s β ρ))) ≤
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>            ENNReal.ofReal (C * deltaN d s N * (N : ℝ) ^ (-biasTheta d s) *
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>              l2Norm (withDensityReal ρ) w)) ∧
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>        ∀ E : Set (Euc d), MeasurableSet E →
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>          (SignedMeasure.totalVariation (mN.toSignedMeasure - (withDensityReal ρ).toSignedMeasure)) E /
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>              ENNReal.ofReal (deltaN d s N) +
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>            (SignedMeasure.totalVariation ((withDensityReal ρ).withDensityᵥ (biasDensity d s β ρ))) E ≤
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>          ENNReal.ofReal (C * Real.sqrt ((withDensityReal ρ E).toReal)) := by
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  sorry
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>end Weighted
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>/-! ### S7.8 `S:cor:sharp-threshold` (S lines 6011-6032) -/
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>section Threshold
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>variable {s : ℝ}
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>/-- `V_ρ = ⟨P_μρ, R_{β,μ}P_μρ⟩_{L²(μ)}` (`S:eq:score-variance`, S line 5977), for `μ = μ_β`,
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>`ρ = ρ_β`. -/
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>def scoreVariance (d : ℕ) (s β : ℝ) (ρ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>  susceptibilityCov (rieszKernel d s) (withDensityReal ρ) β ρ ρ
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>/-- Corollary S7.8 (S:S:cor:sharp-threshold, TeX S L6011-6032) (S lines 6011-6032), critical case `s = 2d/3`
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>(`p = 3/2`): for the canonical quadratic-trap law `P_{N,β}` (`S:eq:canonical-law`) and the test
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>`φ = ρ_β`, `√N(μ_N(ρ_β) - μ_β(ρ_β)) ⇒ N(2A_{d,s}β^{3/2}V_ρ, V_ρ)`
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>(`S:eq:critical-scalar`), `V_ρ &gt; 0` (`S:eq:strict-nonvanishing`, S lines 5981-5984, the nonzero
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>mean &quot;certified&quot; there).  `ρ_β` is any `IsThermalEquilibrium d s a β` (S3.4).  The weak convergence
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>of the laws on `ℝ` (varying probability spaces `P_{N,β}`) is
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>`∫ f(√N(μ_N(ρ_β) - μ_β(ρ_β))) dP_{N,β} → ∫ f dγ` for every bounded continuous `f`; that the
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>`P_{N,β}` are probability measures is part of the conclusion. -/
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>theorem sharp_threshold_critical (hd : 2 ≤ d) (hs : s = 2 * (d : ℝ) / 3) (a β : ℝ)
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>    ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ →
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>      0 &lt; scoreVariance d s β ρβ ∧
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>      (∀ N, 1 ≤ N → IsProbabilityMeasure (canonicalGibbs (rieszKernel d s) (confinement a) N β)) ∧
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>      ∀ f : ℝ →ᵇ ℝ,
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>        Tendsto (fun N : ℕ =&gt; ∫ X, f (Real.sqrt N *
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>            (linStat ρβ X - pair (withDensityReal ρβ) ρβ))
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>          ∂(canonicalGibbs (rieszKernel d s) (confinement a) N β)) atTop
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>          (𝓝 (∫ y, f y ∂(ProbabilityTheory.gaussianReal
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>            (2 * biasConst d s * β ^ ((3 : ℝ) / 2) * scoreVariance d s β ρβ)
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>            (Real.toNNReal (scoreVariance d s β ρβ))))) := by
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>  sorry
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>/-- Corollary S7.8 (S:S:cor:sharp-threshold, TeX S L6011-6032) (S lines 6011-6032), supercritical case
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>`2d/3 &lt; s &lt; d`: `N^{p-1}(μ_N(ρ_β) - μ_β(ρ_β)) → 2A_{d,s}β^pV_ρ` in `L²(P_{N,β})`
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>(`S:eq:supercritical-L2`), &quot;more precisely, the `L²` error is at most `C(N^{p-3/2} + N^{-θ})`&quot;
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>(`C` depending on `d, s, a, β`; the squared error is a `lintegral`, so finiteness is asserted),
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>and `√N(μ_N(ρ_β) - μ_β(ρ_β)) → +∞` in probability.  `V_ρ &gt; 0`.  The subcritical range
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>`0 ≤ s &lt; 2d/3` (&quot;the existing mean-field-centered stationary Gaussian limit remains valid&quot;,
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>S line 6030) is a pointer to earlier results, not a new claim; the Coulomb paragraph (S lines
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>6035-6040) is a specialisation of this corollary to `s = d-2` and is not separately stated. -/
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>theorem sharp_threshold_supercritical (hd : 2 ≤ d) (hs : 2 * (d : ℝ) / 3 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>    (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) :
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>    ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ →
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>      0 &lt; scoreVariance d s β ρβ ∧
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>      (∃ C : ℝ, ∀ N, 1 ≤ N →
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>        (∫⁻ X, ENNReal.ofReal |(N : ℝ) ^ (biasP d s - 1) *
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>              (linStat ρβ X - pair (withDensityReal ρβ) ρβ) -
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>            2 * biasConst d s * β ^ biasP d s * scoreVariance d s β ρβ| ^ 2
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>          ∂(canonicalGibbs (rieszKernel d s) (confinement a) N β)) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>        ENNReal.ofReal (C * ((N : ℝ) ^ (biasP d s - 3 / 2) + (N : ℝ) ^ (-biasTheta d s)))) ∧
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>      ∀ K : ℝ, Tendsto (fun N : ℕ =&gt; canonicalGibbs (rieszKernel d s) (confinement a) N β
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>          {X | Real.sqrt N * (linStat ρβ X - pair (withDensityReal ρβ) ρβ) ≤ K}) atTop (𝓝 0) := by
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>  sorry
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>end Threshold
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>end HRS.Whole
+</span></code></pre></main></body></html>

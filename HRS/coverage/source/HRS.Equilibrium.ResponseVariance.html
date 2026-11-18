@@ -1,0 +1,302 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.ResponseVariance · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.ResponseVariance</code></h1><p><a href="../../lean/HRS/Equilibrium/ResponseVariance.lean">Open the unaltered Lean file</a> · 301 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.ResponseVariance — the variance inputs of Lemma 4.19 (packet Q32-SPEC)
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>Specification file (statements only, `sorry`&#x27;d except where stated) for the inputs missing from
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>`HRS.response_subGaussian` (`Response.lean`, Lemma 4.19 `V:lem:finite-response-rates`, last
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>clause `V:eq:response-subGaussian`; source lines 5221-5276 of
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`source/handoff/sources/HRS_periodic_main_20261008T010000Z.tex`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>The TeX proof of that clause (source lines 5252-5268) uses exactly two inputs beyond the
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>(proved) log-mgf identities of its first display:
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* the compact-family linear variance estimate `V:eq:response-variance-input`
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  (source lines 5100-5106, justified 5113-5131), used at `f = φ = cos(2πk·x)`;
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `C(θ) ≤ Var_{μ_θ}(φ) ≤ 1` (source line 5267, from `V:eq:response-susceptibility` and the
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  contraction property after `V:eq:response-positive-inverse`, lines 5199-5201).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>import HRS.Equilibrium.Response
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>import HRS.Equilibrium.Q32aAux1
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>import HRS.Equilibrium.Q32bAux1
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>import HRS.Equilibrium.Q32cAux1
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>import HRS.Equilibrium.Q32cAux2
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>noncomputable section
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>namespace HRS
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>section ResponseVariance
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>/-- **Fixed-density linear variance bound** (`A:eq:variance-transfer`, second inequality, source
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>lines 3531-3533; also `P:eq:static-linear` 3990, `R:eq:linear-input` 4187,
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>`Q:eq:linear-input` 4485; &quot;holds for every `L²(μ)` test, not just smooth tests&quot;, line 2756):
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>for a smooth positive probability density `ρ` (the standing &quot;smooth positive background&quot;, source
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>lines 3388-3394, not tied to a potential), `β &gt; 0`, there is `C` with
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>`N Var_{Q_{N,β}(μ)}[μ_N(f)] ≤ C ‖f‖²_{L²(μ)}` for all `N ≥ 2` and all `f ∈ L²(μ)`,
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>`μ = ρ dx`, `Q_{N,β}(μ) = modulatedGibbs (periodicRiesz d s) N β μ`.
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>This is the linear analogue of `quadStat_variance` (`QuadraticVariance.lean`, whose hypotheses
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>`2 ≤ d`, `0 ≤ s &lt; d`, `0 &lt; β`, `SmoothPosDensity ρ` it copies; the TeX of Appendix A is stated in
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>the range of Prop 4.3, not just `d/2 ≤ s &lt; d`).  Representation decisions:
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* the variance is the extended-real `evariance` (as in `quadStat_variance`), so there is no
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  `variance`-of-non-`L²` junk (`variance` would be `0`); `μ_N(f) = N⁻¹ ∑ f(x_i)`;
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>* the right side is `ofReal (C * ∫ f² dμ)`; to keep the Bochner integral non-junk we assume
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  `MemLp f 2 μ` (otherwise `∫ f² = 0` and the claim would be false); `Measurable f` makes
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  `X ↦ f (X i)` measurable, so no `Measure.map`/`AEStronglyMeasurable` junk;
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>* constant `C` is chosen before `N` and `f` (it may depend on `d, s, β, ρ`).
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>Ambiguity: the TeX writes `‖f‖_{L²(μ)}` for the bound but does not say whether `f` is real
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>bounded measurable or `L²(μ)`; the `L²` reading is the stronger one and is the one the TeX
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>asserts (line 2756). -/
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>theorem linearStat_variance (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ f : Torus d → ℝ, Measurable f →
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      MemLp f 2 (withDensityReal ρ) →
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>        (N : ℝ≥0∞) * evariance (fun X : Config d N =&gt; (1 / (N : ℝ)) * ∑ i, f (X i))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>            (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ)) ≤
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>          ENNReal.ofReal (C * ∫ x, f x ^ 2 ∂(withDensityReal ρ)) :=
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  HRS.Q32b.q32b_main hd hs0 hsd β hβ ρ hρ
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- **`V:eq:response-variance-input`** (source lines 5100-5106; compact-family uniformity
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>justified in lines 5113-5131): for every compact interval `I = [a, b]` there is `C_I` such that
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>`N Var_{N,θ}[μ_N(f)] ≤ C_I ‖f‖²_{L²(μ_θ)}` for `N ≥ 2`, `θ ∈ I`, where
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>`P_{N,θ} = rateGibbs d s k β θ N` is the canonical law of the rate family
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>`V_θ = -θ cos(2πk·x)/β` (`H:eq:rate-family`, source line 1021) and `μ_θ = ρ_θ dx` its thermal
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>equilibrium measure.
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>Setting copied from `response_subGaussian`/`thermal_response_rates` (`2 ≤ d`,
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>`d/2 ≤ s &lt; d` the range of the subsection, source line 5083; `β &gt; 0`; `k ≠ 0`;
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>`ρ θ` thermal density of `rateV k β θ` for every `θ`).  Representation decisions:
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>* quantifier order `∃ C, ∀ θ ∈ Icc a b, ∀ N ≥ 2, ∀ f` — the constant before `θ`, `N`, `f`
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  (the family uniformity is the whole point; `C` may depend on `d, s, β, k, a, b`);
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>* `evariance`, `MemLp f 2 (withDensityReal (ρ θ))`, `Measurable f` and the form
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  `μ_N(f) = N⁻¹ ∑ f(x_i)` exactly as in `linearStat_variance` (no junk: for fixed `N` the canonical
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  density is bounded and `μ_θ ≍ dx` since `ρ θ` is bounded above and below, so `f ∈ L²(μ_θ)`
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  makes `μ_N(f) ∈ L²(P_{N,θ})`, the mean in `evariance` is a genuine integral);
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>* `P_{N,θ} = Q_{N,β}(μ_θ)` (`canonicalGibbs_eq_modulatedGibbs`), so for each fixed `θ` this
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  is `linearStat_variance` at `ρ = ρ θ`; the content here is the uniformity of the constant in
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  `θ ∈ [a,b]` (TeX lines 5113-5127: common upper/lower density bounds from the thermal equation,
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  Jensen and the lower bound of the periodic kernel, common smooth norms, a single heat cutoff and
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  positive Fourier block; finitely many small `N` by `N Var ≤ N E[μ_N(f²)]`, line 5129).
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>Ambiguity: TeX says &quot;for every compact parameter interval `I`&quot; (an interval of `θ`), not `[a,b]`
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>specifically; `Set.Icc a b` with arbitrary `a b` (including `b &lt; a`, trivially fine) covers it. -/
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>theorem response_variance_input (hd : 2 ≤ d) (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) (β : ℝ)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (hρ : ∀ θ, IsThermalDensity (periodicRiesz d s) (rateV k β θ) β (ρ θ)) (a b : ℝ) :
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    ∃ C : ℝ, ∀ θ ∈ Set.Icc a b, ∀ N : ℕ, 2 ≤ N → ∀ f : Torus d → ℝ, Measurable f →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      MemLp f 2 (withDensityReal (ρ θ)) →
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        (N : ℝ≥0∞) * evariance (fun X : Config d N =&gt; (1 / (N : ℝ)) * ∑ i, f (X i))
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>            (rateGibbs d s k β θ N) ≤
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>          ENNReal.ofReal (C * ∫ x, f x ^ 2 ∂(withDensityReal (ρ θ))) := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hs0 : 0 ≤ s := by
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    have : (0 : ℝ) ≤ (d : ℝ) := Nat.cast_nonneg d
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    linarith
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  obtain ⟨Λ, hΛ1, hΛ⟩ := Q32c.q32c_family_upper hd hs0 hsd hβ k a b
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  obtain ⟨C, hC⟩ := Q32c.q32c_main hd hs0 hsd β hβ Λ hΛ1
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  refine ⟨C, fun θ hθ N hN f hf hf2 =&gt; ?_⟩
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hΛθ := hΛ θ hθ (ρ θ) (hρ θ)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  rw [Q32c.q32c_rateGibbs_eq hd hs0 hsd k θ (hρ θ) hΛθ N]
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  exact hC (ρ θ) (hρ θ).1 hΛθ N hN f hf hf2
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- **The `φ = cos(2πk·x)` case of `V:eq:response-variance-input`, as used in the TeX proof of
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>Lemma 4.19** (source line 5249: &quot;Choose `D_I ≥ 2` above the bound for `C_N` on the enlargement of
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>`I` by one in each direction, using `V:eq:response-variance-input`&quot;): the finite-particle
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>variance `C_N(θ) = E[Y_{N,θ}²] = N Var_{N,θ}[μ_N(φ)]` (`rateVarN`, `V:eq:response-means`) is
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>bounded uniformly for `N ≥ 2`, `θ ∈ [a,b]`.
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>It follows from `response_variance_input` with `f = Torus.cosMode k`, since
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>`‖cos‖²_{L²(μ_θ)} = ∫ cos² dμ_θ ≤ 1` (`Torus.norm_cosMode_le`, `μ_θ` a probability measure),
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>and `rateVarN = N * variance(μ_N(cos))` (`rateMeanN` is the `P_{N,θ}`-mean of `μ_N(cos)` by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>exchangeability, `resp_integral_sum_cos`/`resp_pair_firstMarginal` in `Response.lean`);
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>stated separately because it is the exact shape consumed by `response_subGaussian`.
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>No density `ρ` appears (the claim is about `rateGibbs` only); no junk: `Y_{N,θ}` is bounded by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>`2√N`, so `rateVarN` is a genuine integral, and `rateGibbs` is a probability measure for `β &gt; 0`.
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>Quantifier order `∃ C, ∀ N ≥ 2, ∀ θ ∈ Icc a b` — constant before `N` and `θ`. -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>theorem rateVarN_uniform_bound (hd : 2 ≤ d) (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) (β : ℝ)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (a b : ℝ) :
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ θ ∈ Set.Icc a b, rateVarN d s k β N θ ≤ C := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  have hs0 : 0 ≤ s := by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    have : (0 : ℝ) ≤ (d : ℝ) := Nat.cast_nonneg d
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    linarith
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hex : ∀ θ : ℝ, ∃ ρ : Torus d → ℝ,
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      IsThermalDensity (periodicRiesz d s) (rateV k β θ) β ρ := fun θ =&gt;
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    let ⟨ρ, h, _, _⟩ := PDE.MFThermalAssembly.thermal_exists_continuous hd1 s hs0 hsd
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      (rateV k β θ) (Q32c.q32c_rateV_continuous k θ) β hβ
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    ⟨ρ, h⟩
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  choose ρ hρ using hex
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  obtain ⟨C, hC⟩ := response_variance_input hd hs hsd β hβ k hk ρ hρ a b
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  obtain ⟨Λ, hΛ1, hΛ⟩ := Q32c.q32c_family_upper hd hs0 hsd hβ k a b
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  refine ⟨max C 0, fun N hN θ hθ =&gt; ?_⟩
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hΛθ := hΛ θ hθ (ρ θ) (hρ θ)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  have hP := Q32c.q32c_rateGibbs_eq hd hs0 hsd k θ (hρ θ) hΛθ N
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  haveI : IsProbabilityMeasure (rateGibbs d s k β θ N) := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    rw [hP]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    exact Q32c.q32c_Q_isProb hd hs0 hsd hβ hΛ1 (hρ θ).1 hΛθ hN0
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  have hex&#x27; : IsExchangeable (rateGibbs d s k β θ N) := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    rw [hP]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    exact modulatedGibbs_isExchangeable _ _ _ (fun x =&gt; periodicRiesz_neg x)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  refine Q32c.q32c_rateVarN_le_of_evariance k β θ hN0 hex&#x27; (le_max_right _ _) ?_
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  haveI := isProb_withDensityReal (hρ θ).1
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hφL2 : MemLp (Torus.cosMode k) 2 (withDensityReal (ρ θ)) :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    MemLp.of_bound (Torus.continuous_cosMode k).aestronglyMeasurable 1
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>      (Filter.Eventually.of_forall fun x =&gt; Torus.norm_cosMode_le k x)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have h := hC θ hθ N hN (Torus.cosMode k) (Torus.continuous_cosMode k).measurable hφL2
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  refine h.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  have hφ2 : Integrable (fun x =&gt; Torus.cosMode k x ^ 2) (withDensityReal (ρ θ)) :=
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    hφL2.integrable_sq
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have hI0 : 0 ≤ ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ)) :=
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    integral_nonneg fun x =&gt; sq_nonneg _
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  have hI1 : ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ)) ≤ 1 := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    have hbd : ∀ x, Torus.cosMode k x ^ 2 ≤ 1 := fun x =&gt; by
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      have := Q32c.q32c_cosMode_abs_le k x
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      nlinarith [abs_nonneg (Torus.cosMode k x), sq_abs (Torus.cosMode k x)]
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    have := integral_mono hφ2 (integrable_const (1 : ℝ)) hbd
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    simpa using this
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  rcases le_total C 0 with hC0 | hC0
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  · calc C * ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ)) ≤ 0 :=
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>          mul_nonpos_of_nonpos_of_nonneg hC0 hI0
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      _ ≤ max C 0 := le_max_right _ _
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  · calc C * ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ)) ≤ C * 1 :=
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>          mul_le_mul_of_nonneg_left hI1 hC0
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      _ = C := mul_one C
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      _ ≤ max C 0 := le_max_left _ _
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>/-- Auxiliary (proved from `ResponseAux.susc_bounds_general`, the upper half of
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>`susceptibilityCov_bounds` whose constant `C = 1` is hidden by its `∃ C`): for a bounded
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>probability density and `β ≥ 0`, `C_{β,μ}(φ,φ) ≤ ‖P_μ φ‖²_{L²(μ)}` (the contraction property
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>of the response inverse, TeX lines 5199-5201). -/
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>theorem susceptibilityCov_le_variance (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    (ρ : Torus d → ℝ) (hρ : IsProbDensity ρ) (Λ : ℝ) (hΛ : ∀ x, ρ x ≤ Λ)
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    (β : ℝ) (hβ : 0 ≤ β) (φ : Torus d → ℝ) (hφ : MemLp φ 2 (withDensityReal ρ)) :
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β φ φ ≤
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      l2Inner (withDensityReal ρ) (projMean (withDensityReal ρ) φ)
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>        (projMean (withDensityReal ρ) φ) := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  have h0 : ∀ n : Lattice d, 0 ≤ rieszCoeff d s n := fun n =&gt; by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    by_cases hn : n = 0
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    · simp [rieszCoeff, hn]
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    · exact (rieszCoeff_pos hd hs0 hsd n hn).le
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hgi := (integral_periodicRiesz hd hs0 hsd).1
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hcoef := periodicRiesz_fourierCoeff hd hs0 hsd
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  obtain ⟨c, hc, H⟩ := ResponseAux.susc_bounds_general hgi _ h0
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    (ResponseAux.hcoef_of_funFourierCoeff hcoef) hρ hΛ hβ
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hex := exists_unique_response_of_kernel hgi _ h0 hcoef ρ hρ Λ hΛ β hβ φ hφ
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  have hex&#x27; : ∃ h, IsResponse (periodicRiesz d s) (withDensityReal ρ) β φ h :=
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    let ⟨h, hh, _⟩ := hex; ⟨h, hh⟩
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hr : IsResponse (periodicRiesz d s) (withDensityReal ρ) β φ
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      (responseInverse (periodicRiesz d s) (withDensityReal ρ) β φ) := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    have e : responseInverse (periodicRiesz d s) (withDensityReal ρ) β φ = hex&#x27;.choose := by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      unfold responseInverse
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      simp only [hex&#x27;, dite_true]
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    rw [e]
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    exact hex&#x27;.choose_spec
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  exact (H φ _ hφ hr).2
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>/-- **`C(θ) ≤ 1`** (TeX line 5267: &quot;the limiting variance satisfies
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>`C(θ) ≤ Var_{μ_θ}(φ) ≤ 1`&quot;): the limiting variance `C(θ) = C_{β,μ_θ}(φ,φ)` of the Gaussian
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>`G_θ` is at most `1`, for the thermal densities of the rate family and `φ = cos(2πk·x)`.
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>Hypotheses as in `response_subGaussian`; `hβ` and the range `d/2 ≤ s &lt; d` are those of the
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>subsection (the proof only needs `0 ≤ s &lt; d`, `β ≥ 0`).  Junk check: `susceptibilityCov` uses
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>`responseInverse`, which is `0` when no `IsResponse` solution exists; for a thermal density
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>(bounded above and below, probability) the solution exists and is a.e.-unique
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>(`exists_unique_response`), so the value is the genuine `⟨P φ, R P φ⟩_{L²(μ_θ)}`, and the bound
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>`≤ 1` is not a junk artifact (the form is `≥ 0` by `susceptibilityCov_bounds`).  Route:
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>`susceptibilityCov_le_variance` with `Λ` the common upper bound of `ρ θ`, then
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>`Var_μ(φ) = ∫φ² dμ - μ(φ)² ≤ ∫ φ² dμ ≤ 1`.  The bound `Λ` on a thermal density is the only
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>missing ingredient (`ρ θ x = exp(-β(V + g*ρ)) / Z`, `g ≥ -c`, Jensen lower bound of `Z`, TeX lines
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>3357-3363). -/
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>theorem susceptibilityCov_cosMode_le_one (hd : 2 ≤ d) (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    (β : ℝ) (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    (hρ : ∀ θ, IsThermalDensity (periodicRiesz d s) (rateV k β θ) β (ρ θ)) (θ : ℝ) :
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>      (Torus.cosMode k) (Torus.cosMode k) ≤ 1 := by
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  have hs0 : 0 ≤ s := by
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    have : (0 : ℝ) ≤ (d : ℝ) := Nat.cast_nonneg d
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    linarith
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hVc : Continuous (rateV k β θ) := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    unfold rateV
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    exact (continuous_const.mul (Torus.continuous_cosMode k)).div_const β
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>  have hVM : ∀ x, |rateV k β θ x| ≤ |θ| / β := by
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    intro x
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    have hc : |Torus.cosMode k x| ≤ 1 := by
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      have := Torus.norm_cosMode_le k x
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      rwa [Real.norm_eq_abs] at this
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    unfold rateV
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    rw [abs_div, abs_mul, abs_neg, abs_of_pos hβ]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    exact div_le_div_of_nonneg_right (mul_le_of_le_one_right (abs_nonneg θ) hc) hβ.le
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  obtain ⟨Λ, hΛ⟩ := q32a_thermal_bounded_above hd hs0 hsd hVc hVM hβ.le (hρ θ)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  obtain ⟨hprob, _⟩ := hρ θ
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  haveI : IsProbabilityMeasure (withDensityReal (ρ θ)) := isProb_withDensityReal hprob
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  have hφL2 : MemLp (Torus.cosMode k) 2 (withDensityReal (ρ θ)) :=
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    MemLp.of_bound (Torus.continuous_cosMode k).aestronglyMeasurable 1
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      (Filter.Eventually.of_forall fun x =&gt; Torus.norm_cosMode_le k x)
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  have hle := susceptibilityCov_le_variance hd hs0 hsd (ρ θ) hprob Λ hΛ β hβ.le
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    (Torus.cosMode k) hφL2
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  refine hle.trans ?_
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  have hφi : Integrable (Torus.cosMode k) (withDensityReal (ρ θ)) := hφL2.integrable (by norm_num)
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  have hφ2 : Integrable (fun x =&gt; Torus.cosMode k x ^ 2) (withDensityReal (ρ θ)) :=
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    hφL2.integrable_sq
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  have hbd : ∀ x, Torus.cosMode k x ^ 2 ≤ 1 := fun x =&gt; by
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    have h := Torus.norm_cosMode_le k x
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    rw [Real.norm_eq_abs] at h
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    nlinarith [abs_nonneg (Torus.cosMode k x), sq_abs (Torus.cosMode k x)]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  have h1 : ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ)) ≤ 1 := by
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    have := integral_mono hφ2 (integrable_const (1 : ℝ)) hbd
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    simpa using this
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hexp : ∫ x, (projMean (withDensityReal (ρ θ)) (Torus.cosMode k) x) *
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      (projMean (withDensityReal (ρ θ)) (Torus.cosMode k) x) ∂(withDensityReal (ρ θ))
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>      = ∫ x, Torus.cosMode k x ^ 2 ∂(withDensityReal (ρ θ))
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>        - (pair (withDensityReal (ρ θ)) (Torus.cosMode k)) ^ 2 := by
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    unfold projMean
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    have e : ∀ x, (Torus.cosMode k x - pair (withDensityReal (ρ θ)) (Torus.cosMode k)) *
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>        (Torus.cosMode k x - pair (withDensityReal (ρ θ)) (Torus.cosMode k))
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        = Torus.cosMode k x ^ 2 - 2 * pair (withDensityReal (ρ θ)) (Torus.cosMode k) * Torus.cosMode k x
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>          + pair (withDensityReal (ρ θ)) (Torus.cosMode k) ^ 2 := fun x =&gt; by ring
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    simp only [e]
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    have i1 : Integrable (fun x =&gt; Torus.cosMode k x ^ 2
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>        - 2 * pair (withDensityReal (ρ θ)) (Torus.cosMode k) * Torus.cosMode k x)
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>        (withDensityReal (ρ θ)) := hφ2.sub (hφi.const_mul _)
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    rw [integral_add i1 (integrable_const _),
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>      integral_sub hφ2 (hφi.const_mul _), integral_const_mul, integral_const]
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    have hp : ∫ x, Torus.cosMode k x ∂(withDensityReal (ρ θ))
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>        = pair (withDensityReal (ρ θ)) (Torus.cosMode k) := rfl
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    rw [hp]
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>    simp
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    ring
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  unfold l2Inner
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  rw [hexp]
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  nlinarith [sq_nonneg (pair (withDensityReal (ρ θ)) (Torus.cosMode k))]
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>/-
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>Proof sketch of `response_subGaussian` from the statements above (TeX lines 5248-5268).
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>Fix `a b` and let `C` be the constant of `rateVarN_uniform_bound` for `[a - 1, b + 1]`; put
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>`D = max 2 C`.  Fix `N ≥ 2`, `θ ∈ [a,b]`.  By `finite_response_rates` (proved first display) the
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>function `L_N(θ) := log (respA k gm β N 0 θ)` (the log-normaliser of the exponential tilt
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>`resp_rateGibbs_eq`, `resp_respA_contDiff`, `resp_respA_hasDerivAt`) is smooth with
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>`L_N&#x27; = N * rateMeanN`, `L_N&#x27;&#x27; = N * rateVarN` (`hMderiv`: `(rateMeanN)&#x27; = rateVarN`), so the log-mgf
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>`Ψ(t) = L_N(θ + t/√N) - L_N(θ) - t √N rateMeanN θ` of `Y = rateY d s k β N θ` has
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>`Ψ(0) = Ψ&#x27;(0) = 0` and `Ψ&#x27;&#x27;(t) = rateVarN d s k β N (θ + t/√N) ≤ D` for `|t| ≤ √N`, because
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>`θ + t/√N ∈ [a-1, b+1]` (`rateVarN_uniform_bound`).  Hence (Taylor with Lagrange remainder, e.g.
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>`taylor_mean_remainder_lagrange`) `Ψ(t) ≤ D t²/2` for `|t| ≤ √N`; the mgf identity
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>`E exp(t Y) = exp(Ψ(t))` is `resp_rateGibbs_eq` + `resp_integral_sum_cos`-type change of density
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>(`mgf`, `ProbabilityTheory.mgf`).  Exponential Markov (`ProbabilityTheory.measure_ge_le_exp_mul_mgf`)
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>with `t = ± x / D ≤ √N` for `0 ≤ x ≤ 2√N` gives `P(Y &gt; x) ≤ exp(-x²/(2D))` and the same for `-Y`,
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>so `P(|Y| &gt; x) ≤ 2 exp(-x²/(2D))` (`measure_union_le`); for `x ≥ 2√N` the event `{|Y| &gt; x}` is
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>empty since `|Y| ≤ 2√N` (`Torus.norm_cosMode_le`, `rateMeanN` bounded by `1`).  For the Gaussian
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>term, `susceptibilityCov_cosMode_le_one` gives variance `v := C(θ).toNNReal ≤ 1 ≤ D`, and
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>`gaussianReal 0 v {z | x &lt; |z|} ≤ 2 exp(-x²/(2v)) ≤ 2 exp(-x²/(2D))` (Gaussian tail bound:
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>`gaussianReal` mgf `mgf_id_gaussianReal`, again exponential Markov; `v = 0` is the Dirac mass at `0`,
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>tail `0`).  Adding the two bounds gives `4 exp(-x²/(2D))`, `ENNReal.ofReal` conversion by
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>`ENNReal.ofReal_add`.
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>-/
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>end ResponseVariance
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>end HRS
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>end
+</span></code></pre></main></body></html>

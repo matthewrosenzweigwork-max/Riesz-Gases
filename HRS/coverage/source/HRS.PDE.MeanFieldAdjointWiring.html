@@ -1,0 +1,265 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.MeanFieldAdjointWiring · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.MeanFieldAdjointWiring</code></h1><p><a href="../../lean/HRS/PDE/MeanFieldAdjointWiring.lean">Open the unaltered Lean file</a> · 264 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.MeanFieldAdjointDuhamel
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.MeanFieldGlobal
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.PDE.MeanFieldDecayHr
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.PDE.MeanFieldWeak
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.PDE.MeanFieldThermal
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.PDE.MeanFieldFejer
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.PDE.MeanFieldThermalUnique
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.PDE.MeanFieldInputs
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>/-!
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a># Wiring of Proposition 5.2 `C:prop:adjoint` (package MF-01, packet P11e)
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>See `HRS/PDE/MeanFieldAdjointPlan.md`, packet P11e.  The file collects the Proposition 5.1 facts
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>needed for the abstract adjoint decay `MFAdjoint.exists_adjoint_decay_abstract` (uniform constants
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>in `β ∈ [βm, βp]`), and proves `adjoint_decay_comparison_wiring`, which is the statement of
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>`HRS.PDE.adjoint_decay_comparison` (`HRS/PDE/MeanField.lean`).
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>The file imports the proof files of Proposition 5.1 and not `HRS.PDE.MeanField` itself, so that
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>`MeanField.lean` can import this file.  The thermal facts used are the proofs of
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>`finite_reg_thermal` and `finite_reg_thermal_unique` copied verbatim.
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>-/
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>noncomputable section
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>open scoped ENNReal NNReal BigOperators ComplexConjugate
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>namespace HRS.PDE.MFAdjoint
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>variable {d : ℕ}
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>/-! ### Thermal facts for `FiniteRegHyp` -/
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>theorem wire_thermal_unique (hd : 1 ≤ d) (s βm βp : ℝ) (K : ℕ) (V ρ₀ : Torus d → ℝ)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (H : FiniteRegHyp d s βm βp K V ρ₀) (β : ℝ) (hβ : β ∈ Set.Icc βm βp) (ρβ ρβ&#x27; : Torus d → ℝ)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (h1 : IsThermalDensity (periodicRiesz d s) V β ρβ) (c1 : Continuous ρβ) (p1 : ∀ x, 0 &lt; ρβ x)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (h2 : IsThermalDensity (periodicRiesz d s) V β ρβ&#x27;) (c2 : Continuous ρβ&#x27;)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    (p2 : ∀ x, 0 &lt; ρβ&#x27; x) : ρβ&#x27; = ρβ := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  rcases Nat.lt_or_ge d 2 with h | h
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  · have hd1 : d = 1 := by omega
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    exact MFThermalExist.thermal_unique&#x27; hd s H.hs0 H.hsd
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      (MFInputs.mfKernelFacts_one hd1 s H.hs0 H.hsd) β (lt_of_lt_of_le H.hβm hβ.1) V ρβ ρβ&#x27;
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      h1 c1 p1 h2 c2 p2
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  · exact MFThermal.thermal_unique h s H.hs0 H.hsd β (lt_of_lt_of_le H.hβm hβ.1) V ρβ ρβ&#x27;
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      h1 c1 p1 h2 c2 p2
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem wire_thermal_memSobolev (hd : 1 ≤ d) (s βm βp : ℝ) (K : ℕ) (V ρ₀ : Torus d → ℝ)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (H : FiniteRegHyp d s βm βp K V ρ₀) (β : ℝ) (hβ : β ∈ Set.Icc βm βp) :
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    ∃ ρβ : Torus d → ℝ, IsThermalDensity (periodicRiesz d s) V β ρβ ∧
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      Continuous ρβ ∧ (∀ x, 0 &lt; ρβ x) ∧ MemSobolev K ρβ := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hβ0 : 0 &lt; β := lt_of_lt_of_le H.hβm hβ.1
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hVc : Continuous V :=
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    MFAux.continuous_of_isCk (H.hV.of_le (by exact_mod_cast (show (1 : ℕ) ≤ K + 2 by omega)))
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  obtain ⟨ρ, hρ, hc, hp⟩ :=
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    MFThermalAssembly.thermal_exists_continuous hd s H.hs0 H.hsd V hVc β hβ0
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  exact ⟨ρ, hρ, hc, hp,
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    MFThermalAssembly.thermal_memSobolev_all hd s H.hs0 H.hsd K V H.hV β hβ0 ρ hρ hc hp⟩
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-! ### Sup-norm bound from the `H^m` norm (`m &gt; d/2`) -/
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>theorem wire_sup_le (m : ℝ) (hm : (d : ℝ) / 2 &lt; m) :
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    ∃ A : ℝ, 0 ≤ A ∧ ∀ c : Coeff d, MemHs m c → ∀ x, |toFun c x| ≤ A * hsNorm m c := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  obtain ⟨A, hA0, hA⟩ := MFApriori.Aux.exists_l1_le (d := d) m hm
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  refine ⟨A, hA0, fun c hc x =&gt; ?_⟩
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  exact (MFProduct.abs_toFun_le c (hA c hc).1 x).trans (hA c hc).2
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>/-! ### The hypotheses of Proposition 5.2 from Proposition 5.1 -/
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- The uniform constants of Proposition 5.1 that Proposition 5.2 needs: the frozen data
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>`(ρβ, V)` with bounds `Λ₀`, the lower bound `c₀`, and the exponential decay of `ρ^t - ρβ` in
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>`H^{j+d/2+2}` with rate `κ` and constant `Cd`, together with the uniform bounds for the
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>coefficient path. -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>theorem finiteReg_hypotheses (hd : 1 ≤ d) (s βm βp : ℝ) (K : ℕ) (V ρ₀ : Torus d → ℝ)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (H : FiniteRegHyp d s βm βp K V ρ₀) (j : ℕ) (hj : (d : ℝ) / 2 + 4 &lt; j)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    (hK : 2 * j + 4 * d + 20 ≤ K) :
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    ∃ (R : Regime) (Λ Λ₀ c₀ Cd κ : ℝ), 0 &lt; c₀ ∧ 0 &lt; κ ∧
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      ∀ (β : ℝ) (hβ : β ∈ Set.Icc βm βp) (ρc : ℝ → Coeff d), IsMFSolutionHK d s V β⁻¹ K ρ₀ ρc →
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      ∀ ρβ : Torus d → ℝ, IsThermalDensity (periodicRiesz d s) V β ρβ → Continuous ρβ →
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        (∀ x, 0 &lt; ρβ x) →
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        FrozenHyp d s (j + mStar d + 2) βp⁻¹ βm⁻¹ c₀ Λ₀ β V ρβ ∧
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (∀ T, 0 &lt; T → AdjointData s j R 1 Λ (Torus.cbNorm (j + 3) V)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>          (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) βp⁻¹ T (mfPath ρc)) ∧
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>        ∀ σ, 0 ≤ σ →
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>          MemHs ((j : ℝ) + (d : ℝ) / 2 + 2) (coeffOf (mfPath ρc σ) - coeffOf ρβ) ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>          hsNorm ((j : ℝ) + (d : ℝ) / 2 + 2) (coeffOf (mfPath ρc σ) - coeffOf ρβ) ≤
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>            Cd * Real.exp (-κ * σ) := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  -- arithmetic of the indices
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hKd : (d : ℝ) / 2 &lt; K := by linarith [H.hK]
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hKr : 2 * (j : ℝ) + 4 * (d : ℝ) + 20 ≤ K := by exact_mod_cast hK
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hjr : (0 : ℝ) ≤ j := Nat.cast_nonneg j
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hdr : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hm3 : (mStar d : ℝ) ≤ (d : ℝ) / 2 + 3 := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    unfold mStar
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    push_cast
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    have := Nat.floor_le (show (0 : ℝ) ≤ (d : ℝ) / 2 by positivity)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    linarith
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hnr : ((j + mStar d + 2 : ℕ) : ℝ) = (j : ℝ) + (mStar d : ℝ) + 2 := by push_cast; ring
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hnn : (0 : ℝ) ≤ ((j + mStar d + 2 : ℕ) : ℝ) := Nat.cast_nonneg _
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hnK : j + mStar d + 2 ≤ K + 2 := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have h : ((j + mStar d + 2 : ℕ) : ℝ) ≤ ((K + 2 : ℕ) : ℝ) := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      rw [hnr]; push_cast; linarith
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    exact_mod_cast h
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hK2 : (d : ℝ) / 2 + 2 &lt; K := by linarith
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  -- the two decay indices `rA = j + d/2 + 2` and `rB` (large, for the `C^n` bound)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hrA0 : (0 : ℝ) ≤ (j : ℝ) + (d : ℝ) / 2 + 2 := by positivity
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hrAK : (j : ℝ) + (d : ℝ) / 2 + 2 &lt; K := by linarith
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  have hdrA : (d : ℝ) / 2 &lt; (j : ℝ) + (d : ℝ) / 2 + 2 := by linarith
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  obtain ⟨rB, hrB⟩ : ∃ r : ℝ, r = ((j + mStar d + 2 : ℕ) : ℝ) + (d : ℝ) / 2 + 1 := ⟨_, rfl⟩
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hrB0 : (0 : ℝ) ≤ rB := by rw [hrB]; positivity
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hrBK : rB &lt; K := by rw [hrB, hnr]; linarith
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hdnB : (d : ℝ) / 2 + ((j + mStar d + 2 : ℕ) : ℝ) &lt; rB := by rw [hrB]; linarith
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have hdrB : (d : ℝ) / 2 &lt; rB := by linarith
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hdj : (d : ℝ) / 2 + ((j + 3 : ℕ) : ℝ) &lt; K := by push_cast; linarith
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  -- constants
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  obtain ⟨cU, CU, hcU, hU⟩ := MFGlobal.finite_reg_uniform_bounds hd s βm βp K V ρ₀ H
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  obtain ⟨Cd, κ, hCd, hκ, hDA⟩ := MFDecay.finite_reg_decay hd s βm βp K V ρ₀ H _ hrA0 hrAK
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  obtain ⟨Cb, cb, hCb, hcb, hDB⟩ := MFDecay.finite_reg_decay hd s βm βp K V ρ₀ H rB hrB0 hrBK
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  obtain ⟨Cn, hCn⟩ := toFun_isCk_le (d := d) (j + mStar d + 2) rB hdnB
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  obtain ⟨Cj, hCj⟩ := toFun_isCk_le (d := d) (j + 3) (K : ℝ) hdj
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  obtain ⟨A, hA0, hA⟩ := wire_sup_le (d := d) _ hdrA
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  obtain ⟨R, hR⟩ : ∃ R : Regime, ∀ (M : Matrix (Fin d) (Fin d) ℝ) (invβ ν₀ T : ℝ)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      (μ : ℝ → Torus d → ℝ), 0 &lt; ν₀ → ν₀ ≤ invβ → R.Holds d s M invβ ν₀ T μ := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    rcases le_or_gt s ((d : ℝ) - 2) with h | h
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    · exact ⟨.R1, fun _ _ _ _ _ _ _ =&gt; h⟩
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    · exact ⟨.R3, fun _ _ _ _ _ h1 h2 =&gt; ⟨h, h1, h2⟩⟩
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  refine ⟨R, max Cj 0 * CU, max (Torus.cbNorm (j + mStar d + 2) V) (max Cn 0 * (CU + Cb)),
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    cU, Cd, κ, hcU, hκ, ?_⟩
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  intro β hβ ρc hρc ρβ hρβ hρC hpos
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hβpos : 0 &lt; β := lt_of_lt_of_le H.hβm hβ.1
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hβp : 0 &lt; βp := lt_of_lt_of_le hβpos hβ.2
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have hνpos : 0 &lt; βp⁻¹ := inv_pos.mpr hβp
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hle : βp⁻¹ ≤ β⁻¹ := inv_anti₀ hβpos hβ.2
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hν : β⁻¹ ∈ Set.Icc βp⁻¹ βm⁻¹ := ⟨hle, inv_anti₀ H.hβm hβ.1⟩
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hreal := MFGlobal.isRealCoeff_of_isMFSolutionHK hd s βm βp K V ρ₀ H β hβ ρc hρc
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  have hMemK : ∀ t, 0 ≤ t → MemHs (K : ℝ) (ρc t) := fun t ht =&gt; hρc.cont.1 t ht
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have hsumK : ∀ t, 0 ≤ t → Summable fun k =&gt; ‖ρc t k‖ := fun t ht =&gt;
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    summable_norm_of_memHs (K : ℝ) hKd _ (hMemK t ht)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  have hcoefPath : ∀ t, 0 ≤ t → coeffOf (mfPath ρc t) = ρc t := fun t ht =&gt;
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    coeffOf_toFun (ρc t) (hreal t ht) (hsumK t ht)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hUb := hU β hβ ρc hρc
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  -- regularity of `ρβ`: it lies in `H^K`
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  obtain ⟨ρ&#x27;, hρ&#x27;, c&#x27;, p&#x27;, hK&#x27;⟩ := wire_thermal_memSobolev hd s βm βp K V ρ₀ H β hβ
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  have heq : ρ&#x27; = ρβ := wire_thermal_unique hd s βm βp K V ρ₀ H β hβ ρβ ρ&#x27; hρβ hρC hpos hρ&#x27; c&#x27; p&#x27;
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  rw [heq] at hK&#x27;
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have hMK : MemSobolev (K : ℝ) ρβ := hK&#x27;
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have hMKc : MemHs (K : ℝ) (coeffOf ρβ) := (hsNormSq_coeffOf (K : ℝ) ρβ hMK).1
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have hrBle : rB ≤ K := hrBK.le
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have hMB : MemHs rB (coeffOf ρβ) := MemHs.mono hrBle hMKc
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  have hreal0 : IsRealCoeff (coeffOf ρβ) := isRealCoeff_coeffOf ρβ (hMK.1.integrable one_le_two)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hsumB : Summable fun k =&gt; ‖coeffOf ρβ k‖ := summable_norm_of_memHs (K : ℝ) hKd _ hMKc
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have hρβ_eq : toFun (coeffOf ρβ) = ρβ := toFun_coeffOf ρβ hρC hsumB
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  -- `C^n` bound for `ρβ`, uniform in `β`
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  have hUb0 := hUb 0 le_rfl
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hDB0 := hDB β hβ ρc hρc ρβ hρβ hρC hpos hMK 0 le_rfl
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  have hsB : hsNorm rB (coeffOf ρβ) ≤ CU + Cb := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have hm0 : MemHs rB (ρc 0) := MemHs.mono hrBle (hMemK 0 le_rfl)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    calc hsNorm rB (coeffOf ρβ) = hsNorm rB (ρc 0 - (ρc 0 - coeffOf ρβ)) := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          rw [sub_sub_cancel]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      _ ≤ hsNorm rB (ρc 0) + hsNorm rB (ρc 0 - coeffOf ρβ) := hsNorm_sub_le_add hm0 hDB0.1
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      _ ≤ CU + Cb := by
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>          refine add_le_add ((MFApriori.hsNorm_mono_idx hrBle (hMemK 0 le_rfl)).trans hUb0.2) ?_
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>          exact hDB0.2.trans (le_of_eq (by simp))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hCnB := hCn (coeffOf ρβ) hMB hreal0
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  rw [hρβ_eq] at hCnB
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hCn&#x27; : Torus.cbNorm (j + mStar d + 2) ρβ ≤ max Cn 0 * (CU + Cb) := by
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    refine hCnB.2.trans ?_
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    exact (mul_le_mul_of_nonneg_right (le_max_left _ _)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      (MFApriori.Aux.hsNorm_nonneg _ _)).trans (mul_le_mul_of_nonneg_left hsB (le_max_right _ _))
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  -- lower bound `c₀ ≤ ρβ`, as a limit of `ρ^t`
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hlim : ∀ x, Tendsto (fun t =&gt; mfPath ρc t x) atTop (𝓝 (ρβ x)) := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    intro x
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    have hbnd : ∀ t, 0 ≤ t → |mfPath ρc t x - ρβ x| ≤ A * Cd * Real.exp (-κ * t) := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      intro t ht
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      have e1 : toFun (ρc t - coeffOf ρβ) x = mfPath ρc t x - ρβ x := by
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>        rw [MFApriori.Aux.toFun_sub (ρc t) (coeffOf ρβ) (hsumK t ht) hsumB x,
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>          ← congrFun hρβ_eq x]
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>        rfl
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>      have hD := hDA β hβ ρc hρc ρβ hρβ hρC hpos hMK t ht
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      calc |mfPath ρc t x - ρβ x| = |toFun (ρc t - coeffOf ρβ) x| := by rw [e1]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>        _ ≤ A * hsNorm _ (ρc t - coeffOf ρβ) := hA _ hD.1 x
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>        _ ≤ A * (Cd * Real.exp (-κ * t)) := mul_le_mul_of_nonneg_left hD.2 hA0
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        _ = A * Cd * Real.exp (-κ * t) := by ring
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    have hexp : Tendsto (fun t : ℝ =&gt; A * Cd * Real.exp (-κ * t)) atTop (𝓝 0) := by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      have h := (Real.tendsto_exp_neg_atTop_nhds_zero.comp
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>        (tendsto_id.const_mul_atTop hκ)).const_mul (A * Cd)
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      rw [mul_zero] at h
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      refine Tendsto.congr (fun t =&gt; ?_) h
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      simp [neg_mul]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    rw [tendsto_iff_norm_sub_tendsto_zero]
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    refine squeeze_zero&#x27; (Eventually.of_forall fun t =&gt; norm_nonneg _) ?_ hexp
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    filter_upwards [eventually_ge_atTop 0] with t ht
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    rw [Real.norm_eq_abs]
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    exact hbnd t ht
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  have hlow : ∀ x, cU ≤ ρβ x := fun x =&gt;
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    ge_of_tendsto (hlim x) (eventually_atTop.2 ⟨0, fun t ht =&gt; ((hUb t ht).1 x).1⟩)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  -- the frozen hypothesis
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  have hVn : Torus.IsCk (j + mStar d + 2) V :=
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    H.hV.of_le (by exact_mod_cast (show j + mStar d + 2 ≤ K + 2 from hnK))
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hFz : FrozenHyp d s (j + mStar d + 2) βp⁻¹ βm⁻¹ cU
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      (max (Torus.cbNorm (j + mStar d + 2) V) (max Cn 0 * (CU + Cb))) β V ρβ :=
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    ⟨H.hs0, H.hsd, hβpos, hνpos, hν, hVn, le_max_left _ _, hρβ, hCnB.1,
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      (hCn&#x27;.trans (le_max_right _ _)), hcU, hlow⟩
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  -- the adjoint data
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  have hMBd : MatBound 1 (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)).M :=
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    fun i k =&gt; by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      show |(-1 : Matrix (Fin d) (Fin d) ℝ) i k| ≤ 1
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      rw [Matrix.neg_apply, Matrix.one_apply]
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      split_ifs &lt;;&gt; norm_num
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  have hVj : Torus.IsCk (j + 3) V := H.hV.of_le (by exact_mod_cast (show j + 3 ≤ K + 2 by omega))
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  have hAD : ∀ T, 0 &lt; T → AdjointData s j R 1 (max Cj 0 * CU) (Torus.cbNorm (j + 3) V)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) βp⁻¹ T (mfPath ρc) := by
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    intro T hT
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    have hcoh : CoeffHyp j (max Cj 0 * CU) T (mfPath ρc) := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      refine ⟨fun r hr =&gt; MFWeak.isProbDensity_mfPath hd s βm βp K V ρ₀ H β hβ ρc hρc r hr.1,
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        fun r hr =&gt; ?_, fun r hr =&gt; ?_, fun ψ hψ =&gt; ?_⟩
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>      · exact (hCj (ρc r) (hMemK r hr.1) (hreal r hr.1)).1
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>      · have h1 := (hCj (ρc r) (hMemK r hr.1) (hreal r hr.1)).2
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        have h2 : hsNorm (K : ℝ) (ρc r) ≤ CU := (hU β hβ ρc hρc r hr.1).2
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>        calc Torus.cbNorm (j + 3) (mfPath ρc r) ≤ Cj * hsNorm (K : ℝ) (ρc r) := h1
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>          _ ≤ max Cj 0 * hsNorm (K : ℝ) (ρc r) :=
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>              mul_le_mul_of_nonneg_right (le_max_left _ _) (MFApriori.Aux.hsNorm_nonneg _ _)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>          _ ≤ max Cj 0 * CU := mul_le_mul_of_nonneg_left h2 (le_max_right _ _)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      · exact (MFWeak.continuousOn_pairings hd s H.hs0 H.hsd K hK2 V ρ₀ H.hV β⁻¹ ρc
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>          ⟨MFApriori.IsMFSolutionHK.toSolOn hρc T, fun τ hτ =&gt; hreal τ hτ.1⟩ ψ hψ).1
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    have hreg : R.Holds d s (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)).M
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>        (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)).invβ βp⁻¹ T (mfPath ρc) :=
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      hR _ _ _ _ _ hνpos hle
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    exact ⟨rfl, hMBd, ⟨hVj, le_rfl⟩, hcoh, hT, hreg⟩
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  refine ⟨hFz, hAD, ?_⟩
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  intro σ hσ
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  rw [hcoefPath σ hσ]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  exact hDA β hβ ρc hρc ρβ hρβ hρC hpos hMK σ hσ
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>/-- Proposition 5.2 (`C:prop:adjoint`), in the form of `HRS.PDE.adjoint_decay_comparison`: the
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>uniform adjoint decay and comparison estimates, for the propagator of the solution `ρ^t` of
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>Proposition 5.1. -/
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>theorem adjoint_decay_comparison_wiring (hd : 1 ≤ d) (s βm βp : ℝ) (K : ℕ) (V ρ₀ : Torus d → ℝ)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    (H : FiniteRegHyp d s βm βp K V ρ₀) (j : ℕ) (_hjeven : Even j) (hj : (d : ℝ) / 2 + 4 &lt; j)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    (hK : 2 * j + 4 * d + 20 ≤ K) :
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    ∃ C c κ : ℝ, 0 &lt; C ∧ 0 &lt; c ∧ 0 &lt; κ ∧
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      ∀ (β : ℝ) (hβ : β ∈ Set.Icc βm βp) (ρc : ℝ → Coeff d) (_ : IsMFSolutionHK d s V β⁻¹ K ρ₀ ρc)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        (ρβ : Torus d → ℝ) (_ : IsThermalDensity (periodicRiesz d s) V β ρβ) (_ : Continuous ρβ)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>        (_ : ∀ x, 0 &lt; ρβ x) (φ : Torus d → ℝ) (_ : Continuous φ) (_ : MemSobolev j φ)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        (r t : ℝ) (_ : 0 ≤ r) (_ : r ≤ t),
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        MemSobolev j (projMean (withDensityReal ρβ)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>          (propagator (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) (mfPath ρc) r t φ)) ∧
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        sobolevNorm j (projMean (withDensityReal ρβ)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>            (propagator (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) (mfPath ρc) r t φ)) ≤
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>          C * Real.exp (-c * (t - r)) * sobolevNorm j (projMean (withDensityReal ρβ) φ) ∧
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>        sobolevNorm j (fun x =&gt; projMean (withDensityReal ρβ)
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>            (propagator (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) (mfPath ρc) r t φ) x -
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>          equilibriumSemigroup (mfData d s H.hs0 H.hsd V β (H.hβm.trans_le hβ.1)) ρβ (t - r)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>            (projMean (withDensityReal ρβ) φ) x) ≤
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>          C * Real.exp (-c * (t - r)) * Real.exp (-κ * r) *
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>            sobolevNorm j (projMean (withDensityReal ρβ) φ) := by
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  obtain ⟨R, Λ, Λ₀, c₀, Cd, κ, hc₀, hκ, hall⟩ := finiteReg_hypotheses hd s βm βp K V ρ₀ H j hj hK
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  obtain ⟨C, c, hC, hc, hmain⟩ := exists_adjoint_decay_abstract hd s j hj βp⁻¹ βm⁻¹ c₀ Λ₀
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    ((j : ℝ) + (d : ℝ) / 2 + 2) (by linarith) R 1 Λ (Torus.cbNorm (j + 3) V) Cd κ hκ
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  refine ⟨C, c, κ, hC, hc, hκ, ?_⟩
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  intro β hβ ρc hρc ρβ hρβ hρC hpos φ hφc hφ r t hr hrt
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  obtain ⟨HF, hAD, hdec⟩ := hall β hβ ρc hρc ρβ hρβ hρC hpos
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  exact hmain β V ρβ HF (mfPath ρc) hAD hdec φ hφc hφ r t hr hrt
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>end HRS.PDE.MFAdjoint
+</span></code></pre></main></body></html>

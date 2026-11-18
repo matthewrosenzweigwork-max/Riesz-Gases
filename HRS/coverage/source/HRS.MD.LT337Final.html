@@ -1,0 +1,196 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MD.LT337Final · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MD.LT337Final</code></h1><p><a href="../../lean/HRS/MD/LT337Final.lean">Open the unaltered Lean file</a> · 195 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MD.LT337P4
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MD.LT337P5D
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MD.LT337P6
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MD.LT337P8
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># Proposition 3.37 (`HRS.lowtemp_coulomb_bound`, `HRS.lowtemp_coulomb_threshold`): final assembly (sorry-free)
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Assembly of the proved sub-lemmas `lt1`-`lt8` of the packet files `HRS/MD/LT337P*.lean` (`lt0` is the proved
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`HRS.Commutator.commutator_estimate_super`, used in `LT337P6`), following the assembly theorems of `HRS/MD/LT337Spec.lean`
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>(M L3126-3153), with the sorry-free vocabulary `HRS.MD.LT337Vocab`.  The two frozen statements of
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`HRS/Energy/Coercivity.lean` are reproved as `lowtemp_coulomb_bound_proof` and `lowtemp_coulomb_threshold_proof`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open HRS HRS.MD.LT337Vocab HRS.MD.LT337P4 HRS.MD.LT337P5 HRS.MD.LT337P6 HRS.MD.LT337P8
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS.MD.LT337Final
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d N : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem lowTempHyp_det {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} {D : DynData d} {T Λ ΛV Mb : ℝ}
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    {ρ : ℝ → Torus d → ℝ} {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    {X : ℝ≥0 → Ω → Config d N} (h : LowTempHyp P D N T Λ ΛV Mb ρ X₀ W X) :
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    LTDet D T Λ ΛV Mb ρ :=
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  ⟨h.coulomb, h.sym_nonpos, h.M_bound, h.V_reg, h.mf, h.mf_reg, h.Λ_ge⟩
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>/-- `o_N(Λ) ≥ 0` for `s = d - 2 ≥ 0`, `Λ ≥ 1`, `N ≥ 1`, `C₀ ≥ 0`. -/
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>theorem lt9_oN_nonneg (hd : 2 ≤ d) {Λ : ℝ} (hΛ : 1 ≤ Λ) {N : ℕ} (hN : 1 ≤ N) {C₀ : ℝ} (hC₀ : 0 ≤ C₀) :
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    0 ≤ oNΛ d ((d : ℝ) - 2) C₀ Λ N := by
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hdpos : (0 : ℝ) &lt; d := by exact_mod_cast (by omega : 0 &lt; d)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have hΛpos : 0 &lt; Λ := by linarith
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have hNΛ1 : (1 : ℝ) ≤ (N : ℝ) * Λ := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    have : (1 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    nlinarith
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  unfold oNΛ
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have h1 : 0 ≤ (if ((d : ℝ) - 2) = 0 then Real.log (N * Λ) / (2 * d * N) else 0) := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    split_ifs
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    · exact div_nonneg (Real.log_nonneg hNΛ1) (by positivity)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    · exact le_rfl
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have h2 : 0 ≤ C₀ * Λ ^ (((d : ℝ) - 2) / d) * (N : ℝ) ^ (((d : ℝ) - 2) / d - 1) := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    have := Real.rpow_nonneg hΛpos.le (((d : ℝ) - 2) / d)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    have := Real.rpow_nonneg hNpos.le (((d : ℝ) - 2) / d - 1)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    positivity
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  linarith
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-- Threshold arithmetic (M L3152-3153): for `s = d - 2`, `Λ ≥ 1`, `C₀ &gt; 0`:
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>`(δ (NΛ)^{2/d})⁻¹ ≤ (δ C₀)⁻¹ o_N(Λ)`.  PROVED here (it is elementary). -/
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>theorem lt9_inv_le_oN (hd : 2 ≤ d) {Λ : ℝ} (hΛ : 1 ≤ Λ) {N : ℕ} (hN : 1 ≤ N) {δ C₀ : ℝ} (hδ : 0 &lt; δ)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (hC₀ : 0 &lt; C₀) :
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (δ * ((N : ℝ) * Λ) ^ (2 / (d : ℝ)))⁻¹ ≤ (δ * C₀)⁻¹ * oNΛ d ((d : ℝ) - 2) C₀ Λ N := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hdpos : (0 : ℝ) &lt; d := by exact_mod_cast (by omega : 0 &lt; d)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hΛpos : 0 &lt; Λ := by linarith
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hNΛ1 : (1 : ℝ) ≤ (N : ℝ) * Λ := by
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    have : (1 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    nlinarith
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  set x : ℝ := 2 / (d : ℝ) with hx
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  have hx0 : 0 ≤ x := by positivity
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hsd : ((d : ℝ) - 2) / d = 1 - x := by rw [hx]; field_simp
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hlog : 0 ≤ (if ((d : ℝ) - 2) = 0 then Real.log (N * Λ) / (2 * d * N) else 0) := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    split_ifs
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    · exact div_nonneg (Real.log_nonneg hNΛ1) (by positivity)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    · exact le_rfl
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  unfold oNΛ
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  rw [hsd]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have h1 : (1 - x) - 1 = -x := by ring
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  rw [h1]
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hL : (δ * ((N : ℝ) * Λ) ^ x)⁻¹ = δ⁻¹ * ((N : ℝ) ^ (-x) * Λ ^ (-x)) := by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    rw [mul_inv, Real.mul_rpow hNpos.le hΛpos.le, mul_inv, Real.rpow_neg hNpos.le, Real.rpow_neg hΛpos.le]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hR : C₀ * Λ ^ (1 - x) * (N : ℝ) ^ (-x) ≥ C₀ * Λ ^ (-x) * (N : ℝ) ^ (-x) := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have : Λ ^ (-x) ≤ Λ ^ (1 - x) := Real.rpow_le_rpow_of_exponent_le hΛ (by linarith)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    have hN&#x27; : 0 ≤ (N : ℝ) ^ (-x) := Real.rpow_nonneg hNpos.le _
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left this hC₀.le) hN&#x27;
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hK : 0 ≤ (δ * C₀)⁻¹ := by positivity
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  rw [hL]
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  calc δ⁻¹ * ((N : ℝ) ^ (-x) * Λ ^ (-x))
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      = (δ * C₀)⁻¹ * (C₀ * Λ ^ (-x) * (N : ℝ) ^ (-x)) := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>        field_simp
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    _ ≤ (δ * C₀)⁻¹ * (C₀ * Λ ^ (1 - x) * (N : ℝ) ^ (-x)) := mul_le_mul_of_nonneg_left hR hK
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    _ ≤ (δ * C₀)⁻¹ * ((if ((d : ℝ) - 2) = 0 then Real.log (N * Λ) / (2 * d * N) else 0) +
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>          C₀ * Λ ^ (1 - x) * (N : ℝ) ^ (-x)) := mul_le_mul_of_nonneg_left (by linarith) hK
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>/-- The bound with `C₀` allowed to be any number `≥ C₀min` (needed for the threshold, where `C₀ &gt; 0` is forced);
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>also records `E[(F_N + o_N)(X_0, μ_0)] ≥ 0`.  PROVED from LT4, LT5, LT6, LT8 (this is the assembly of the TeX proof
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>M L3126-3153). -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>theorem lowtemp_coulomb_bound_mono (hd : 2 ≤ d) (T Λ ΛV Mb : ℝ) (hT : 0 ≤ T) :
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    ∃ C₀min C : ℝ, 0 ≤ C₀min ∧ 0 &lt; C ∧ ∀ C₀ : ℝ, C₀min ≤ C₀ →
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      ∀ (D : DynData d) (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        (ρ : ℝ → Torus d → ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        LowTempHyp P D N T Λ ΛV Mb ρ X₀ W X →
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>        Integrable (fun ω =&gt; correctedEnergy D C₀ Λ ρ (X 0 ω) 0) P →
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>        0 ≤ ∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P ∧
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          ∫⁻ ω, ENNReal.ofReal (correctedEnergy D C₀ Λ ρ (X (Real.toNNReal t) ω) t) ∂P ≤
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            ENNReal.ofReal (C * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + D.invβ)) := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  obtain ⟨C₀min, κ, κ&#x27;, hC₀min, hκ, hκ&#x27;, h6⟩ := lt6_drift_bound_proof hd T Λ ΛV Mb
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  obtain ⟨C, hC, h8⟩ := lt8_gronwall_fatou_proof (d := d) T κ κ&#x27; hT hκ hκ&#x27;
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  refine ⟨C₀min, C, hC₀min, hC, fun C₀ hC₀ D N hN Ω _ P _ ρ X₀ W X h hint =&gt; ?_⟩
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hcol : ∀ᵐ ω ∂P, ∀ s ∈ Set.Icc (0 : ℝ) T, X (Real.toNNReal s) ω ∉ collisionSet d N := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    filter_upwards [h.sol.no_collision] with ω hω s hs
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    exact hω _ (by rw [Real.coe_toNNReal _ hs.1]; exact hs.2)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hpath : ∀ᵐ ω ∂P, ∀ s ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      0 ≤ correctedEnergy D C₀ Λ ρ (X (Real.toNNReal s) ω) s ∧
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      ltDrift D ρ s (X (Real.toNNReal s) ω) ≤
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        κ * correctedEnergy D C₀ Λ ρ (X (Real.toNNReal s) ω) s + κ&#x27; * D.invβ := by
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    filter_upwards [hcol] with ω hω s hs
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    exact h6 C₀ hC₀ D N hN ρ (lowTempHyp_det h) s hs _ (hω s hs)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hnn : 0 ≤ ∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    refine integral_nonneg_of_ae ?_
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    filter_upwards [hpath] with ω hω
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have := (hω 0 ⟨le_rfl, hT⟩).1
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    simpa using this
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  refine ⟨hnn, fun t ht =&gt; ?_⟩
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  obtain ⟨ℱ, W&#x27;, hF⟩ := h.filtered
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  obtain ⟨τ, hτ⟩ := lt4_stopping_proof hd h hF
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  have hid := lt5_stopped_identity_proof hd hN hT h hF hτ C₀ hint
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  exact h8 P D N Λ C₀ ρ X ℱ τ hτ hid hpath hint t ht
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>/-- ASSEMBLY of the frozen statement `HRS.lowtemp_coulomb_bound` (Proposition 3.37, `B:eq:lowtemp-bound`). -/
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>theorem lowtemp_coulomb_bound_proof_aux (hd : 2 ≤ d) (T Λ ΛV Mb : ℝ) (hT : 0 ≤ T) :
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    ∃ C₀ C : ℝ, 0 ≤ C₀ ∧ 0 &lt; C ∧
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      ∀ (D : DynData d) (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        (ρ : ℝ → Torus d → ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        LowTempHyp P D N T Λ ΛV Mb ρ X₀ W X →
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        Integrable (fun ω =&gt; correctedEnergy D C₀ Λ ρ (X 0 ω) 0) P →
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>        ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          ∫⁻ ω, ENNReal.ofReal (correctedEnergy D C₀ Λ ρ (X (Real.toNNReal t) ω) t) ∂P ≤
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            ENNReal.ofReal (C * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + D.invβ)) := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  obtain ⟨C₀min, C, h0, hC, hm⟩ := lowtemp_coulomb_bound_mono hd T Λ ΛV Mb hT
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  exact ⟨C₀min, C, h0, hC, fun D N hN Ω _ P _ ρ X₀ W X h hint t ht =&gt;
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    (hm C₀min le_rfl D N hN P ρ X₀ W X h hint).2 t ht⟩
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-- ASSEMBLY of the frozen statement `HRS.lowtemp_coulomb_threshold` (Proposition 3.37 consequence = 3.36 (C3)). -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>theorem lowtemp_coulomb_threshold_proof_aux (hd : 2 ≤ d) (T Λ ΛV Mb δ : ℝ) (hT : 0 ≤ T) (hδ : 0 &lt; δ) :
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    ∃ C₀ Cδ : ℝ, 0 ≤ C₀ ∧ 0 &lt; Cδ ∧
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      ∀ (D : DynData d) (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        (ρ : ℝ → Torus d → ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>        (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        LowTempHyp P D N T Λ ΛV Mb ρ X₀ W X →
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        Integrable (fun ω =&gt; correctedEnergy D C₀ Λ ρ (X 0 ω) 0) P →
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        D.invβ ≤ (δ * (N * Λ) ^ (2 / (d : ℝ)))⁻¹ →
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>          ∫⁻ ω, ENNReal.ofReal (correctedEnergy D C₀ Λ ρ (X (Real.toNNReal t) ω) t) ∂P ≤
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>            ENNReal.ofReal (Cδ * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P +
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>              oNΛ d D.s C₀ Λ N)) := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  obtain ⟨C₀min, C, h0, hC, hm⟩ := lowtemp_coulomb_bound_mono hd T Λ ΛV Mb hT
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  set C₀ : ℝ := max C₀min 1 with hC₀def
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have hC₀pos : 0 &lt; C₀ := lt_of_lt_of_le one_pos (le_max_right _ _)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have hC₀min : C₀min ≤ C₀ := le_max_left _ _
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  set K : ℝ := (δ * C₀)⁻¹ with hK
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have hK0 : 0 ≤ K := by positivity
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  refine ⟨C₀, C * max 1 K, hC₀pos.le, by positivity, fun D N hN Ω _ P _ ρ X₀ W X h hint hβ t ht =&gt; ?_⟩
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  obtain ⟨hnn, hb⟩ := hm C₀ hC₀min D N hN P ρ X₀ W X h hint
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  refine (hb t ht).trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hΛ : 1 ≤ Λ := h.Λ_ge
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have hs : D.s = (d : ℝ) - 2 := h.coulomb
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hβK : D.invβ ≤ K * oNΛ d D.s C₀ Λ N := by
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    have := lt9_inv_le_oN hd hΛ (by omega : 1 ≤ N) hδ hC₀pos
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    rw [hs]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    exact hβ.trans this
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have ho : 0 ≤ oNΛ d D.s C₀ Λ N := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    rw [hs]; exact lt9_oN_nonneg hd hΛ (by omega : 1 ≤ N) hC₀pos.le
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have hm1 : (1 : ℝ) ≤ max 1 K := le_max_left _ _
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  have hmK : K ≤ max 1 K := le_max_right _ _
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  have hCo : 0 &lt; C := hC
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  have h1 : ∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + D.invβ ≤
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      max 1 K * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + oNΛ d D.s C₀ Λ N) := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    nlinarith [mul_nonneg (sub_nonneg.2 hm1) hnn, mul_nonneg (sub_nonneg.2 hmK) ho]
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  calc C * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + D.invβ)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>      ≤ C * (max 1 K * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + oNΛ d D.s C₀ Λ N)) :=
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>        mul_le_mul_of_nonneg_left h1 hCo.le
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    _ = C * max 1 K * (∫ ω, correctedEnergy D C₀ Λ ρ (X 0 ω) 0 ∂P + oNΛ d D.s C₀ Λ N) := by ring
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>theorem lowtemp_coulomb_bound_proof : type_of% @HRS.lowtemp_coulomb_bound :=
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  @lowtemp_coulomb_bound_proof_aux
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>theorem lowtemp_coulomb_threshold_proof : type_of% @HRS.lowtemp_coulomb_threshold :=
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  @lowtemp_coulomb_threshold_proof_aux
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>example := (@lowtemp_coulomb_bound_proof : type_of% @HRS.lowtemp_coulomb_bound)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>example := (@lowtemp_coulomb_threshold_proof : type_of% @HRS.lowtemp_coulomb_threshold)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>end HRS.MD.LT337Final
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>end
+</span></code></pre></main></body></html>

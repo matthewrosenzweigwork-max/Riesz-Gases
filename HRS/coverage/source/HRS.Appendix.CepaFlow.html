@@ -1,0 +1,331 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Appendix.CepaFlow · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Appendix.CepaFlow</code></h1><p><a href="../../lean/HRS/Appendix/CepaFlow.lean">Open the unaltered Lean file</a> · 330 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Stochastic.SelectedLawFKE
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Appendix B (particle dynamics): statements of the remaining rows (packet SPEC-D, part B)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Statements only (`sorry` proofs); every declaration is a specification draft to be compared with
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>the TeX `HRS_periodic_main_20261008T010000Z.tex` (M).  Rows:
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Proposition B.2 `M:B:prop:cepa-log-flow` (L11662-11670): `cepa_log_flow`;
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* Proposition B.4 `M:B:prop:selected-law-smoothing` (L11694-11702): `selected_law_smoothing`;
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Remark B.5 `M:B:rem:d1-particle-threshold` (L11714-11715): no formal content (a pointer);
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* Remark B.6 `M:B:rem:sde-wp` (L11717-11719): no formal content (literature and scope);
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* Remark B.13 `M:B:rem:d1-threshold-sharp` (L11977-11985): `cepa_noncollision_iff_threshold`;
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* Proposition B.14 `M:B:prop:cepa-entropy-confined` (L12020-12032): `cepa_entropy_confined`;
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* Proposition B.15 `M:B:prop:sde-entropy-law` (L12140-12152): `sde_entropy_law`;
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* the Gibbs-entropy objects of `B:eq:particle-total-potential`, `B:eq:gibbs-relative-entropy-fisher`,
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `B:eq:gibbs-entropy-measure-convention`, `B:eq:selected-fisher-variational` (L12004-12019,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  L12205-12209), which the two entropy propositions need.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>Reused (not redefined): `DynData`, `IsStrongSolution`, `PathwiseUnique`, `IsVectorBrownian`
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>(`Dynamics/Setup.lean`), `IsCepaLepingleFlow`, `SelectedFlow`, `IsFilteredSolution`,
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>`selectedLaw`, `HasSelectedDensity`, `IsFKETest`, `configLift`, `configBasis`, `fkeGenerator`,
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>`fkeInteraction` (`Stochastic/SelectedFlow.lean`), `selected_law_fke` (`Stochastic/SelectedLawFKE.lean`),
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>`relEntropy` (`Energy/Modulated.lean`).
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>## Representation decisions (to be checked by the orchestrator)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>* **Collision-free vs contact flows.**  The Cépa-Lépingle flow is `IsCepaLepingleFlow` (a
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  contact-allowing strong solution of the integrated equations, cyclically ordered, with Lebesgue-null
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  contact occupation); &quot;the boundary finite-variation process vanishes&quot; is encoded by the absence of any
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  reflection term in the integrated equation.  Its uniqueness is stated within that class.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>* **Brownian drivers of the canonical flow.**  The TeX (L11664-11665) assigns to a label the Brownian
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  motion of its *initial cyclic rank*.  `cepa_log_flow` is stated for an *arbitrary* vector Brownian
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  motion `W` independent of `X₀`; the TeX convention is the special case `W̃_i = W_{rank(i)}`, which is
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  again a vector Brownian motion independent of `X₀` (the rank is `X₀`-measurable), so the two are
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  equivalent.
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>* **Gibbs entropies** are `EReal`-valued, `𝓗_G(P) = H(P | Z_G⁻¹ G dX) - log Z_G` exactly as in
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  `B:eq:gibbs-entropy-measure-convention`, with `Z_G` a `lintegral` (so no Bochner junk) and `H = relEntropy`
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  (Mathlib `klDiv`, `⊤` unless `P ≪ Q` with integrable log-likelihood ratio).
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>* **Fisher information** `𝓘_G(P)` is the lower-semicontinuous extension given by the variational formula
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  `B:eq:selected-fisher-variational` (L12205-12209), as a supremum in `ℝ≥0∞` over smooth vector fields
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  with compact support in `Ω_N = 𝔇_N^c`; `∇ log G = -β ∇U` on `Ω_N`, computed by differentiating the
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  lift of the potential `U`.  The supremum includes `ζ = 0`, so no real `iSup` junk arises.
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* The time integral `∫ 𝓘_G(P_N^r) dr` is a `lintegral` (measurability of `r ↦ 𝓘_G(P_N^r)` is provable:
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  supremum of narrowly continuous functionals of a narrowly continuous curve).
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>-/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>noncomputable section
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>namespace HRS
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>variable {d N : ℕ}
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-! ### Proposition B.2: the canonical one-dimensional logarithmic flow -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- Proposition B.2 (`M:B:prop:cepa-log-flow`, TeX M L11662-11670), Cépa-Lépingle.
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>Let `d = 1`, `s = 0`, `β_N &lt; ∞` (`0 &lt; invβ`), `M = -a` with `a &gt; 0`, `V&#x27;` globally Lipschitz (`V` is
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>`C¹` with Lipschitz gradient on the covering line).  For every a.s. pairwise distinct initial
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>configuration `X₀` independent of the Brownian motions `W`, there is a global cyclically ordered
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>contact-allowing solution (`IsCepaLepingleFlow` on `[0,T]` for every `T`): its drift is integrable
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>along paths (`lift`, integrated form), the contact set has Lebesgue-null occupation time
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>(`occupation`), and there is no reflection / local-time term in the integrated equation; and it is
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>pathwise unique among such flows.
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>Representation: see the module docstring (Brownian drivers; SVI formulation replaced by the
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>characterising properties of the flow).  The &quot;cyclic convention&quot; paragraph (L11664-11669: anchor, lifts,
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>projection, relabelling invariance of the empirical measure) is a construction/convention, not a
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>separate claim, and is not stated; the relabelling invariance of the empirical measure is immediate
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>from the definition.
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>AMBIGUITY (L11665): &quot;Periodicity and permutation equivariance show that another deterministic anchor
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>gives the same projected empirical process&quot; cannot hold pathwise for a fixed `W` (a different anchor
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>rotates the Brownian assignment); it holds in law.  Not stated.
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>The existence clause also asserts (L11663) local time-integrability of each singular pair force
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>`∇g(x_i - x_j)` (a.s., on `[0,T]`), and that `X` is a strong solution, i.e. `IsFilteredSolution` for every
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>Brownian filtration `ℱ` of `W` (coordinates `W&#x27;`) for which `X₀` is `ℱ t`-measurable for every real `t` (the filtration is real-indexed and `IsFilteredSolution.progressive` includes `t &lt; 0`; repair CEPA-LOG-FLOW, ISSUES 2026-10-18), as consumed by B.3/B.4/B.14.
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>Technical hypotheses: none beyond the TeX (`X₀` measurable, `W` a vector Brownian motion, independent);
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>`N` is arbitrary. -/
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>theorem cepa_log_flow {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    {D : DynData 1} (hs : D.s = 0) (hβ : 0 &lt; D.invβ) {a : ℝ} (ha : 0 &lt; a)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    (hM : D.M = -(a • (1 : Matrix (Fin 1) (Fin 1) ℝ)))
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    (hV₁ : Torus.IsCk 1 D.V) {L : ℝ≥0} (hV₂ : LipschitzWith L (gradient (Torus.lift D.V)))
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    {X₀ : Ω → Config 1 N} (hX₀ : Measurable X₀) (hdist : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet 1 N)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    {W : ℝ≥0 → Ω → (Fin N → Euc 1)} (hW : IsVectorBrownian P W)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (hind : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P) :
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (∃ X : ℝ≥0 → Ω → Config 1 N,
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      (∀ T : ℝ, 0 ≤ T → IsCepaLepingleFlow P D T X₀ W X) ∧
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      -- the singular pair forces are locally integrable in time
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      (∀ T : ℝ, 0 ≤ T → ∀ᵐ ω ∂P, ∀ i j : Fin N, i ≠ j →
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>        IntegrableOn (fun r : ℝ =&gt; periodicRieszGrad 1 D.s
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>          (X (Real.toNNReal r) ω i - X (Real.toNNReal r) ω j)) (Set.Icc 0 T)) ∧
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      -- strong solution: adapted to every Brownian filtration of `W` for which `X₀` is `ℱ t`-measurable for every real `t`
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      (∀ (ℱ : Filtration ℝ mΩ) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin 1) → ℝ),
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        IsBrownianFiltration P ℱ W&#x27; → (∀ᵐ ω ∂P, ∀ t i j, W&#x27; t ω (i, j) = W t ω i j) →
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        (∀ t : ℝ, Measurable[ℱ t] X₀) → IsFilteredSolution P ℱ W&#x27; W X)) ∧
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    ∀ (T : ℝ) (X X&#x27; : ℝ≥0 → Ω → Config 1 N),
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      IsCepaLepingleFlow P D T X₀ W X → IsCepaLepingleFlow P D T X₀ W X&#x27; →
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        ∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω = X&#x27; t ω := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  sorry
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-! ### Proposition B.4: smoothing on the collision-free configuration space -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>/-- The forward Kolmogorov operator `f ↦ β⁻¹ Δ_X f - div_X(b f)` of the particle system, applied at
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>`(r, X)`, computed through the lift to the covering space `(ℝ^d)^N` at `Y = rep ∘ X`;
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>`b = particleDrift` (the drift of `H:eq:intro-particles`) and `e_k = configBasis d N k`.
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>The classical forward equation of B.4 is `∂_r f = fkeForward D f r X` (the adjoint of the generator
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>whose weak form is `B:eq:selected-law-fke`, L11680-11686). -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>def fkeForward (D : DynData d) (f : ℝ → Config d N → ℝ) (r : ℝ) (X : Config d N) : ℝ :=
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  let Y : Fin N → Euc d := fun i =&gt; Torus.rep (X i)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  D.invβ * ∑ k : Fin N × Fin d,
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      fderiv ℝ (fderiv ℝ (configLift f r)) Y (configBasis d N k) (configBasis d N k)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  - ∑ k : Fin N × Fin d,
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      fderiv ℝ (fun Z : Fin N → Euc d =&gt;
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        (particleDrift D (fun i =&gt; Torus.mk (Z i)) k.1) k.2 * configLift f r Z) Y
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        (configBasis d N k)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>/-- Proposition B.4 (`M:B:prop:selected-law-smoothing`, TeX M L11694-11702).
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>Under Assumption A.1 (`SelectedFlow`, with the Brownian filtration `IsFilteredSolution` exactly as in
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>Proposition B.3), `β_N &lt; ∞` and `V ∈ C^∞(𝕋^d)`: the (possibly singular) initial law is arbitrary, and
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>there is `f_N ∈ C^∞((0,T) × Ω_N)`, nonnegative, which is
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>* the density of every time marginal on `Ω_N` (`P_N^t|_{Ω_N} = f_N^t dX`, all `t ∈ (0,T)`, which is the
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  pointwise-in-time form of &quot;the restriction of the spacetime law `dr dP_N^r` to `(0,T) × Ω_N` has
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  density `f_N`&quot;; the spacetime statement follows by integrating in `r`), and
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>* a classical solution of the forward Kolmogorov equation `∂_r f = β⁻¹ Δ f - div(b f)` on `(0,T) × Ω_N`
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  (`fkeForward`);
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>and if the selected process is a.s. collision-free on `[0,T]` then `P_N^t(𝔇_N) = 0` (i.e.
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>`P_N^t(Ω_N) = 1`) and `P_N^t = f_N^t dX` on all of `𝕋^{dN}` for every `t ∈ (0,T)`.
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>In the collisional Cépa-Lépingle case `Ω_N` is the disjoint union of the open ordering chambers, so the
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>smoothness on `Ω_N` is the smoothness on each open chamber; the proposition makes no assertion about a
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>labelled density on the chamber boundary, hence none is stated.  Smoothness is `ContDiffOn ℝ ∞` of
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>the lift `(r, Y) ↦ f r (mk ∘ Y)` on `(0,T) × lift(Ω_N)` (`∞` = `((⊤ : ℕ∞) : WithTop ℕ∞)`, not
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>analyticity).
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>PARTIAL: `SelectedFlow` omits case (c) of Assumption A.1 (`d = 1`, `s = 0`, `M = 0`, TeX L10130-10133),
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>so the row is covered only for the cases `SelectedFlow` represents.
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>Technical hypotheses: `2 ≤ N`, `0 &lt; T`, `hF` (same as `selected_law_fke`, B.3, which the TeX proof
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>invokes; the filtered-solution structure is the strong-solution adaptedness the manuscript takes for
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>granted, ISSUES D1). -/
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>theorem selected_law_smoothing
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    {D : DynData d} (hβ : 0 &lt; D.invβ) (hV : Torus.IsSmooth D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X) :
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    ∃ f : ℝ → Config d N → ℝ,
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      ContDiffOn ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        (fun p : ℝ × (Fin N → Euc d) =&gt; f p.1 (fun i =&gt; Torus.mk (p.2 i)))
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        (Set.Ioo 0 T ×ˢ {Y : Fin N → Euc d | (fun i =&gt; Torus.mk (Y i)) ∉ collisionSet d N}) ∧
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      (∀ r ∈ Set.Ioo 0 T, ∀ x ∉ collisionSet d N, 0 ≤ f r x) ∧
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      (∀ t ∈ Set.Ioo 0 T,
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        (selectedLaw P X t).restrict (collisionSet d N)ᶜ =
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>          ((volume : Measure (Config d N)).restrict (collisionSet d N)ᶜ).withDensity
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>            (fun x =&gt; ENNReal.ofReal (f t x))) ∧
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      (∀ r ∈ Set.Ioo 0 T, ∀ x ∉ collisionSet d N,
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        HasDerivAt (fun r&#x27; =&gt; f r&#x27; x) (fkeForward D f r x) r) ∧
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      ((∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω ∉ collisionSet d N) →
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        ∀ t ∈ Set.Ioo 0 T, selectedLaw P X t (collisionSet d N) = 0 ∧
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          selectedLaw P X t =
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>            (volume : Measure (Config d N)).withDensity (fun x =&gt; ENNReal.ofReal (f t x))) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  sorry
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-! ### Remarks B.5 and B.6 (no formal content) -/
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-! Remark B.5 `M:B:rem:d1-particle-threshold` (TeX M L11714-11715) has no formal content: it says only
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>that the logarithmic threshold and the continuation through contacts are explained in Remark B.13.
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>Remark B.6 `M:B:rem:sde-wp` (TeX M L11717-11719) has no formal content: it lists literature
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>(`[B-rosenzweig2023global, B-liu2016coulomb, B-cepa1997diffusing, B-cepa2001circle, B-guillin2023oned,
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>B-decourcel2025sharp]`) and states that the results are finite-`N` and do not verify Assumption `B:ass:MF`
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>(a non-claim). -/
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>/-! ### Remark B.13: the one-dimensional logarithmic threshold -/
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>/-- Remark B.13 (`M:B:rem:d1-threshold-sharp`, TeX M L11977-11985), the checkable content.
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>For the Cépa-Lépingle flow of B.2 (`d = 1`, `s = 0`, `0 &lt; invβ`, `M = -a`, `a &gt; 0`, `V` as in B.2,
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>`N ≥ 2`, `T &gt; 0`), almost sure noncollision on `[0,T]` holds iff `a β_N ≥ N` (`β_N = invβ⁻¹`, i.e.
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>`N * invβ ≤ a`): this is `[B-cepa2001circle, Thm 3.1]`.  The sufficiency half for strong solutions is already
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>formal (`particle_no_collision_d1_log`, `particle_wellposed_d1_log`, `ParticleLog.lean`); the necessity half
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>(below the threshold contacts occur with positive probability on every `[0,T]`) is the new content.
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>The remaining sentences of the remark are statements about hypotheses and are already formal without any
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>threshold hypothesis: the ordered process continues canonically below the threshold (`cepa_log_flow`
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>above, whose hypotheses contain no threshold), and the empirical Itô identity has no collision
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>local-time correction (`cepa_empirical_ito`, whose hypotheses contain no threshold).
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>Technical hypotheses: `2 ≤ N` (for `N = 1` there are no pairs, so the &quot;only if&quot; fails) and `0 &lt; T`
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>(on `[0,0]` the initial configuration is collision-free). -/
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>theorem cepa_noncollision_iff_threshold
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (hN : 2 ≤ N) {D : DynData 1} (hs : D.s = 0) (hβ : 0 &lt; D.invβ) {a : ℝ} (ha : 0 &lt; a)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    (hM : D.M = -(a • (1 : Matrix (Fin 1) (Fin 1) ℝ)))
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    (hV₁ : Torus.IsCk 1 D.V) {L : ℝ≥0} (hV₂ : LipschitzWith L (gradient (Torus.lift D.V)))
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    {X₀ : Ω → Config 1 N} (hX₀ : Measurable X₀) (hdist : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet 1 N)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    {W : ℝ≥0 → Ω → (Fin N → Euc 1)} (hW : IsVectorBrownian P W)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (hind : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    {X : ℝ≥0 → Ω → Config 1 N} (hX : IsCepaLepingleFlow P D T X₀ W X) :
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    (∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω ∉ collisionSet 1 N) ↔
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      (N : ℝ) * D.invβ ≤ a := by
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  sorry
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>/-! ### The Gibbs weight, entropy and Fisher information (`B:eq:particle-total-potential` ff.) -/
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>/-- The `N`-particle potential `U_{N,V}(X_N) = (1/2N) ∑_{i≠j} g(x_i - x_j) + ∑_i V(x_i)` on `𝕋^d`
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>(`B:eq:particle-total-potential`, TeX M L12006), `g = periodicRiesz d s`. -/
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>def totalPotential (D : DynData d) (X : Config d N) : ℝ :=
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  (1 / (2 * (N : ℝ))) * ∑ i, ∑ j ∈ Finset.univ.erase i, periodicRiesz d D.s (X i - X j)
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    + ∑ i, D.V (X i)
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>open Classical in
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>/-- The unnormalised Gibbs weight `G_{N,β_N,V} = exp(-β_N U_{N,V}) 1_{𝔇_N^c}`
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>(`B:eq:particle-total-potential`, TeX M L12008), `β_N = invβ⁻¹` (used only with `0 &lt; invβ`). -/
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>def gibbsWeight (D : DynData d) (X : Config d N) : ℝ :=
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  if X ∈ collisionSet d N then 0 else Real.exp (-(D.invβ⁻¹) * totalPotential D X)
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>/-- The partition function `Z_G = ∫ G dX` as a `lintegral` (the TeX convention, L12016, requires
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>`0 &lt; Z_G &lt; ∞`, which holds in the situations of B.14 and B.15; the `lintegral` avoids Bochner junk). -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>def gibbsPartition (D : DynData d) (N : ℕ) : ℝ≥0∞ :=
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  ∫⁻ X : Config d N, ENNReal.ofReal (gibbsWeight D X)
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>/-- The normalised Gibbs reference measure `Z_G⁻¹ G dX` (TeX M L12018). -/
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>def gibbsRef (D : DynData d) (N : ℕ) : Measure (Config d N) :=
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  (gibbsPartition D N)⁻¹ •
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    (volume : Measure (Config d N)).withDensity fun X =&gt; ENNReal.ofReal (gibbsWeight D X)
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-- The relative entropy `𝓗_G(P) = H(P | Z_G⁻¹ G dX) - log Z_G` of a probability measure
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>(`B:eq:gibbs-entropy-measure-convention`, TeX M L12018), `EReal`-valued: `+∞` when `P` is not
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>absolutely continuous with respect to the normalised Gibbs measure. -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>def gibbsEntropy (D : DynData d) (P : Measure (Config d N)) : EReal :=
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  ((relEntropy P (gibbsRef D N) : ℝ≥0∞) : EReal) - ((Real.log (gibbsPartition D N).toReal : ℝ) : EReal)
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>/-- Test fields of the variational formula `B:eq:selected-fisher-variational` (TeX M L12205-12209):
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>`ζ ∈ C_c^∞(Ω_N; ℝ^{dN})`, i.e. smooth (through the periodic lift) with compact support in the
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>collision-free configuration space `Ω_N = 𝔇_N^c`. -/
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>structure IsFisherTestField (ζ : Config d N → (Fin N → Euc d)) : Prop where
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  smooth : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    (fun Y : Fin N → Euc d =&gt; ζ (fun i =&gt; Torus.mk (Y i)))
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  support : ∃ K : Set (Config d N), IsCompact K ∧ Disjoint K (collisionSet d N) ∧
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    ∀ X, X ∉ K → ζ X = 0
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>/-- The divergence `Div ζ = ∑_{i,j} ∂_{x_{ij}} ζ_{ij}` of a vector field on `𝕋^{dN}`, through the lift
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>at `Y = rep ∘ X`. -/
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>def configDiv (ζ : Config d N → (Fin N → Euc d)) (X : Config d N) : ℝ :=
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  let Y : Fin N → Euc d := fun i =&gt; Torus.rep (X i)
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  ∑ k : Fin N × Fin d,
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    fderiv ℝ (fun Z : Fin N → Euc d =&gt; (ζ (fun i =&gt; Torus.mk (Z i)) k.1) k.2) Y
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      (configBasis d N k)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>/-- The relative Fisher information `𝓘_G(P)` as the lower-semicontinuous extension given by the
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>variational formula `B:eq:selected-fisher-variational` (TeX M L12205-12209):
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>`sup_ζ ∫ (-2 Div ζ - 2 ζ·∇log G - |ζ|²) dP`, over `ζ ∈ C_c^∞(Ω_N; ℝ^{dN})`, where on `Ω_N`
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>`∇ log G = -β_N ∇U_{N,V}`, so that `-2 ζ·∇ log G = 2 β_N D U[ζ]` (`β_N = invβ⁻¹`; `DU[ζ]` computed by
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>differentiating the lift of `totalPotential`).  `ζ = 0` is admissible, so the supremum is `≥ 0`;
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>it is `+∞` for measures without a (Sobolev) density.  Used with `0 &lt; invβ`. -/
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>def fisherInfo (D : DynData d) (N : ℕ) (P : Measure (Config d N)) : ℝ≥0∞ :=
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  ⨆ (ζ : Config d N → (Fin N → Euc d)) (_ : IsFisherTestField ζ),
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    ENNReal.ofReal (∫ X : Config d N,
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>      (-2 * configDiv ζ X
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>        + 2 * D.invβ⁻¹ * fderiv ℝ (fun Z : Fin N → Euc d =&gt; totalPotential D (fun i =&gt; Torus.mk (Z i)))
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>            (fun i =&gt; Torus.rep (X i)) (ζ X)
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>        - ∑ i, ‖ζ X i‖ ^ 2) ∂P)
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>/-- The weak forward equation of Proposition B.3 (`B:eq:selected-law-fke`, TeX M L11680-11686) for a
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>family of laws `μ`, in the form of `selected_law_fke`: for every `Φ ∈ C_c^{1,2}([0,T) × Ω_N)`,
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>`-∫ Φ(0,·) dμ_0 = ∫_0^T ∫ (fkeGenerator + fkeInteraction) dμ_r dr`. -/
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>def SolvesSelectedFKE (D : DynData d) (T : ℝ) (μ : ℝ → Measure (Config d N)) : Prop :=
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  ∀ Φ : ℝ → Config d N → ℝ, IsFKETest T Φ →
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    - ∫ x, Φ 0 x ∂(μ 0)
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      = ∫ r in (0 : ℝ)..T, ∫ x, (fkeGenerator D T Φ r x + fkeInteraction D Φ r x) ∂(μ r)
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>/-! ### Propositions B.14 and B.15: entropy admissibility -/
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>/-- Proposition B.14 (`M:B:prop:cepa-entropy-confined`, TeX M L12020-12032): entropy admissibility on the
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>circle.  `𝔻 = 𝕋`, `X_N` the canonical Cépa-Lépingle flow of B.2 with `a = 1` (`M = -I`), `0 &lt; invβ`,
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>`V ∈ C²` (`‖V&#x27;&#x27;‖_∞ &lt; ∞` is automatic on the compact torus), initial law with a density `f_N^0` of finite
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>Gibbs entropy `𝓗_G(f_N^0) &lt; ∞` (`B:eq:cepa-initial-entropy`).  Then for every deterministic `t ∈ [0,T]`
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>the law `P_N^t` has a density; the family solves the forward equation of B.3 (distributionally, away
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>from `𝔇_N`); and `𝓗_G(P_N^t) + β_N⁻¹ ∫_0^t 𝓘_G(P_N^r) dr ≤ 𝓗_G(P_N^0)` (`B:eq:cepa-entropy-inequality`),
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>in `EReal`.  No labelled forward equation across the collision boundary is asserted.
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>Technical hypotheses: `2 ≤ N`, `0 &lt; T` (as in B.3), `hF` (Brownian filtration, as in B.3, needed to
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>make the forward-equation clause the one of B.3).  The standing initial-data hypotheses of Assumption
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>A.1 (`hX₀`, `hdist`, `hW`, `hind`) are listed explicitly. -/
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>theorem cepa_entropy_confined
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin 1) → ℝ}
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    {D : DynData 1} (hs : D.s = 0) (hβ : 0 &lt; D.invβ)
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    (hM : D.M = -(1 : Matrix (Fin 1) (Fin 1) ℝ)) (hV : Torus.IsCk 2 D.V)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    {X₀ : Ω → Config 1 N} (hX₀ : Measurable X₀) (hdist : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet 1 N)
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    {W : ℝ≥0 → Ω → (Fin N → Euc 1)} (hW : IsVectorBrownian P W)
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    (hind : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    {X : ℝ≥0 → Ω → Config 1 N}
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    (hX : IsCepaLepingleFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    (hdens0 : HasSelectedDensity P X 0)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    (hH0 : gibbsEntropy D (selectedLaw P X 0) &lt; ⊤) :
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (∀ t ∈ Set.Icc 0 T, HasSelectedDensity P X t ∧
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>      gibbsEntropy D (selectedLaw P X t)
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>        + ((ENNReal.ofReal D.invβ *
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>            ∫⁻ r in Set.Icc (0 : ℝ) t, fisherInfo D N (selectedLaw P X r) : ℝ≥0∞) : EReal)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>        ≤ gibbsEntropy D (selectedLaw P X 0)) ∧
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    SolvesSelectedFKE D T (selectedLaw P X) := by
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  sorry
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>/-- Proposition B.15 (`M:B:prop:sde-entropy-law`, TeX M L12140-12152): entropy admissibility of the
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>selected gradient law.  `X_N` the canonical selected particle process of Assumption A.1
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>(`SelectedFlow`) with `M = -I`, `0 &lt; invβ`, `V ∈ C²(𝕋^d)`, initial law with a density `f_N^0` of finite
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>Gibbs entropy `𝓗_G(f_N^0) &lt; ∞` (`B:eq:selected-initial-gibbs-entropy`).  Then for every deterministic
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>`t ∈ [0,T]` the law `P_N^t` has a density; on `Ω_N` the family solves the selected-law forward equation
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>of B.3 (`SolvesSelectedFKE`); and `𝓗_G(P_N^t) + β_N⁻¹ ∫_0^t 𝓘_G(P_N^r) dr ≤ 𝓗_G(P_N^0)`
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>(`B:eq:selected-gradient-entropy`), in `EReal`.  The one-dimensional logarithmic case is B.14.
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>Technical hypotheses: `2 ≤ N`, `0 &lt; T`, `hF` as in B.3 / B.14. -/
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>theorem sde_entropy_law
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>    {D : DynData d} (hM : D.M = -(1 : Matrix (Fin d) (Fin d) ℝ)) (hβ : 0 &lt; D.invβ)
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>    (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    (hdens0 : HasSelectedDensity P X 0)
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    (hH0 : gibbsEntropy D (selectedLaw P X 0) &lt; ⊤) :
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    (∀ t ∈ Set.Icc 0 T, HasSelectedDensity P X t ∧
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>      gibbsEntropy D (selectedLaw P X t)
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>        + ((ENNReal.ofReal D.invβ *
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>            ∫⁻ r in Set.Icc (0 : ℝ) t, fisherInfo D N (selectedLaw P X r) : ℝ≥0∞) : EReal)
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>        ≤ gibbsEntropy D (selectedLaw P X 0)) ∧
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    SolvesSelectedFKE D T (selectedLaw P X) := by
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  sorry
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>end HRS
+</span></code></pre></main></body></html>

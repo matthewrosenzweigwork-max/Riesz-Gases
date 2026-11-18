@@ -1,0 +1,1 @@
+window.docContents[82].resolve({"/Browse-the-paper-and-supplement/#section-M-6":{"contents":"Main paper, lines 7556–7720.\n\nRead the whole section\n\n\n\n","context":"Fluctuations of Riesz gases\u0009Browse the paper and supplement","header":"3.6. 6. Mesoscopic observations and screening","id":"/Browse-the-paper-and-supplement/#section-M-6"}});

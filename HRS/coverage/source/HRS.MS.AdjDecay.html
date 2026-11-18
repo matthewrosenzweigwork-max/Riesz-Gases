@@ -1,0 +1,236 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.AdjDecay · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.AdjDecay</code></h1><p><a href="../../lean/HRS/MS/AdjDecay.lean">Open the unaltered Lean file</a> · 235 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.AdjDecayAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.AdjFarAux1
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># AD-3: `adjoint_decay_proof` (supplement S4.12)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`adjoint_decay_proof : type_of% @HRS.Whole.adjoint_decay` (the frozen statement, `HRS/Whole/Adjoint.lean`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Route (S4_PLAN section 2.2, &quot;verify, do not construct&quot;).  Let `f_u := propagatorW C u t φ` (`C = D.coeff ρ`),
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>the classical adjoint solution given by `UlAdjointInput` (`MemCb (k+1) f_u`, `cbNorm (k+1) f_u ≤ K ‖φ‖_ul`).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Its equation reads `∂_u f + νΔf + b_u·∇f = S_u` with `b_u = M(∇g*ρ_u) - Qx - c` and
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`S_u = Div g*(ρ_u Mᵀ ∇f_u)` (`ad_generator_split_hyp`, `ad_drift_eq`).  The Ito/chain-rule verification
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>(`ad_verification_sg` for `ν &gt; 0`, `ad3_verification_zero` for `ν = 0`) gives
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`f_r x = lcSg r t φ x - ∫_r^t lcSg r u (S_u) x du` with the LC engine `lcSg`.  The engine `lc_engine` bounds the first
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>term by `C decayNormE k (s+1) φ`, and `ad3_int_engine` bounds the Duhamel integral (all derivatives, via
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>differentiation under the product integral `du ⊗ dP`) by `C ‖S‖` where `‖S_u‖_{k,s+1} ≤ C K ‖φ‖_ul` is
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>`ad_source_bound` (`far_derivatives_proof` (b) with `f = f_u`).  The data on `[0,T]` are clamped
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>(`lcHyp_clamp`, `lcDecay_clamp`) to satisfy the engine hypotheses for all times.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>The conclusion constant is `max (max Ce (Ci * Cs * max K 0)) 1`, with `Ce` the engine constant, `Ci` the constant of
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>`ad3_int_engine`, `Cs` the constant of `ad_source_bound`; all depend only on `d, s, k, L, Λ, K, T, ν*, M, Q, c`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>(and not on `ν, ρ, r, t, φ`).  Statement adjustments relative to the frozen file: none (`hk2` is not needed
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>by the proof).  Standing facts used: `0 ≤ s ≤ d - 2`, `L &gt; d + k + s + 4`, `0 ≤ ν ≤ ν*` (the case in which
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>the hypothesis `AdjointDecayHyp` can hold at all; otherwise the statement is vacuous and `C = 0`).
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>-/
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>open MeasureTheory Set Filter Topology
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open scoped NNReal ENNReal
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open HRS HRS.Whole HRS.MS.Lc HRS.MS.AdjVerif HRS.MS.Adj HRS.MS.PoisKolm HRS.MD.EQLawPath
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>noncomputable section
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>universe u
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>namespace HRS.MS.AdjDecay
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>variable {d : ℕ}
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>/-- The representation formula for every viscosity `ν ≥ 0` (`ad_verification_sg` if `ν &gt; 0`,
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>`ad3_verification_zero` if `ν = 0`). -/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem ad3_representation {Ω : Type u} [mΩ : MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    [IsProbabilityMeasure P] (ℱ : Filtration ℝ mΩ) (W : ℝ≥0 → Ω → Fin d → ℝ)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (hW : IsBrownianFiltration P ℱ W) (Q : Matrix (Fin d) (Fin d) ℝ) (k : ℕ) (Λc ΛB : ℝ)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (c : ℝ → Euc d) (B : ℝ → Euc d → Euc d) (H : LcHyp Q k Λc ΛB c B)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (C : WholeCoeff d) (hν : 0 ≤ C.ν) {t : ℝ}
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (hdrift : ∀ u ∈ Icc 0 t, ∀ y, C.drift u y = B u y - lcQ Q y - c u)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    {φ : Euc d → ℝ} {f : ℝ → Euc d → ℝ} (hf : IsClassicalAdjointW C t φ f)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (S : ℝ → Euc d → ℝ)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (hS : ∀ u ∈ Icc 0 t, ∀ y, generatorW C u (f u) y = C.ν * Laplacian.laplacian (f u) y +
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      inner ℝ (C.drift u y) (gradient (f u) y) - S u y)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    {r : ℝ} (hr : 0 ≤ r) (hrt : r ≤ t) (x : Euc d) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    IntervalIntegrable (fun u =&gt; lcSg P W (fun _ =&gt; C.ν) Q c B r u (S u) x) volume r t ∧
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    f r x = lcSg P W (fun _ =&gt; C.ν) Q c B r t φ x -
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      ∫ u in r..t, lcSg P W (fun _ =&gt; C.ν) Q c B r u (S u) x := by
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  rcases hν.eq_or_lt with h | h
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  · exact ad3_verification_zero P ℱ W hW Q k Λc ΛB c B H C h.symm hdrift hf S hS hr hrt x
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  · exact ad_verification_sg P ℱ W hW Q k Λc ΛB c B H C h hdrift hf S hS hr hrt x
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>/-- A single derivative term of `decayNormE` is bounded by the norm. -/
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>theorem ad3_term_le {k : ℕ} {b : ℝ} {g : Euc d → ℝ} {j : ℕ} (hj : j ≤ k) (I : Fin j → Fin d)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (x : Euc d) :
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    ENNReal.ofReal (jbracket x ^ (b + (j : ℝ)) * |partialDeriv I g x|) ≤ decayNormE k b g := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  unfold decayNormE derivSupE
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  refine le_trans ?_ (le_iSup _ (⟨j, Nat.lt_succ_of_le hj⟩ : Fin (k + 1)))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  refine le_trans ?_ (le_iSup _ I)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  exact le_iSup (fun x =&gt; ENNReal.ofReal (jbracket x ^ (b + (j : ℝ)) * |partialDeriv I g x|)) x
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>/-- **S4.12 `adjoint_decay`**: proof (tie in `AdjDecayTie`). -/
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>theorem adjoint_decay_proof : type_of% @HRS.Whole.adjoint_decay := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  intro d hd θ hθ s M Q c T νstar k hk2 L Λ K
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  by_cases hrange : 0 ≤ s ∧ s ≤ (d : ℝ) - 2 ∧ (d : ℝ) + k + s + 4 &lt; L
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  swap
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  · exact ⟨0, fun ν ρ D =&gt; absurd ⟨D.s_range.1, D.s_range.2, D.L_range⟩ hrange⟩
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  obtain ⟨hs0, hsd, hL⟩ := hrange
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  obtain ⟨ΛB, hΛB0, hΛB⟩ := ad_drift_hyps hd s hs0 hsd k M L Λ hL
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  obtain ⟨Cs, hCs0, hCs⟩ := ad_source_bound hd s hs0 hsd k M L Λ hL
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hb : (0 : ℝ) &lt; s + 1 := by linarith
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  obtain ⟨Ce, hCe⟩ := lc_engine.{0} s hs0 Q k T νstar (s + 1) ‖c‖ ΛB hb
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨Ci, hCi0, hCi⟩ := ad3_int_engine.{0} s hs0 Q k T νstar (s + 1) ‖c‖ ΛB hb
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  set Cfin : ℝ := max (max Ce (Ci * Cs * max K 0)) 1 with hCfin
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hCfin1 : 1 ≤ Cfin := le_max_right _ _
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hCfin0 : 0 &lt; Cfin := by linarith
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  refine ⟨Cfin, fun ν ρ D r t hr hrt htT φ hφ hul =&gt; ?_⟩
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  set C0 : WholeCoeff d := (⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ with hC0
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hT0 : 0 ≤ T := hr.trans (hrt.trans htT)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  set ulE : ℝ≥0∞ := ulNormE (k + 2 + ⌈(d : ℝ) / 2⌉₊) θ φ with hulE
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hkk : (k + 1 + 1 + ⌈(d : ℝ) / 2⌉₊) = k + 2 + ⌈(d : ℝ) / 2⌉₊ := by omega
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  -- the adjoint input
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hadj := D.adjoint r t hr hrt htT φ (by rw [hkk]; exact hφ) (by rw [hkk]; exact hul)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  rw [hkk] at hadj
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  obtain ⟨hex, hmem, -⟩ := hadj
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hCk : ContDiff ℝ (k : WithTop ℕ∞) (propagatorW C0 r t φ) :=
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    hmem.1.of_le (by exact_mod_cast Nat.le_succ k)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  refine ⟨hCk, ?_⟩
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  -- trivial case of an infinite norm of φ
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  by_cases hdφ : decayNormE k (s + 1) φ = ⊤
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  · rw [hdφ, top_add, ENNReal.mul_top (by simpa using hCfin0)]
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    exact le_top
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hdφ&#x27; : decayNormE k (s + 1) φ &lt; ⊤ := lt_top_iff_ne_top.2 hdφ
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  -- the terminal case
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  rcases hrt.eq_or_lt with hrt0 | hlt
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  · subst hrt0
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    obtain ⟨f, hf⟩ := hex
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have hpt : propagatorW C0 r r φ = φ := by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      unfold propagatorW
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      rw [dif_pos ⟨f, hf⟩]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      exact (Classical.choose_spec (⟨f, hf⟩ : ∃ f, IsClassicalAdjointW C0 r φ f)).terminal
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    rw [hpt]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    calc decayNormE k (s + 1) φ ≤ decayNormE k (s + 1) φ + ulE := le_self_add
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      _ = 1 * (decayNormE k (s + 1) φ + ulE) := (one_mul _).symm
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      _ ≤ ENNReal.ofReal Cfin * (decayNormE k (s + 1) φ + ulE) := by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>          gcongr
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>          simpa using hCfin1
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have ht : 0 &lt; t := lt_of_le_of_lt hr hlt
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  -- the classical solution
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hf := hex.choose_spec
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  set f : ℝ → Euc d → ℝ := hex.choose with hfdef
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have hprop : ∀ v, propagatorW C0 v t φ = f v := fun v =&gt; by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    unfold propagatorW
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [dif_pos hex]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  -- the data of the engine (clamped to `[0,T]`)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  obtain ⟨hcontB, hBsm⟩ := hΛB θ Q c T νstar K ν ρ D
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  set Bu : ℝ → Euc d → Euc d := fun v y =&gt;
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    Torus.matVec M (convGradConvW (rieszKernelGrad d s) (ρ v) y) with hBu
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hH : LcHyp Q k ‖c‖ ΛB (fun v =&gt; (fun _ : ℝ =&gt; c) (min v T)) (fun v =&gt; Bu (min v T)) :=
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    lcHyp_clamp hT0 continuousOn_const hcontB (fun _ _ =&gt; le_rfl)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      (fun v hv =&gt; ⟨by exact_mod_cast (hBsm v hv).1, fun j hj x =&gt; (hBsm v hv).2.1 j hj x⟩)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  have hdec := lcDecay_clamp hT0 (fun v hv =&gt; (hBsm v hv).2.2)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  set c&#x27; : ℝ → Euc d := fun v =&gt; (fun _ : ℝ =&gt; c) (min v T) with hc&#x27;
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  set B&#x27; : ℝ → Euc d → Euc d := fun v =&gt; Bu (min v T) with hB&#x27;
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  -- drift identification
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hdrift : ∀ v ∈ Icc 0 t, ∀ y, C0.drift v y = B&#x27; v y - lcQ Q y - c&#x27; v := by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    intro v hv y
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    have hvT : v ∈ Icc 0 T := ⟨hv.1, hv.2.trans htT⟩
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    rw [ad_drift_eq D v y]
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    simp only [hB&#x27;, hc&#x27;, hBu, min_eq_left hvT.2, lcQ_apply]
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    abel
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  -- bounds on the gradient of f
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  obtain ⟨B1, hB1⟩ := hf.bdd 1 (by norm_num)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have hgrad : ∀ v ∈ Icc 0 t, ∀ y, ‖gradient (f v) y‖ ≤ B1 := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    intro v hv y
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    have h1 := hB1 v hv y
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    rw [norm_iteratedFDeriv_one] at h1
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    unfold gradient
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    rwa [LinearIsometryEquiv.norm_map]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  -- the source
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  set S : ℝ → Euc d → ℝ := fun v y =&gt; divGConvPlain d s
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    (fun z =&gt; ρ v z • Torus.matVec M.transpose (gradient (f v) z)) y with hSdef
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  have hS : ∀ v ∈ Icc 0 t, ∀ y, generatorW C0 v (f v) y = C0.ν * Laplacian.laplacian (f v) y +
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      inner ℝ (C0.drift v y) (gradient (f v) y) - S v y := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    intro v hv y
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have hvT : v ∈ Icc 0 T := ⟨hv.1, hv.2.trans htT⟩
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    have h := ad_generator_split_hyp hd D hvT (f v) y
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      ((hf.c2 v hv).of_le (by norm_num)) (hgrad v hv)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    rw [h, ad_drift_eq D v y]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    rfl
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  have hSc := ad2_S_cont hH C0 ht hdrift hf S hS
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  -- the representation formula
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  obtain ⟨Ω, mΩ, P, hP, ℱ, W, hW⟩ := exists_isBrownianFiltration_type (Fin d)
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  haveI := hP
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have hrep := fun x =&gt; (ad3_representation.{0} P ℱ W hW Q k ‖c‖ ΛB c&#x27; B&#x27; hH C0 D.ν_range.1 hdrift hf
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    S hS hr hlt.le x).2
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hfr : propagatorW C0 r t φ = fun x =&gt; lcSg P W (fun _ =&gt; ν) Q c&#x27; B&#x27; r t φ x -
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      ∫ u in r..t, lcSg P W (fun _ =&gt; ν) Q c&#x27; B&#x27; r u (S u) x := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    funext x
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    rw [hprop r]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    exact hrep x
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  -- the source bound
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  set ulr : ℝ := ulE.toReal with hulr
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hulr0 : 0 ≤ ulr := ENNReal.toReal_nonneg
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  set D1 : ℝ := Cs * (max K 0 * ulr) with hD1
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have hD10 : 0 ≤ D1 := by positivity
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have hSd : ∀ v ∈ Icc r t, ContDiff ℝ (k : WithTop ℕ∞) (S v) ∧
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      decayNormE k (s + 1) (S v) ≤ ENNReal.ofReal D1 := by
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    intro v hv
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    obtain ⟨h1, h2⟩ := hCs θ Q c T νstar K ν ρ D v t (hr.trans hv.1) hv.2 htT φ hφ hul
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    have e : ∀ v, propagatorW ((⟨s, M, quadV Q c, ν⟩ : WholeDyn d).coeff ρ) v t φ = f v := hprop
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    simp only [e] at h1 h2
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    refine ⟨h1, h2.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    rw [hD1]
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    have : K * ulr ≤ max K 0 * ulr := mul_le_mul_of_nonneg_right (le_max_left _ _) hulr0
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    exact mul_le_mul_of_nonneg_left this hCs0
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  obtain ⟨hFcd, hFb⟩ := hCi P ℱ W ν c&#x27; B&#x27; hW D.ν_range.1 D.ν_range.2 hH hdec S D1 hD10 r t hr hlt
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    htT hSc hSd
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  have hφk : ContDiff ℝ (k : WithTop ℕ∞) φ := hφ.of_le (by
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    rw [show k + 2 + ⌈(d : ℝ) / 2⌉₊ = k + (2 + ⌈(d : ℝ) / 2⌉₊) by omega]
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    exact_mod_cast Nat.le_add_right k _)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  obtain ⟨hEcd, hEb⟩ := hCe P ℱ W (fun _ =&gt; ν) c&#x27; B&#x27; hW continuous_const
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (fun _ =&gt; ⟨D.ν_range.1, D.ν_range.2⟩) hH hdec r t hr hlt.le htT φ hφk hdφ&#x27;
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  -- the bound
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  set Ge : Euc d → ℝ := lcSg P W (fun _ =&gt; ν) Q c&#x27; B&#x27; r t φ with hGe
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  set Fd : Euc d → ℝ := fun x =&gt; ∫ u in r..t, lcSg P W (fun _ =&gt; ν) Q c&#x27; B&#x27; r u (S u) x with hFd
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hsplit : ∀ j ≤ k, ∀ (I : Fin j → Fin d) (x : Euc d),
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      partialDeriv I (propagatorW C0 r t φ) x = partialDeriv I Ge x - partialDeriv I Fd x := by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    intro j hj I x
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    rw [hfr]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    unfold partialDeriv
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    have h1 : ContDiff ℝ (j : WithTop ℕ∞) Ge := hEcd.of_le (by exact_mod_cast hj)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have h2 : ContDiff ℝ (j : WithTop ℕ∞) Fd := hFcd.of_le (by exact_mod_cast hj)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    have := iteratedFDeriv_sub_apply (𝕜 := ℝ) (i := j) (x := x) h1.contDiffAt h2.contDiffAt
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    have e : (fun x =&gt; Ge x - Fd x) = Ge - Fd := rfl
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    rw [e, this]
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    rfl
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  have hmain : decayNormE k (s + 1) (propagatorW C0 r t φ) ≤
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      ENNReal.ofReal Ce * decayNormE k (s + 1) φ + ENNReal.ofReal (Ci * D1) := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    unfold decayNormE derivSupE
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    refine iSup_le fun j =&gt; iSup_le fun I =&gt; iSup_le fun x =&gt; ?_
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    have hj : (j : ℕ) ≤ k := Nat.lt_succ_iff.mp j.2
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    rw [hsplit (j : ℕ) hj I x]
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    have hjb : 0 ≤ jbracket x ^ (s + 1 + ((j : ℕ) : ℝ)) :=
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      Real.rpow_nonneg (Real.sqrt_nonneg _) _
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    have hle1 : jbracket x ^ (s + 1 + ((j : ℕ) : ℝ)) * |partialDeriv I Ge x - partialDeriv I Fd x| ≤
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>        jbracket x ^ (s + 1 + ((j : ℕ) : ℝ)) * |partialDeriv I Ge x| +
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>          jbracket x ^ (s + 1 + ((j : ℕ) : ℝ)) * |partialDeriv I Fd x| := by
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      rw [← mul_add]
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>      exact mul_le_mul_of_nonneg_left (abs_sub _ _) hjb
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    refine (ENNReal.ofReal_le_ofReal hle1).trans ?_
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    rw [ENNReal.ofReal_add (mul_nonneg hjb (abs_nonneg _)) (mul_nonneg hjb (abs_nonneg _))]
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    refine add_le_add ?_ ?_
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    · exact (ad3_term_le (b := s + 1) (g := Ge) hj I x).trans hEb
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    · refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      exact (mul_le_mul_of_nonneg_left (lc4_partial_le (j : ℕ) I x) hjb).trans (hFb (j : ℕ) hj x)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>  refine hmain.trans ?_
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  have hulfin : ulE ≠ ⊤ := hul.ne
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  have hulE&#x27; : ENNReal.ofReal ulr = ulE := ENNReal.ofReal_toReal hulfin
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have h2 : ENNReal.ofReal (Ci * D1) = ENNReal.ofReal (Ci * Cs * max K 0) * ulE := by
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    rw [← hulE&#x27;, ← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    congr 1
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    rw [hD1]; ring
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  rw [h2, mul_add]
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  gcongr
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  · exact (le_max_left _ _).trans (le_max_left _ _)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  · exact (le_max_right _ _).trans (le_max_left _ _)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>end HRS.MS.AdjDecay
+</span></code></pre></main></body></html>

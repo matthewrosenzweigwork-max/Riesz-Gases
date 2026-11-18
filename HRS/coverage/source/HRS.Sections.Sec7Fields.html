@@ -1,0 +1,418 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.Sec7Fields · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.Sec7Fields</code></h1><p><a href="../../lean/HRS/Sections/Sec7Fields.lean">Open the unaltered Lean file</a> · 417 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.Sec7Setting
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Section 7: field-valued rows (Propositions 7.6, 7.8, 7.9) (SPEC-7)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Specification file (statements with `sorry` proofs).  Sources (`HRS_periodic_main_20261008T010000Z.tex`):
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* Proposition 7.6 `M:F:prop:field-chaos` (TeX L8199-8214);
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* Lemma 7.8 `M:U:lem:alltime-Lp` (TeX L8399-8407);
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Proposition 7.9 `M:U:prop:uniform-chaos` (TeX L8476-8492).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>## Representation decisions
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* Standing regime: `HRS.Sec7.Regime` (see `Sec7Setting.lean`).  The order of `E_r` is fixed to `r = 2d + 6`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  (hypothesis `hr`), the value used in the proofs (TeX L8504, L9171, L8663); the TeX statements leave `r`
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  implicit.  SUSPECTED ISSUE: the subsection `sec:quadratic-fields` (TeX L8079) begins in the middle of a
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  sentence (&quot;gives the following uniform bounds on our fixed time interval&quot;, L8080), so its standing
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  assumptions (the value of `r`, the horizon `T`, the preparation) are not stated in the source text.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* The quadratic field of the particle system `ℬ_N^t(φ) = N F_N^{h_{∇φ}}(X_N^t, μ^t) - E[·]` is `quadFieldAt`,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  with `φ` ranging over the real trigonometric basis (`ℬ̃_N^t(e_k) = N F_N^{h_{∇e_k}}`, `F:eq:Bdef`, TeX L8137-8140).
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* Convergence in law is stated twice: against bounded continuous functions (weak convergence) and in
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  `wassersteinE q` (`q ∈ [1,∞)`, values in `ℝ≥0∞`), on the product `C([0,T];E_r) × L²([0,T];E_r)` with the
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  product (max) norm; the TeX does not specify the product metric.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* The limit objects: for *every* Gaussian solution `η` (`IsGaussianLimitField`) there is a field `ℬ` on the same
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  probability space with `ℬ^t(e_k) = ½ I_2^{𝒞_t}(h_{∇e_k})` (`IsWickQuadraticField`, centred under `μ^t`) for a.e.
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `t`, and the stated convergence holds.  Uniqueness of `ℬ` (a.s.) is part of the Wick construction.
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>-/
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>noncomputable section
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>namespace HRS
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>namespace Sec7
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>variable {d : ℕ}
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- `ℬ̃_N^t = N F_N^{h_{∇·}}(X, μ) ∈ E_r`, i.e. `ℬ̃_N^t(e_k) = N F_N^{h_{∇e_k}}(X,μ)` (`F:eq:Bdef`). -/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>def quadFieldTilde {N : ℕ} (r : ℝ) (s : ℝ) (μ : Measure (Torus d)) (X : Config d N) : NegSobolev d r :=
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  NegSobolev.ofSeq r fun k =&gt; (N : ℝ) * modulatedEnergy (hTransport d s (Torus.realMode k)) X μ
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>/-- `ℬ_N^t = ℬ̃_N^t - E[ℬ̃_N^t]` for the particle path `X` under `P` with background `μ^t`
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>(`F:eq:Bdef`, `U:eq:quadratic-fields`). -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>def quadFieldAt {N : ℕ} (r s : ℝ) (μ : ℝ → Measure (Torus d)) {Ω : Type} [MeasurableSpace Ω]
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (P : Measure Ω) (X : ℝ≥0 → Ω → Config d N) (t : ℝ) (ω : Ω) : NegSobolev d r :=
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  quadFieldTilde r s (μ t) (X t.toNNReal ω) - ∫ ω&#x27;, quadFieldTilde r s (μ t) (X t.toNNReal ω&#x27;) ∂P
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>section Fields
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>variable (R : Regime d)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>/-- The commutator envelope `w = g + c_*` (TeX L6113, `N:sec:pressure`): the constant `c` with
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>`1 ≤ g + c` off zero, as in `HRS.perturbed_pressure`. -/
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>def EnvelopeConst (s c : ℝ) : Prop := ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + c
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>/-- Lemma 7.8 `M:U:lem:alltime-Lp` (TeX L8399-8407).  In the regime of Section 7 (fixed `β &gt; 0`, `s &lt; d/2`,
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>preparation `Q_{N,β₀}(μ°)`), with `Q_N^t = Q_{N,β}(μ^t)` and `h_N^t = df_N^t/dQ_N^t` (`f_N^t` the law of `X_N^t`):
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>1. there is `p_∞ &gt; 1` with `sup_{N ≥ 2} sup_{t ≥ 0} ‖h_N^t‖_{L^{p_∞}(Q_N^t)} &lt; ∞` (with `f_N^t ≪ Q_N^t`
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>   part of the conclusion, so that `h_N^t` is the genuine density);
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>2. for every fixed `q &lt; ∞`, `sup_{N≥2, t≥0} ‖dQ_N^t/d(μ^t)^{⊗N}‖_{L^q((μ^t)^{⊗N})} &lt; ∞` (`F:eq:input-product`
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>   on the half-line);
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>3. the exponential pair estimate (`N:eq:pair-exp`, `F:eq:input-pair`) is uniform on the whole trajectory: for every
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>   `B` there are `c_B &gt; 0`, `C_B` with `E_{Q_N^t}[e^{c_B N|F_N^h(X_N,μ^t)|}] ≤ C_B` for all `N ≥ 2`, `t ≥ 0` and all
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>   symmetric measurable `h` with `|h(x,y)| ≤ B w(x-y)`.
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>The constants do not depend on the realisation (the laws `f_N^t` are determined by pathwise uniqueness); items 2-3
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>do not involve the particle system.  Technical hypotheses: `c` with `w = g + c ≥ 1` off zero (the TeX&#x27;s `c_*`,
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>fixed once); `q`, `p_∞` are real exponents (`eLpNorm` at `ENNReal.ofReal`).
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>Statement repair (ISSUES.md, entry &quot;Statement sweep repairs (ADAPTSPEC3)&quot;): in item 3 the bound `|h| ≤ B w` is required only off the diagonal (`x ≠ y`), as in `moving_pair_moments`: the TeX states `|h| ≤ Bw` without a diagonal convention, `w = g + c_*` (TeX L6113) is singular at `0`, `periodicRiesz d s 0` is a junk value, and the diagonal is null for every measure involved (`modulatedEnergy` sums over `j ≠ i`).  -/
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>theorem alltime_Lp (c : ℝ) (hc : EnvelopeConst (d := d) R.D.s c) :
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (∃ p : ℝ, 1 &lt; p ∧ ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) (X₀ : Ω → Config d N)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>        (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        PreparedRealization R.D P (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>          X₀ W X →
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>          (P.map (X t.toNNReal)) ≪ modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t)) ∧
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>          eLpNorm ((P.map (X t.toNNReal)).rnDeriv
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>              (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))))
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>            (ENNReal.ofReal p)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>            (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (∀ q : ℝ, 1 ≤ q → ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t)) ≪
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>          Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t)) ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        eLpNorm ((modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))).rnDeriv
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>            (Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t)))) (ENNReal.ofReal q)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>          (Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t))) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (∀ B : ℝ, ∃ cB CB : ℝ, 0 &lt; cB ∧ ∀ N : ℕ, 2 ≤ N → ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      ∀ h : Torus d → Torus d → ℝ, Measurable (Function.uncurry h) → (∀ x y, h x y = h y x) →
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        (∀ x y, x ≠ y → |h x y| ≤ B * (periodicRiesz d R.D.s (x - y) + c)) →
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (cB * N *
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>            |modulatedEnergy h X (withDensityReal (R.ρ t))|))
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>          ∂(modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))) ≤
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>          ENNReal.ofReal CB) := by
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  sorry
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>/-- The pair `(ζ_N^{a+·}, ℬ_N^{a+·}) ∈ C([0,T];E_r) × L²([0,T];E_r)` of the particle system. -/
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>def pairN (r T a : ℝ) {N : ℕ} (s : ℝ) (ρ : ℝ → Torus d → ℝ) {Ω : Type} [MeasurableSpace Ω]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (P : Measure Ω) (X : ℝ≥0 → Ω → Config d N) (ω : Ω) : PathSpace d r T × L2Path d r T :=
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  (zetaWin r T a P X ω,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    toL2 r T (fun t =&gt; quadFieldAt r s (fun t =&gt; withDensityReal (ρ t)) P X (a + t) ω))
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- The pair `(η^{a+·}, ℬ^{a+·})` of the Gaussian limit. -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>def pairLim (r T a : ℝ) {Ω : Type} (η B : ℝ → Ω → NegSobolev d r) (ω : Ω) :
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    PathSpace d r T × L2Path d r T :=
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  (procWin r T a η ω, toL2 r T (fun t =&gt; B (a + t) ω))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>/-- Proposition 7.6 `M:F:prop:field-chaos` (TeX L8199-8214).  Regime `R` (TeX L1255-1265, L7893), `r = 2d+6`,
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>horizon `T &gt; 0`, particle laws `ζ_N = √N(μ_N - E μ_N)` from `Q_{N,β₀}(μ°)`, `η` the Gaussian limit
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>(`H:eq:linear-equation` with `q = β⁻¹` and initial covariance `H:eq:prepared-susceptibility`).  There is
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>`ℬ ∈ L²([0,T];E_r)` (a random element on the probability space of `η`), a.s. in `L²_tE_r`, with
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>`ℬ^t(φ) = ½ I_2^{𝒞_t}(h_{∇φ})` for a.e. `t` (`F:eq:Blimit`: Wick centring with the actual covariance `𝒞_t` of
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>`η^t`, pair kernel centred under `μ^t`), hence in the centred second Gaussian chaos of the Gaussian family generated
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>by `η`, such that `(ζ_N, ℬ_N) ⟹ (η, ℬ)` in `C([0,T];E_r) × L²([0,T];E_r)` (`F:eq:field-chaos`), and the convergence
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>holds in every Wasserstein order `1 ≤ q &lt; ∞`.  The pair kernel `h_{∇φ}` is `hTransport`; `φ` runs over the
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>trigonometric basis, which determines the `E_r`-element `ℬ^t`.
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>Technical hypotheses: `hreal` (a realisation of the particle system for every `N ≥ 1`); the probability space
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>of `η` is arbitrary; `B` jointly measurable so that `ℬ ∈ L²_t` is a random element. -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>theorem field_chaos (r : ℝ) (hr : r = 2 * (d : ℝ) + 6) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (hreal : ∀ N, 1 ≤ N → PreparedRealization R.D (P N)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀)) (X₀ N) (W N) (X N))
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    (η : ℝ → Ω&#x27; → NegSobolev d r)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    (hη : IsGaussianLimitField R.D R.ρ (withDensityReal R.ρ₀) R.β₀ r P&#x27; η) :
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    ∃ B : ℝ → Ω&#x27; → NegSobolev d r, Measurable (Function.uncurry B) ∧
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      (∀ᵐ ω ∂P&#x27;, MemLp (fun t =&gt; B t ω) 2 (volume.restrict (Set.Icc (0 : ℝ) T))) ∧
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      (∀ᵐ t ∂(volume.restrict (Set.Icc (0 : ℝ) T)),
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        IsWickQuadraticField R.D.s P&#x27; (fun ω =&gt; η t ω) (withDensityReal (R.ρ t)) (B t)) ∧
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      (∀ G : PathSpace d r T × L2Path d r T → ℝ, Continuous G → (∃ M, ∀ z, |G z| ≤ M) →
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        Tendsto (fun N : ℕ =&gt; ∫ ω, G (pairN r T 0 R.D.s R.ρ (P N) (X N) ω) ∂(P N)) atTop
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          (𝓝 (∫ ω, G (pairLim r T 0 η B ω) ∂P&#x27;))) ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      (∀ q : ℝ, 1 ≤ q →
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        Tendsto (fun N : ℕ =&gt; wassersteinE q (law (P N) (pairN r T 0 R.D.s R.ρ (P N) (X N)))
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            (law P&#x27; (pairLim r T 0 η B))) atTop (𝓝 0)) := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  sorry
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>/-- Proposition 7.9 `M:U:prop:uniform-chaos` (TeX L8476-8492).  Same regime and objects as `field_chaos`, on the
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>half-line.  For every Gaussian limit `η` (on any probability space) and every `R &lt; ∞` (`Rw &gt; 0` here) and
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>`1 ≤ p &lt; ∞`:
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>1. `sup_{a ≥ 0} W_p(Law(ζ_N^{a+·}), Law(η^{a+·})) → 0` on `C([0,R];E_r)` (`U:eq:uniform-Wp`);
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>2. there is the Wick-centred quadratic Gaussian field `ℬ^t` with `ℬ^t(φ) = ½ I_2^{𝒞_t}(h_{∇φ})` (`U:eq:B-limit`,
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>   for a.e. `t ≥ 0`) such that the joint convergence of `(ζ_N^{a+·}, ℬ_N^{a+·})` to `(η^{a+·}, ℬ^{a+·})` holds
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>   uniformly in `a ≥ 0`, in `W_p` on `C([0,R];E_r) × L²([0,R];E_r)`.
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>The supremum over `a` is taken in `ℝ≥0∞` (no junk value).  The field `ℬ` does not depend on `R, p`.
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>Same technical hypotheses and `r = 2d + 6` convention as `field_chaos`. -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>theorem uniform_chaos (r : ℝ) (hr : r = 2 * (d : ℝ) + 6)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    (hreal : ∀ N, 1 ≤ N → PreparedRealization R.D (P N)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀)) (X₀ N) (W N) (X N))
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    (η : ℝ → Ω&#x27; → NegSobolev d r)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    (hη : IsGaussianLimitField R.D R.ρ (withDensityReal R.ρ₀) R.β₀ r P&#x27; η) :
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    (∀ Rw : ℝ, 0 &lt; Rw → ∀ p : ℝ, 1 ≤ p →
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      Tendsto (fun N : ℕ =&gt; ⨆ a : {a : ℝ // 0 ≤ a},
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          wassersteinE p (law (P N) (zetaWin r Rw a.1 (P N) (X N))) (law P&#x27; (procWin r Rw a.1 η)))
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        atTop (𝓝 0)) ∧
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    ∃ B : ℝ → Ω&#x27; → NegSobolev d r, Measurable (Function.uncurry B) ∧
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      (∀ᵐ t ∂(volume.restrict (Set.Ici (0 : ℝ))),
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>        IsWickQuadraticField R.D.s P&#x27; (fun ω =&gt; η t ω) (withDensityReal (R.ρ t)) (B t)) ∧
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      ∀ Rw : ℝ, 0 &lt; Rw → ∀ p : ℝ, 1 ≤ p →
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>        (∀ a : ℝ, 0 ≤ a → ∀ᵐ ω ∂P&#x27;, MemLp (fun t =&gt; B (a + t) ω) 2 (volume.restrict (Set.Icc (0 : ℝ) Rw))) ∧
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>        Tendsto (fun N : ℕ =&gt; ⨆ a : {a : ℝ // 0 ≤ a},
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>            wassersteinE p (law (P N) (pairN r Rw a.1 R.D.s R.ρ (P N) (X N)))
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>              (law P&#x27; (pairLim r Rw a.1 η B))) atTop (𝓝 0) := by
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  sorry
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>/-! ### Lemma 7.12: exponential relaxation of the quadratic Gaussian field -/
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-- The noise part `G^t(φ) = Y^t(φ) - Y^0(U^{0,t}φ)` of a solution of the linear equation. -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>def noisePart (D : DynData d) (ρ : ℝ → Torus d → ℝ) {r : ℝ} {Ω : Type}
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    (Y₀ : Ω → NegSobolev d r) (Y : ℝ → Ω → NegSobolev d r) (t : ℝ) (φ : Torus d → ℝ) (ω : Ω) : ℝ :=
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  NegSobolev.eval (Y t ω) φ - NegSobolev.eval (Y₀ ω) (propagator D ρ 0 t φ)
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>/-- The covariance `2q ∫_0^{t_a∧t_b} ∫ √(ρ^v ρ&#x27;^v) ∇U^{v,t_a}φ·∇Ū^{v,t_b}ψ dx dv` of the noise parts of two linear
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>evolutions (mean-field densities `ρ`, `ρ&#x27;`) driven by the *same* cylindrical white noise
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>(`H:eq:linear-mild`, TeX L497-500; for `ρ = ρ&#x27;` this is `HRS.noiseCovariance`&#x27;s cross-covariance). -/
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>def crossNoiseCov (D : DynData d) (q : ℝ) (ρ ρ&#x27; : ℝ → Torus d → ℝ) (ta tb : ℝ) (φ ψ : Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  2 * q * ∫ v in Set.Icc (0 : ℝ) (min ta tb), ∫ x,
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    inner ℝ (Torus.grad (propagator D ρ v ta φ) x) (Torus.grad (propagator D ρ&#x27; v tb ψ) x) *
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      Real.sqrt (ρ v x * ρ&#x27; v x)
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>/-- `(Y, Ys)` (initial fields `Y₀`, `Ys₀`, with mean-field densities `ρ`, `ρ&#x27;`) are coupled by the same noise on
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>`[0,∞)`, the initial fields being independent of the noise: for finitely many smooth tests at nonnegative times the
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>joint vector of noise parts is centred Gaussian with the cross-covariance `crossNoiseCov` and independent of
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>`(Y₀,Ys₀)`.  (TeX L9124-9128: &quot;Couple `η` and `ηs` by the same noise on `[0,∞)`&quot;.) -/
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>def IsSameNoise (D : DynData d) (ρ ρ&#x27; : ℝ → Torus d → ℝ) (r : ℝ) {Ω : Type} [MeasurableSpace Ω]
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    (P : Measure Ω) (Y₀ Ys₀ : Ω → NegSobolev d r) (Y Ys : ℝ → Ω → NegSobolev d r) : Prop :=
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  ∀ (p p&#x27; : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Torus d → ℝ) (ts&#x27; : Fin p&#x27; → ℝ) (ψ : Fin p&#x27; → Torus d → ℝ),
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (∀ a, 0 ≤ ts a) → (∀ b, 0 ≤ ts&#x27; b) → (∀ a, Torus.IsSmooth (φ a)) → (∀ b, Torus.IsSmooth (ψ b)) →
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    let G : Ω → EuclideanSpace ℝ (Fin p ⊕ Fin p&#x27;) := fun ω =&gt; WithLp.toLp 2 (Sum.elim
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      (fun a =&gt; noisePart D ρ Y₀ Y (ts a) (φ a) ω) (fun b =&gt; noisePart D ρ&#x27; Ys₀ Ys (ts&#x27; b) (ψ b) ω))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    IndepFun (fun ω =&gt; (Y₀ ω, Ys₀ ω)) G P ∧
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    law P G = multivariateGaussian 0 (Matrix.of fun i j =&gt; match i, j with
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>      | Sum.inl a, Sum.inl b =&gt; crossNoiseCov D D.invβ ρ ρ (ts a) (ts b) (φ a) (φ b)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      | Sum.inl a, Sum.inr b =&gt; crossNoiseCov D D.invβ ρ ρ&#x27; (ts a) (ts&#x27; b) (φ a) (ψ b)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      | Sum.inr a, Sum.inl b =&gt; crossNoiseCov D D.invβ ρ&#x27; ρ (ts&#x27; a) (ts b) (ψ a) (φ b)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      | Sum.inr a, Sum.inr b =&gt; crossNoiseCov D D.invβ ρ&#x27; ρ&#x27; (ts&#x27; a) (ts&#x27; b) (ψ a) (ψ b))
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>/-- Lemma 7.12 `M:U:lem:quadratic-relaxation` (TeX L9142-9150).  Regime `R`, `r = 2d+6`.  (Notation: `ηs`, `Ys`, `Bs`, `ℬs` stand for the TeX bars `η̄`, `Ȳ`, `B̄`, `ℬ̄`.)  Let `ηs` be the
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>stationary Gaussian field (equilibrium evolution, mean-field density `ρ_β`, centred Gaussian initial field of
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>covariance `C_β`, `U:eq:stationary-covariance`), `η` the Gaussian limit of the prepared system
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>(`ρ`, initial covariance `H:eq:prepared-susceptibility`), coupled by the same noise on `[0,∞)` with independent
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>initial fields (TeX L9124-9128), and `ℬ^t`, `ℬs^t` the Wick-centred quadratic fields constructed from `η^t`
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>(centred under `μ^t = ρ^t dx`) and from `ηs^t` (centred under `μ_β`) with the same commutator kernel `h_{∇φ}`.
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>Then for every finite `p ≥ 1` there are `C_p`, `c &gt; 0` (independent of `t` and of the coupling) with
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>`‖ℬ^t - ℬs^t‖_{L^p(E_r)} ≤ C_p e^{-ct}`, `t ≥ 0`.
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>AMBIGUITY (TeX L9142-9145): the lemma does not say under which measure the stationary pair kernel is centred;
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>`μ_β` (the law of the stationary background) is used, in analogy with `μ^t` for `ℬ^t`.  The coupling is the one
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>of the preceding paragraph (L9124-9128), the lemma statement itself does not repeat it.
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>The initial fields are independent (`IndepFun Y₀ Ys₀`, TeX L9119: &quot;their initial fields may be coupled independently&quot;).
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>Technical hypotheses: `ℬ^t`, `ℬs^t` are measurable `E_r`-valued random variables for each `t`. -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>theorem quadratic_relaxation (r : ℝ) (hr : r = 2 * (d : ℝ) + 6) :
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    ∀ p : ℝ, 1 ≤ p → ∃ C c : ℝ, 0 &lt; c ∧
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>        (Y₀ Ys₀ : Ω → NegSobolev d r) (η ηs : ℝ → Ω → NegSobolev d r),
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        IsCenteredGaussianWithCov r (P.map Y₀)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>          (susceptibilityCov (periodicRiesz d R.D.s) (withDensityReal R.ρ₀) R.β₀) →
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        IsCenteredGaussianWithCov r (P.map Ys₀)
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>          (susceptibilityCov (periodicRiesz d R.D.s) (withDensityReal R.ρβ) R.β) →
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        IndepFun Y₀ Ys₀ P →
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>        (∀ T : ℝ, IsLinearFluctuationSolution P R.D R.ρ r R.D.invβ T Y₀ η) →
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>        (∀ T : ℝ, IsLinearFluctuationSolution P R.D (fun _ =&gt; R.ρβ) r R.D.invβ T Ys₀ ηs) →
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        IsSameNoise R.D R.ρ (fun _ =&gt; R.ρβ) r P Y₀ Ys₀ η ηs →
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>        ∀ B Bs : ℝ → Ω → NegSobolev d r,
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>          (∀ t, Measurable (B t)) → (∀ t, Measurable (Bs t)) →
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>          (∀ t : ℝ, 0 ≤ t → IsWickQuadraticField R.D.s P (fun ω =&gt; η t ω) (withDensityReal (R.ρ t)) (B t)) →
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>          (∀ t : ℝ, 0 ≤ t → IsWickQuadraticField R.D.s P (fun ω =&gt; ηs t ω) (withDensityReal R.ρβ) (Bs t)) →
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>          ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>            eLpNorm (fun ω =&gt; B t ω - Bs t ω) (ENNReal.ofReal p) P ≤ ENNReal.ofReal (C * Real.exp (-c * t)) := by
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  sorry
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>/-! ### Remark 7.10 and Proposition 7.11: Riemann--Stieltjes integrals against vector measures -/
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>/-- `S` has Riemann--Stieltjes integral `I` over `[0,T]`: for every `ε &gt; 0` there is `δ &gt; 0` such that every tagged
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>partition `0 = u_0 &lt; ⋯ &lt; u_n = T` with tags `τ_i ∈ [u_i,u_{i+1}]` and mesh `&lt; δ` satisfies
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>`|∑_i S(τ_i, u_i, u_{i+1}) - I| &lt; ε`.  Here `S(τ, a, b)` stands for &quot;integrand at the tag `τ` applied to the
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>measure of the interval `(a,b]`&quot; (`F:sec:measures`, TeX L8699-8705: &quot;integration ... is defined by
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>Riemann--Stieltjes sums&quot;). -/
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>def IsRS (T : ℝ) (S : ℝ → ℝ → ℝ → ℝ) (I : ℝ) : Prop :=
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  ∀ ε : ℝ, 0 &lt; ε → ∃ δ : ℝ, 0 &lt; δ ∧ ∀ (n : ℕ) (u : Fin (n + 1) → ℝ) (τ : Fin n → ℝ), StrictMono u →
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    u 0 = 0 → u (Fin.last n) = T → (∀ i : Fin n, u i.castSucc ≤ τ i ∧ τ i ≤ u i.succ) →
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    (∀ i : Fin n, u i.succ - u i.castSucc &lt; δ) →
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    |∑ i : Fin n, S (τ i) (u i.castSucc) (u i.succ) - I| &lt; ε
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>/-- The spatial Fourier projection `Π_L` on `E_m` (frequencies `|k_i| ≤ L` for all `i`). -/
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>def fourierProj (m : ℝ) (L : ℕ) (F : NegSobolev d m) : NegSobolev d m :=
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  NegSobolev.ofSeq m fun k =&gt; if ∀ i, |k.1 i| ≤ (L : ℤ) then NegSobolev.fourierCoeff F k else 0
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>/-- The projection `P_L` of Remark 7.10 (TeX L8682-8685): spatial Fourier projection followed by polygonal
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>interpolation at the dyadic time grid `t_i = iT/2^L` (a refining grid): `(P_L w)(t) = ∑_i hat_i(t) Π_L w(t_i)`. -/
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>def projPoly (m T : ℝ) (hT : 0 ≤ T) (L : ℕ) (w : PathSpace d m T) : PathSpace d m T :=
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  show C(Set.Icc (0 : ℝ) T, NegSobolev d m) from
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    ⟨fun t =&gt; ∑ i ∈ Finset.range (2 ^ L + 1),
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>      max 0 (1 - |(t : ℝ) * 2 ^ L / T - i|) •
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>        fourierProj m L (PathSpace.at&#x27; w (Set.projIcc 0 T hT (i * T / 2 ^ L))), by fun_prop⟩
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>/-- The action `P^{⊗j}` of a bounded operator `P` on the dual `TensorDual B j` of the bounded `j`-linear forms
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>(which carries the projective tensor power `B^{⊗̂π j}`, `HRS.projTensor`): `(P^{⊗j}u)(M) = u(M∘(P,…,P))`. -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>def tensorPow {B : Type*} [NormedAddCommGroup B] [NormedSpace ℝ B] (j : ℕ) (P : B →L[ℝ] B) :
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    TensorDual B j →L[ℝ] TensorDual B j :=
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  (ContinuousLinearMap.precomp ℝ (ContinuousMultilinearMap.compContinuousLinearMapL
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    (F := ℝ) (fun _ : Fin j =&gt; P)))
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>/-- Remark 7.10 `M:F:rem:projection` (TeX L8682-8698), the assertions with mathematical content.  (The sentence
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>&quot;these facts do *not* imply `‖P_Lν-ν‖_var → 0`&quot; is a non-implication and is not formalised.)
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>For `T &gt; 0`, `m ∈ ℝ`: the maps `P_L` (`projPoly`) are bounded linear contractions of `𝒳 = C([0,T];E_m)`, i.e. there
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>are continuous linear `Pj L` with `Pj L w = projPoly .. w` and `‖Pj L‖ ≤ 1`; `P_L w → w` for every continuous
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>path `w`; and `P_L^{⊗j} v → v` in `TensorDual 𝒳 j` for every `v` in the projective tensor power `projTensor 𝒳 j`
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>and every fixed `j`.  Technical hypotheses: none beyond `T &gt; 0`. -/
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>theorem projection_strong (m T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    ∃ Pj : ℕ → (PathSpace d m T →L[ℝ] PathSpace d m T),
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>      (∀ L w, Pj L w = projPoly m T hT.le L w) ∧ (∀ L, ‖Pj L‖ ≤ 1) ∧
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      (∀ w, Tendsto (fun L =&gt; Pj L w) atTop (𝓝 w)) ∧
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      ∀ (j : ℕ) (v : TensorDual (PathSpace d m T) j), v ∈ projTensor (PathSpace d m T) j →
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>        Tendsto (fun L =&gt; tensorPow j (Pj L) v) atTop (𝓝 v) := by
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  sorry
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>/-- Remark 7.10 `M:F:rem:projection` (TeX L8686-8698), equation `F:eq:measure-projection`, in the abstract form of
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>its proof.  `E` is a Banach space (in the TeX `E = 𝒳^{⊗̂j}`, projective tensor power, with `Pj L = P_L^{⊗j}`;
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>`‖P_L^{⊗j}‖ ≤ 1` and `P_L^{⊗j}v → v` by `projection_strong`); `Pj L` are uniformly bounded operators converging
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>strongly to the identity; `ν` is a vector measure of bounded variation given by its cumulative path `F : [0,T] → E`
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>(`F 0 = 0`, `BoundedVariationOn`); `A_L(u)`, `A(u)` are continuous (in operator norm) families of bounded linear
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>functionals (&quot;operators `A(u)`&quot; acting on the tensor; `A_L → A` uniformly, `A_L = A` for the first assertion).
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>Then `∫ A(u) d(P_L ν)(u)` (the Riemann--Stieltjes integral of `A_L` against the cumulative path `P_L F`) converges to
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>`∫ A(u) dν(u)`.  Existence of the Riemann--Stieltjes integrals is part of the conclusion. -/
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>theorem measure_projection {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    (Pj : ℕ → (E →L[ℝ] E)) (K : ℝ) (hK : ∀ L, ‖Pj L‖ ≤ K)
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    (hconv : ∀ e, Tendsto (fun L =&gt; Pj L e) atTop (𝓝 e))
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    (T : ℝ) (hT : 0 &lt; T) (F : ℝ → E) (hF : BoundedVariationOn F (Set.Icc 0 T)) (hF0 : F 0 = 0)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    (A : ℝ → (E →L[ℝ] ℝ)) (AL : ℕ → ℝ → (E →L[ℝ] ℝ))
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (hA : ContinuousOn A (Set.Icc 0 T)) (hAL : ∀ L, ContinuousOn (AL L) (Set.Icc 0 T))
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    (hAu : ∀ ε : ℝ, 0 &lt; ε → ∃ L₀ : ℕ, ∀ L ≥ L₀, ∀ u ∈ Set.Icc (0 : ℝ) T, ‖AL L u - A u‖ ≤ ε) :
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    ∃ I : ℝ, IsRS T (fun τ a b =&gt; A τ (F b - F a)) I ∧
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>      ∃ IL : ℕ → ℝ, (∀ L, IsRS T (fun τ a b =&gt; AL L τ (Pj L (F b - F a))) (IL L)) ∧
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>        Tendsto IL atTop (𝓝 I) := by
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  sorry
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>/-- `V^{t,u}` acting on `E_m`: `⟨e_k, V^{t,u}F⟩ = F(U^{u,t}e_k)` on the real trigonometric basis (zero mode
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>dropped: the adjoint is projected modulo constants, TeX L8362-8363), with `U` the project&#x27;s `propagator`. -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>def Vprop (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m : ℝ) (t u : ℝ) (F : NegSobolev d m) :
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>    NegSobolev d m :=
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  NegSobolev.ofSeq m fun k =&gt; NegSobolev.eval F (propagator D ρ u t (Torus.realMode k))
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>open Classical in
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>/-- The element of `𝒳_{m,T}` given by a path `g : ℝ → E_m` (`0` if `g` is not continuous on `[0,T]`). -/
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>def pathOf (m T : ℝ) (g : ℝ → NegSobolev d m) : PathSpace d m T :=
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>  if h : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; g t then
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    (show C(Set.Icc (0 : ℝ) T, NegSobolev d m) from ⟨_, h⟩)
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  else 0
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>/-- The value `w(t)` of a path at a real time `t` (`0` outside `[0,T]`). -/
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>def pathAt {m T : ℝ} (w : PathSpace d m T) (t : ℝ) : NegSobolev d m :=
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  if h : t ∈ Set.Icc (0 : ℝ) T then PathSpace.at&#x27; w ⟨t, h⟩ else 0
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>/-- The initial propagation `(𝖨z)(t) = V^{t,0}z` (`F:sec:path-identity`, TeX L8702). -/
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>def initProp (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m T : ℝ) (z : NegSobolev d m) : PathSpace d m T :=
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  pathOf m T fun t =&gt; Vprop D ρ m t 0 z
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>/-- The predicted continuation `(𝖳_u w)(t) = w(t)` for `t ≤ u`, `V^{t,u}w(u)` for `t &gt; u`
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>(`F:eq:predicted`, TeX L8705-8710). -/
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>def predicted (D : DynData d) (ρ : ℝ → Torus d → ℝ) {m T : ℝ} (w : PathSpace d m T) (u : ℝ) :
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    PathSpace d m T :=
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  pathOf m T fun t =&gt; if t ≤ u then pathAt w t else Vprop D ρ m t u (pathAt w u)
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>/-- The increment `𝒟_b((a,a&#x27;])` of the drift measure (`F:eq:Dmeasure`, TeX L8725):
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>`t ↦ ∫_{(a,a&#x27;] ∩ [0,t]} V^{t,u} b(u) du`. -/
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>def driftInc (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m T : ℝ) (b : ℝ → NegSobolev d m) (a a&#x27; : ℝ) :
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    PathSpace d m T :=
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  pathOf m T fun t =&gt; ∫ u in Set.Ioc a (min a&#x27; t), Vprop D ρ m t u (b u)
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>/-- `γ` is (the law of) the Gaussian future path `Γ_u` (`F:eq:future`, TeX L8737-8741): a centred Gaussian measure
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>on `𝒳_{m,T}` with
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>`E[Γ_u(t_a)(φ_a)Γ_u(t_b)(φ_b)] = 2β⁻¹ ∫_u^{t_a∧t_b} μ^v(∇U^{v,t_a}φ_a·∇U^{v,t_b}φ_b) dv` for smooth tests
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>(`= 0` if `t_a∧t_b ≤ u`). -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>def IsFutureGaussian (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m T u : ℝ) (γ : Measure (PathSpace d m T)) :
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    Prop :=
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  IsCenteredGaussian γ ∧ ∀ (ta tb : ℝ) (φa φb : Torus d → ℝ), Torus.IsSmooth φa → Torus.IsSmooth φb →
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    ta ∈ Set.Icc (0 : ℝ) T → tb ∈ Set.Icc (0 : ℝ) T →
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    ∫ z, NegSobolev.eval (pathAt z ta) φa * NegSobolev.eval (pathAt z tb) φb ∂γ =
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      2 * D.invβ * ∫ v in Set.Icc u (min ta tb), ∫ x,
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>        inner ℝ (Torus.grad (propagator D ρ v ta φa) x) (Torus.grad (propagator D ρ v tb φb) x) * ρ v x
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>/-- `u_Φ(u,y) = E[Φ(y + Γ_u)]` (`F:eq:heat-u`, TeX L8751). -/
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>def heatFn {m T : ℝ} (γ : ℝ → Measure (PathSpace d m T)) (Φ : PathSpace d m T → ℝ) (u : ℝ)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    (y : PathSpace d m T) : ℝ :=
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  ∫ z, Φ (y + z) ∂(γ u)
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>/-- The value `𝒥_z(I)` of the covariance measure on the interval `I` (`F:eq:Jmeasure`, `F:eq:Jevaluation`, TeX
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>L8660-8680): an element `J` of the projective tensor square `𝒳 ⊗̂ 𝒳` (`projTensor`, in `TensorDual 𝒳 2`) whose
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>values on the products of evaluation functionals `ℓ_1 ⊗ ℓ_2`, `ℓ_i(w) = w(t_i)(φ_i)`, are
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>`2β⁻¹ ∫_{I∩[0,t_a∧t_b]} z^u(∇U^{u,t_a}φ_a·∇U^{u,t_b}φ_b) du` (`z^u` paired with the smooth function).
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>&quot;These evaluations determine the tensor&quot; (TeX L8680). -/
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>def IsJValue (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m T : ℝ) (z : ℝ → NegSobolev d m) (I : Set ℝ)
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    (J : TensorDual (PathSpace d m T) 2) : Prop :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  J ∈ projTensor (PathSpace d m T) 2 ∧
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  ∀ (ta tb : ℝ) (φa φb : Torus d → ℝ) (l₁ l₂ : StrongDual ℝ (PathSpace d m T)),
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    Torus.IsSmooth φa → Torus.IsSmooth φb → ta ∈ Set.Icc (0 : ℝ) T → tb ∈ Set.Icc (0 : ℝ) T →
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>    (∀ w, l₁ w = NegSobolev.eval (pathAt w ta) φa) → (∀ w, l₂ w = NegSobolev.eval (pathAt w tb) φb) →
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    J ((ContinuousMultilinearMap.mkPiAlgebra ℝ (Fin 2) ℝ).compContinuousLinearMap ![l₁, l₂]) =
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>      2 * D.invβ * ∫ u in I ∩ Set.Icc (0 : ℝ) (min ta tb), NegSobolev.eval (z u)
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>        (fun x =&gt; inner ℝ (Torus.grad (propagator D ρ u ta φa) x) (Torus.grad (propagator D ρ u tb φb) x))
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>open Classical in
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>/-- The pairing `⟨M, 𝒥_z(I)⟩` of a bounded bilinear form `M` with the tensor `𝒥_z(I)` (`0` if the tensor does not
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>exist, which the TeX excludes). -/
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>def jPair (D : DynData d) (ρ : ℝ → Torus d → ℝ) (m T : ℝ) (z : ℝ → NegSobolev d m) (I : Set ℝ)
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    (M : PathSpace d m T [×2]→L[ℝ] ℝ) : ℝ :=
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  if h : ∃ J, IsJValue D ρ m T z I J then h.choose M else 0
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>/-- Proposition 7.11 `M:F:prop:path-Ito` (TeX L8753-8764).  Regime `R`, `m &gt; 3d + 8`, `T &gt; 0`, `𝒳 = 𝒳_{m,T}`,
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>`N ≥ 1`, a realisation of the particle system from `Q_{N,β₀}(μ°)`, `γ_u` the law of the Gaussian future path
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>`Γ_u`, `Φ ∈ C_b^5(𝒳)`.  Then there are random variables `A_N`, `J_N` (the Riemann--Stieltjes integrals), integrable,
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>with a.s.
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>`A_N = ∫_0^T Du_Φ(u,Y_N^u) d𝒟_{ℬ_N}(u)`, `J_N = ∫_0^T ⟨D²u_Φ(u,Y_N^u), d𝒥_{η_N}(u)⟩` (limits of the sums
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>`∑_i Du_Φ(τ_i,Y_N^{τ_i})[𝒟_{ℬ_N}((u_i,u_{i+1}])]` and
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>`∑_i ⟨D²u_Φ(τ_i,Y_N^{τ_i}), 𝒥_{η_N}((u_i,u_{i+1}])⟩`), and
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>`E[Φ(ζ_N)] = E[u_Φ(0,𝖨ζ_N^0)] - N^{-1/2} E[A_N] + (1/2) N^{-1/2} E[J_N]` (`F:eq:path-Ito`), where
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>`Y_N^u = 𝖳_u ζ_N`, `ℬ_N`, `η_N = √N(μ_N - μ)` are the particle fields.
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>The Riemann--Stieltjes integrals are those of TeX L8764 (&quot;not applications of derivatives to discontinuous
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>impulse paths&quot;), defined by the sums above.
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>REPRESENTATION: `ζ_N ∈ C([0,T];E_m)` is taken directly in `E_m` (`ζ_N ∈ C([0,T];E_r) ↪ 𝒳`, same Fourier
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>coefficients); `𝒟_b(I)` is the explicit path `driftInc`, `𝒥_z(I)` the tensor characterised by its evaluations on
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>products of evaluation functionals (`IsJValue`), `Γ_u` through its law (`IsFutureGaussian`, hypothesis `hγ`, whose
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>existence is the TeX&#x27;s construction L8737-8741).  Technical hypotheses: `hreal`; `hγ`. -/
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>theorem path_Ito (m : ℝ) (hm : 3 * (d : ℝ) + 8 &lt; m) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    (γ : ℝ → Measure (PathSpace d m T))
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    (hγ : ∀ u ∈ Set.Icc (0 : ℝ) T, IsFutureGaussian R.D R.ρ m T u (γ u))
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    (N : ℕ) (hN : 1 ≤ N) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N)
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    (hreal : PreparedRealization R.D P
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀)) X₀ W X)
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    (Φ : PathSpace d m T → ℝ) (hΦ : MemCb 5 Φ) :
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    ∃ A J : Ω → ℝ, Integrable A P ∧ Integrable J P ∧
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      (∀ᵐ ω ∂P, IsRS T (fun τ a b =&gt;
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        fderiv ℝ (heatFn γ Φ τ) (predicted R.D R.ρ (zetaWin m T 0 P X ω) τ)
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>          (driftInc R.D R.ρ m T
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>            (fun u =&gt; quadFieldAt m R.D.s (fun t =&gt; withDensityReal (R.ρ t)) P X u ω) a b)) (A ω)) ∧
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>      (∀ᵐ ω ∂P, IsRS T (fun τ a b =&gt;
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>        jPair R.D R.ρ m T (fun u =&gt; etaE m (X u.toNNReal ω) (withDensityReal (R.ρ u))) (Set.Ioc a b)
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>          (iteratedFDeriv ℝ 2 (heatFn γ Φ τ) (predicted R.D R.ρ (zetaWin m T 0 P X ω) τ))) (J ω)) ∧
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>      ∫ ω, Φ (zetaWin m T 0 P X ω) ∂P =
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>        ∫ ω, heatFn γ Φ 0 (initProp R.D R.ρ m T (zetaAt m P X 0 ω)) ∂P -
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>          (Real.sqrt N)⁻¹ * ∫ ω, A ω ∂P + (1 / (2 * Real.sqrt N)) * ∫ ω, J ω ∂P := by
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  sorry
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>end Fields
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>end Sec7
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>end HRS
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>end
+</span></code></pre></main></body></html>

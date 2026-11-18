@@ -1,0 +1,236 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.MixtureFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.MixtureFinal</code></h1><p><a href="../../lean/HRS/Main/MixtureFinal.lean">Open the unaltered Lean file</a> · 235 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.MixEnt5
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Main.MixEnt8
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Main.FullBoundsBeta0
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># MIXFIN: relocated proof of `mixture_full_bounds` (Example 2.6, TeX L848-852)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>RELOCATION PATTERN: the frozen statement of `HRS/Main/Headline.lean` is not edited; it is restated VERBATIM as
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`mixture_full_bounds_proof` and tied by `example := (@mixture_full_bounds_proof : type_of% @HRS.Main.mixture_full_bounds)`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Inputs: the initial rates of Proposition 5.9 (`iid_field_mixture_proof`, rewritten with `therm_mixturePrep_eq`),
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>the entropy inputs `mx_B_mixture` (`B_N ≤ C Nδ_N`) and `mx_Lp_mixture` (`s = 0`: `dmix/dQ ∈ L^{p₀}`, `J_N ≤ C Nδ_N`),
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>and the abstract assembly `fb_smooth_W1`, `fb_W2` of Theorem 2.5.  Packet prefix `mxf_`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>-/
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>noncomputable section
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>namespace Main
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>variable {d : ℕ}
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>/-- The initial rates of Proposition 5.9 for the mixture preparation: all three clauses, in the form used by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>`mixture_full_bounds` (limit law `ν_mix` with the factor `1 / 2`). -/
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem mxf_init (S : PreparedData d) (m : ℝ) (hmd : (d : ℝ) / 2 &lt; m) (b : Torus d → ℝ)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (hb : Torus.IsSmooth b) (hb0 : pair S.μ0 b = 0) (a₀ : ℝ)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (γ : Measure (NegSobolev d m)) (hγ : IsCenteredGaussianWithCov m γ (iidCov S.μ0)) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    ∃ Cm : ℝ, 0 ≤ Cm ∧ ∀ N : ℕ, 2 ≤ N → 4 * a₀ ^ 2 * (⨆ x, |b x|) ^ 2 ≤ (N : ℝ) →
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      smoothDist 2 (law (mixturePrep S.μ0 b a₀ N) (fun X =&gt; etaE m X S.μ0))
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x))) ≤
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>        Cm * iidRateSmooth d m N ∧
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      wassersteinE 1 (law (mixturePrep S.μ0 b a₀ N) (fun X =&gt; etaE m X S.μ0))
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x))) ≤
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        ENNReal.ofReal (Cm * iidRateW d m N) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      wassersteinE 2 (law (mixturePrep S.μ0 b a₀ N) (fun X =&gt; etaE m X S.μ0))
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x))) ≤
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>        ENNReal.ofReal (Cm * iidRateW d m N ^ ((1 : ℝ) / 3)) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hbc : Continuous b := therm_continuous_of_smooth hb
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hbm : Measurable b := hbc.measurable
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hρc : Continuous S.ρ0 := therm_continuous_of_smooth S.hρ0.smooth
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  set B : ℝ := ⨆ x, |b x| with hBdef
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hB : ∀ x, |b x| ≤ B := fun x =&gt; mx_abs_le_iSup hb x
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hB0 : 0 ≤ B := (abs_nonneg _).trans (hB 0)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  obtain ⟨xmin, -, hxmin⟩ := isCompact_univ.exists_isMinOn Set.univ_nonempty hρc.continuousOn
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  obtain ⟨xmax, -, hxmax⟩ := isCompact_univ.exists_isMaxOn Set.univ_nonempty hρc.continuousOn
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hc : 0 &lt; S.ρ0 xmin := S.hρ0.pos xmin
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hbL : MemLp b ⊤ (volume : Measure (Torus d)) :=
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    MemLp.of_bound hbc.aestronglyMeasurable B
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      (Eventually.of_forall fun x =&gt; by rw [Real.norm_eq_abs]; exact hB x)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hnorm : (eLpNorm b ⊤ (volume : Measure (Torus d))).toReal ≤ B := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    have h1 : eLpNorm b ⊤ (volume : Measure (Torus d)) ≤ ENNReal.ofReal B := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      rw [eLpNorm_exponent_top]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      exact eLpNormEssSup_le_of_ae_bound
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        (Eventually.of_forall fun x =&gt; by rw [Real.norm_eq_abs]; exact hB x)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      all_goals first | exact hbc.aestronglyMeasurable | skip
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    exact ENNReal.toReal_le_of_le_ofReal hB0 h1
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  obtain ⟨Cm, hCm0, hCm⟩ := HRS.iid_field_mixture_proof S.hd m hmd (S.ρ0 xmin) (S.ρ0 xmax) hc a₀ b
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    hbm hbL
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  refine ⟨Cm, hCm0, fun N hN2 hN4&#x27; =&gt; ?_⟩
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have h4 : 4 * a₀ ^ 2 * (eLpNorm b ⊤ (volume : Measure (Torus d))).toReal ^ 2 ≤ N := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    have h1 : (eLpNorm b ⊤ (volume : Measure (Torus d))).toReal ^ 2 ≤ B ^ 2 :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      pow_le_pow_left₀ ENNReal.toReal_nonneg hnorm 2
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    have h2 : 4 * a₀ ^ 2 * (eLpNorm b ⊤ (volume : Measure (Torus d))).toReal ^ 2 ≤
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>        4 * a₀ ^ 2 * B ^ 2 := by gcongr
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    linarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have := (hCm S.ρ0 S.hρ0.density (fun x =&gt; by simpa using hxmin (Set.mem_univ x))
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (fun x =&gt; by simpa using hxmax (Set.mem_univ x)) hb0 γ hγ N hN2 h4)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  rw [← therm_mixturePrep_eq S b hbm a₀ N] at this
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  simp only [therm_ofFun_smul] at this
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  simp only [one_div (2 : ℝ≥0∞)]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  exact this
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>/-- Clauses 1 and 2 (smooth and `W_1`) of `mixture_full_bounds`. -/
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>theorem mxf_part12 (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) (T : ℝ)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (hT : 0 &lt; T) (b : Torus d → ℝ) (hb : Torus.IsSmooth b) (hb0 : pair S.μ0 b = 0) (a₀ : ℝ)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    (γ : Measure (NegSobolev d m)) (hγ : IsCenteredGaussianWithCov m γ (iidCov S.μ0)) :
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N → 4 * a₀ ^ 2 * (⨆ x, |b x|) ^ 2 ≤ (N : ℝ) →
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        law P X₀ = mixturePrep S.μ0 b a₀ N →
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>        (Y₀ : Ω&#x27; → NegSobolev d m) (Y : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        IsPreparedLinear S m (a + T)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)))
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>          P&#x27; Y₀ Y →
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>        smoothDist 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          C * (Real.sqrt N * deltaN d S.s N + iidRateSmooth d m N) ∧
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        wassersteinE 1 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          ENNReal.ofReal (C * (Real.sqrt N * deltaN d S.s N + deltaN d S.s N ^ ((1 : ℝ) / 4) +
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            iidRateW d m N)) := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hmd : (d : ℝ) / 2 &lt; m := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    linarith
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  obtain ⟨Cm, hCm0, hCm⟩ := mxf_init S m hmd b hb hb0 a₀ γ hγ
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  obtain ⟨Cb, hCb0, hCb⟩ := mx_B_mixture S b hb hb0 a₀
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  obtain ⟨C1, hC1, h1⟩ := fb_smooth_W1 S m hm T hT Cb Cm Cm hCb0.le hCm0 hCm0
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    (iidRateSmooth d m) (iidRateW d m) (fun N _ =&gt; fb_iidRateSmooth_nonneg d m N)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    (fun N hN =&gt; fb_iidRateW_nonneg d m (by omega))
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  refine ⟨C1, hC1, ?_⟩
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  intro a ha N hN hN4 Ω _ P _ X₀ W X hSel hfilt hinit Ω&#x27; _ P&#x27; _ Y₀ Y hY
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hlaw : law P (fun ω =&gt; etaE m (X₀ ω) S.μ0) =
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      law (mixturePrep S.μ0 b a₀ N) (fun X =&gt; etaE m X S.μ0) := by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    rw [fb_law_eta S m hmd (by omega) P hSel.init_meas, hinit]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hBk := hCb N hN hN4
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  rw [← hinit] at hBk
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  obtain ⟨hs1, hw1, -⟩ := hCm N hN hN4
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  exact h1 a ha N hN P X₀ W X hSel hfilt hBk.1 hBk.2 _ P&#x27; Y₀ Y hY (by rw [hlaw]; exact hs1)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    (by rw [hlaw]; exact hw1)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>/-- Clause 3 (`W_2`, `s = 0`) of `mixture_full_bounds`. -/
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>theorem mxf_part3 (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) (T : ℝ)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (hT : 0 &lt; T) (b : Torus d → ℝ) (hb : Torus.IsSmooth b) (hb0 : pair S.μ0 b = 0) (a₀ : ℝ)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (γ : Measure (NegSobolev d m)) (hγ : IsCenteredGaussianWithCov m γ (iidCov S.μ0))
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    (hs : S.s = 0) :
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N → 4 * a₀ ^ 2 * (⨆ x, |b x|) ^ 2 ≤ (N : ℝ) →
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        law P X₀ = mixturePrep S.μ0 b a₀ N →
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        (Y₀ : Ω&#x27; → NegSobolev d m) (Y : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        IsPreparedLinear S m (a + T)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)))
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          P&#x27; Y₀ Y →
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>        wassersteinE 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>          ENNReal.ofReal (C * ((N : ℝ) ^ (-(1 : ℝ) / 4) + iidRateW d m N ^ ((1 : ℝ) / 3))) := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  have hd1 : 1 ≤ d := by have := S.hd; omega
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hmd : (d : ℝ) / 2 &lt; m := by
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    have : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    linarith
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  obtain ⟨Cm, hCm0, hCm⟩ := mxf_init S m hmd b hb hb0 a₀ γ hγ
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  obtain ⟨Cb, hCb0, hCb⟩ := mx_B_mixture S b hb hb0 a₀
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  obtain ⟨p₀, hp₀, hLp⟩ := mx_Lp_mixture S hs
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  obtain ⟨Cj, hCj0, hCj⟩ := hLp b hb hb0 a₀
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have hrw3 : ∀ N : ℕ, 2 ≤ N → 0 ≤ iidRateW d m N ^ ((1 : ℝ) / 3) := fun N hN =&gt;
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    Real.rpow_nonneg (fb_iidRateW_nonneg d m (by omega)) _
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  obtain ⟨C2, hC2, h2⟩ := fb_W2 S m hm T hT p₀ hp₀ Cb Cj Cm hCb0.le hCj0.le hCm0
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    (fun N =&gt; iidRateW d m N ^ ((1 : ℝ) / 3)) hrw3
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  refine ⟨2 * C2, by positivity, ?_⟩
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  intro a ha N hN hN4 Ω _ P _ X₀ W X hSel hfilt hinit Ω&#x27; _ P&#x27; _ Y₀ Y hY
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  have hlaw : law P (fun ω =&gt; etaE m (X₀ ω) S.μ0) =
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      law (mixturePrep S.μ0 b a₀ N) (fun X =&gt; etaE m X S.μ0) := by
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    rw [fb_law_eta S m hmd (by omega) P hSel.init_meas, hinit]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  have hδ := therm_deltaN_pos S.hd S.hs0 S.hsd N (by omega)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  have hBk := hCb N hN hN4
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hJk := hCj N hN hN4
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  rw [← hinit] at hBk hJk
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hmain := h2 a ha N hN P X₀ W X hSel hfilt hBk.1 hJk.1 hBk.2 hJk.2 _ P&#x27; Y₀ Y hY
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    (by rw [hlaw]; exact (hCm N hN hN4).2.2)
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  refine hmain.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  have e : deltaN d S.s N = deltaN d 0 N := by rw [hs]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  rw [e]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  obtain ⟨hr1, hr2⟩ := fb_zero_rates hd1 (by omega : 1 ≤ N)
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have hr := hrw3 N hN
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have hq : 0 ≤ (N : ℝ) ^ (-(1 : ℝ) / 4) := Real.rpow_nonneg hN0.le _
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  rw [hr2]
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  calc C2 * (Real.sqrt N * deltaN d 0 N + (N : ℝ) ^ (-(1 : ℝ) / 4) + iidRateW d m N ^ ((1 : ℝ) / 3))
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      ≤ C2 * (2 * ((N : ℝ) ^ (-(1 : ℝ) / 4) + iidRateW d m N ^ ((1 : ℝ) / 3))) :=
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>        mul_le_mul_of_nonneg_left (by linarith) hC2.le
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    _ = 2 * C2 * ((N : ℝ) ^ (-(1 : ℝ) / 4) + iidRateW d m N ^ ((1 : ℝ) / 3)) := by ring
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>theorem mixture_full_bounds_proof (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) (T : ℝ)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    (hT : 0 &lt; T) (b : Torus d → ℝ) (hb : Torus.IsSmooth b) (hb0 : pair S.μ0 b = 0) (a₀ : ℝ)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (γ : Measure (NegSobolev d m)) (hγ : IsCenteredGaussianWithCov m γ (iidCov S.μ0)) :
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N → 4 * a₀ ^ 2 * (⨆ x, |b x|) ^ 2 ≤ (N : ℝ) →
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>        law P X₀ = mixturePrep S.μ0 b a₀ N →
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        (Y₀ : Ω&#x27; → NegSobolev d m) (Y : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>        IsPreparedLinear S m (a + T)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>          ((1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F + a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)) +
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>            (1 / 2 : ℝ≥0∞) • γ.map (fun F =&gt; F - a₀ • NegSobolev.ofFun m (fun x =&gt; b x * S.ρ0 x)))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>          P&#x27; Y₀ Y →
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        smoothDist 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>          C * (Real.sqrt N * deltaN d S.s N + iidRateSmooth d m N) ∧
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        wassersteinE 1 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>          ENNReal.ofReal (C * (Real.sqrt N * deltaN d S.s N + deltaN d S.s N ^ ((1 : ℝ) / 4) +
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>            iidRateW d m N)) ∧
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>        (S.s = 0 →
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>          wassersteinE 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) ≤
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>            ENNReal.ofReal (C * ((N : ℝ) ^ (-(1 : ℝ) / 4) + iidRateW d m N ^ ((1 : ℝ) / 3)))) := by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  obtain ⟨C1, hC1, h1⟩ := mxf_part12 S m hm T hT b hb hb0 a₀ γ hγ
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  by_cases hs : S.s = 0
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  · obtain ⟨C2, hC2, h2⟩ := mxf_part3 S m hm T hT b hb hb0 a₀ γ hγ hs
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    refine ⟨max C1 C2, lt_max_of_lt_left hC1, ?_⟩
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    intro a ha N hN hN4 Ω _ P _ X₀ W X hSel hfilt hinit Ω&#x27; _ P&#x27; _ Y₀ Y hY
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    have hδ := therm_deltaN_pos S.hd S.hs0 S.hsd N (by omega)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    have hx : 0 ≤ Real.sqrt N * deltaN d S.s N := by positivity
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    have hq : 0 ≤ deltaN d S.s N ^ ((1 : ℝ) / 4) := Real.rpow_nonneg hδ.le _
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    have hq2 : 0 ≤ (N : ℝ) ^ (-(1 : ℝ) / 4) := Real.rpow_nonneg hN0.le _
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    have hj := fb_iidRateW_nonneg d m (by omega : 1 ≤ N)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    have hj3 : 0 ≤ iidRateW d m N ^ ((1 : ℝ) / 3) := Real.rpow_nonneg hj _
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    obtain ⟨hs1, hw1⟩ := h1 a ha N hN hN4 P X₀ W X hSel hfilt hinit P&#x27; Y₀ Y hY
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    refine ⟨hs1.trans (mul_le_mul_of_nonneg_right (le_max_left _ _)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        (add_nonneg hx (fb_iidRateSmooth_nonneg d m N))),
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      hw1.trans (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right (le_max_left _ _)
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>        (add_nonneg (add_nonneg hx hq) hj))), fun _ =&gt; ?_⟩
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    exact (h2 a ha N hN hN4 P X₀ W X hSel hfilt hinit P&#x27; Y₀ Y hY).trans
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right (le_max_right _ _)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        (add_nonneg hq2 hj3)))
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  · refine ⟨C1, hC1, ?_⟩
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    intro a ha N hN hN4 Ω _ P _ X₀ W X hSel hfilt hinit Ω&#x27; _ P&#x27; _ Y₀ Y hY
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    obtain ⟨hs1, hw1⟩ := h1 a ha N hN hN4 P X₀ W X hSel hfilt hinit P&#x27; Y₀ Y hY
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    exact ⟨hs1, hw1, fun h =&gt; absurd h hs⟩
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>example := (@mixture_full_bounds_proof : type_of% @HRS.Main.mixture_full_bounds)
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>end Main
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>end HRS
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>end
+</span></code></pre></main></body></html>

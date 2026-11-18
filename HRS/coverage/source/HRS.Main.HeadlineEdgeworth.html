@@ -1,0 +1,463 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.HeadlineEdgeworth · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.HeadlineEdgeworth</code></h1><p><a href="../../lean/HRS/Main/HeadlineEdgeworth.lean">Open the unaltered Lean file</a> · 462 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.Headline
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Main.Q42Aux1
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Section 2 of the main manuscript: the first non-Gaussian correction on observation windows
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>(headline results and prose claims, part 3)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Specification file SPEC-2 (statements with `sorry` proofs; definitions contain no `sorry`).
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Source: `HRS_periodic_main_20261008T010000Z.tex` (&quot;M&quot;), Section 2, lines 1242-1420.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Rows covered: `M:prose:L1242-1272`, `M:H:thm:edgeworth` (2.13), `M:prose:L1290-1331`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`M:H:cor:stationary-correction` (2.14), `M:prose:L1362-1395`, `M:prose:L1396-1420`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>## Representation decisions
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* **Projective tensors** (TeX L1267-1271): `B ⊗̂_π B ⊗̂_π B` is `HRS.projTensor B 3`, the closure of the
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  span of the elementary tensors in the dual `TensorDual B 3` of the bounded trilinear forms (this is
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  isometric to the projective tensor product, see `HRS/Prob/Gaussian.lean`); the projective norm
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `‖·‖_π` is its norm, the pairing `⟨D³Φ(z), 𝒦⟩` is `𝒦 (D³Φ(z))` with `D³Φ(z) =
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  iteratedFDeriv ℝ 3 Φ z`.  &quot;Symmetric&quot; means invariance under `domDomCongr σ`, `σ ∈ S₃`.
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* **The second-moment tensor** `C_{a,T} = E[Z^{a+·} ⊗ Z^{a+·}]` is not constructed as an element of
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  `projTensor B 2` (that needs a Bochner-integrability argument in the dual); its projective distance
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  to `C_{∞,T}` is expressed through the dual formula
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  `‖C_{a,T} - C_{∞,T}‖_π = sup_{‖M‖≤1} |E M(Z^{a+·},Z^{a+·}) - E M(Z_{β,T},Z_{β,T})|` over bounded
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  bilinear forms `M` (the norm of the Bochner tensor in `(B ⊗̂_π B)* = B[×2]→L ℝ`).
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>* **The cubic tensor** `𝒦_{a,T}` is specified (TeX L1287, L1303-1312) by its evaluations
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  `κ_{ijk}` (`cubicKappa`) on the trilinear forms `(w₁,w₂,w₃) ↦ ℓ_i(w₁)ℓ_j(w₂)ℓ_k(w₃)`, with
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  `ℓ_i w = ⟨w^{t_i - a}, φ_i⟩` the observations at times `t_i ∈ [a,a+T]` (`pathEval`); the smooth
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  signed densities `χ_i^r` of `H:eq:cross-covariance-density` are quantified in the premise of the
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  formula (`SatisfiesCubicFormula`): the formula is asserted whenever such smooth densities are given
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  (their existence is part of the prose of L1297-1299, and is the open assertion
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `CrossCovDensitiesExist`, below).  This is part of the *conclusion* of Theorem 2.13
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  (`IsWindowEdgeworth.formula`), &quot;the tensor is specified by `H:eq:cubic-formula` below&quot; (L1287).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  The uniqueness `cubic_tensor_unique` is therefore stated under `CrossCovDensitiesExist` (2026-10-20).
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>* The two Gaussian objects: `Z` is the centered Gaussian solution of the linear equation with `q = β⁻¹`
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  and initial covariance `preparedCov` (a `IsPreparedLinear` process; window `Z^{a+·}`, not stationary);
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  `Z_{β,T}` is the stationary field (`IsStationaryGaussianField`).
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>-/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>noncomputable section
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>namespace HRS
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>namespace Main
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>variable {d : ℕ}
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-! ### Auxiliary notions -/
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>open Classical in
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- The value `w^τ ∈ E_m` of a path `w ∈ 𝒳_{m,T}` at a time `τ ∈ [0,T]` (`0` outside, junk). -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>def pathEval {m T : ℝ} (w : PathSpace d m T) (τ : ℝ) : NegSobolev d m :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  if h : τ ∈ Set.Icc (0 : ℝ) T then PathSpace.at&#x27; w ⟨τ, h⟩ else 0
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>/-- The cyclic sum `∑_{cyc(i,j,k)} F(i,j,k)` over the three observation slots (three terms counted
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>with multiplicity, TeX L1313). -/
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>def cyc3 (F : Fin 3 → Fin 3 → Fin 3 → ℝ) : ℝ := F 0 1 2 + F 1 2 0 + F 2 0 1
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- The pair kernel `h_v(x,y) = (v(x) - v(y))·∇g(x - y)` of a vector field `v` (TeX L1301-1302). -/
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>def hKernel (d : ℕ) (s : ℝ) (v : Torus d → Euc d) (x y : Torus d) : ℝ :=
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  inner ℝ (v x - v y) (periodicRieszGrad d s (x - y))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>/-- The three-term coefficient `κ_{ijk}` of `H:eq:cubic-formula` (TeX L1303-1312) on three
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>observations `(t_i, φ_i)` (physical times `t_i`), for the mean-field coefficients `(D, ρ)`, physical
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>temperature `β`, preparation `(β₀, μ°)`, with `f_i^r = U^{r,t_i}φ_i` (`propagator`),
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>`r_i° = R_{β₀,μ°}P_{μ°}f_i^0` (`responseInverse`) and the cross-covariance densities `χ_i^r`:
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>`κ_{ijk} = μ°(r_i° r_j° r_k°) - ∑_cyc ∫_0^{t_i}∬ h_{∇f_i^r}(x,y)χ_j^r(x)χ_k^r(y) dx dy dr
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a> + (2/β) ∑_cyc ∫_0^{t_i∧t_j}∫ ∇f_i^r·∇f_j^r χ_k^r dx dr` (the integrals begin at physical time zero). -/
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>def cubicKappa (D : DynData d) (ρ : ℝ → Torus d → ℝ) (β β₀ : ℝ) (μ0 : Measure (Torus d))
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (t : Fin 3 → ℝ) (φ : Fin 3 → Torus d → ℝ) (χ : Fin 3 → ℝ → Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  (∫ x, responseInverse (periodicRiesz d D.s) μ0 β₀ (propagator D ρ 0 (t 0) (φ 0)) x *
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        responseInverse (periodicRiesz d D.s) μ0 β₀ (propagator D ρ 0 (t 1) (φ 1)) x *
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        responseInverse (periodicRiesz d D.s) μ0 β₀ (propagator D ρ 0 (t 2) (φ 2)) x ∂μ0) -
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    cyc3 (fun i j k =&gt; ∫ r in Set.Icc 0 (t i), ∫ x, ∫ y,
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      hKernel d D.s (Torus.grad (propagator D ρ r (t i) (φ i))) x y * χ j r x * χ k r y) +
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    (2 / β) * cyc3 (fun i j k =&gt; ∫ r in Set.Icc 0 (min (t i) (t j)), ∫ x,
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      inner ℝ (Torus.grad (propagator D ρ r (t i) (φ i)) x)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (Torus.grad (propagator D ρ r (t j) (φ j)) x) * χ k r x)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- The standing hypotheses of Section 2.6 (TeX L1257-1268): `s &lt; d/2` (and `d ≥ 2`, `β &gt; 0`,
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>smooth `V`, smooth positive `μ°` are in `PreparedData`), `m &gt; 3d + 8`, preparation `ℚ_{N,β₀}(μ°)`
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>with fixed `β₀ &gt; 0`, and `β₀ = 0` additionally permitted for the logarithm (`s = 0`). -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>structure EdgeworthHyp (S : PreparedData d) (β₀ m : ℝ) : Prop where
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  s_lt : S.s &lt; (d : ℝ) / 2
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  m_gt : 3 * (d : ℝ) + 8 &lt; m
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  β₀_nonneg : 0 ≤ β₀
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  β₀_pos : 0 &lt; β₀ ∨ S.s = 0
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>/-- The distance of the second-moment tensors of two random paths, in the projective norm:
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>`‖E[Z₁⊗Z₁] - E[Z₂⊗Z₂]‖_π = sup_{‖M‖≤1}|E M(Z₁,Z₁) - E M(Z₂,Z₂)|`, `M` bounded bilinear forms
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>(duality `(B ⊗̂_π B)* = B[×2]→L ℝ`; the TeX norms `E[Z⊗Z]` of `Z` with finite second moment,
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>TeX L1334-1340). -/
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>def covDist {B : Type*} [NormedAddCommGroup B] [NormedSpace ℝ B] {Ω₁ Ω₂ : Type*}
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    [MeasurableSpace Ω₁] [MeasurableSpace Ω₂] (P₁ : Measure Ω₁) (P₂ : Measure Ω₂)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (Z₁ : Ω₁ → B) (Z₂ : Ω₂ → B) : ℝ :=
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  ⨆ M : {M : B [×2]→L[ℝ] ℝ // ‖M‖ ≤ 1},
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    |∫ ω, M.1 ![Z₁ ω, Z₁ ω] ∂P₁ - ∫ ω, M.1 ![Z₂ ω, Z₂ ω] ∂P₂|
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>/-! ### Theorem 2.13 -/
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>/-- The coordinate formula `H:eq:cubic-formula` for a tensor `Kt` and window start `a` (TeX L1291-1312):
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>for observations `(t_i,φ_i)`, `t_i ∈ [a,a+T]`, `φ_i` smooth, bounded linear functionals `ℓ_i` on
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>`𝒳_{m,T}` with `ℓ_i w = ⟨w^{t_i - a}, φ_i⟩`, every Gaussian `Z` (centered, linear equation with
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>`q = β⁻¹`, initial covariance `preparedCov`, on the horizon `a+T`) and smooth densities `χ_i^r` with
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>`∫ψχ_i^r dx = Cov(Z^r(ψ), Z^{t_i}(φ_i))` for smooth `ψ` and **every** `0 ≤ r ≤ a+T` (the formula uses
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>`χ_j^r, χ_k^r` for `r` up to `t_i`, which may exceed `t_j, t_k`; TeX L1297-1299 defines `χ_i^r` for every `r`)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>(`H:eq:cross-covariance-density`), `Kt(ℓ_i ⊗ ℓ_j ⊗ ℓ_k) = κ_{ijk}` (`cubicKappa`). -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def SatisfiesCubicFormula (S : PreparedData d) (β₀ m T a : ℝ)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (Kt : projTensor (PathSpace d m T) 3) : Prop :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  ∀ (t : Fin 3 → ℝ) (φ : Fin 3 → Torus d → ℝ),
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (∀ i, t i ∈ Set.Icc a (a + T)) → (∀ i, Torus.IsSmooth (φ i)) →
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  ∀ (ℓ : Fin 3 → (PathSpace d m T →L[ℝ] ℝ)),
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    (∀ i w, ℓ i w = NegSobolev.eval (pathEval w (t i - a)) (φ i)) →
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  ∀ χ : Fin 3 → ℝ → Torus d → ℝ, (∀ i r, Torus.IsSmooth (χ i r)) →
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (∀ i, ∀ r ∈ Set.Icc (0 : ℝ) (a + T), ∀ ψ : Torus d → ℝ, Torus.IsSmooth ψ →
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      ∫ x, ψ x * χ i r x = ∫ ω, NegSobolev.eval (Z r ω) ψ * NegSobolev.eval (Z (t i) ω) (φ i) ∂P&#x27;) →
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    ((Kt : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      ((ContinuousMultilinearMap.mkPiAlgebraFin ℝ 3 ℝ).compContinuousLinearMap ℓ) =
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      cubicKappa S.dyn S.ρ S.β β₀ S.μ0 t φ χ
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>/-- The conclusion of Theorem 2.13 `M:H:thm:edgeworth` (TeX L1273-1289) for a family `K = (𝒦_{a,T})_{a ≥ 0}`
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>of tensors and a sequence `ε = (ε_N(T))`: `K a` is a symmetric projective tensor on `𝒳 = 𝒳_{m,T}`,
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>`sup_{a ≥ 0}‖K a‖_π &lt; ∞`, `ε_N → 0`, and for every window start `a ≥ 0`, `N ≥ 2`, every particle system
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>(`SelectedFlow` on `[0,a+T]` with `law X₀ = ℚ_{N,β₀}(μ°)`), every Gaussian `Z` (the centered Gaussian
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>solution of the linear equation with `q = β⁻¹` and initial covariance `preparedCov`), and every
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>`Φ` in the unit ball of `C_b^5(𝒳)`,
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>`|√N(E Φ(ζ_N^{a+·}) - E Φ(Z^{a+·})) - (1/6)E⟨D³Φ(Z^{a+·}), 𝒦_{a,T}⟩| ≤ ε_N(T)`
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>(`H:eq:window-edgeworth`; `ζ_N` centered at the actual finite-particle first marginal, `windowZeta`),
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>and `K a` is specified by `H:eq:cubic-formula` (`SatisfiesCubicFormula`).
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): the proof of Theorem 2.13 applies the path Itô identity `F:eq:path-Ito` (the duality identity `B:prop:duality-identity`), which needs a Brownian filtration, so the expansion is asserted for filtered strong solutions (`∃ ℱ W&#x27;, IsFilteredSolution P ℱ W&#x27; W X`, the strong-solution adaptedness of A.1 that `SelectedFlow` records only as measurability, ISSUES D1). -/
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>structure IsWindowEdgeworth (S : PreparedData d) (β₀ m T : ℝ)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ) : Prop where
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  symmetric : ∀ a : ℝ, 0 ≤ a → ∀ (M : (PathSpace d m T) [×3]→L[ℝ] ℝ) (σ : Equiv.Perm (Fin 3)),
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    ((K a : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3) (M.domDomCongr σ) =
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      ((K a : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3) M
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  bounded : ∃ C : ℝ, ∀ a : ℝ, 0 ≤ a → ‖K a‖ ≤ C
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  eps_tendsto : Tendsto ε atTop (𝓝 0)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  expansion : ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      law P X₀ = modulatedGibbs (periodicRiesz d S.s) N β₀ S.μ0 →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    ∀ Φ : PathSpace d m T → ℝ, Φ ∈ CbUnitBall (PathSpace d m T) 5 →
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      |Real.sqrt N * (∫ z, Φ z ∂(law P (windowZeta m T a P X)) -
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>          ∫ z, Φ z ∂(law P&#x27; (windowPath m T a Z))) -
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        (1 / 6) * ∫ ω, ((K a : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>          (iteratedFDeriv ℝ 3 Φ (windowPath m T a Z ω)) ∂P&#x27;| ≤ ε N
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  formula : ∀ a : ℝ, 0 ≤ a → SatisfiesCubicFormula S β₀ m T a (K a)
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-- Theorem 2.13 `M:H:thm:edgeworth` (TeX L1273-1289), the first non-Gaussian correction, uniformly
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>over window starts.  Standing hypotheses `EdgeworthHyp` (TeX L1257-1268: `s &lt; d/2`, `m &gt; 3d + 8`,
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>preparation `ℚ_{N,β₀}(μ°)`, `β₀ &gt; 0` or `β₀ = 0` for the logarithm; `S` the smooth setting) and
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>`T &gt; 0`: there are symmetric projective tensors `𝒦_{a,T}`, `sup_{a ≥ 0}‖𝒦_{a,T}‖_π &lt; ∞`, and a sequence
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>`ε_N(T) → 0` with the expansion `H:eq:window-edgeworth` and the cubic formula (all in
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>`IsWindowEdgeworth`, whose expansion now assumes the filtered strong solution of the particle system, see there).
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>No polynomial rate for `ε_N(T)` is asserted.
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>The initial-variance hypothesis &quot;uniformity in the physical temperature&quot; of TeX L1243-1253 is not
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>part of this statement (see the report). -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>theorem edgeworth_window (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m) (hT : 0 &lt; T) :
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    ∃ (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ), IsWindowEdgeworth S β₀ m T K ε := by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  sorry
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>/-- OPEN REGULARITY ASSERTION (TeX L1296-1299, `H:eq:cross-covariance-density`): for every observation triple
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>`(t_i, φ_i)` with `t_i ∈ [a, a+T]`, `φ_i` smooth, and every prepared linear Gaussian field `Z`, there are smooth
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>densities `χ_i^r` (`r ∈ [0, a+T]`) with `∫ ψ χ_i^r dx = Cov(Z^r(ψ), Z^{t_i}(φ_i))` for all smooth `ψ`.  The TeX asserts
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>this in prose; it is not proved in Lean, and `cross_cov_densities_exist` below states it as an open row.
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>`SatisfiesCubicFormula` is vacuous at a triple for which no such `χ` exists. -/
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>def CrossCovDensitiesExist (S : PreparedData d) (β₀ m T a : ℝ) : Prop :=
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  ∀ (t : Fin 3 → ℝ) (φ : Fin 3 → Torus d → ℝ),
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    (∀ i, t i ∈ Set.Icc a (a + T)) → (∀ i, Torus.IsSmooth (φ i)) →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  ∃ χ : Fin 3 → ℝ → Torus d → ℝ, (∀ i r, Torus.IsSmooth (χ i r)) ∧
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    ∀ i, ∀ r ∈ Set.Icc (0 : ℝ) (a + T), ∀ ψ : Torus d → ℝ, Torus.IsSmooth ψ →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      ∫ x, ψ x * χ i r x = ∫ ω, NegSobolev.eval (Z r ω) ψ * NegSobolev.eval (Z (t i) ω) (φ i) ∂P&#x27;
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>/-- OPEN ROW: the cross-covariance densities of `H:eq:cross-covariance-density` exist (TeX L1296-1299, asserted
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>in prose).  Not proved. -/
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>theorem cross_cov_densities_exist (S : PreparedData d) (β₀ m T a : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    (hT : 0 &lt; T) (ha : 0 ≤ a) : CrossCovDensitiesExist S β₀ m T a := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  sorry
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>/-- `M:prose:L1290-1331` (TeX L1317-1318, proof L8936-8938): &quot;these evaluations determine the
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>projective tensor, including coincident times&quot;, i.e. a projective tensor satisfying the coordinate
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>formula `H:eq:cubic-formula` for all observations is unique (so `𝒦_{a,T}` of Theorem 2.13 is
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>determined by the formula).  CONDITIONAL on `CrossCovDensitiesExist` (hypothesis `hχ`): without the
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>cross-covariance densities the formula `SatisfiesCubicFormula` quantifies over an empty set of `χ` for
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>some observation triples and does not determine the tensor (statement repair, 2026-10-20 10:05Z, ISSUES
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>&quot;cubic_tensor_unique&quot;). -/
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>theorem cubic_tensor_unique (S : PreparedData d) (β₀ m T a : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    (hT : 0 &lt; T) (ha : 0 ≤ a) (hχ : CrossCovDensitiesExist S β₀ m T a)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    (K₁ K₂ : projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    (h₁ : SatisfiesCubicFormula S β₀ m T a K₁) (h₂ : SatisfiesCubicFormula S β₀ m T a K₂) :
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    K₁ = K₂ := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  sorry
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>/-! ### Corollary 2.14 -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>/-- Corollary 2.14 `M:H:cor:stationary-correction` (TeX L1332-1361), relaxation of the tensors
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>(`H:eq:tensor-relaxation`).  Let `𝒦_{a,T}`, `ε_N(T)` be as in Theorem 2.13 (`IsWindowEdgeworth`).  There
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>are a stationary cubic tensor `𝒦_{∞,T}` and `C_T, c &gt; 0` such that for all `a ≥ 0`
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>`‖𝒦_{a,T} - 𝒦_{∞,T}‖_π ≤ C_T e^{-ca}` (no Gaussian object occurs, so this bound is unconditional), and,
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>for the Gaussian `Z` of Theorem 2.13 and the stationary window `Z_{β,T}` (`IsStationaryGaussianField`,
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>thermal density `ρβ`), `‖C_{a,T} - C_{∞,T}‖_π ≤ C_T e^{-ca}` (the two bounds with the same constant are
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>equivalent to the TeX sum up to the constant).  `C_{a,T} = E[Z^{a+·}⊗Z^{a+·}]` is expressed through the
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>dual formula `covDist`.  Non-vacuity of the Gaussian part: `stationaryField_exists`,
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>`preparedLinear_exists`, `preparedGaussian_exists`. -/
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>theorem stationary_tensor_relaxation (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    (hT : 0 &lt; T) (ρβ : Torus d → ℝ)
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ) (K : ℝ → projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    (ε : ℕ → ℝ) (hK : IsWindowEdgeworth S β₀ m T K ε) :
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    ∃ (Kst : projTensor (PathSpace d m T) 3) (C c : ℝ), 0 &lt; C ∧ 0 &lt; c ∧
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      (∀ a : ℝ, 0 ≤ a → ‖K a - Kst‖ ≤ C * Real.exp (-c * a)) ∧
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      ∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>        (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m),
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>        IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs →
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        covDist P&#x27; P&#x27;&#x27; (windowPath m T a Z) (windowPath m T 0 Zs) ≤ C * Real.exp (-c * a) := by
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  sorry
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>/-- Corollary 2.14 `M:H:cor:stationary-correction` (TeX L1342-1348), the hybrid correction
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>`H:eq:hybrid-correction`: for every `a_N → ∞`, uniformly on the `C_b^5` unit ball,
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>`E Φ(ζ_N^{a_N+·}) = E Φ(Z^{a_N+·}) + (6√N)⁻¹ E⟨D³Φ(Z_{β,T}), 𝒦_{∞,T}⟩ + o(N^{-1/2})`
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>(`𝒦_{∞,T}` the stationary tensor of `stationary_tensor_relaxation`, taken as an argument with the
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>relaxation property; the `o(N^{-1/2})` is `ε/√N` for every `ε &gt; 0` and `N ≥ N₀(ε)`).
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): the particle system is a filtered strong solution (`∃ ℱ W&#x27;, IsFilteredSolution P ℱ W&#x27; W X`), as in `IsWindowEdgeworth.expansion` which this corollary consumes through Theorem 2.13 (Itô/duality identity). -/
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>theorem hybrid_correction (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    (hT : 0 &lt; T) (ρβ : Torus d → ℝ)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ) (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ)
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    (hK : IsWindowEdgeworth S β₀ m T K ε) (Kst : projTensor (PathSpace d m T) 3) (C c : ℝ)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    (hC : 0 &lt; C) (hc : 0 &lt; c)
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    (hrel : ∀ a : ℝ, 0 ≤ a → ‖K a - Kst‖ ≤ C * Real.exp (-c * a))
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    (a : ℕ → ℝ) (ha0 : ∀ N, 0 ≤ a N) (ha : Tendsto a atTop atTop)
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    (ν : Measure (NegSobolev d m)) (hν : IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0))
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m) (hZs : IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs) :
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    ∀ η : ℝ, 0 &lt; η → ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N →
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>        SelectedFlow P S.dyn (a N + T) X₀ W X →
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>        law P X₀ = modulatedGibbs (periodicRiesz d S.s) N β₀ S.μ0 →
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>        IsPreparedLinear S m (a N + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>      ∀ Φ : PathSpace d m T → ℝ, Φ ∈ CbUnitBall (PathSpace d m T) 5 →
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>        |∫ z, Φ z ∂(law P (windowZeta m T (a N) P X)) -
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>            ∫ z, Φ z ∂(law P&#x27; (windowPath m T (a N) Z)) -
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>          (1 / (6 * Real.sqrt N)) * ∫ ω, ((Kst : projTensor (PathSpace d m T) 3) :
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>            TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>              (iteratedFDeriv ℝ 3 Φ (windowPath m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤ η / Real.sqrt N := by
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  sorry
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>/-- Corollary 2.14 `M:H:cor:stationary-correction` (TeX L1349-1360), the two-parameter expansion
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>`H:eq:two-parameter`: with `ΔC_a = C_{a,T} - C_{∞,T}`, uniformly over `a ≥ 0`, `N ≥ 2` and the
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>`C_b^5` unit ball,
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>`E Φ(ζ_N^{a+·}) = E Φ(Z_{β,T}) + ½E⟨D²Φ(Z_{β,T}), ΔC_a⟩ + (6√N)⁻¹E⟨D³Φ(Z_{β,T}), 𝒦_{∞,T}⟩
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a> + O(‖ΔC_a‖²_π + N^{-1/2}(ε_N(T) + e^{-ca}))`
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>(`ΔC_a`&#x27;s pairing is `∫ ΔC_a(D²Φ(z)) dlaw(Z_{β,T})(z)`, with `ΔC_a(M) = E M(Z^{a+·},Z^{a+·}) -
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>E M(Z_{β,T},Z_{β,T})`; `‖ΔC_a‖_π` is `covDist`; `c, 𝒦_{∞,T}` and the constant `C₁` are those of the
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>relaxation estimate `stationary_tensor_relaxation`, given as hypotheses `hrel` (tensor half) and `hcov` (covariance half
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>`‖ΔC_a‖_π ≤ C₁e^{-ca}`, TeX `H:eq:tensor-relaxation`); the constant `C` is
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>chosen after them and before `a, N`, the realization, `Z`, `Φ`).
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): the particle system is a filtered strong solution (`∃ ℱ W&#x27;, IsFilteredSolution P ℱ W&#x27; W X`), as in `IsWindowEdgeworth.expansion` which this corollary consumes through Theorem 2.13 (Itô/duality identity).
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>Statement repair 2 (ISSUES.md, &quot;TWO-PARAM-EXPANSION&quot;): the covariance half `hcov` of `H:eq:tensor-relaxation` is a hypothesis; without it the term `N^{-1/2}‖ΔC_a‖_π` coming from the cubic term is not absorbed. -/
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>theorem two_parameter_expansion (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    (hT : 0 &lt; T) (ρβ : Torus d → ℝ)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ) (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ)
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    (hK : IsWindowEdgeworth S β₀ m T K ε) (Kst : projTensor (PathSpace d m T) 3) (C₁ c : ℝ)
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    (hC₁ : 0 &lt; C₁) (hc : 0 &lt; c)
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    (hrel : ∀ a&#x27; : ℝ, 0 ≤ a&#x27; → ‖K a&#x27; - Kst‖ ≤ C₁ * Real.exp (-c * a&#x27;))
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    (hcov : ∀ a&#x27; : ℝ, 0 ≤ a&#x27; → ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>        IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>        IsPreparedLinear S m (a&#x27; + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>        [IsProbabilityMeasure P&#x27;&#x27;] (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m),
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>        IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs →
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>        covDist P&#x27; P&#x27;&#x27; (windowPath m T a&#x27; Z) (windowPath m T 0 Zs) ≤ C₁ * Real.exp (-c * a&#x27;)) :
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    ∃ C : ℝ, 0 &lt; C ∧
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>        law P X₀ = modulatedGibbs (periodicRiesz d S.s) N β₀ S.μ0 →
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>      ∀ (ν : Measure (NegSobolev d m)),
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>        IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) →
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m),
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>        IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z →
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;)
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>        [IsProbabilityMeasure P&#x27;&#x27;] (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m),
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>        IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Zs →
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>      ∀ Φ : PathSpace d m T → ℝ, Φ ∈ CbUnitBall (PathSpace d m T) 5 →
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>        |∫ z, Φ z ∂(law P (windowZeta m T a P X)) - ∫ z, Φ z ∂(law P&#x27;&#x27; (windowPath m T 0 Zs)) -
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>            (1 / 2) * ∫ ω&#x27;&#x27;, (∫ ω, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>                ![windowPath m T a Z ω, windowPath m T a Z ω] ∂P&#x27; -
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>              ∫ ω₂, (iteratedFDeriv ℝ 2 Φ (windowPath m T 0 Zs ω&#x27;&#x27;))
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>                ![windowPath m T 0 Zs ω₂, windowPath m T 0 Zs ω₂] ∂P&#x27;&#x27;) ∂P&#x27;&#x27; -
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>            (1 / (6 * Real.sqrt N)) * ∫ ω, ((Kst : projTensor (PathSpace d m T) 3) :
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>              TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>                (iteratedFDeriv ℝ 3 Φ (windowPath m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>          C * (covDist P&#x27; P&#x27;&#x27; (windowPath m T a Z) (windowPath m T 0 Zs) ^ 2 +
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>            (Real.sqrt N)⁻¹ * (ε N + Real.exp (-c * a))) := by
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  sorry
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>/-! ### Sharpness of the root-`N` rate below `d/2` -/
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>/-- `M:prose:L1104-1148` (TeX L1117-1121): &quot;the rate `√N δ_N` (`= N^{-1/2}` below `d/2`) is order-sharp when
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>a cubic coefficient is nonzero&quot;.  Consequence of Theorem 2.13 (`IsWindowEdgeworth`): if for some test
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>`Φ` in the `C_b^5` unit ball the first correction `(1/6)E⟨D³Φ(Z^{a+·}), 𝒦_{a,T}⟩` is nonzero, then for
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>particle systems `X_N` started from `ℚ_{N,β₀}(μ°)` (windows starting at `a`), the exactly centered fields
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>satisfy `liminf √N d_5(ζ_N^{a+·}, Z^{a+·}) ≥ |(1/6)E⟨D³Φ(Z^{a+·}), 𝒦_{a,T}⟩| &gt; 0`.
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): `hfilt` makes each `X_N` a filtered strong solution, which the expansion of Theorem 2.13 (`IsWindowEdgeworth.expansion`, Itô/duality identity) now requires. -/
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>theorem edgeworth_sharpness (S : PreparedData d) (β₀ m T : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    (hT : 0 &lt; T) (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    (hK : IsWindowEdgeworth S β₀ m T K ε) (a : ℝ) (ha : 0 ≤ a)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    (ν : Measure (NegSobolev d m)) (hν : IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0))
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m)
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>    (hZ : IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z)
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>    (Φ : PathSpace d m T → ℝ) (hΦ : Φ ∈ CbUnitBall (PathSpace d m T) 5)
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    (Ω : ℕ → Type) [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>    (hflow : ∀ N : ℕ, 2 ≤ N → SelectedFlow (P N) S.dyn (a + T) (X₀ N) (W N) (X N))
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    (hfilt : ∀ N : ℕ, 2 ≤ N → ∃ (ℱ : MeasureTheory.Filtration ℝ (inferInstance : MeasurableSpace (Ω N)))
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>      (W&#x27; : ℝ≥0 → Ω N → (Fin N × Fin d) → ℝ), IsFilteredSolution (P N) ℱ W&#x27; (W N) (X N))
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    (hinit : ∀ N : ℕ, 2 ≤ N → law (P N) (X₀ N) = modulatedGibbs (periodicRiesz d S.s) N β₀ S.μ0) :
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    ENNReal.ofReal |(1 / 6) * ∫ ω, ((K a : projTensor (PathSpace d m T) 3) :
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>        TensorDual (PathSpace d m T) 3) (iteratedFDeriv ℝ 3 Φ (windowPath m T a Z ω)) ∂P&#x27;| ≤
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>      liminf (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N *
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>        smoothDist 5 (law (P N) (windowZeta m T a (P N) (X N)))
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>          (law P&#x27; (windowPath m T a Z)))) atTop := by
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  sorry
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>/-- `M:prose:L1104-1148` (TeX L1117-1121) with `M:prose:L1290-1331` (L1322-1326): sharpness on the
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>homogeneous torus.  `V = 0`, `ρ° = 1`, preparation at the physical temperature `β₀ = β`, window
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>start `a = 0`: for `k ≠ 0`, `b ≠ 0`, the one-time observation `φ = ψ_k + bψ_{2k}` at time `0` has the
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>nonzero cubic coefficient `3b v_{β,k}²v_{β,2k}/√2` (`homogeneous_cubic_coefficients`), hence the
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>root-`N` rate is sharp: there is a test `Φ` in the `C_b^5` unit ball of `𝒳_{m,T}` with
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>`liminf √N d_5(ζ_N, Z) &gt; 0` (for the particle systems of `edgeworth_sharpness`).
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>Statement repair (ISSUES.md, entry &quot;Filtered strong solutions: follow-up repairs&quot;): `hfilt` makes each `X_N` a filtered strong solution, which the expansion of Theorem 2.13 (`IsWindowEdgeworth.expansion`, Itô/duality identity) now requires. -/
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>theorem edgeworth_sharpness_homogeneous (S : PreparedData d) (m T : ℝ)
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>    (hE : EdgeworthHyp S S.β m) (hT : 0 &lt; T) (hV : S.V = fun _ =&gt; 0) (hρ0 : S.ρ0 = fun _ =&gt; 1)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    (k : Lattice d) (hk : k ≠ 0) (b : ℝ) (hb : b ≠ 0)
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    (K : ℝ → projTensor (PathSpace d m T) 3) (ε : ℕ → ℝ) (hK : IsWindowEdgeworth S S.β m T K ε)
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    (ν : Measure (NegSobolev d m)) (hν : IsCenteredGaussianWithCov m ν (preparedCov d S.s S.β S.μ0))
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m)
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    (hZ : IsPreparedLinear S m (0 + T) ν P&#x27; Z₀ Z)
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    (Ω : ℕ → Type) [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    (hflow : ∀ N : ℕ, 2 ≤ N → SelectedFlow (P N) S.dyn (0 + T) (X₀ N) (W N) (X N))
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    (hfilt : ∀ N : ℕ, 2 ≤ N → ∃ (ℱ : MeasureTheory.Filtration ℝ (inferInstance : MeasurableSpace (Ω N)))
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>      (W&#x27; : ℝ≥0 → Ω N → (Fin N × Fin d) → ℝ), IsFilteredSolution (P N) ℱ W&#x27; (W N) (X N))
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    (hinit : ∀ N : ℕ, 2 ≤ N → law (P N) (X₀ N) = modulatedGibbs (periodicRiesz d S.s) N S.β S.μ0) :
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    ∃ Φ : PathSpace d m T → ℝ, Φ ∈ CbUnitBall (PathSpace d m T) 5 ∧
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      0 &lt; liminf (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N *
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>        smoothDist 5 (law (P N) (windowZeta m T 0 (P N) (X N)))
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>          (law P&#x27; (windowPath m T 0 Z)))) atTop := by
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  sorry
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>/-! ### `M:prose:L1290-1331`: explicit coefficients on the homogeneous torus -/
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>/-- `M:prose:L1290-1331` (TeX L1322-1326): on a homogeneous torus (`μ° = dx`, preparation at the
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>physical temperature `β₀ = β`), the initial term `μ°(r³)` of the cubic coefficient
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>(`H:eq:cubic-formula`; at a single time `t = 0` the other two terms are integrals over `[0,0]` and
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>vanish, so this is the full stationary one-time coefficient), `r = R_{β,dx}P φ` (`responseInverse`),
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>satisfies, with `ψ_k = √2cos(2πk·x)` (`PDE.cosTest`) and `v_{β,k} = (1 + βĝ(k))⁻¹`
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>(`d ≥ 2`, `0 ≤ s &lt; d`, `β &gt; 0`, `k ≠ 0`):
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>a single cosine has zero cubic coefficient, `∫ (R ψ_k)³ dx = 0`; and for `φ = ψ_k + bψ_{2k}`,
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>`∫ (R φ)³ dx = 3b v_{β,k}² v_{β,2k}/√2`, which is nonzero for `b ≠ 0`. -/
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>theorem homogeneous_cubic_coefficients (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ)
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (b : ℝ) :
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    (∫ x, responseInverse (periodicRiesz d s) (volume : Measure (Torus d)) β (PDE.cosTest k) x ^ 3) =
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>        0 ∧
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    (∫ x, responseInverse (periodicRiesz d s) (volume : Measure (Torus d)) β
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>        (fun x =&gt; PDE.cosTest k x + b * PDE.cosTest ((2 : ℤ) • k) x) x ^ 3) =
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>      3 * b * (1 + β * rieszCoeff d s k)⁻¹ ^ 2 * (1 + β * rieszCoeff d s ((2 : ℤ) • k))⁻¹ /
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>        Real.sqrt 2 ∧
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    (b ≠ 0 → 3 * b * (1 + β * rieszCoeff d s k)⁻¹ ^ 2 *
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>        (1 + β * rieszCoeff d s ((2 : ℤ) • k))⁻¹ / Real.sqrt 2 ≠ 0) := by
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  have hk2 : (2 : ℤ) • k ≠ 0 := q42_two_smul_ne hk
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>  have hne1 : (1 + β * rieszCoeff d s k) ≠ 0 := (q42_one_add_pos hd hs0 hsd hβ k).ne&#x27;
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>  have hne2 : (1 + β * rieszCoeff d s ((2 : ℤ) • k)) ≠ 0 :=
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    (q42_one_add_pos hd hs0 hsd hβ _).ne&#x27;
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>  refine ⟨?_, ?_, ?_⟩
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  · have hae := q42_responseInverse_eq hd hs0 hsd hβ k hk (PDE.cosTest k) 1 0 (fun x =&gt; by simp)
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    have e1 : ∫ x : Torus d, responseInverse (periodicRiesz d s) (volume : Measure (Torus d)) β
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>        (PDE.cosTest k) x ^ 3 = ∫ x : Torus d, ((1 * (1 + β * rieszCoeff d s k)⁻¹) * PDE.cosTest k x +
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>          (0 * (1 + β * rieszCoeff d s ((2 : ℤ) • k))⁻¹) * PDE.cosTest ((2 : ℤ) • k) x) ^ 3 :=
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>      integral_congr_ae (hae.mono fun x hx =&gt; by simp only [hx])
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    rw [e1, q42_cube k hk]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    simp
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  · have hae := q42_responseInverse_eq hd hs0 hsd hβ k hk
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>      (fun x =&gt; PDE.cosTest k x + b * PDE.cosTest ((2 : ℤ) • k) x) 1 b (fun x =&gt; by simp)
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    have e2 : ∫ x : Torus d, responseInverse (periodicRiesz d s) (volume : Measure (Torus d)) β
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>        (fun x =&gt; PDE.cosTest k x + b * PDE.cosTest ((2 : ℤ) • k) x) x ^ 3 =
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>        ∫ x : Torus d, ((1 * (1 + β * rieszCoeff d s k)⁻¹) * PDE.cosTest k x +
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>          (b * (1 + β * rieszCoeff d s ((2 : ℤ) • k))⁻¹) * PDE.cosTest ((2 : ℤ) • k) x) ^ 3 :=
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>      integral_congr_ae (hae.mono fun x hx =&gt; by simp only [hx])
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    rw [e2, q42_cube k hk]
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    ring
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  · intro hb
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    exact div_ne_zero (mul_ne_zero (mul_ne_zero (mul_ne_zero (by norm_num) hb)
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>      (pow_ne_zero 2 (inv_ne_zero hne1))) (inv_ne_zero hne2))
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>      (Real.sqrt_pos.mpr (by norm_num)).ne&#x27;
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>/-! ### Rows pointing to later sections
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>* `M:prose:L1242-1272`, uniformity paragraph (L1243-1253): the temperature-uniformity of &quot;every
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  positive-temperature assertion&quot; is a meta-quantifier remark (no new statement beyond the
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  temperature-uniform path bound `critical_centered_path_uniform` of `HeadlineEquilibrium.lean`);
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>  the Edgeworth standing hypotheses and the projective tensors are `EdgeworthHyp`, `projTensor`.
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>* `M:prose:L1362-1395`: the exact covariance transient `H:eq:preparation-transient` is Proposition 7.13
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>  (`M:E:prop:quench`), the waiting-time criterion `a_N - (4λ_*)⁻¹ log N → +∞` is Corollary 7.14
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  (`M:E:cor:critical-Edgeworth`), the chaos threshold at `s = d/2` is Proposition 7.18
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  (`HRS.chaos_tendsto`, `HRS.localDiv_critical`) and the unbounded supremum over the half-line is
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  Proposition 5.18 (`M:U:prop:unbounded`): the statements belong to those rows and are not restated.
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>* `M:prose:L1396-1420` (besides `empirical_field_deterministic_bound` of `Headline.lean`): the bounded spectral summary is Proposition 4.21/Corollary 4.22
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>  (`HRS.static_field_limit_general`, `HRS.static_field_limit_canonical`, `HRS.negSpectralCoeff`);
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>  the mesoscopic screening paragraph is Proposition 6.1 (`M:O:prop:screening`).
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>-/
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>end Main
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>end HRS
+</span></code></pre></main></body></html>

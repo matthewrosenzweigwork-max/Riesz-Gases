@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.DynEntFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.DynEntFinal</code></h1><p><a href="../../lean/HRS/Sections/DynEntFinal.lean">Open the unaltered Lean file</a> · 90 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.DynEntAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># DYNENT: Theorem 5.4 `dynamic_entropy` (final, statement verbatim)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Chain plan: header of `DynEntAux1.lean`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`#print axioms HRS.dynamic_entropy_proof` shows `sorryAx` only through these sorried MOV declarations (all reached via
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`mov_ent_ineq` / `movT_entropy_gronwall`): `movT_traj_bounds`, `movT_source_exp`, `movT_pressure_two_sided_C2`,
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`movT_cond_narrow`, `movT_cond_hyp`, `movT_reg_ineq`, `movT_lp_init_limsup`, `movT_source_exp_uniform`,
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`movT_lp_reg_bound`, `movT_regSeq_exists`, `movT_Q_tendsto_weak`, `movT_source_limit_bdd`, `movT_init_tendsto`,
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`movT_cond_entropy_limit`, `movT_source_limit_cond` (frozen MovSpec copies; relocated `_proof`s exist for some).
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open MeasureTheory Filter Topology ProbabilityTheory Set InformationTheory
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>noncomputable section
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>variable {d : ℕ}
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>theorem dynamic_entropy_proof (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (T : ℝ) (hT : 0 ≤ T) :
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>        IsParticleSystem P htr.dyn T X₀ W X →
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>        relEntropy (P.map X₀)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>          (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) ≠ ⊤ →
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>        ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>          relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>              (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))) +
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>            relEntropy (P.map (X t.toNNReal)) (Measure.pi fun _ =&gt; withDensityReal (ρ t)) ≤
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>          ENNReal.ofReal (C * entropyScale d s N (P.map X₀)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))) := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have htr&#x27; : MovTraj htr.dyn T ρ :=
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    movT_traj_of_global_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global T
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  obtain ⟨c₀, Λ₂, hc₀, hb⟩ :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    movT_traj_uniform_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  obtain ⟨C₁, hC₁0, hC₁⟩ := movT_entropy_bound htr&#x27;
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨C₂, hC₂0, hC₂⟩ := dynent_product_bound hd1 htr&#x27; hc₀ (fun r hr x =&gt; (hb r hr.1).1 x)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (fun r hr =&gt; (hb r hr.1).2)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  refine ⟨2 * C₁ + C₂ * (1 + C₁), by positivity, ?_⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  intro N hN Ω _ P _ X₀ W X hP hfilt hfin t ht
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have e : ∀ r, movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ r =
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ r)) := fun r =&gt;
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    movT_Q_eq_beta (g := periodicRiesz d s) rfl N ρ r
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hMov : MovHyp P htr.dyn N T ρ X₀ W X :=
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    movT_hyp_of_parts htr&#x27; hP.brownian hP.indep hP.sol hfilt
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hfin&#x27; : relEntropy (P.map X₀) (movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ 0) ≠ ⊤ := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    rw [e]; exact hfin
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  obtain ⟨hfinT, hbd⟩ := hC₁ N hN P X₀ W X hMov hfin&#x27; t ht
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  haveI : IsProbabilityMeasure (P.map (X t.toNNReal)) :=
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (Measure.isProbabilityMeasure_map_iff (hP.sol.adapted _).aemeasurable).2 inferInstance
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  obtain ⟨hprodfin, hprodle⟩ := hC₂ N hN t ht (P.map (X t.toNNReal)) inferInstance hfinT
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  rw [e] at hfinT hbd hprodle
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  set B : ℝ := entropyScale d s N (P.map X₀)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) with hB
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hbd&#x27; : (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal ≤ C₁ * B := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    rw [e 0] at hbd; exact hbd
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hδ : 1 ≤ (N : ℝ) * deltaN d s N := one_le_mul_deltaN htr.hs0 N (by omega)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hH0 : 0 ≤ (relEntropy (P.map X₀)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))).toReal := ENNReal.toReal_nonneg
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hBge : (N : ℝ) * deltaN d s N ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hB1 : 1 ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hHq0 := ENNReal.toReal_nonneg (a := relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))))
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hp0 := ENNReal.toReal_nonneg (a := relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ t)))
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  rw [← ENNReal.ofReal_toReal hfinT, ← ENNReal.ofReal_toReal hprodfin,
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    ← ENNReal.ofReal_add hHq0 hp0]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hpr : (relEntropy (P.map (X t.toNNReal)) (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ t))).toReal ≤
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal +
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      C₂ * ((N : ℝ) * deltaN d s N + (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>        (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal) := hprodle
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  nlinarith [mul_le_mul_of_nonneg_left hBge hC₂0, mul_le_mul_of_nonneg_left hbd&#x27; hC₂0, hC₁0]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>example := (@dynamic_entropy_proof : type_of% @HRS.dynamic_entropy)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>end HRS
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>end
+</span></code></pre></main></body></html>

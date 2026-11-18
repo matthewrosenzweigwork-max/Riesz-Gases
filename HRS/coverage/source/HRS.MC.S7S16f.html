@@ -1,0 +1,239 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.S7S16f · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.S7S16f</code></h1><p><a href="../../lean/HRS/MC/S7S16f.lean">Open the unaltered Lean file</a> · 238 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.Sec7Vocab
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MC.SEdgeS16a
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MC.S7G0
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MC.S7S16b
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MC.S7S16c
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.MC.S7S16d
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.MC.S7S16e
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.MC.S7S16fAux1
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>import HRS.MC.S7S16fAux3
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>import HRS.MC.S7S16fAux4
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.MC.S7S16fAux5
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>/-!
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a># Packet `slow_correction` (Proposition 7.16): slow initial rates
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>Explicit construction (TeX L9628-9636), `eps = 1`:
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* `G` the Gaussian of `G0` at `rho = 1`, `pi` the mode-pair map at a fixed nonzero frequency `k` (`S16d`);
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* `f_N` = tilt of `Q_{N,beta}` by `theta_{a_N}(|pi eta_N|^2) = 1 + (1 + a_N) v(pi eta_N)`, `v(z) = exp(-|z|^2)`
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  (`S16b`: probability, translation invariant, Haar first marginal; density `&lt;= 2 + sup a`);
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* `L` = tilt of `G` by `1 + v o pi`; weak convergence from the field CLT `S16a` (`G`-limits of `h`, `(v o pi) h`, `v o pi`);
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>* `Phi = v o pi in C_b^5`; `E_{f_N} Phi = fr(M_1(N), M_2(N), a_N)`, `L(Phi) = fr(m_1, m_2, 0)` with the ratio
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  `fr` of `S16c` (slope `&gt; 0` thanks to the full support of `pi_* G`, `S16f` Aux3) and `M_j(N) = m_j + O(N^{-1/2})` (`S16e`).
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>-/
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>noncomputable section
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>namespace HRS.MC.Sec7.S16f
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>open HRS HRS.Sec7 HRS.MC.SEdge HRS.MC.Sec7
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>variable {d : ℕ}
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>/-- an integral of a function with values in `[0,1]` against a probability measure lies in `[0,1]` -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>theorem s16f_int_mem_unit {γ : Type*} [MeasurableSpace γ] (Q : Measure γ) [IsProbabilityMeasure Q]
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    {F : γ → ℝ} (hFm : Measurable F) (h0 : ∀ x, 0 ≤ F x) (h1 : ∀ x, F x ≤ 1) :
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    0 ≤ ∫ x, F x ∂Q ∧ ∫ x, F x ∂Q ≤ 1 := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hi : Integrable F Q := Integrable.of_bound hFm.aestronglyMeasurable 1
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (ae_of_all _ fun x =&gt; by rw [Real.norm_eq_abs, abs_of_nonneg (h0 x)]; exact h1 x)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  refine ⟨integral_nonneg h0, ?_⟩
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  calc ∫ x, F x ∂Q ≤ ∫ _, (1 : ℝ) ∂Q := integral_mono hi (integrable_const _) h1
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    _ = 1 := by simp
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>theorem slow_correction_proof (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (hβ : 0 &lt; β) (m : ℝ) (hm : (d : ℝ) / 2 &lt; m) (a : ℕ → ℝ) (ha_pos : ∀ N, 0 &lt; a N)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (ha0 : Tendsto a atTop (𝓝 0)) (ha : Tendsto (fun N : ℕ =&gt; Real.sqrt N * a N) atTop atTop) :
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    ∃ (f : ∀ N : ℕ, Measure (Config d N)) (L : Measure (NegSobolev d m))
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      (Φ : NegSobolev d m → ℝ) (c : ℝ),
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      (∀ N, IsProbabilityMeasure (f N)) ∧ IsProbabilityMeasure L ∧
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      (∀ N, ∀ b : Torus d, (f N).map (fun X i =&gt; X i + b) = f N) ∧
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      (∃ B : ℝ, ∀ N, f N ≪ modulatedGibbs (periodicRiesz d s) N β volume ∧
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        ∀ᵐ X ∂(modulatedGibbs (periodicRiesz d s) N β volume),
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>          (f N).rnDeriv (modulatedGibbs (periodicRiesz d s) N β volume) X ≤ ENNReal.ofReal B) ∧
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      (∀ N, 1 ≤ N → firstMarginal (f N) = volume) ∧
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      (∀ G : NegSobolev d m → ℝ, Continuous G → (∃ M, ∀ x, |G x| ≤ M) →
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        Tendsto (fun N : ℕ =&gt; ∫ X, G (etaE m X volume) ∂(f N)) atTop (𝓝 (∫ y, G y ∂L))) ∧
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      MemCb 5 Φ ∧ 0 &lt; c ∧
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      ∃ N₀ : ℕ, ∀ N ≥ N₀, c * a N ≤ |∫ X, Φ (etaE m X volume) ∂(f N) - ∫ y, Φ y ∂L| := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  -- the Gaussian, the frequency, the mode-pair map
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨G, hGp, hG⟩ := HRS.MC.Sec7.G0.s7_G0_gaussian_exists_proof hd hs0 hs m hm β hβ.le
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (fun _ : Torus d =&gt; (1 : ℝ)) HRS.MC.SEdge.S16a.s16a_smoothPos
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  rw [HRS.MC.SEdge.S16a.s16a_wdr_one] at hG
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  haveI := hGp
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  obtain ⟨k, -⟩ : ∃ k : NonzeroLattice d, True :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ⟨⟨Pi.single (⟨0, by omega⟩ : Fin d) (1 : ℤ), fun h =&gt; by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      have := congrFun h ⟨0, by omega⟩; simp at this⟩, trivial⟩
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  obtain ⟨π, hπ, -⟩ := HRS.MC.Sec7.S16d.s7_S16d_modePair_clm_proof d m k
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  obtain ⟨hGauss, hfull⟩ := s16f_fullSupport hd hs0 hs hβ m hm G hG k π hπ
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  haveI : IsProbabilityMeasure (G.map π) :=
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (Measure.isProbabilityMeasure_map_iff π.continuous.aemeasurable).2 hGp
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hΦπ : ∀ y, s16f_Φ m k y = Real.exp (-‖π y‖ ^ 2) := fun y =&gt; by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    simp [s16f_Φ, s16f_v, hπ]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  -- the scalar data
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hS := HRS.MC.Sec7.S16c.s7_S16c_ratio_slope_proof (G.map π) hGauss hfull 1 one_pos
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  dsimp only at hS
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hm1 : (∫ z, Real.exp (-‖z‖ ^ 2) ∂(G.map π)) = ∫ y, s16f_Φ m k y ∂G := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    rw [integral_map (f := fun z : EuclideanSpace ℝ (Fin 2) =&gt; Real.exp (-‖z‖ ^ 2))
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      π.continuous.aemeasurable (by fun_prop : Continuous fun z : EuclideanSpace ℝ (Fin 2) =&gt;
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        Real.exp (-‖z‖ ^ 2)).aestronglyMeasurable]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    simp only [hΦπ]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hm2 : (∫ z, Real.exp (-‖z‖ ^ 2) ^ 2 ∂(G.map π)) = ∫ y, s16f_Φ m k y ^ 2 ∂G := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rw [integral_map (f := fun z : EuclideanSpace ℝ (Fin 2) =&gt; Real.exp (-‖z‖ ^ 2) ^ 2)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      π.continuous.aemeasurable (by fun_prop : Continuous fun z : EuclideanSpace ℝ (Fin 2) =&gt;
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        Real.exp (-‖z‖ ^ 2) ^ 2).aestronglyMeasurable]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    simp only [hΦπ]
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  rw [hm1, hm2] at hS
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  obtain ⟨hvar, c, a₀, C, hc, ha₀, hC, hslope, hlip⟩ := hS
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  set m₁ : ℝ := ∫ y, s16f_Φ m k y ∂G with hm₁
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  set m₂ : ℝ := ∫ y, s16f_Φ m k y ^ 2 ∂G with hm₂
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hΦc := s16f_Φ_cont m k
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hΦm : Measurable (s16f_Φ m k) := hΦc.measurable
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hGΦ := s16f_int_mem_unit G hΦm (fun y =&gt; (s16f_Φ_pos m k y).le) (s16f_Φ_le_one m k)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  -- the bound on `a`
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  obtain ⟨A, hA⟩ : ∃ A, ∀ N, a N ≤ A := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    obtain ⟨A, hA⟩ := ha0.bddAbove_range
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    exact ⟨A, fun N =&gt; hA ⟨N, rfl⟩⟩
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  -- the tilted law of the limit
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hg1 : ∀ y, 1 ≤ 1 + s16f_Φ m k y := fun y =&gt; by linarith [s16f_Φ_pos m k y]
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hg2 : ∀ y, 1 + s16f_Φ m k y ≤ 2 := fun y =&gt; by linarith [s16f_Φ_le_one m k y]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hgm : Measurable (fun y =&gt; 1 + s16f_Φ m k y) := measurable_const.add hΦm
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hΦi : Integrable (s16f_Φ m k) G := Integrable.of_bound hΦm.aestronglyMeasurable 1
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    (ae_of_all _ fun y =&gt; by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      rw [Real.norm_eq_abs, abs_of_pos (s16f_Φ_pos m k y)]; exact s16f_Φ_le_one m k y)
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hint_g : ∫ y, (1 + s16f_Φ m k y) ∂G = 1 + m₁ := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    rw [integral_add (integrable_const _) hΦi]; simp [hm₁]
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hSq : Integrable (fun y =&gt; s16f_Φ m k y ^ 2) G :=
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    Integrable.of_bound (hΦm.pow_const 2).aestronglyMeasurable 1 (ae_of_all _ fun y =&gt; by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      nlinarith [s16f_Φ_pos m k y, s16f_Φ_le_one m k y])
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have hLΦ : ∫ y, s16f_Φ m k y ∂(s16f_tilt G fun y =&gt; 1 + s16f_Φ m k y) =
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      (m₁ + (1 + 0) * m₂) / (1 + (1 + 0) * m₁) := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    rw [s16f_tilt_integral G hgm hg1 hg2 hΦi, hint_g]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    have : ∫ y, (1 + s16f_Φ m k y) * s16f_Φ m k y ∂G = m₁ + m₂ := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      have e : ∀ y, (1 + s16f_Φ m k y) * s16f_Φ m k y = s16f_Φ m k y + s16f_Φ m k y ^ 2 :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        fun y =&gt; by ring
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      simp_rw [e]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      rw [integral_add hΦi hSq]
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [this]; ring_nf
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  -- S16e for the two observables
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  obtain ⟨C₁, hC₁⟩ := HRS.MC.Sec7.S16e.s7_S16e_edge_two_observables_proof hd hs0 hs hβ m hm G hG k
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (w := s16f_v) s16f_memCb_v
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  obtain ⟨C₂, hC₂⟩ := HRS.MC.Sec7.S16e.s7_S16e_edge_two_observables_proof hd hs0 hs hβ m hm G hG k
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (w := fun z =&gt; s16f_v z ^ 2) s16f_memCb_v_sq
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  refine ⟨fun N =&gt; s7_tiltedLaw d s β N m k (s16f_θ (a N)), s16f_tilt G fun y =&gt; 1 + s16f_Φ m k y,
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    s16f_Φ m k, c, ?_, ?_, ?_, ?_, ?_, ?_, s16f_memCb_Φ m k, hc, ?_⟩
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  · intro N
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    exact (HRS.MC.Sec7.S16b.s7_S16b_tilt_invariance_proof hd hs0 hs hβ m hm k (s16f_θ (a N))
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      (s16f_θ_meas _) (s16f_θ_ge (ha_pos N).le) ⟨2 + a N, s16f_θ_le (ha_pos N).le⟩ N).1
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  · exact s16f_tilt_isProb G hg1 hg2
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  · intro N b
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    exact (HRS.MC.Sec7.S16b.s7_S16b_tilt_invariance_proof hd hs0 hs hβ m hm k (s16f_θ (a N))
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      (s16f_θ_meas _) (s16f_θ_ge (ha_pos N).le) ⟨2 + a N, s16f_θ_le (ha_pos N).le⟩ N).2.1 b
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  · refine ⟨2 + A, fun N =&gt; ?_⟩
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    obtain ⟨h1, h2⟩ := s16f_rn hd hs0 hs hβ m hm k (ha_pos N).le N
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    refine ⟨h1, ?_⟩
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    filter_upwards [h2] with X hX
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    exact hX.trans (ENNReal.ofReal_le_ofReal (by linarith [hA N]))
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  · intro N hN
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    exact (HRS.MC.Sec7.S16b.s7_S16b_tilt_invariance_proof hd hs0 hs hβ m hm k (s16f_θ (a N))
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      (s16f_θ_meas _) (s16f_θ_ge (ha_pos N).le) ⟨2 + a N, s16f_θ_le (ha_pos N).le⟩ N).2.2 hN
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  · -- weak convergence
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    intro h hhc ⟨M, hM⟩
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    have hclt := HRS.MC.SEdge.S16a.sed_S16a_field_clt_proof hd hs0 hs hβ m hm G hG
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    have tA := hclt h hhc ⟨M, hM⟩
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have tB := hclt (fun y =&gt; s16f_Φ m k y * h y) (hΦc.mul hhc) ⟨M, fun y =&gt; by
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      rw [abs_mul, abs_of_pos (s16f_Φ_pos m k y)]
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      calc s16f_Φ m k y * |h y| ≤ 1 * M :=
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>            mul_le_mul (s16f_Φ_le_one m k y) (hM y) (abs_nonneg _) zero_le_one
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        _ = M := one_mul M⟩
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have tD := hclt (s16f_Φ m k) hΦc ⟨1, fun y =&gt; by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      rw [abs_of_pos (s16f_Φ_pos m k y)]; exact s16f_Φ_le_one m k y⟩
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    have h1a : Tendsto (fun N =&gt; 1 + a N) atTop (𝓝 (1 + 0)) := tendsto_const_nhds.add ha0
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    have hden : (1 + (1 + 0) * ∫ y, s16f_Φ m k y ∂G) ≠ 0 := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      have : 0 ≤ ∫ y, s16f_Φ m k y ∂G := hGΦ.1
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      linarith
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    have hlim := (tA.add (h1a.mul tB)).div (tendsto_const_nhds.add (h1a.mul tD)) hden
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    -- the right-hand side
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    have hhi : Integrable h G := Integrable.of_bound hhc.measurable.aestronglyMeasurable M
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>      (ae_of_all _ fun y =&gt; by rw [Real.norm_eq_abs]; exact hM y)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    have hΦhi : Integrable (fun y =&gt; s16f_Φ m k y * h y) G :=
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      Integrable.of_bound (hΦm.mul hhc.measurable).aestronglyMeasurable M (ae_of_all _ fun y =&gt; by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>        rw [Real.norm_eq_abs, abs_mul, abs_of_pos (s16f_Φ_pos m k y)]
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>        calc s16f_Φ m k y * |h y| ≤ 1 * M :=
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>              mul_le_mul (s16f_Φ_le_one m k y) (hM y) (abs_nonneg _) zero_le_one
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>          _ = M := one_mul M)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    have hrhs : ∫ y, h y ∂(s16f_tilt G fun y =&gt; 1 + s16f_Φ m k y) =
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>        ((∫ y, h y ∂G) + (1 + 0) * ∫ y, s16f_Φ m k y * h y ∂G) /
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>          (1 + (1 + 0) * ∫ y, s16f_Φ m k y ∂G) := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      rw [s16f_tilt_integral G hgm hg1 hg2 hhi, hint_g]
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      have e : ∀ y, (1 + s16f_Φ m k y) * h y = h y + s16f_Φ m k y * h y := fun y =&gt; by ring
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      simp_rw [e]
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      rw [integral_add hhi hΦhi]
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      simp [hm₁]
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    rw [hrhs]
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    refine hlim.congr&#x27; ?_
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    exact (s16f_int_f hd hs0 hs hβ m hm k (ha_pos N).le hN hhc hM).symm
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  · -- the quantitative lower bound
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    have hev1 : ∀ᶠ N : ℕ in atTop, a N &lt; min a₀ 1 := ha0.eventually (gt_mem_nhds (lt_min ha₀ one_pos))
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    set C&#x27; : ℝ := C * (|C₁| + |C₂|) with hC&#x27;
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    have hev2 : ∀ᶠ N : ℕ in atTop, C&#x27; / c ≤ Real.sqrt N * a N := ha.eventually_ge_atTop _
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    obtain ⟨N₀, hN₀⟩ := (((eventually_ge_atTop 1).and hev1).and hev2).exists_forall_of_atTop
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    refine ⟨N₀, fun N hN =&gt; ?_⟩
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    obtain ⟨⟨hN1, haN⟩, hsq⟩ := hN₀ N hN
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    have hapos := ha_pos N
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    have haa0 : a N &lt; a₀ := lt_of_lt_of_le haN (min_le_left _ _)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    have haa1 : a N ≤ 1 := (lt_of_lt_of_le haN (min_le_right _ _)).le
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    have hNpos : (0 : ℝ) &lt; Real.sqrt N := Real.sqrt_pos.2 (by exact_mod_cast hN1)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    haveI := s16f_Q_prob hd hs0 hs hβ N
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    set Q := modulatedGibbs (periodicRiesz d s) N β (volume : Measure (Torus d)) with hQ
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    have hηm := s16f_meas_eta hd hs0 hs hβ m hm hN1
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    have hΦη : Measurable (fun X : Config d N =&gt; s16f_Φ m k (etaE m X volume)) := hΦm.comp hηm
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    -- the two moments
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    set M₁ : ℝ := ∫ X, s16f_Φ m k (etaE m X volume) ∂Q with hM₁
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    set M₂ : ℝ := ∫ X, s16f_Φ m k (etaE m X volume) ^ 2 ∂Q with hM₂
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    have hM₁b := s16f_int_mem_unit Q hΦη (fun X =&gt; (s16f_Φ_pos m k _).le) (fun X =&gt; s16f_Φ_le_one m k _)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have hM₂b := s16f_int_mem_unit Q (hΦη.pow_const 2) (fun X =&gt; sq_nonneg _) (fun X =&gt; by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      nlinarith [s16f_Φ_pos m k (etaE m X volume), s16f_Φ_le_one m k (etaE m X volume)])
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    have hE : ∫ X, s16f_Φ m k (etaE m X volume) ∂(s7_tiltedLaw d s β N m k (s16f_θ (a N))) =
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>        (M₁ + (1 + a N) * M₂) / (1 + (1 + a N) * M₁) := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      rw [s16f_int_f hd hs0 hs hβ m hm k hapos.le hN1 hΦc (K := 1) (fun y =&gt; by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>        rw [abs_of_pos (s16f_Φ_pos m k y)]; exact s16f_Φ_le_one m k y)]
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      simp only [← sq]
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      rfl
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    have d1 : |M₁ - m₁| ≤ C₁ / Real.sqrt N := by
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      have := hC₁ N hN1
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      have e : ∫ y, s16f_v (s7_modePair m k y) ∂G = m₁ := rfl
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      rw [e] at this
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      exact this
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    have d2 : |M₂ - m₂| ≤ C₂ / Real.sqrt N := by
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>      have := hC₂ N hN1
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      have e : ∫ y, s16f_v (s7_modePair m k y) ^ 2 ∂G = m₂ := rfl
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      rw [e] at this
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>      exact this
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    have hlip&#x27; := hlip M₁ M₂ (a N) hM₁b.1 hM₁b.2 hM₂b.1 hM₂b.2 hapos.le haa1
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    have hsl := hslope (a N) hapos haa0
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    rw [hE, hLΦ]
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    have hsum : C * (|M₁ - m₁| + |M₂ - m₂|) ≤ C&#x27; / Real.sqrt N := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      have : |M₁ - m₁| + |M₂ - m₂| ≤ (|C₁| + |C₂|) / Real.sqrt N := by
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>        rw [add_div]
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        exact add_le_add (d1.trans (div_le_div_of_nonneg_right (le_abs_self _) hNpos.le))
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>          (d2.trans (div_le_div_of_nonneg_right (le_abs_self _) hNpos.le))
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>      calc C * (|M₁ - m₁| + |M₂ - m₂|) ≤ C * ((|C₁| + |C₂|) / Real.sqrt N) :=
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>            mul_le_mul_of_nonneg_left this hC.le
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>        _ = C&#x27; / Real.sqrt N := by rw [hC&#x27;]; ring
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    have hsq&#x27; : C&#x27; / Real.sqrt N ≤ c * a N := by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      rw [div_le_iff₀ hNpos]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      have := (div_le_iff₀ hc).1 hsq
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      linarith
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    refine le_trans ?_ (le_abs_self _)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    have := abs_le.1 hlip&#x27;
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    linarith [this.1, this.2]
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>end HRS.MC.Sec7.S16f
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>end
+</span></code></pre></main></body></html>

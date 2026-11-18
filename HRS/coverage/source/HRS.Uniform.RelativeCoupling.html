@@ -1,0 +1,203 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Uniform.RelativeCoupling · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Uniform.RelativeCoupling</code></h1><p><a href="../../lean/HRS/Uniform/RelativeCoupling.lean">Open the unaltered Lean file</a> · 202 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Uniform.Q07cAux11
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Lemma 3.29, the adapted construction (packet Q07c)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Proof of `HRS.Uniform.relative_covariance_coupling` (statement identical): martingale representation on an
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>enlargement `Ω&#x27;`, a further product with independent Wiener sequences, the polar family of `Sb Φ`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>(`Sb = D̄^{1/2}`), the Gaussian martingale `Ḡ = ∫ Sb dB̃` and the difference integrand
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`Z = Φ̂ - Sb Ψ̃`, whose trace norm is `𝔟(ΦΦ*, D̄)²` pathwise (helpers in `HRS/Uniform/Q07cAux*.lean`).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>namespace HRS
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace Uniform
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>universe u
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open HRS.Uniform.Q07c
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>section Relative
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>/-- Lemma 3.29, the adapted construction (proved here; statement identical to
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>`relative_covariance_coupling`). -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>theorem relative_covariance_coupling_proof {Ω : Type u} {mΩ : MeasurableSpace Ω} (P : Measure Ω)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    [IsProbabilityMeasure P] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (ℱ : Filtration ℝ mΩ) (T : ℝ) (hT : 0 ≤ T) (𝒢 : InitialSigma ℱ) (M : ℝ → Ω → H)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (Sg : ℝ → Ω → (H →L[ℝ] H →L[ℝ] ℝ)) (hM : IsHilbertMartingaleWithCovariation P ℱ T M Sg)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (Db : ℝ → (H →L[ℝ] H →L[ℝ] ℝ)) (hDb : IsDetCovDensity T Db) :
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    AdaptedGaussianCoupling P ℱ (ENNReal.ofReal T) 𝒢 M Sg Db (· = ·)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      (fun r ω =&gt; bures2 (Sg r ω) (Db r)) := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  classical
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  obtain ⟨Ω&#x27;, mΩ&#x27;, P&#x27;, hP&#x27;, π, hπ, ℱ&#x27;, κ, hκ, B, Φ, M&#x27;, hfilt, hB, -, hΦ, hΦ0, hMimm, hM&#x27;I,
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    hM&#x27;eq, -, hΦSgF⟩ := martingale_representation P ℱ T hT 𝒢 M Sg hM
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  haveI := hP&#x27;
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  haveI := hκ
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  obtain ⟨ιe, hι, Gb, Z, hGc, hG0, hGHM, hZhs, hNHM, hcost⟩ :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    coupling_core P&#x27; ℱ&#x27; B hB Φ hΦ M&#x27; hM&#x27;I T hT (fun r ω hr =&gt; hΦ0 r ω hr) Db hDb
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  haveI := hι
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨ι₀, hι₀, e0, -⟩ := HilbertCLTAux.exists_hilbertBasis_type (H := H)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  haveI := hι₀
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hπp : MeasurePreserving (Prod.fst : Ω&#x27; × (ιe → WienerSeq) → Ω&#x27;)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>      (P&#x27;.prod (wMeasure ιe)) P&#x27; := measurePreserving_fst
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hπ&#x27;&#x27;p : MeasurePreserving (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      (P&#x27;.prod (wMeasure ιe)) P := hπ.comp hπp
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hfst : ∀ s, Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) s, ℱ&#x27; s]
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      (Prod.fst : Ω&#x27; × (ιe → WienerSeq) → Ω&#x27;) := fun s =&gt;
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    Measurable.of_comap_le (le_sup_of_le_left le_sup_left)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hfilt&#x27;&#x27; : ∀ s, (ℱ s).comap (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1) ≤
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) s := fun s =&gt; by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    have h1 : (ℱ s).comap (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1) =
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        ((ℱ s).comap π).comap (Prod.fst : Ω&#x27; × (ιe → WienerSeq) → Ω&#x27;) := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      rw [MeasurableSpace.comap_comp]; rfl
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    rw [h1]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    exact (MeasurableSpace.comap_mono (hfilt s)).trans (le_sup_of_le_left le_sup_left)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hπ&#x27;&#x27;m : ∀ s, Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) s, ℱ s]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1) := fun s =&gt; Measurable.of_comap_le (hfilt&#x27;&#x27; s)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hcomplete : IsCompleteFiltration (P&#x27;.prod (wMeasure ιe))
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      (prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe)) := HRS.MRep.prodFiltration_complete P&#x27; ℱ&#x27;
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hlift := hMimm.comp_fst (ι := ιe)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  -- the difference density
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hZtc : ∀ r p, IsTraceClassCov (hsCovForm (Z r p)) := fun r p =&gt;
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    isTraceClassCov_hsCovForm ((hZhs 0).summable r p)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  -- joint measurability and adaptedness of the ingredients of `Sd`
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hCm : ∀ x y : H, Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt;
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      hsCovForm (Φ a.1 a.2.1) x y := fun x y =&gt; by
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have h : Measurable fun p : ℝ × Ω&#x27; =&gt; hsCovForm (Φ p.1 p.2) x y :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      HRS.MRep.isProgressive_measurable_uncurry (isProgressive_hsCov hΦ x y)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    have hf : Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; (a.1, a.2.1) :=
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      measurable_fst.prodMk (measurable_fst.comp measurable_snd)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    exact Measurable.comp (g := fun p : ℝ × Ω&#x27; =&gt; hsCovForm (Φ p.1 p.2) x y)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      (f := fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; (a.1, a.2.1)) h hf
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hZm : ∀ x y : H, Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt;
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      hsCovForm (Z a.1 a.2) x y := fun x y =&gt;
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    HRS.MRep.isProgressive_measurable_uncurry (isProgressive_hsCov hZhs x y)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hSm : ∀ x y : H, Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt;
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      Sg a.1 (π a.2.1) x y := fun x y =&gt; by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    have h : Measurable (Function.uncurry fun σ ω =&gt; Sg σ ω x y) := hM.sigma_meas x y
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    have hf : Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; (a.1, π a.2.1) :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      measurable_fst.prodMk (hπ.measurable.comp (measurable_fst.comp measurable_snd))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    exact Measurable.comp (g := Function.uncurry fun σ ω =&gt; Sg σ ω x y)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      (f := fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; (a.1, π a.2.1)) h hf
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hDm : ∀ x y : H, Measurable fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; Db a.1 x y := fun x y =&gt;
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    (hDb.meas x y).comp measurable_fst
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  -- the difference covariation density
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  obtain ⟨Sd, hSdDef⟩ : ∃ Sd : ℝ → Ω&#x27; × (ιe → WienerSeq) → (H →L[ℝ] H →L[ℝ] ℝ), ∀ r p,
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      Sd r p = SdDef e0 (fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; Db a.1)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        (fun a =&gt; hsCovForm (Φ a.1 a.2.1)) (fun a =&gt; hsCovForm (Z a.1 a.2))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        (fun a =&gt; Sg a.1 (π a.2.1)) (r, p) := ⟨_, fun _ _ =&gt; rfl⟩
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  have hSdm : ∀ x y : H, Measurable (Function.uncurry fun r p =&gt; Sd r p x y) := fun x y =&gt; by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    have h := measurable_SdDef e0 hCm hZm hSm hDm x y
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have e : (Function.uncurry fun r p =&gt; Sd r p x y) = fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt;
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>        SdDef e0 (fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; Db a.1)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>          (fun a =&gt; hsCovForm (Φ a.1 a.2.1)) (fun a =&gt; hsCovForm (Z a.1 a.2))
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          (fun a =&gt; Sg a.1 (π a.2.1)) a x y := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      funext ⟨r, p⟩; simp only [Function.uncurry_apply_pair, hSdDef]
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    rw [e]; exact h
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  have hSda : ∀ σ (x y : H), Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) σ]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      (fun p =&gt; Sd σ p x y) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    intro σ x y
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    have h1 : ∀ x y : H, Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) σ]
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; hsCovForm (Φ σ p.1) x y := fun x y =&gt;
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      (adapted_hsCov hΦ σ x y).comp (hfst σ)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    have h2 : ∀ x y : H, Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) σ]
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>        fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; hsCovForm (Z σ p) x y := fun x y =&gt;
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      adapted_hsCov hZhs σ x y
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    have h3 : ∀ x y : H, Measurable[prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) σ]
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>        fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; Sg σ (π p.1) x y := fun x y =&gt;
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      (hM.sigma_adapted σ x y).comp (hπ&#x27;&#x27;m σ)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    have := measurable_SdDef (mα := prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) σ) e0
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      (D := fun _ =&gt; Db σ) (C := fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; hsCovForm (Φ σ p.1))
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      (Z := fun p =&gt; hsCovForm (Z σ p)) (S := fun p =&gt; Sg σ (π p.1)) h1 h2 h3
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      (fun x y =&gt; measurable_const) x y
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have e : (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; Sd σ p x y) = fun p =&gt;
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>        SdDef e0 (fun _ =&gt; Db σ) (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; hsCovForm (Φ σ p.1))
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          (fun p =&gt; hsCovForm (Z σ p)) (fun p =&gt; Sg σ (π p.1)) p x y := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      funext p; rw [hSdDef]; rfl
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    rw [e]; exact this
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hSdtc : ∀ σ p, IsTraceClassCov (Sd σ p) := fun σ p =&gt; by
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    rw [hSdDef]; exact SdDef_tc e0 (fun a =&gt; hZtc _ _) _
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hgoodae : ∀ᵐ p ∂(P&#x27;.prod (wMeasure ιe)), ∀ᵐ σ ∂(volume.restrict (Set.Icc (0 : ℝ) T)),
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      hsCovForm (Φ σ p.1) = Sg σ (π p.1) :=
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    hπp.quasiMeasurePreserving.ae hΦSgF
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hMM&#x27; : ∀ τ&#x27;, τ&#x27; ≤ T → ∀ᵐ p ∂(P&#x27;.prod (wMeasure ιe)), M τ&#x27; (π p.1) = M&#x27; τ&#x27; p.1 := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    intro τ&#x27; hτ&#x27;
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    have hz&#x27; : ∀ᵐ ω ∂P&#x27;, M τ&#x27; (π ω) = M&#x27; τ&#x27; ω := by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      by_cases h0 : 0 ≤ τ&#x27;
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      · exact hM&#x27;eq.mono fun ω h =&gt; (h τ&#x27; ⟨h0, hτ&#x27;⟩).symm
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      · have hz := isHM_ae_zero_nonpos hMimm (not_le.1 h0).le
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>        exact hz.mono fun ω h =&gt; by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>          have h1 : M τ&#x27; (π ω) = 0 := h
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          rw [h1, hM&#x27;I.zero τ&#x27; (not_le.1 h0).le ω]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    exact hπp.quasiMeasurePreserving.ae hz&#x27;
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  refine ⟨Ω&#x27; × (ιe → WienerSeq), inferInstance, ⟨P&#x27;.prod (wMeasure ιe), inferInstance⟩,
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    fun p =&gt; π p.1, prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe), Gb, Sd, ?_⟩
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  refine ⟨hπ&#x27;&#x27;p, hfilt&#x27;&#x27;, ?_, ?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  · intro S hS hST
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    have hST&#x27; : S ≤ T := (ENNReal.ofReal_le_ofReal_iff hT).1 hST
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    exact hlift.mono_congr hS hST&#x27; hlift.sigma_meas hlift.sigma_adapted (fun _ _ _ =&gt; rfl)
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  · intro S hS hST
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have hST&#x27; : S ≤ T := (ENNReal.ofReal_le_ofReal_iff hT).1 hST
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    simp only [ENNReal.ofReal_le_ofReal_iff hT]
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    exact hGHM.mono_congr hS hST&#x27; hGHM.sigma_meas hGHM.sigma_adapted (fun _ _ _ =&gt; rfl)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  · intro S hS hST
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    have hST&#x27; : S ≤ T := (ENNReal.ofReal_le_ofReal_iff hT).1 hST
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have hae : ∀ᵐ p ∂(P&#x27;.prod (wMeasure ιe)), ∀ᵐ σ ∂(volume.restrict (Set.Icc (0 : ℝ) S)),
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        Sd σ p = hsCovForm (Z σ p) := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      filter_upwards [hgoodae] with p hp
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      filter_upwards [ae_restrict_of_ae_restrict_of_subset (Set.Icc_subset_Icc_right hST&#x27;) hp]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>        with σ hσ
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      rw [hSdDef]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      unfold SdDef
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      simp only [hσ, if_true]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    have hst := (hNHM T).stop_congr hcomplete hS hST&#x27; hSdm hSda hSdtc hae
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    refine hst.congr_process hcomplete (fun τ =&gt; ?_) (fun τ =&gt; ?_) ?_
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    · exact ((measurable_of_isHM hM (min τ S)).comp hπ&#x27;&#x27;p.measurable).sub
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>        (measurable_of_isHM hGHM (min τ S))
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    · have hτ&#x27; : min τ S ≤ T := (min_le_right τ S).trans hST&#x27;
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      filter_upwards [hMM&#x27; (min τ S) hτ&#x27;] with p hp
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      show M (min τ S) (π p.1) - Gb (min τ S) p = M&#x27; (min (min τ S) T) p.1 - Gb (min τ S) p
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>      rw [hp, min_eq_left hτ&#x27;]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    · filter_upwards [hπp.quasiMeasurePreserving.ae hMimm.cont] with p hp
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      have h1 : ContinuousOn (fun τ =&gt; M τ (π p.1) - Gb τ p) (Set.Icc 0 S) :=
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>        (hp.mono (Set.Icc_subset_Icc_right hST&#x27;)).sub (hGc p).continuousOn
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      refine h1.congr fun τ hτ =&gt; ?_
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      simp [min_eq_left hτ.2]
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  · have hle : (𝒢.1).comap (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1) ≤
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>        prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe) 0 :=
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      (MeasurableSpace.comap_mono 𝒢.2).trans (hfilt&#x27;&#x27; 0)
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    have h := indep_path hGHM hT hGc hG0
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      (⟨(𝒢.1).comap (fun p : Ω&#x27; × (ιe → WienerSeq) =&gt; π p.1), hle⟩ :
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>        InitialSigma (prodFiltration P&#x27; (wMeasure ιe) ℱ&#x27; (wFiltration ιe)))
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    have hset : {τ : ℝ | 0 ≤ τ ∧ ENNReal.ofReal τ ≤ ENNReal.ofReal T} =
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>        {τ : ℝ | 0 ≤ τ ∧ τ ≤ T} := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      ext τ; simp only [Set.mem_setOf_eq, ENNReal.ofReal_le_ofReal_iff hT]
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    rw [hset]
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    exact h
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  · filter_upwards [hπ&#x27;&#x27;p.quasiMeasurePreserving.ae hM.sigma_traceClass] with p hp r hr0 hrT
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    have hrT&#x27; : r ≤ T := (ENNReal.ofReal_le_ofReal_iff hT).1 hrT
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    have hr : r ∈ Set.Icc 0 T := ⟨hr0, hrT&#x27;⟩
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    rw [hSdDef]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    exact traceNormForm_SdDef e0 (D := fun a : ℝ × (Ω&#x27; × (ιe → WienerSeq)) =&gt; Db a.1)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      (C := fun a =&gt; hsCovForm (Φ a.1 a.2.1)) (Z := fun a =&gt; hsCovForm (Z a.1 a.2))
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      (S := fun a =&gt; Sg a.1 (π a.2.1)) (r, p) (hp r hr) (hDb.traceClass r hr)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      (fun h =&gt; by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>        show traceNormForm (hsCovForm (Z r p)) = bures2 (Sg r (π p.1)) (Db r)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        rw [hcost r hr p]
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>        exact congrArg (fun F =&gt; bures2 F (Db r)) h)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>example := (@relative_covariance_coupling_proof : type_of% @relative_covariance_coupling)
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>end Relative
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>end Uniform
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>end HRS
+</span></code></pre></main></body></html>

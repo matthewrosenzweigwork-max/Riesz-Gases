@@ -1,0 +1,324 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Round2Moving · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Round2Moving</code></h1><p><a href="../../lean/HRS/Whole/Round2Moving.lean">Open the unaltered Lean file</a> · 323 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Window
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Q33Aux1
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Whole.Q33bAux2
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Whole-space supplement, Section 11.3-11.6: power integrability for moving Gibbs preparations, moment transfer on
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>moving and shifted windows, the exponential rows of the centered logarithm, independent logarithmic preparation --
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>statements S11.3-S11.6
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Source: HRS whole-space supplement (S), lines 8861-9146 (S11.3, S11.4), 9532-9623 (S11.5, S11.6, rows `S:O:lem:log-row`, `S:O:cor:log-path`).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>Standing assumptions (S L8880-8892, L9153-9171): `d ≥ 2`, `0 ≤ σ &lt; d/2`, the physical inverse temperature `β &gt; 0` and the quadratic
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>confinement fixed (here `q` is the confinement constant, as in `Moving.lean`; the supplement&#x27;s `a`), `μ^t = ρ^t dx` one of the small nonlinear
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>trajectories of Theorem S6.3, `Q_N^t = Q_{N,β}^g(μ^t)`, `f_N^t` the canonical particle law with initial preparation `Q_{N,γ}^g(μ^0)`,
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>`γ &gt; 0` for `σ &gt; 0` and `γ ≥ 0` for `σ = 0` (`γ = 0` is the iid preparation `(μ^0)^{⊗N}`).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>## Representation decisions
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* The trajectories and particle realizations are those of `mov_entropy` (`MovNonlinearConclusion`, `MovInitialClass`, `MovInSmallClass`,
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  `MovParticleSetup`, `MovPrepared`); the indices `(j,m)` of S6.3 are existentially quantified (AMBIGUITY inherited from S6.6: the supplement does
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  not name them).  The velocity `u^t` is `movU`, `L(t) = ‖∇u^t‖_∞` is `r2MovL` (the sup of the operator norm of the derivative, as
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  a real number; its finiteness and integrability are asserted).
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* `h_N^t = f_N^t/q_N^t` (ratio of Lebesgue densities) is the Radon--Nikodym derivative `d f_N^t/dQ_N^t` (`f_N^t ≪ Q_N^t` is asserted).
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* Families of particle laws over all `N ≥ 2` are sequences of realizations `Ω : ℕ → Type`, time marginals `P_N^t = Law(X_N^t)`.
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>-/
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>noncomputable section
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>namespace HRS.Whole
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>variable {d : ℕ}
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>/-! ### S11.3: power integrability for moving Gibbs preparations -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>section MovingLp
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>/-- `L(t) = ‖∇u^t‖_∞` (S L8888): the supremum of the operator norm of `D u^t`, `u^t = ν∇log ρ^t + qx + ∇g*ρ^t`
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>(`movU`), as a real number (finiteness is asserted by `r2_moving_Lp`). -/
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>def r2MovL (d : ℕ) (s q β : ℝ) (ρ : ℝ → Euc d → ℝ) (t : ℝ) : ℝ :=
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  (⨆ x : Euc d, ENNReal.ofReal ‖fderiv ℝ (movU d s q β (ρ t)) x‖).toReal
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- The variable exponent `p(t) = [1 - (1 - p₀⁻¹)exp(-c₀⁻¹∫_0^tL(r)dr)]⁻¹` of `W:eq:r2-moving-power` (S L8906-8907). -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>def r2MovExponent (cL p₀ : ℝ) (L : ℝ → ℝ) (t : ℝ) : ℝ :=
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  (1 - (1 - p₀⁻¹) * Real.exp (-(cL⁻¹) * ∫ r in Set.Icc (0 : ℝ) t, L r))⁻¹
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>/-- The limit exponent `p_∞ = lim_{t→∞}p(t) = [1 - (1 - p₀⁻¹)exp(-c₀⁻¹∫_0^∞L)]⁻¹` (S L8908). -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>def r2MovExponentInf (cL p₀ : ℝ) (L : ℝ → ℝ) : ℝ :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  (1 - (1 - p₀⁻¹) * Real.exp (-(cL⁻¹) * ∫ r in Set.Ioi (0 : ℝ), L r))⁻¹
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>/-- The density ratio `h = d f/dQ_{N,β}(μ^t)` of a law `f` with respect to the moving Gibbs reference at time `t`, as a real function. -/
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>def r2MovRatio (d : ℕ) (s β : ℝ) (ρ : ℝ → Euc d → ℝ) (N : ℕ) (f : Measure (EucConfig d N)) (t : ℝ)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (Y : EucConfig d N) : ℝ :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  ((f.rnDeriv (modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ t)))) Y).toReal
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>/-- The `p`-th density moment `∫(h_N^t)^p dQ_N^t` (`ℝ≥0∞`-valued: `⊤` if infinite). -/
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>def r2MovPowerMoment (d : ℕ) (s β : ℝ) (ρ : ℝ → Euc d → ℝ) (N : ℕ) (f : Measure (EucConfig d N)) (t p : ℝ) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ℝ≥0∞ :=
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  ∫⁻ Y, ENNReal.ofReal (r2MovRatio d s β ρ N f t Y ^ p) ∂(modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ t)))
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>/-- Proposition 11.3 (S:W:thm:r2-moving-Lp, TeX S L8878-8923): uniform power integrability for moving Gibbs preparations.
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>`d ≥ 2`, `0 ≤ σ &lt; d/2`, `μ^t` one of the small nonlinear trajectories of S6.3 (`MovNonlinearConclusion`; compact relative perturbations of the
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>quadratic thermal equilibrium are included), `β &gt; 0`, `L(t) = ‖∇u^t‖_∞` with `∫_0^∞L &lt; ∞` (asserted), `f_N^t` the canonical particle law with initial
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>preparation `Q_{N,γ}(μ^0)` (`γ &gt; 0` for `σ &gt; 0`, `γ ≥ 0` for `σ = 0`).  There are `a_* &gt; 0` (from the logarithmic row estimate; used only for `σ = 0`, `γ = 0`)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>and `c₀ &gt; 0` independent of `N, t` (`cL` here), such that for every `p₀ &gt; 1` with `θ₀ = p₀γ - (p₀-1)β &gt; 0` (`γ &gt; 0`), resp. `&gt; -a_*` (`γ = 0`):
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>(1) the initial `p₀` density moment `sup_N∫(h_N^0)^{p₀}dQ_N^0` is bounded for the Gibbs preparations;
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>(2) with `p(t)`, `p_∞ = lim p(t) &gt; 1` (`r2MovExponent`, `r2MovExponentInf`): `sup_N sup_t ∫(h_N^t)^{p(t)}dQ_N^t &lt; ∞` and `sup_N sup_t‖h_N^t‖_{L^{p_∞}(Q_N^t)} &lt; ∞`
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>(`f_N^t ≪ Q_N^t` included);
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>(3) more generally, for every `p₀ &gt; 1` (no condition on `θ₀`) and every initial law `f_N^0 ≪ Q_N^0` with `∫(h_N^0)^{p₀}dQ_N^0 ≤ K₀` (uniformly in `N`) the first bound in (2) holds with a constant depending only on `K₀` (and `p₀`).
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>The constants may depend on the positive temperatures, the uniform density bounds and the chosen small class (they are chosen after the class, before the
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>trajectory and the particles).  Not asserted (as in the source): iid preparation for `σ &gt; 0`.  The `c₀` of the exponential moment `W:eq:r2-moving-source-exponential`
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>and the constant `C₀` are internal to the proof (`cL` is the `c₀` of `W:eq:r2-moving-power`, admissible for every `p₀` of the stated range).
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>Technical: `N ≥ 2`. -/
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>theorem r2_moving_Lp (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β q : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (hq : 0 &lt; q) (ρ₀ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ₀) (γ : ℝ) (hγ : 0 ≤ γ)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    (hγs : 0 &lt; s → 0 &lt; γ) :
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    ∃ j m : ℕ, 1 ≤ j ∧ (d : ℝ) / 2 + j + 6 &lt; m ∧
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      ∃ εstar r c₀ c C₁ : ℝ, 0 &lt; εstar ∧ 0 &lt; r ∧ 0 &lt; c₀ ∧ 0 &lt; c ∧ 0 &lt; C₁ ∧
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        MovNonlinearConclusion d s q β ρ₀ j m εstar r c₀ c C₁ ∧
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        (∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>          ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>            (∀ t : ℝ, 0 ≤ t → (⨆ x : Euc d, ENNReal.ofReal ‖fderiv ℝ (movU d s q β (ρ t)) x‖) &lt; ⊤) ∧
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>            Integrable (r2MovL d s q β ρ) (volume.restrict (Set.Ioi (0 : ℝ)))) ∧
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        ∃ astar cL : ℝ, 0 &lt; astar ∧ 0 &lt; cL ∧
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>          (∀ p₀ : ℝ, 1 &lt; p₀ → ∀ K₀ : ℝ, ∃ K : ℝ, ∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>            ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>            ∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>              (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>              MovParticleSetup P d s q β N X₀ W X →
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>              P.map X₀ ≪ modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ 0)) →
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>              r2MovPowerMoment d s β ρ N (P.map X₀) 0 p₀ ≤ ENNReal.ofReal K₀ →
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>              ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>                P.map (X t.toNNReal) ≪ modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ t)) ∧
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>                r2MovPowerMoment d s β ρ N (P.map (X t.toNNReal)) t
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>                  (r2MovExponent cL p₀ (r2MovL d s q β ρ) t) ≤ ENNReal.ofReal K) ∧
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>          ∀ p₀ : ℝ, 1 &lt; p₀ →
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          (0 &lt; γ → 0 &lt; p₀ * γ - (p₀ - 1) * β) → (γ = 0 → -astar &lt; p₀ * γ - (p₀ - 1) * β) →
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>          ∃ K : ℝ, ∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>            ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            1 &lt; r2MovExponentInf cL p₀ (r2MovL d s q β ρ) ∧
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>            ∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>              (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>              MovParticleSetup P d s q β N X₀ W X →
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>              MovPrepared d s N γ (withDensityReal (ρ 0)) (P.map X₀) →
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>              r2MovPowerMoment d s β ρ N (P.map X₀) 0 p₀ ≤ ENNReal.ofReal K ∧
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>              ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>                P.map (X t.toNNReal) ≪ modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ t)) ∧
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>                r2MovPowerMoment d s β ρ N (P.map (X t.toNNReal)) t
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>                  (r2MovExponent cL p₀ (r2MovL d s q β ρ) t) ≤ ENNReal.ofReal K ∧
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>                eLpNorm (r2MovRatio d s β ρ N (P.map (X t.toNNReal)) t)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>                  (ENNReal.ofReal (r2MovExponentInf cL p₀ (r2MovL d s q β ρ)))
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>                  (modulatedGibbs (rieszKernel d s) N β (withDensityReal (ρ t))) ≤ ENNReal.ofReal K := by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  sorry
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>end MovingLp
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>/-! ### S11.4: singular moment transfer on moving and shifted windows -/
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>section MovingTransfer
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>/-- The family of particle laws of sequences of realizations: `Pfam t N = Law(X_N^t)`. -/
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>def r2MovFamily {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (X : ∀ N, ℝ≥0 → Ω N → EucConfig d N) : ℝ≥0 → ∀ N, Measure (EucConfig d N) :=
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  fun t N =&gt; (P N).map (X N t)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>/-- The tail assertion of S9.2 for a *family* `h_θ`, `h_{θ,j}` of kernels, uniformly in the parameter `θ`
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>(`lim_j sup_θ sup_{N,i}‖N F_N^{h_{θ,j}-h_θ}‖_{L^r(P_N^i)} = 0`, also centered). -/
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>def R2ActualFTailFam {ι Θ : Type*} (μ : ι → Measure (Euc d)) (r : ℝ) (h : Θ → Euc d → Euc d → ℝ)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (hj : Θ → ℕ → Euc d → Euc d → ℝ) (P : ι → ∀ N, Measure (EucConfig d N)) : Prop :=
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  Tendsto (fun j =&gt; ⨆ (θ : Θ) (i : ι) (N : {N : ℕ // 2 ≤ N}),
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    eLpNorm (fun X =&gt; ((N : ℕ) : ℝ) * pairEnergy (fun x y =&gt; hj θ j x y - h θ x y) X (μ i))
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      (ENNReal.ofReal r) (P i N)) atTop (𝓝 0) ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  Tendsto (fun j =&gt; ⨆ (θ : Θ) (i : ι) (N : {N : ℕ // 2 ≤ N}),
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    eLpNorm (fun X =&gt; ((N : ℕ) : ℝ) * (pairEnergy (fun x y =&gt; hj θ j x y - h θ x y) X (μ i) -
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        ∫ Y, pairEnergy (fun x y =&gt; hj θ j x y - h θ x y) Y (μ i) ∂(P i N)))
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (ENNReal.ofReal r) (P i N)) atTop (𝓝 0)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>/-- A family of kernels `h_θ` with finite-rank approximations `h_{θ,j}` retaining a common singular bound `C B W_σ` and converging
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>uniformly in `θ` in `L^r(μ_*^{⊗2})` (`rσ &lt; d`): the hypothesis &quot;the kernel approximations converge uniformly in the required `L^r(μ_*^{⊗2})` norm
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>and retain the common singular bound&quot; of S11.4 (S L9120-9122). -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>structure IsR2UniformApprox {Θ : Type*} (s C B : ℝ) (μ : Measure (Euc d)) (h : Θ → Euc d → Euc d → ℝ)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    (hj : Θ → ℕ → Euc d → Euc d → ℝ) : Prop where
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  finiteRank : ∀ θ j, ∃ (m : ℕ) (c : Fin m → Fin m → ℝ) (u : Fin m → Euc d → ℝ),
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    IsR2FiniteRankData c u ∧ hj θ j = r2FiniteRankKernel c u
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  envelope : ∀ θ j x y, x ≠ y → |hj θ j x y| ≤ C * B * (1 + rieszWeight s (x - y))
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  converges : ∀ r : ℝ, 1 ≤ r → r * s &lt; d →
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    Tendsto (fun j =&gt; ⨆ θ, eLpNorm (fun p : Euc d × Euc d =&gt; hj θ j p.1 p.2 - h θ p.1 p.2)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      (ENNReal.ofReal r) (μ.prod μ)) atTop (𝓝 0)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>/-- The bounded `C_b²` ball of velocities `‖v‖_{C_b²} ≤ Λ`. -/
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>def IsR2VelocityBall (d : ℕ) (Λ : ℝ) (v : Euc d → Euc d) : Prop :=
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  ContDiff ℝ 2 v ∧ cbNormVecE 2 v ≤ ENNReal.ofReal Λ
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>/-- Corollary 11.4 (S:W:cor:r2-moving-moment-transfer, TeX S L9109-9126): singular moment transfer on moving and shifted windows.
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>For the Gibbs preparations of Proposition 11.3 (`γ &gt; 0` for `σ &gt; 0`, `γ ≥ 0` for `σ = 0`), along the small nonlinear trajectories (`MovNonlinearConclusion`
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>class), and for a sequence of canonical realizations with `MovPrepared` initial laws:
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>(1) the actual-law hypothesis `W:eq:round2-actual-density` holds with one exponent `p_∞ &gt; 1` and one constant `K` at every time `t ≥ 0`, for the actual reference `Q_N^t`
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>(`HasR2ActualDensity s β p_∞ K μ^t (Law X_N^t)`);
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>(2) Proposition 9.2 applies uniformly in time: for the kernel class `IsBoundedPairKernel s B` and every finite `r ≥ 1` there is `C` (common for all
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>trajectories of the class, all times, hence all windows) with the bounds `R2ActualFBound`, `R2ActualLinearBound` (centers `μ^t`), and the tail
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>`R2ActualFTail` uniformly in time for kernel approximations `IsRound2Approx` relative to the fixed reference `μ_* = ρ_*dx` (convergence in `L^r(μ_*^{⊗2})` transfers
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>to `μ^t` by `μ^t ≤ Cμ_*`);
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>(3) the tail assertion is uniform over any family of kernels with uniformly convergent approximations retaining a common singular bound (`IsR2UniformApprox`);
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>(4) for the commutator families `h_v(x,y) = (v(x)-v(y))·∇g(x-y)` of a bounded `C_b²` ball of velocities (`IsR2VelocityBall d Λ`) there are such uniformly
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>convergent finite-rank approximations (the uniform mollification and partition of S L9138-9140), hence (3) applies;
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>(5) time integrals over a window `[b,b+T]` are controlled by the same Hölder/Minkowski arguments: for jointly measurable time-dependent kernels with the common
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>envelope, `E(∫_b^{b+T}|N F_N^{h_t}(X_N^t,μ^t)|²dt)^{r/2} ≤ C`, uniformly in `b ≥ 0` (`r ≥ 2`).
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>Constants: `p_∞, K` after the class, `C` after `(B, r)` and `CT` after `(B, r, T)`, both before the trajectory/particles (repair P2,
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>2026-10-20: `CT` was quantified after the trajectory; by Minkowski `CT = (T C²)^{r/2}` is class-uniform).  AMBIGUITY: item (2) is the transfer for kernels
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>dominated by `B W_σ` (the fixed dominated kernel); item (4) existence is asserted for all `Λ` with the envelope constant and the approximants chosen after `Λ`. -/
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>theorem r2_moving_moment_transfer (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    (β q : ℝ) (hβ : 0 &lt; β) (hq : 0 &lt; q) (ρ₀ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ₀)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    (γ : ℝ) (hγ : 0 ≤ γ) (hγs : 0 &lt; s → 0 &lt; γ) :
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    ∃ j m : ℕ, 1 ≤ j ∧ (d : ℝ) / 2 + j + 6 &lt; m ∧
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      ∃ εstar r c₀ c C₁ : ℝ, 0 &lt; εstar ∧ 0 &lt; r ∧ 0 &lt; c₀ ∧ 0 &lt; c ∧ 0 &lt; C₁ ∧
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>        MovNonlinearConclusion d s q β ρ₀ j m εstar r c₀ c C₁ ∧
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        ∃ pinf K : ℝ, 1 &lt; pinf ∧
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>          (∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>            ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>            ∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>              (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>              MovParticleSetup P d s q β N X₀ W X → MovPrepared d s N γ (withDensityReal (ρ 0)) (P.map X₀) →
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>              ∀ t : ℝ, 0 ≤ t → HasR2ActualDensity s β pinf K (withDensityReal (ρ t)) (P.map (X t.toNNReal))) ∧
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>          (∀ Λ : ℝ, ∃ (B C₂ : ℝ) (hj : {v : Euc d → Euc d // IsR2VelocityBall d Λ v} → ℕ → Euc d → Euc d → ℝ),
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>            (∀ v : {v : Euc d → Euc d // IsR2VelocityBall d Λ v},
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>              IsBoundedPairKernel s B (commutatorKernel d s v.1)) ∧
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>            IsR2UniformApprox s C₂ B (withDensityReal ρ₀)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>              (fun v : {v : Euc d → Euc d // IsR2VelocityBall d Λ v} =&gt; commutatorKernel d s v.1) hj) ∧
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>          ∀ (B : ℝ) (rr : ℝ), 1 ≤ rr →
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>            (∃ C : ℝ, ∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>              ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>              ∀ (Ω : ℕ → Type) [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>                [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → EucConfig d N)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>                (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → EucConfig d N),
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>                (∀ N, 2 ≤ N → MovParticleSetup (P N) d s q β N (X₀ N) (W N) (X N) ∧
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>                  MovPrepared d s N γ (withDensityReal (ρ 0)) ((P N).map (X₀ N))) →
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>                (∀ h : Euc d → Euc d → ℝ, IsBoundedPairKernel s B h →
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>                  R2ActualFBound (fun t : ℝ≥0 =&gt; withDensityReal (ρ t)) rr C h (r2MovFamily P X)) ∧
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>                R2ActualLinearBound (fun t : ℝ≥0 =&gt; withDensityReal (ρ t)) rr C (r2MovFamily P X) ∧
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>                (∀ (C₂ : ℝ) (h : Euc d → Euc d → ℝ) (hj : ℕ → Euc d → Euc d → ℝ), IsBoundedPairKernel s B h →
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>                  IsRound2Approx s C₂ B (withDensityReal ρ₀) h hj →
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>                  R2ActualFTail (fun t : ℝ≥0 =&gt; withDensityReal (ρ t)) rr h hj (r2MovFamily P X)) ∧
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>                (∀ (Θ : Type) (h : Θ → Euc d → Euc d → ℝ) (hj : Θ → ℕ → Euc d → Euc d → ℝ) (C₂ : ℝ),
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>                  (∀ θ, IsBoundedPairKernel s B (h θ)) → IsR2UniformApprox s C₂ B (withDensityReal ρ₀) h hj →
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>                  R2ActualFTailFam (fun t : ℝ≥0 =&gt; withDensityReal (ρ t)) rr h hj (r2MovFamily P X))) ∧
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>            (2 ≤ rr → ∀ T : ℝ, 0 &lt; T → ∃ CT : ℝ, ∀ f0 : Euc d → ℝ, MovInitialClass ρ₀ j m εstar f0 →
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>              ∀ ρ : ℝ → Euc d → ℝ, MovInSmallClass d s q β ρ₀ m r c₀ f0 ρ →
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>              ∀ (Ω : ℕ → Type) [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>                [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → EucConfig d N)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>                (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → EucConfig d N),
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>                (∀ N, 2 ≤ N → MovParticleSetup (P N) d s q β N (X₀ N) (W N) (X N) ∧
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>                  MovPrepared d s N γ (withDensityReal (ρ 0)) ((P N).map (X₀ N))) →
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>                ∀ h : ℝ → Euc d → Euc d → ℝ,
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>                  (Measurable fun p : ℝ × Euc d × Euc d =&gt; h p.1 p.2.1 p.2.2) →
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>                  (∀ t, 0 ≤ t → IsBoundedPairKernel s B (h t)) → ∀ b : ℝ, 0 ≤ b → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>                    ∫⁻ ζ, (∫⁻ t in Set.Icc b (b + T), ENNReal.ofReal
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>                        (((N : ℝ) * pairEnergy (h t) (X N t.toNNReal ζ) (withDensityReal (ρ t))) ^ 2)) ^ (rr / 2)
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>                      ∂(P N) ≤ ENNReal.ofReal CT) := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  sorry
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>end MovingTransfer
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-! ### S11.5, S11.6: independent logarithmic preparation -/
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>section LogPreparation
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>/-- Lemma 11.5 (S:O:lem:log-row, TeX S L9537-9547): uniform exponential rows of the centered logarithm, whole space.
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>`μ = ρ dx` on `ℝ^d`, `d ≥ 1`, `0 ≤ ρ(x) ≤ C₀e^{-a₀|x|²}`, `a₀ &gt; 0`; `g(x,y) = -log|x-y|`, `h(x) = ∫g(x,y)dμ(y)`, `I = ½∫h dμ`.  Then `g ∈ L¹(μ^{⊗2})`
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>and for some `ε &gt; 0` and `C &lt; ∞` (depending only on `d, C₀, a₀`, quantified before `ρ`): `sup_y∫e^{ε|g(x,y)-h(x)-h(y)+2I|}dμ(x) ≤ C`; in particular the centered
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>kernel `k` satisfies uniform factorial row bounds `sup_y∫|k(x,y)|^pdμ(x) ≤ C p! ε^{-p}` for all `p ∈ ℕ` (from `z^p ≤ p!ε^{-p}e^{εz}`).  `ρ` is a measurable function (technical).
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>`μ` is a probability measure (`∫ρ = 1`; repair 2026-10-16, ISSUES §I &quot;S11.5&quot;): the source&#x27;s proof uses that adding one-body
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>functions does not change a canonically centered kernel, which needs mass one, and the lemma is applied to `μ^0`; for mass
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>`m ≠ 1` the centered kernel grows like `(m-1)log|y|` and the row bound fails. -/
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>theorem r2_log_row_whole (hd : 1 ≤ d) (C₀ a₀ : ℝ) (ha₀ : 0 &lt; a₀) :
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    ∃ ε C : ℝ, 0 &lt; ε ∧ ∀ ρ : Euc d → ℝ, Measurable ρ → (∀ x, 0 ≤ ρ x ∧ ρ x ≤ C₀ * Real.exp (-a₀ * ‖x‖ ^ 2)) →
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      ∫ x, ρ x = 1 →
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>      Integrable (fun p : Euc d × Euc d =&gt; rieszKernel d 0 (p.1 - p.2))
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>        ((withDensityReal ρ).prod (withDensityReal ρ)) ∧
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      (∀ y : Euc d, ∫⁻ x, ENNReal.ofReal (Real.exp (ε * |rieszKernel d 0 (x - y) -
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>          convMeasure (rieszKernel d 0) (withDensityReal ρ) x - convMeasure (rieszKernel d 0) (withDensityReal ρ) y +
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>          2 * ((1 / 2) * ∫ z, convMeasure (rieszKernel d 0) (withDensityReal ρ) z ∂(withDensityReal ρ))|))
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        ∂(withDensityReal ρ) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      (∀ (p : ℕ) (y : Euc d), ∫⁻ x, ENNReal.ofReal (|rieszKernel d 0 (x - y) -
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>          convMeasure (rieszKernel d 0) (withDensityReal ρ) x - convMeasure (rieszKernel d 0) (withDensityReal ρ) y +
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>          2 * ((1 / 2) * ∫ z, convMeasure (rieszKernel d 0) (withDensityReal ρ) z ∂(withDensityReal ρ))| ^ p)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        ∂(withDensityReal ρ) ≤ ENNReal.ofReal (C * (p.factorial : ℝ) * (ε⁻¹) ^ p)) := by
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>  have hdR : (1 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hεd : (1 / 2 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  have hC₁ : 0 ≤ max C₀ 0 := le_max_right _ _
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  have hKfin := q33b_K_ne_top hd hεd hC₁ ha₀
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  refine ⟨1 / 2, Real.exp (2 * (q33b_K d (1 / 2) (max C₀ 0) a₀).toReal) *
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    (q33b_K d (1 / 2) (max C₀ 0) a₀).toReal, by norm_num, fun ρ hm hρ hint =&gt; ?_⟩
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  have hρ&#x27; : ∀ x, 0 ≤ ρ x ∧ ρ x ≤ max C₀ 0 * Real.exp (-a₀ * ‖x‖ ^ 2) := fun x =&gt;
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    ⟨(hρ x).1, (hρ x).2.trans (mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.exp_pos _).le)⟩
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  haveI : IsProbabilityMeasure (withDensityReal ρ) := q33b_prob hm (fun x =&gt; (hρ x).1) hint
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  have hε0 : (0 : ℝ) &lt; 1 / 2 := by norm_num
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  have hε1 : (1 / 2 : ℝ) ≤ 1 := by norm_num
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hℓ := q33b_ell_integrable hε0 hε1 hC₁ ha₀ hm hρ&#x27;
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have hrow : ∀ y : Euc d, ∫⁻ x, ENNReal.ofReal (Real.exp (1 / 2 * q33b_b x y)) ∂(withDensityReal ρ)
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>      ≤ ENNReal.ofReal (q33b_K d (1 / 2) (max C₀ 0) a₀).toReal := fun y =&gt; by
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    rw [ENNReal.ofReal_toReal hKfin]
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    exact q33b_row hd hε0 hε1 hεd hC₁ ha₀ hm hρ&#x27; y
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  exact q33b_main (μ := withDensityReal ρ) hε0 ENNReal.toReal_nonneg hℓ hrow
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>/-- Lemma 11.5 (S:O:lem:log-row, TeX S L9546-9547), torus clause: &quot;on the torus the same conclusions hold for the periodic logarithm when `‖ρ‖_∞` is
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>bounded&quot;: for `d ≥ 2`, a probability density `ρ ≤ Λ` on `𝕋^d`, `g * ρ`-centered periodic logarithm `g_μ(x,y) = g(x-y) - g*μ(x) - g*μ(y) + ∬g dμdμ`
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>(`HRS.centeredKernel (HRS.periodicRiesz d 0)`; note `∬g dμ dμ = 2I`), the periodic logarithm is in `L¹(μ^{⊗2})` and `sup_x∫e^{ε|g_μ(x,y)|}dμ(y) ≤ C`.  The torus clause keeps the standing `d ≥ 2` of the periodic paper (M L419) and of the project&#x27;s periodic kernel (`HRS.periodic_log_row` is stated for `2 ≤ d`; the TeX lemma&#x27;s `d ≥ 1` is for the whole-space clause).  The row bound is the
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>already formalised `HRS.periodic_log_row` (Lemma 4.24, any `a ∈ (0,d)`); `C, ε` are chosen after the bound `Λ` (and `d`). -/
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>theorem r2_log_row_torus (hd : 2 ≤ d) (Λ : ℝ) :
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    ∃ ε C : ℝ, 0 &lt; ε ∧ ∀ ρ : HRS.Torus d → ℝ, HRS.IsProbDensity ρ → (∀ x, ρ x ≤ Λ) →
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>      Integrable (fun p : HRS.Torus d × HRS.Torus d =&gt; HRS.periodicRiesz d 0 (p.1 - p.2))
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>        ((HRS.withDensityReal ρ).prod (HRS.withDensityReal ρ)) ∧
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>      ∀ x, ∫⁻ y, ENNReal.ofReal (Real.exp (ε * |HRS.centeredKernel (HRS.periodicRiesz d 0)
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>        (HRS.withDensityReal ρ) x y|)) ∂(HRS.withDensityReal ρ) ≤ ENNReal.ofReal C := by
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  refine ⟨1, q33C d Λ, one_pos, fun ρ _ hρ =&gt; ⟨q33_integrable hd Λ ρ hρ, fun x =&gt; ?_⟩⟩
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  exact q33_row_le hd Λ ρ hρ x
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>/-- Proposition 11.6 (S:O:cor:log-path, TeX S L9578-9585): verification of independent logarithmic preparation.  `σ = 0` (the logarithmic kernel
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>`g = -log|x|`), `d ≥ 2`, `a, β &gt; 0`, `T &gt; 0`, `μ^t = ρ^t dx` the stationary measure or one of the small nonlinear trajectories of S2.1 (`IsR2WindowTrajectory`; small relative
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>perturbations of the thermal measure, bounded above by a common Gaussian density); `β₊ &gt; 0` an upper bound for the positive temperatures.  The independent
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>preparation `Q_{N,0}(μ^0) = (μ^0)^{⊗N}` satisfies the initial power-moment and initial-correction hypotheses used in S2.1(iii) and S11.3:
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>(a) bounded normalizers on a fixed interval around zero with constants independent of `N` (there is `a_* &gt; 0` and `K₀` with `|log K_{N,θ}(μ^0)| ≤ K₀` for
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>`θ ∈ [-a_*,β₊]`, `N ≥ 2`; S L9593-9594);
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>(b) the initial power moment (`S:eq:iid-log-initial-moment`): for `p &gt; 1` sufficiently close to one,
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>`∫(d(μ^0)^{⊗N}/dQ_{N,β}(μ^0))^pdQ_{N,β}(μ^0) ≤ C`, uniformly in `N`;
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>(c) the initial correction hypotheses at `γ = 0`: the static Edgeworth expansion of `R2StaticEdgeworth` for the oscillator indices `m &gt; 6d+44` (i.e. `m &gt; J+2d+4`, `J = 4d+40`) and, given the
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>bounded adjoint-orbit inputs of S10 (adjoint solutions and the summable cosine orbit tests at index `k ≥ 4d+40`; the content of S L9533 that the quadratic-model
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>orbit estimates verify the hypothesis), the expansion of the whole initial propagated path (`R2InitPathEdgeworth`, coefficients along the trajectory), the initial covariance being the
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>bridge covariance (`R_0 = I`).
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>&quot;The trajectory and weighted spaces are unchanged.&quot;  AMBIGUITY: the row is informal (&quot;satisfies the hypotheses used in ...&quot;); the formal reading is (a)-(c), (c) being the
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>initial-correction input of S10.2 (the uniformity of the projection tails for shifted windows, S L9533-9534, is not separately stated).  The constants `ε_*, c₁, C₁` (the class of S2.1, `R2ClassExists`) and `a_*` are
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>chosen first (before the trajectory); the logarithmic row estimate `r2_log_row_whole` enters (S L9588-9590). -/
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>theorem r2_log_path (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (T : ℝ) (hT : 0 &lt; T) (βplus : ℝ)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (hβplus : 0 &lt; βplus) :
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    ∃ εstar c₁ C₁ : ℝ, 0 &lt; εstar ∧ 0 &lt; c₁ ∧ 0 &lt; C₁ ∧ R2ClassExists d 0 a β εstar c₁ C₁ ∧
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>      ∃ astar : ℝ, 0 &lt; astar ∧
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>      ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d 0 a β ρβ → ∀ ρ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>        IsR2WindowTrajectory d 0 a β ρβ εstar c₁ C₁ ρ →
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>        (∃ K₀ : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ θ ∈ Set.Icc (-astar) βplus,
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>          0 &lt; gibbsNormalizer (rieszKernel d 0) N θ (withDensityReal (ρ 0)) ∧
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>          |Real.log (gibbsNormalizer (rieszKernel d 0) N θ (withDensityReal (ρ 0)))| ≤ K₀) ∧
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>        (∃ p₁ : ℝ, 1 &lt; p₁ ∧ ∀ p : ℝ, 1 &lt; p → p &lt; p₁ → ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>          (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ 0)) ≪
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>              modulatedGibbs (rieszKernel d 0) N β (withDensityReal (ρ 0)) ∧
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>          ∫⁻ Y, ENNReal.ofReal
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>              ((((Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ 0)).rnDeriv
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>                (modulatedGibbs (rieszKernel d 0) N β (withDensityReal (ρ 0)))) Y).toReal ^ p)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>            ∂(modulatedGibbs (rieszKernel d 0) N β (withDensityReal (ρ 0))) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>        (∀ m : ℕ, ((4 * d + 40 : ℕ) : ℝ) + 2 * d + 4 &lt; m → R2StaticEdgeworth d 0 0 m (ρ 0)) ∧
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>        (∀ k m : ℕ, 4 * d + 40 ≤ k → (k : ℝ) + 2 * d + 4 &lt; m →
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>          (∀ α : MultiIndex d, ∀ t ∈ Set.Icc (0 : ℝ) T, ∃ f : ℝ → Euc d → ℝ,
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>            IsClassicalAdjointW ((quadraticGradientDyn d 0 a β).coeff ρ) t (oscTestFun (m : ℝ) α) f) →
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>          (∀ n α, MemCb k (r2CosOrbitTest ((quadraticGradientDyn d 0 a β).coeff ρ) (m : ℝ) T n α)) →
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>          (Summable fun p : ℕ × MultiIndex d =&gt;
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>            cbNorm k (r2CosOrbitTest ((quadraticGradientDyn d 0 a β).coeff ρ) (m : ℝ) T p.1 p.2)) →
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>          R2InitPathEdgeworth ((quadraticGradientDyn d 0 a β).coeff ρ) 0 0 m T (ρ 0)) := by
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  sorry
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>end LogPreparation
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>end HRS.Whole
+</span></code></pre></main></body></html>

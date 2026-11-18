@@ -1,0 +1,263 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.UlocWeighted · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.UlocWeighted</code></h1><p><a href="../../lean/HRS/MS/UlocWeighted.lean">Open the unaltered Lean file</a> · 262 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.UlocMWAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.UlocMWAux3
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Whole.AppendixALemmas
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># MS-ULOC-MW (B): Lemma S.A.31(iv), `H^m_uloc ⊂ H^m(ϖ)`
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Route (S L11006-11007): cover `ℝ^d` by the unit cells `Q_z = z + [0,1]^d`; each cell is covered by `N(d)` balls
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`B(z + y_j, 1)` on which `χ(· - (z + y_j)) ≡ 1`, so `∂^α u = ∂^α (χ_w u)` there and
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`∫_{B} |∂^α u|² ≤ ‖χ_w u‖²_{H^m} ≤ ‖u‖²_{H^m_uloc}` (Plancherel, `UlocMWAux1.lean`).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>-/
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>noncomputable section
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open scoped ENNReal NNReal BigOperators ContDiff ComplexConjugate
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open HRS.Whole HRS.Whole.AppendixA HRS.Whole.AppendixALemmas
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.MS.UlocWeighted
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS.MS.UlocMW
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem uw_pd_eq {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) (u : Euc d → ℝ) {n : ℕ} (i : Fin n → Fin d)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (w x : Euc d) (hx : x ∈ Metric.ball w 1) :
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    partialDeriv i (fun y =&gt; χ (y - w) * u y) x = partialDeriv i u x := by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  have h : (fun y =&gt; χ (y - w) * u y) =ᶠ[𝓝 x] u := by
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    filter_upwards [Metric.isOpen_ball.mem_nhds hx] with y hy
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    have : χ (y - w) = 1 := hχ.2.2.2.2 _ (by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      rw [mem_closedBall_zero_iff, ← dist_eq_norm]; exact (Metric.mem_ball.1 hy).le)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    rw [this, one_mul]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  unfold partialDeriv
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  rw [(h.iteratedFDeriv ℝ n).eq_of_nhds]
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>theorem uw_ball_le {m : ℕ} {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) {u : Euc d → ℝ}
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (hu : ContDiff ℝ m u) {n : ℕ} (hn : n ≤ m) (i : Fin n → Fin d) (w : Euc d) :
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    ∫⁻ x in Metric.ball w 1, ENNReal.ofReal ((partialDeriv i u x) ^ 2) ≤ ulocNormE m χ u ^ 2 := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  set f : Euc d → ℝ := fun x =&gt; χ (x - w) * u x with hf
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hχm : ContDiff ℝ m χ := hχ.1.of_le (by exact_mod_cast le_top)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have hfd : ContDiff ℝ m f := (hχm.comp (contDiff_id.sub contDiff_const)).mul hu
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hχc : HasCompactSupport (fun x =&gt; χ (x - w)) :=
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    hχ.2.1.comp_homeomorph (Homeomorph.subRight w)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hfc : HasCompactSupport f := hχc.mul_right
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  calc ∫⁻ x in Metric.ball w 1, ENNReal.ofReal ((partialDeriv i u x) ^ 2)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      = ∫⁻ x in Metric.ball w 1, ENNReal.ofReal ((partialDeriv i f x) ^ 2) := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>        refine setLIntegral_congr_fun Metric.isOpen_ball.measurableSet fun x hx =&gt; ?_
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        rw [hf, uw_pd_eq hχ u i w x hx]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    _ ≤ ∫⁻ x, ENNReal.ofReal ((partialDeriv i f x) ^ 2) := setLIntegral_le_lintegral _ _
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    _ ≤ HRS.Whole.sobolevNormE (m : ℝ) f ^ 2 := um_deriv_le hfd hfc hn i
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    _ ≤ ulocNormE m χ u ^ 2 := by
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        apply pow_le_pow_left&#x27; _ 2
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        exact le_iSup (fun z : Euc d =&gt; HRS.Whole.sobolevNormE (m : ℝ) fun x =&gt; χ (x - z) * u x) w
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>theorem uw_net (d : ℕ) : ∃ Y : Finset (Euc d), ∀ p : Euc d, ‖p‖ ≤ Real.sqrt d →
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    ∃ y ∈ Y, ‖p - y‖ &lt; 1 := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  obtain ⟨t, hts, htf, hcov⟩ := (isCompact_closedBall (0 : Euc d) (Real.sqrt d)).finite_cover_balls one_pos
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  refine ⟨htf.toFinset, fun p hp =&gt; ?_⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have := hcov (mem_closedBall_zero_iff.2 hp)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  simp only [Set.mem_iUnion, Metric.mem_ball, exists_prop] at this
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨y, hy, hpy⟩ := this
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  exact ⟨y, htf.mem_toFinset.2 hy, by rwa [← dist_eq_norm]⟩
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>theorem uw_cell_le {m : ℕ} {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) {u : Euc d → ℝ}
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (hu : ContDiff ℝ m u) {n : ℕ} (hn : n ≤ m) (i : Fin n → Fin d) (Y : Finset (Euc d))
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (hY : ∀ p : Euc d, ‖p‖ ≤ Real.sqrt d → ∃ y ∈ Y, ‖p - y‖ &lt; 1) (z : Fin d → ℤ) :
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ∫⁻ x in uw_cell z, ENNReal.ofReal ((partialDeriv i u x) ^ 2) ≤
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      (Y.card : ℝ≥0∞) * ulocNormE m χ u ^ 2 := by
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hsub : uw_cell z ⊆ ⋃ y : Y, Metric.ball (latticePt z + (y : Euc d)) 1 := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    intro x hx
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have h1 : ‖x - latticePt z‖ ≤ Real.sqrt d :=
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      Real.le_sqrt_of_sq_le (uw_cell_norm hx)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    obtain ⟨y, hy, hxy⟩ := hY _ h1
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    refine Set.mem_iUnion.2 ⟨⟨y, hy⟩, ?_⟩
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    rw [Metric.mem_ball, dist_eq_norm]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have : x - (latticePt z + y) = x - latticePt z - y := by abel
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    rw [this]; exact hxy
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  calc ∫⁻ x in uw_cell z, ENNReal.ofReal ((partialDeriv i u x) ^ 2)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      ≤ ∫⁻ x in ⋃ y : Y, Metric.ball (latticePt z + (y : Euc d)) 1,
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          ENNReal.ofReal ((partialDeriv i u x) ^ 2) := lintegral_mono_set hsub
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    _ ≤ ∑&#x27; y : Y, ∫⁻ x in Metric.ball (latticePt z + (y : Euc d)) 1,
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>          ENNReal.ofReal ((partialDeriv i u x) ^ 2) := lintegral_iUnion_le _ _
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    _ ≤ ∑&#x27; _y : Y, ulocNormE m χ u ^ 2 :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        ENNReal.tsum_le_tsum fun y =&gt; uw_ball_le hχ hu hn i _
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    _ = (Y.card : ℝ≥0∞) * ulocNormE m χ u ^ 2 := by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        rw [tsum_fintype, Finset.sum_const, Finset.card_univ, Fintype.card_coe, nsmul_eq_mul]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>theorem uw_pd_cont {m : ℕ} {u : Euc d → ℝ} (hu : ContDiff ℝ m u) {n : ℕ} (hn : n ≤ m)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    (i : Fin n → Fin d) : Continuous (partialDeriv i u) := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have h1 : Continuous (iteratedFDeriv ℝ n u) := hu.continuous_iteratedFDeriv (by exact_mod_cast hn)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  exact (continuous_eval_const (fun t : Fin n =&gt; (EuclideanSpace.single (i t) (1 : ℝ) : Euc d))).comp h1
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>theorem uw_tuple_le {m : ℕ} {χ : Euc d → ℝ} (hχ : IsUlocCutoff χ) {u : Euc d → ℝ}
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (hu : ContDiff ℝ m u) {n : ℕ} (hn : n ≤ m) (i : Fin n → Fin d) (Y : Finset (Euc d))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (hY : ∀ p : Euc d, ‖p‖ ≤ Real.sqrt d → ∃ y ∈ Y, ‖p - y‖ &lt; 1) (ϖ : Euc d → ℝ)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (hϖ : ∀ x, 0 ≤ ϖ x) :
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    ∫⁻ x, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2) ≤
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      cellSupSum ϖ * ((Y.card : ℝ≥0∞) * ulocNormE m χ u ^ 2) := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hpc := uw_pd_cont hu hn i
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  calc ∫⁻ x, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      = ∫⁻ x in ⋃ z : Fin d → ℤ, uw_cell z, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2) := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        rw [uw_cell_cover, Measure.restrict_univ]
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    _ ≤ ∑&#x27; z : Fin d → ℤ, ∫⁻ x in uw_cell z, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2) :=
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>        lintegral_iUnion_le _ _
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    _ ≤ ∑&#x27; z : Fin d → ℤ, (⨆ x ∈ uw_cell z, ENNReal.ofReal (ϖ x)) *
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>          ((Y.card : ℝ≥0∞) * ulocNormE m χ u ^ 2) := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        refine ENNReal.tsum_le_tsum fun z =&gt; ?_
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        calc ∫⁻ x in uw_cell z, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>            ≤ ∫⁻ x in uw_cell z, (⨆ x ∈ uw_cell z, ENNReal.ofReal (ϖ x)) *
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>                ENNReal.ofReal ((partialDeriv i u x) ^ 2) := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>              refine setLIntegral_mono&#x27; (uw_cell_closed z).measurableSet fun x hx =&gt; ?_
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>              rw [ENNReal.ofReal_mul (hϖ x)]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>              have := le_iSup₂ (f := fun x (_ : x ∈ uw_cell z) =&gt; ENNReal.ofReal (ϖ x)) x hx
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>              gcongr
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>          _ = (⨆ x ∈ uw_cell z, ENNReal.ofReal (ϖ x)) *
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>                ∫⁻ x in uw_cell z, ENNReal.ofReal ((partialDeriv i u x) ^ 2) :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>              lintegral_const_mul _ (ENNReal.measurable_ofReal.comp (hpc.pow 2).measurable)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>          _ ≤ _ := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>              have := uw_cell_le hχ hu hn i Y hY z
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>              gcongr
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    _ = cellSupSum ϖ * ((Y.card : ℝ≥0∞) * ulocNormE m χ u ^ 2) := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        rw [ENNReal.tsum_mul_right]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        rfl
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>theorem uw_part1 (m : ℕ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    ∃ C : ℝ, ∀ ϖ : Euc d → ℝ, (∀ x, 0 ≤ ϖ x) → ∀ u : Euc d → ℝ, ContDiff ℝ m u →
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      weightedHE m ϖ u ≤ ENNReal.ofReal C * (cellSupSum ϖ) ^ (1 / 2 : ℝ) * ulocNormE m χ u := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  obtain ⟨Y, hY⟩ := uw_net d
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  set M : ℕ := ∑ j ∈ Finset.range (m + 1), d ^ j with hM
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  refine ⟨Real.sqrt ((M : ℝ) * (Y.card : ℝ)), fun ϖ hϖ u hu =&gt; ?_⟩
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  set U := ulocNormE m χ u with hU
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  set S := cellSupSum ϖ with hS
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  set c : ℝ≥0∞ := S * ((Y.card : ℝ≥0∞) * U ^ 2) with hc
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hsum : ∑ j ∈ Finset.range (m + 1), ∑ i : Fin j → Fin d,
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      ∫⁻ x, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2) ≤ (M : ℝ≥0∞) * c := by
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    calc _ ≤ ∑ j ∈ Finset.range (m + 1), ∑ _i : Fin j → Fin d, c := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>          refine Finset.sum_le_sum fun j hj =&gt; Finset.sum_le_sum fun i _ =&gt; ?_
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          exact uw_tuple_le hχ hu (Nat.lt_succ_iff.1 (Finset.mem_range.1 hj)) i Y hY ϖ hϖ
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      _ = (M : ℝ≥0∞) * c := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          have hcount : ∀ j : ℕ, ∑ _i : Fin j → Fin d, c = (d ^ j : ℕ) • c := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>            intro j
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>            rw [Finset.sum_const, Finset.card_univ, Fintype.card_fun, Fintype.card_fin,
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>              Fintype.card_fin]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>          simp_rw [hcount, nsmul_eq_mul]
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>          rw [← Finset.sum_mul, hM]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>          push_cast
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>          rfl
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  unfold weightedHE
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  calc (∑ j ∈ Finset.range (m + 1), ∑ i : Fin j → Fin d,
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          ∫⁻ x, ENNReal.ofReal (ϖ x * (partialDeriv i u x) ^ 2)) ^ (1 / 2 : ℝ)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      ≤ ((M : ℝ≥0∞) * c) ^ (1 / 2 : ℝ) := ENNReal.rpow_le_rpow hsum (by norm_num)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    _ = ENNReal.ofReal (Real.sqrt ((M : ℝ) * (Y.card : ℝ))) * S ^ (1 / 2 : ℝ) * U := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        have e1 : (M : ℝ≥0∞) * c = (ENNReal.ofReal ((M : ℝ) * (Y.card : ℝ)) * S) * U ^ 2 := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>          rw [hc, ENNReal.ofReal_mul (Nat.cast_nonneg _), ENNReal.ofReal_natCast,
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>            ENNReal.ofReal_natCast]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          ring
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        rw [e1, ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>          ← ENNReal.rpow_natCast U 2, ← ENNReal.rpow_mul]
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        have e2 : ((2 : ℕ) : ℝ) * (1 / 2 : ℝ) = 1 := by norm_num
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        rw [e2, ENNReal.rpow_one,
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>          ENNReal.ofReal_rpow_of_nonneg (mul_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>            (by norm_num), Real.sqrt_eq_rpow]
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>theorem uw_part2 :
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    cellSupSum (fun x : Euc d =&gt; jbracket x ^ (-((d : ℝ) + 3))) &lt; ⊤ := by
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have h : cellSupSum (fun x : Euc d =&gt; jbracket x ^ (-((d : ℝ) + 3))) ≤
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (Real.sqrt (2 * (1 + d)) ^ ((d : ℝ) + 3)) *
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>        ENNReal.ofReal (jbracket (latticePt z) ^ (-((d : ℝ) + 3))) :=
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    ENNReal.tsum_le_tsum fun z =&gt; uw_cellsup_le z
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  rw [ENNReal.tsum_mul_left] at h
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  exact lt_of_le_of_lt h (ENNReal.mul_lt_top ENNReal.ofReal_lt_top uw_S_lt_top)
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>theorem uw_jb_smul_ge {c : ℝ} (hc0 : 0 ≤ c) (hc1 : c ≤ 1) (x : Euc d) :
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    c * jbracket x ≤ jbracket (c • x) := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  unfold jbracket
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg hc0, mul_pow]
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  calc c * Real.sqrt (1 + ‖x‖ ^ 2) = Real.sqrt (c ^ 2 * (1 + ‖x‖ ^ 2)) := by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        rw [Real.sqrt_mul (sq_nonneg c), Real.sqrt_sq hc0]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    _ ≤ Real.sqrt (1 + c ^ 2 * ‖x‖ ^ 2) := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>        apply Real.sqrt_le_sqrt
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>        nlinarith [sq_nonneg c, mul_nonneg (sq_nonneg c) (sq_nonneg ‖x‖)]
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>theorem uw_Sfine_lt_top :
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    (∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)))) &lt; ⊤ := by
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  rcases Nat.eq_zero_or_pos d with hd | hd
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  · subst hd
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    haveI : Unique (Fin 0 → ℤ) := inferInstance
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    rw [tsum_fintype]
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    exact ENNReal.sum_lt_top.2 fun _ _ =&gt; ENNReal.ofReal_lt_top
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  · set k : ℝ := (⌈Real.sqrt d⌉ : ℝ) with hk
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    have hk1 : 1 ≤ k := by
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      have h1 : (1 : ℝ) ≤ Real.sqrt d := by
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>        rw [show (1 : ℝ) = Real.sqrt 1 by simp]
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        exact Real.sqrt_le_sqrt (by exact_mod_cast hd)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      have h2 : (1 : ℤ) ≤ ⌈Real.sqrt d⌉ := by
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        rw [Int.one_le_ceil_iff]; linarith
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      rw [hk]; exact_mod_cast h2
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have hkpos : 0 &lt; k := by linarith
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    have hp : 0 ≤ (d : ℝ) + 3 := by positivity
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    have hpt : ∀ z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) ≤
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>        ENNReal.ofReal (k ^ ((d : ℝ) + 3)) *
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>          ENNReal.ofReal (jbracket (latticePt z) ^ (-((d : ℝ) + 3))) := by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      intro z
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      rw [← ENNReal.ofReal_mul (Real.rpow_nonneg hkpos.le _)]
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      apply ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      have hc : cellPt d z = k⁻¹ • latticePt z := rfl
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      have hge := uw_jb_smul_ge (inv_nonneg.2 hkpos.le) (inv_le_one_of_one_le₀ hk1) (latticePt z)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      have hjpos : 0 &lt; jbracket (latticePt z) := Real.sqrt_pos.2 (by positivity)
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      have hcpos : 0 &lt; k⁻¹ * jbracket (latticePt z) := mul_pos (inv_pos.2 hkpos) hjpos
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      rw [hc]
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      calc jbracket (k⁻¹ • latticePt z) ^ (-((d : ℝ) + 3))
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>          ≤ (k⁻¹ * jbracket (latticePt z)) ^ (-((d : ℝ) + 3)) :=
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>            Real.rpow_le_rpow_of_nonpos hcpos hge (by linarith)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        _ = k ^ ((d : ℝ) + 3) * jbracket (latticePt z) ^ (-((d : ℝ) + 3)) := by
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>            rw [Real.mul_rpow (inv_nonneg.2 hkpos.le) hjpos.le, Real.inv_rpow hkpos.le,
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>              Real.rpow_neg hkpos.le, inv_inv]
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    calc (∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))))
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>        ≤ ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (k ^ ((d : ℝ) + 3)) *
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>            ENNReal.ofReal (jbracket (latticePt z) ^ (-((d : ℝ) + 3))) :=
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>          ENNReal.tsum_le_tsum hpt
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      _ &lt; ⊤ := by
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>          rw [ENNReal.tsum_mul_left]
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>          exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top uw_S_lt_top
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>theorem uw_part3 (m : ℕ) (χ : Euc d → ℝ) :
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    ∃ C : ℝ, ∀ u : Euc d → ℝ, varpiNormE m χ u ≤ ENNReal.ofReal C * ulocNormE m χ u := by
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  set S : ℝ≥0∞ := ∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3)))
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    with hS
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  have hSt : S ≠ ⊤ := uw_Sfine_lt_top.ne
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  refine ⟨Real.sqrt S.toReal, fun u =&gt; ?_⟩
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  unfold varpiNormE
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  set U := ulocNormE m χ u with hU
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  calc (∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) *
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>          HRS.Whole.sobolevNormE (m : ℝ) (fun x =&gt; χ (x - cellPt d z) * u x) ^ 2) ^ (1 / 2 : ℝ)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      ≤ (∑&#x27; z : Fin d → ℤ, ENNReal.ofReal (jbracket (cellPt d z) ^ (-((d : ℝ) + 3))) * U ^ 2) ^
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>          (1 / 2 : ℝ) := by
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        apply ENNReal.rpow_le_rpow _ (by norm_num)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        refine ENNReal.tsum_le_tsum fun z =&gt; ?_
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>        have : HRS.Whole.sobolevNormE (m : ℝ) (fun x =&gt; χ (x - cellPt d z) * u x) ≤ U :=
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>          le_iSup (fun w : Euc d =&gt; HRS.Whole.sobolevNormE (m : ℝ) fun x =&gt; χ (x - w) * u x)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>            (cellPt d z)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>        gcongr
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    _ = ENNReal.ofReal (Real.sqrt S.toReal) * U := by
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        rw [ENNReal.tsum_mul_right, ← hS, ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>          ← ENNReal.rpow_natCast U 2, ← ENNReal.rpow_mul]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        have e2 : ((2 : ℕ) : ℝ) * (1 / 2 : ℝ) = 1 := by norm_num
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        rw [e2, ENNReal.rpow_one, Real.sqrt_eq_rpow,
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>          ← ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg (by norm_num)]
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>        rw [ENNReal.ofReal_toReal hSt]
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>/-- Lemma S.A.31(iv) -/
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>theorem uloc_embedding_weighted_proof (m : ℕ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    (∃ C : ℝ, ∀ ϖ : Euc d → ℝ, (∀ x, 0 ≤ ϖ x) → ∀ u : Euc d → ℝ, ContDiff ℝ m u →
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>      weightedHE m ϖ u ≤ ENNReal.ofReal C * (cellSupSum ϖ) ^ (1 / 2 : ℝ) * ulocNormE m χ u) ∧
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    cellSupSum (fun x : Euc d =&gt; jbracket x ^ (-((d : ℝ) + 3))) &lt; ⊤ ∧
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    (∃ C : ℝ, ∀ u : Euc d → ℝ, varpiNormE m χ u ≤ ENNReal.ofReal C * ulocNormE m χ u) :=
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  ⟨uw_part1 m χ hχ, uw_part2, uw_part3 m χ⟩
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>example := (@uloc_embedding_weighted_proof : type_of% @HRS.Whole.AppendixALemmas.uloc_embedding_weighted)
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>end HRS.MS.UlocWeighted
+</span></code></pre></main></body></html>

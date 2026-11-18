@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.UIPathTightP4 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.UIPathTightP4</code></h1><p><a href="../../lean/HRS/ME/UIPathTightP4.lean">Open the unaltered Lean file</a> · 91 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.UIPath
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.ME.RetPathLaw
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.ME.RetGlueB
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MD.EQFrozen29Rest
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MD.EQLawPath
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Sections.AdjKGlue
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>open scoped ENNReal NNReal
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>noncomputable section
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>namespace HRS.ME.UIPathTight
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open HRS HRS.LZ HRS.Uniform HRS.Main
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>variable {d : ℕ}
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>/-- Evaluation of a path on a subset `D` of the time interval. -/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>def p_up4_rEval (m T : ℝ) (D : Set (Set.Icc (0 : ℝ) T)) :
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>    PathSpace d m T → (D → NegSobolev d m) := fun w q =&gt; w.at&#x27; q.1
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>theorem p_up4_rEval_continuous (m T : ℝ) (D : Set (Set.Icc (0 : ℝ) T)) :
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    Continuous (p_up4_rEval (d := d) m T D) := by
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  refine continuous_pi fun q =&gt; ?_
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  exact (continuous_eval_const (F := C(Set.Icc (0 : ℝ) T, NegSobolev d m)) q.1 :)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem p_up4_rEval_injective (m T : ℝ) (D : Set (Set.Icc (0 : ℝ) T)) (hD : Dense D) :
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    Function.Injective (p_up4_rEval (d := d) m T D) := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  intro w w&#x27; h
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  have key : (fun t =&gt; w.at&#x27; t) = fun t =&gt; w&#x27;.at&#x27; t :=
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    Continuous.ext_on hD (f := fun t =&gt; w.at&#x27; t) (g := fun t =&gt; w&#x27;.at&#x27; t)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      (w : C(Set.Icc (0 : ℝ) T, NegSobolev d m)).continuous
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>      (w&#x27; : C(Set.Icc (0 : ℝ) T, NegSobolev d m)).continuous
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      (fun q hq =&gt; congrFun h ⟨q, hq⟩)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  exact ContinuousMap.ext (congrFun key)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>theorem p_up4_embedding (m T : ℝ) (D : Set (Set.Icc (0 : ℝ) T)) [Countable D] (hD : Dense D) :
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    MeasurableEmbedding (p_up4_rEval (d := d) m T D) := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have : PolishSpace (PathSpace d m T) :=
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    inferInstanceAs (PolishSpace C(Set.Icc (0 : ℝ) T, NegSobolev d m))
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  exact (p_up4_rEval_continuous m T D).measurableEmbedding (p_up4_rEval_injective m T D hD)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>/-- The time index `u + q` as an element of the horizon set. -/
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>def p_up4_idx (T u : ℝ) (hu : 0 ≤ u) (q : Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    {t : ℝ≥0 // (t : ℝ) ≤ u + T} :=
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  ⟨Real.toNNReal (u + q.1), by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    rw [Real.coe_toNNReal _ (by linarith [q.2.1])]; linarith [q.2.2]⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>theorem ret_window_event {N : ℕ} (hN : 1 ≤ N) {m : ℝ} (hm : (d : ℝ) &lt; 2 * m) (T u : ℝ) (hu : 0 ≤ u)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (μ : Measure (Torus d)) [IsProbabilityMeasure μ]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (A : Set (PathSpace d m T)) (hA : MeasurableSet A) :
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    ∃ B : Set (Config d N × ({t : ℝ≥0 // (t : ℝ) ≤ u + T} → Config d N)), MeasurableSet B ∧
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>        (X₀ : Ω → Config d N) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        (∀ t, Measurable (X t)) → (∀ᵐ ω ∂P, ∀ i, Continuous fun t =&gt; X t ω i) →
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>        (windowGibbs m T u μ X ⁻¹&#x27; A) =ᵐ[P]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>          ((fun ω =&gt; (X₀ ω, fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X t.1 ω)) ⁻¹&#x27; B) := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  obtain ⟨D, hDc, hDd⟩ := TopologicalSpace.exists_countable_dense (Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  haveI : Countable D := hDc.to_subtype
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hemb := p_up4_embedding (d := d) m T D hDd
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  let g : Config d N × ({t : ℝ≥0 // (t : ℝ) ≤ u + T} → Config d N) → (D → NegSobolev d m) :=
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    fun z q =&gt; etaE m (z.2 (p_up4_idx T u hu q.1)) μ
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hg : Measurable g := by
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    refine measurable_pi_iff.2 fun q =&gt; ?_
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    have hc : Continuous fun x : Config d N =&gt; etaE m x μ :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      (HRS.MD.EQLawPath.eqlaw_continuous_ofMeasureDiff_empirical hm μ hN).const_smul (Real.sqrt N)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    exact hc.measurable.comp ((measurable_pi_apply _).comp measurable_snd)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  refine ⟨g ⁻¹&#x27; (p_up4_rEval m T D &#x27;&#x27; A), hg (hemb.measurableSet_image.2 hA), ?_⟩
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  intro Ω _ P X₀ X _ hcont
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hc : Continuous fun x : Config d N =&gt; etaE m x μ :=
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (HRS.MD.EQLawPath.eqlaw_continuous_ofMeasureDiff_empirical hm μ hN).const_smul (Real.sqrt N)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  filter_upwards [hcont] with ω hω
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hf : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; etaE m (X (Real.toNNReal (u + t)) ω) μ := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    refine hc.comp ?_
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    refine continuous_pi fun i =&gt; ?_
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    exact (hω i).comp (continuous_real_toNNReal.comp (continuous_const.add continuous_subtype_val))
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hw : windowGibbs m T u μ X ω =
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      ⟨fun t : Set.Icc (0 : ℝ) T =&gt; etaE m (X (Real.toNNReal (u + t)) ω) μ, hf⟩ := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    unfold windowGibbs
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    exact dif_pos hf
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hrw : p_up4_rEval m T D (windowGibbs m T u μ X ω) =
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      g (X₀ ω, fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X t.1 ω) := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rw [hw]; rfl
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  show (windowGibbs m T u μ X ω ∈ A) = ((X₀ ω, fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X t.1 ω) ∈
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    g ⁻¹&#x27; (p_up4_rEval m T D &#x27;&#x27; A))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  apply propext
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  rw [Set.mem_preimage, ← hrw]
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  exact (p_up4_rEval_injective m T D hDd).mem_set_image.symm
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>end HRS.ME.UIPathTight
+</span></code></pre></main></body></html>

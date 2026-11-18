@@ -1,0 +1,125 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.UIPathTightP5 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.UIPathTightP5</code></h1><p><a href="../../lean/HRS/ME/UIPathTightP5.lean">Open the unaltered Lean file</a> · 124 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.UIPath
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.ME.RetPathLaw
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.ME.RetGlueB
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MD.EQFrozen29Rest
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MD.EQLawPath
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Sections.AdjKGlue
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.ME.UIPathTightP1
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>import HRS.ME.UIPathTightP4
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>/-! Packet UP5: `ret_window_tail`. -/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open scoped ENNReal NNReal
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>namespace HRS.ME.UIPathTight
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open HRS HRS.LZ HRS.Uniform HRS.Main
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>variable {d : ℕ}
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>/-- **P5** (the transfer inequality `ν(A) ≤ Θ(L) + L λ(A)`; scope note 1.1 step 3).  Let `P₁` be a filtered
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>particle system with `N` particles on the horizon `u + T` whose initial law is `≪ ℙ_{N,β}`, and `P₂` a stationary
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>Gibbs flow on the same horizon.  Then for every measurable set `A` of windows and every `L ≥ 0`, the law of the
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>Gibbs-centred window under `P₁` satisfies
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>`≤ ν{h &gt; L} + L · (law of the Gibbs-centred window under P₂)(A)`, `ν = law P₁ X₀₁`, `h = dν/dℙ_{N,β}`.
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>(Stated for a single `N`; `ν{h &gt; L} ≤ uiTail L` is `le_iSup` in P6.)  Route: P1, P4, `ret_path_law_proof`
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>(template `RetGlueB.lean:94-137`), split `h ≤ L` / `h &gt; L`, `Measure.withDensity_rnDeriv_eq`. -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>theorem ret_window_tail (hd : 2 ≤ d) {s β : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (hβ : 0 &lt; β)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (V : Torus d → ℝ) (hV : Torus.IsSmooth V) {m : ℝ} (hm : (d : ℝ) &lt; 2 * m)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (T : ℝ) (hT : 0 ≤ T) (u : ℝ) (hu : 0 ≤ u) {N : ℕ} (hN : 2 ≤ N)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    {Ω₁ : Type} [MeasurableSpace Ω₁] (P₁ : Measure Ω₁) [IsProbabilityMeasure P₁]
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (X₀₁ : Ω₁ → Config d N) (W₁ : ℝ≥0 → Ω₁ → (Fin N → Euc d)) (X₁ : ℝ≥0 → Ω₁ → Config d N)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (h₁ : IsParticleSystem P₁ (PDE.mfData d s hs0 hsd V β hβ) (u + T) X₀₁ W₁ X₁)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (hF₁ : ∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω₁›)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      (W&#x27; : ℝ≥0 → Ω₁ → (Fin N × Fin d) → ℝ), IsFilteredSolution P₁ ℱ W&#x27; W₁ X₁)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    (hac : law P₁ X₀₁ ≪ canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    {Ω₂ : Type} [MeasurableSpace Ω₂] (P₂ : Measure Ω₂) [IsProbabilityMeasure P₂]
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (X₀₂ : Ω₂ → Config d N) (W₂ : ℝ≥0 → Ω₂ → (Fin N → Euc d)) (X₂ : ℝ≥0 → Ω₂ → Config d N)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (h₂ : IsStationaryGibbsFlow P₂ s hs0 hsd V β hβ (u + T) X₀₂ W₂ X₂)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (A : Set (PathSpace d m T)) (hA : MeasurableSet A) (L : ℝ) (hL : 0 ≤ L) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (P₁.map (windowGibbs m T u (firstMarginal (canonicalGibbs (periodicRiesz d s) V N β)) X₁)) A ≤
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      (law P₁ X₀₁) {x | ENNReal.ofReal L &lt;
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>        (law P₁ X₀₁).rnDeriv (canonicalGibbs (periodicRiesz d s) V N β) x} +
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      ENNReal.ofReal L *
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>        (P₂.map (windowGibbs m T u (firstMarginal (canonicalGibbs (periodicRiesz d s) V N β)) X₂)) A := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  classical
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have : BorelSpace (Torus d) := Pi.borelSpace
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have : BorelSpace (Config d N) := Pi.borelSpace
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  set G : Measure (Config d N) := canonicalGibbs (periodicRiesz d s) V N β with hG
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hGp : IsProbabilityMeasure G := HRS.MD.EQLawFlow.eqlaw_gibbs_prob hd hs0 hsd hV hβ (by omega)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  haveI hμp : IsProbabilityMeasure (firstMarginal G) := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    unfold firstMarginal
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    rw [dif_pos (by omega)]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    exact (Measure.isProbabilityMeasure_map_iff (measurable_pi_apply _).aemeasurable).2 ‹_›
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  set μ : Measure (Torus d) := firstMarginal G with hμ
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  set D : DynData d := PDE.mfData d s hs0 hsd V β hβ with hD
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hTu : 0 ≤ u + T := by linarith
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have key := HRS.ME.Ret.ret_path_law_proof hd hs0 hsd V hV hβ hN (u + T) hTu P₁ X₀₁ W₁ X₁ h₁ hF₁ hac
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    P₂ X₀₂ W₂ X₂ h₂
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hstr₁ : IsStrongSolution P₁ D (u + T) X₀₁ W₁ X₁ := h₁.sol
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hstr₂ : IsStrongSolution P₂ D (u + T) X₀₂ W₂ X₂ := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    rcases h₂.flow.flow with ⟨h, _⟩ | ⟨h1, _⟩
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    · exact h
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    · exfalso; omega
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  obtain ⟨B, hBm, hB⟩ := ret_window_event (d := d) (N := N) (by omega) hm T u hu μ A hA
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hB₁ := hB P₁ X₀₁ X₁ hstr₁.adapted hstr₁.cont
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hB₂ := hB P₂ X₀₂ X₂ hstr₂.adapted hstr₂.cont
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hw₁ : AEMeasurable (windowGibbs m T u μ X₁) P₁ :=
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    windowGibbs_aemeasurable (by omega) hm T u μ P₁ D (u + T) X₀₁ W₁ X₁ hstr₁
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hw₂ : AEMeasurable (windowGibbs m T u μ X₂) P₂ :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    windowGibbs_aemeasurable (by omega) hm T u μ P₂ D (u + T) X₀₂ W₂ X₂ hstr₂
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hX₀₁m : AEMeasurable X₀₁ P₁ := (hstr₁.adapted 0).aemeasurable.congr hstr₁.init
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hX₀₂m : AEMeasurable X₀₂ P₂ := (hstr₂.adapted 0).aemeasurable.congr hstr₂.init
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hpath₁ : Measurable fun ω =&gt; fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X₁ t.1 ω :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    measurable_pi_iff.2 fun t =&gt; hstr₁.adapted t.1
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hpath₂ : Measurable fun ω =&gt; fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X₂ t.1 ω :=
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    measurable_pi_iff.2 fun t =&gt; hstr₂.adapted t.1
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  set J₁ : Ω₁ → Config d N × ({t : ℝ≥0 // (t : ℝ) ≤ u + T} → Config d N) :=
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    fun ω =&gt; (X₀₁ ω, fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X₁ t.1 ω) with hJ₁
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  set J₂ : Ω₂ → Config d N × ({t : ℝ≥0 // (t : ℝ) ≤ u + T} → Config d N) :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    fun ω =&gt; (X₀₂ ω, fun t : {t : ℝ≥0 // (t : ℝ) ≤ u + T} =&gt; X₂ t.1 ω) with hJ₂
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hJ₁m : AEMeasurable J₁ P₁ := hX₀₁m.prodMk hpath₁.aemeasurable
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hJ₂m : AEMeasurable J₂ P₂ := hX₀₂m.prodMk hpath₂.aemeasurable
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  set Q := P₂.map J₂ with hQ
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  set ν : Measure (Config d N) := law P₁ X₀₁ with hν
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  set h : Config d N → ℝ≥0∞ := ν.rnDeriv G with hh
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hhm : Measurable h := Measure.measurable_rnDeriv _ _
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hQfst : Q.map Prod.fst = G := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    rw [hQ, AEMeasurable.map_map_of_aemeasurable measurable_fst.aemeasurable hJ₂m]
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    exact h₂.init
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  set S : Set (Config d N) := {x | ENNReal.ofReal L &lt; h x} with hS
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  have hSm : MeasurableSet S := measurableSet_lt measurable_const hhm
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hνS : ∫⁻ x in S, h x ∂G = ν S := by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    rw [← withDensity_apply _ hSm, hh, Measure.withDensity_rnDeriv_eq ν G hac]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have e1 : (P₁.map (windowGibbs m T u μ X₁)) A = (P₁.map J₁) B := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    rw [Measure.map_apply_of_aemeasurable hw₁ hA, Measure.map_apply_of_aemeasurable hJ₁m hBm]
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    exact measure_congr hB₁
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have e2 : (P₂.map (windowGibbs m T u μ X₂)) A = Q B := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    rw [Measure.map_apply_of_aemeasurable hw₂ hA, hQ,
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      Measure.map_apply_of_aemeasurable hJ₂m hBm]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    exact measure_congr hB₂
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  rw [e1, e2, key, withDensity_apply _ hBm]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  calc ∫⁻ z in B, h z.1 ∂Q
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      ≤ ∫⁻ z in B, (ENNReal.ofReal L + S.indicator h z.1) ∂Q := by
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>        refine lintegral_mono fun z =&gt; ?_
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        by_cases hz : z.1 ∈ S
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>        · rw [Set.indicator_of_mem hz]; exact le_add_self
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        · rw [Set.indicator_of_notMem hz, add_zero]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>          exact not_lt.1 hz
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    _ = ENNReal.ofReal L * Q B + ∫⁻ z in B, S.indicator h z.1 ∂Q := by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>        rw [lintegral_add_left measurable_const, lintegral_const,
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>          Measure.restrict_apply MeasurableSet.univ, Set.univ_inter]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    _ ≤ ENNReal.ofReal L * Q B + ν S := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        gcongr
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        calc ∫⁻ z in B, S.indicator h z.1 ∂Q ≤ ∫⁻ z, S.indicator h z.1 ∂Q :=
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>              lintegral_mono&#x27; Measure.restrict_le_self le_rfl
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>          _ = ∫⁻ x, S.indicator h x ∂G := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>              rw [← hQfst, lintegral_map (hhm.indicator hSm) measurable_fst]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>          _ = ν S := by rw [lintegral_indicator hSm, hνS]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    _ = ν S + ENNReal.ofReal L * Q B := add_comm _ _
+</span></code></pre></main></body></html>

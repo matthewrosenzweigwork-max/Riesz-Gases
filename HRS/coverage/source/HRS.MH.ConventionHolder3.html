@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MH.ConventionHolder3 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MH.ConventionHolder3</code></h1><p><a href="../../lean/HRS/MH/ConventionHolder3.lean">Open the unaltered Lean file</a> · 156 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MH.ConventionHolder2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># `convGradConv_coeff_of_holder`
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Relocation of `HRS.convGradConv_coeff_of_holder`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Route (decided before writing code; est. 130 lines, far below the 1200-line limit).  The repo&#x27;s
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>proof of the `C¹` version (`KernelGradD1.coeff_convGradConv_lip_of_one_le`, `GradD1.lean`, and its
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`d ≥ 2` twin in `GradFourier.lean`) regularises the kernel by the heat kernel `heatRieszGrad ε`
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>(uniformly `GoodKernel`, with continuous kernel, so the Fourier coefficient of the convolution is
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>explicit: `KernelGrad.coeff_convGradConv_heat`) and passes to the limit `ε → 0` by dominated
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>convergence; the only place where `C¹` (Lipschitz) is used is the *domination* of the integrand
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`kern G_ε h x` and the uniform bound of `convGradConv G_ε h`.  Replacing the Lipschitz
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>domination `L C (|z|^{-s}+d) + B C (...)` by the Hölder domination of
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>`Duality.kern_norm_holder`/`integrable_dom_holder`
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>(`Λ C (|z|^{β-s-1} + |z|^β) + B C (...)`, valid for all uniformly good kernels at once) gives the
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>Hölder version verbatim: no mollification of `ρ` is needed.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>-/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>noncomputable section
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>namespace HRS.MH.ConventionHolder
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>variable {d : ℕ} {s C : ℝ} {G : Torus d → Euc d}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>/-- The Hölder dominating function. -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>def chDom (s C Λ B β : ℝ) (d : ℕ) (z : Torus d) : ℝ :=
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  Λ * C * (‖z‖ ^ (β - s - 1) + ‖z‖ ^ β) + B * C * ((1 / 4 : ℝ) ^ (-s - 1) + 1)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>theorem ch_integrable_dom (hG : KernelGrad.GoodKernel d s C G) {Λ B β : ℝ} (hβ0 : 0 &lt; β)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (hβ : s + 1 - d &lt; β) : Integrable (chDom s C Λ B β d) :=
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  Duality.integrable_dom_holder hG hβ0 hβ
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>theorem ch_kern_bound_ae (hG : KernelGrad.GoodKernel d s C G) {h : Torus d → ℝ} {B Λ β : ℝ}
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    (hB : ∀ x, |h x| ≤ B) (hB0 : 0 ≤ B) (hΛ : 0 ≤ Λ)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hH : ∀ x z : Torus d, ‖z‖ ≤ 1 / 4 → |h (x - z) - h x| ≤ Λ * ‖z‖ ^ β) (x : Torus d) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    ∀ᵐ z : Torus d, ‖KernelGrad.kern G h x z‖ ≤ chDom s C Λ B β d z := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  filter_upwards [KernelGrad.torus_ae_ne&#x27; hG.pos] with z hz
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  exact Duality.kern_norm_holder hG hB hB0 hΛ hH x hz
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- Continuity of the cancellation convolution of a Hölder function. -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>theorem ch_continuous_op (hG : KernelGrad.GoodKernel d s C G) {h : Torus d → ℝ} (hc : Continuous h)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    {B Λ β : ℝ} (hB : ∀ x, |h x| ≤ B) (hB0 : 0 ≤ B) (hΛ : 0 ≤ Λ) (hβ0 : 0 &lt; β)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (hβ : s + 1 - d &lt; β)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (hH : ∀ x z : Torus d, ‖z‖ ≤ 1 / 4 → |h (x - z) - h x| ≤ Λ * ‖z‖ ^ β) :
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    Continuous (HRS.convGradConv G h) := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have : HRS.convGradConv G h = fun x =&gt; ∫ z, KernelGrad.kern G h x z :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    funext (KernelGrad.convGradConv_eq_integral_kern G h)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  rw [this]
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  refine continuous_of_dominated (bound := chDom s C Λ B β d)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (fun x =&gt; (KernelGrad.measurable_kern hG hc.measurable x).aestronglyMeasurable)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (fun x =&gt; ch_kern_bound_ae hG hB hB0 hΛ hH x) (ch_integrable_dom hG hβ0 hβ)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    (Eventually.of_forall fun z =&gt; ?_)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  unfold KernelGrad.kern
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  split_ifs
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  · fun_prop
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  · fun_prop
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>theorem ch_bound_op (hG : KernelGrad.GoodKernel d s C G) {h : Torus d → ℝ} {B Λ β : ℝ}
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    (hB : ∀ x, |h x| ≤ B) (hB0 : 0 ≤ B) (hΛ : 0 ≤ Λ) (hβ0 : 0 &lt; β) (hβ : s + 1 - d &lt; β)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (hH : ∀ x z : Torus d, ‖z‖ ≤ 1 / 4 → |h (x - z) - h x| ≤ Λ * ‖z‖ ^ β) (x : Torus d) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    ‖HRS.convGradConv G h x‖ ≤ ∫ z, chDom s C Λ B β d z := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  rw [KernelGrad.convGradConv_eq_integral_kern]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  exact norm_integral_le_of_norm_le (ch_integrable_dom hG hβ0 hβ)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    (ch_kern_bound_ae hG hB hB0 hΛ hH x)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- Pointwise convergence of the heat-regularised convolutions, with Hölder domination. -/
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>theorem ch_tendsto_heat (hsd : s &lt; d)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (hGε : ∀ ε : ℝ, 0 &lt; ε → KernelGrad.GoodKernel d s C (heatRieszGrad d s ε))
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    {h : Torus d → ℝ} (hh : Continuous h) {B Λ β : ℝ} (hB : ∀ x, |h x| ≤ B) (hB0 : 0 ≤ B)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    (hΛ : 0 ≤ Λ) (hβ0 : 0 &lt; β) (hβ : s + 1 - d &lt; β)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (hH : ∀ x z : Torus d, ‖z‖ ≤ 1 / 4 → |h (x - z) - h x| ≤ Λ * ‖z‖ ^ β) (x : Torus d) :
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    Tendsto (fun ε =&gt; HRS.convGradConv (heatRieszGrad d s ε) h x) (𝓝[&gt;] 0)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      (𝓝 (HRS.convGradConv (periodicRieszGrad d s) h x)) := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  simp_rw [KernelGrad.convGradConv_eq_integral_kern]
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  refine tendsto_integral_filter_of_dominated_convergence (chDom s C Λ B β d) ?_ ?_
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (ch_integrable_dom (hGε 1 one_pos) hβ0 hβ) ?_
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  · filter_upwards [self_mem_nhdsWithin] with ε hε
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    exact (KernelGrad.measurable_kern (hGε ε hε) hh.measurable x).aestronglyMeasurable
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  · filter_upwards [self_mem_nhdsWithin] with ε hε
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    exact ch_kern_bound_ae (hGε ε hε) hB hB0 hΛ hH x
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  · refine Eventually.of_forall fun z =&gt; ?_
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    unfold KernelGrad.kern
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    split_ifs
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    · exact ((KernelGrad.heat_tendsto hsd z).const_smul _)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    · exact ((KernelGrad.heat_tendsto hsd z).const_smul _)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>open scoped ComplexConjugate in
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>/-- Fourier coefficients of `∇g * h` (cancellation convention) for a Hölder function `h`
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>(copy of `KernelGradD1.coeff_convGradConv_lip_of_one_le` with the Hölder domination). -/
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>theorem ch_coeff_holder {s : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {h : Torus d → ℝ}
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (hcont : Continuous h) {B Λ β : ℝ} (hB : ∀ x, |h x| ≤ B) (hB0 : 0 ≤ B) (hΛ : 0 ≤ Λ)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (hβ0 : 0 &lt; β) (hβ : s + 1 - d &lt; β)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (hH : ∀ x z : Torus d, ‖z‖ ≤ 1 / 4 → |h (x - z) - h x| ≤ Λ * ‖z‖ ^ β)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (k : Lattice d) (i : Fin d) :
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    ∫ x, Torus.mode (-k) x * ((HRS.convGradConv (periodicRieszGrad d s) h x i : ℝ) : ℂ) =
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      (∫ y, Torus.mode (-k) y * (h y : ℂ)) *
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        ((2 * Real.pi * Complex.I * ((k i : ℤ) : ℂ)) * ((rieszCoeff d s k : ℝ) : ℂ)) := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  obtain ⟨C, hC0, hGε⟩ := KernelGradD1.goodKernel_heat_of_one_le hd hs0 hsd
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  set l : Filter ℝ := 𝓝[&gt;] (0 : ℝ) with hl
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hLHS : Tendsto (fun ε : ℝ =&gt; ∫ x, Torus.mode (-k) x *
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      ((HRS.convGradConv (heatRieszGrad d s ε) h x i : ℝ) : ℂ)) l
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      (𝓝 (∫ x, Torus.mode (-k) x * ((HRS.convGradConv (periodicRieszGrad d s) h x i : ℝ) : ℂ))) := by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    refine tendsto_integral_filter_of_norm_le_const ?_ ?_ ?_
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    · filter_upwards [self_mem_nhdsWithin] with ε hε
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      have hc := ch_continuous_op (hGε ε hε) hcont hB hB0 hΛ hβ0 hβ hH
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      have : Continuous fun x : Torus d =&gt; Torus.mode (-k) x *
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>          ((HRS.convGradConv (heatRieszGrad d s ε) h x i : ℝ) : ℂ) :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>        (Torus.continuous_mode _).mul (Complex.continuous_ofReal.comp
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>          ((EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).continuous.comp hc))
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      exact this.aestronglyMeasurable
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    · refine ⟨∫ z, chDom s C Λ B β d z, ?_⟩
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      filter_upwards [self_mem_nhdsWithin] with ε hε
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      refine Eventually.of_forall fun x =&gt; ?_
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      rw [norm_mul, Torus.norm_mode, one_mul, Complex.norm_real, Real.norm_eq_abs]
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      refine le_trans ?_ (ch_bound_op (hGε ε hε) hB hB0 hΛ hβ0 hβ hH x)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      have := PiLp.norm_apply_le (HRS.convGradConv (heatRieszGrad d s ε) h x) i
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      simpa using this
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    · refine Eventually.of_forall fun x =&gt; ?_
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      have := ch_tendsto_heat hsd hGε hcont hB hB0 hΛ hβ0 hβ hH x
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      have h2 := ((EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).continuous.tendsto _).comp this
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      exact (tendsto_const_nhds.mul (Complex.continuous_ofReal.continuousAt.tendsto.comp h2))
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  set R : ℝ → ℂ := fun ε =&gt; (∫ y, Torus.mode (-k) y * (h y : ℂ)) *
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    ((2 * Real.pi * Complex.I * ((k i : ℤ) : ℂ)) *
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      ((rieszCoeff d s k * Real.exp (-ε * Lattice.enorm k ^ 2) : ℝ) : ℂ)) with hR
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hRc : Continuous R := by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    simp only [hR]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    fun_prop
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hRHS : Tendsto R l (𝓝 ((∫ y, Torus.mode (-k) y * (h y : ℂ)) *
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      ((2 * Real.pi * Complex.I * ((k i : ℤ) : ℂ)) * ((rieszCoeff d s k : ℝ) : ℂ)))) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    have := (hRc.tendsto 0).mono_left (nhdsWithin_le_nhds (s := Set.Ioi (0 : ℝ)))
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    simpa [hR] using this
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  have hEq : (fun ε : ℝ =&gt; ∫ x, Torus.mode (-k) x *
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      ((HRS.convGradConv (heatRieszGrad d s ε) h x i : ℝ) : ℂ)) =ᶠ[l] R := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    filter_upwards [self_mem_nhdsWithin] with ε hε
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    exact KernelGrad.coeff_convGradConv_heat hsd hε (hGε ε hε) hcont hB k i
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  exact tendsto_nhds_unique (hLHS.congr&#x27; hEq) hRHS
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>theorem convGradConv_coeff_of_holder_proof :
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    type_of% @HRS.convGradConv_coeff_of_holder := by
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  intro d s α hd hs0 hsd hα0 hα1 hα ρ hρ i
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  obtain ⟨B, Λ, hB0, hΛ0, hB, hH⟩ := ch_hol_data hρ
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  have e1 : ∀ (φ : Torus d → ℝ) (k : Lattice d),
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      PDE.coeffOf φ k = ∫ x, Torus.mode (-k) x * (φ x : ℂ) :=
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    fun φ k =&gt; KernelGrad.coeffOf_eq_integral φ k
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  funext k
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  rw [e1, ch_coeff_holder hd hs0 hsd hρ.1 hB hB0 hΛ0 hα0 hα hH k i]
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  unfold PDE.gradRieszCoeff PDE.derivCoeff PDE.rieszMult
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  rw [e1]
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  ring
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>end HRS.MH.ConventionHolder
+</span></code></pre></main></body></html>

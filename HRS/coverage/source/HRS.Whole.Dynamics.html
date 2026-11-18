@@ -1,0 +1,274 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Dynamics · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Dynamics</code></h1><p><a href="../../lean/HRS/Whole/Dynamics.lean">Open the unaltered Lean file</a> · 273 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Thermal
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Dynamics.Setup
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Whole-space dynamics: particle system, mean-field equation, adjoint propagator, linear
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>fluctuation processes (definitions used by Sections S4.10-S5.7 and the headline Theorem S2.1)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Source: HRS whole-space supplement (S), with the periodic main paper (M) for the objects the
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>supplement re-uses.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Particle system `W:r2:particle-equation` (S lines 200-203),
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `dx_i = -(∇V(x_i) + N⁻¹ ∑_{j≠i} ∇g(x_i - x_j)) dt + √(2/β) dB_i`; its matrix form
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `dx_i = (N⁻¹ ∑_{j≠i} M∇g(x_i-x_j) - ∇V(x_i)) dt + √(2ν) dB_i`, `ν = β⁻¹`
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  (M `H:eq:intro-particles`, M lines 170-178); the confined whole-space realization
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  (S lines 9698-9724, `S:sec:particle-realization`).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* Mean-field equation and weak form `B:eq:mf-weak` on `ℝ^d` (&quot;interpreted with the physical kernel
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  on `ℝ^d`&quot;, S lines 9667-9668), force convention `B:eq:nabla-g-convolution` (M lines 10091-10101,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  stated for `𝔻 ∈ {𝕋^d, ℝ^d}`), backward generator `B:eq:adjoint-def` (M line 1590), classical
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  adjoint solution on `ℝ^d` (`B:rem:def-adjoint-rd`, S lines 10098-10100).
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* Linear fluctuation equation `H:eq:linear-equation`, mild form `H:eq:linear-mild`, noise
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  covariance `2q ∫_0^t μ^r(∇U^{r,t}φ·∇U^{r,t}ψ) dr`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>## Representation decisions (see also `HRS/Dynamics/Setup.lean`, which these mirror)
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>* All definitions mirror their periodic counterparts of `HRS/Dynamics/Setup.lean` with `ℝ^d`
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  in place of `𝕋^d`; the particle SDE has additive noise and is therefore written pathwise on
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  `ℝ^d` itself (no covering space).
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>* The adjoint propagator `U^{r,t}φ` is the classical adjoint solution (`C_b²`, bounded `∂_r f`,
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  `B:rem:def-adjoint-rd`) when it exists (`propagatorW`; `0` otherwise, existence is an input of
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  each statement, never assumed in a definition).
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>* A generator is described by a `WholeCoeff`: viscosity `ν`, the *full* drift field
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `b_t = M∇g*ρ_t - ∇V` (resp. `-Qx + c_t`), the density `ρ_t`, the matrix `M` and the exponent `s`;
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  `generatorW` is `𝓛_t φ = νΔφ + b_t·∇φ - Div g*(ρ_t Mᵀ∇φ)`.  The S5.1/S5.7 operator with a general
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  bounded transport `c` is a `WholeCoeff` whose drift is `-Qx + c`.
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>* The linear Gaussian process is characterised by its (jointly Gaussian) finite-dimensional laws,
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  as in the periodic file; the initial field of the linear equation is a *random linear functional*
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  `η₀ : Ω → (ℝ^d → ℝ) → ℝ` on test functions (because the adjoint orbit `U^{0,t}φ_j` of a Hermite
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  function has an algebraic tail and is not in `Σ^m`, S lines 3181-3184, so `Y⁰(U^{0,t}φ)` cannot
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  be a pairing of `Y⁰ ∈ B_m` with an element of `Σ^m`).
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>-/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>noncomputable section
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>namespace HRS.Whole
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>variable {d N : ℕ}
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-! ### Coefficients of the particle system -/
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>/-- Data of the whole-space dynamics: Riesz exponent `s`, constant interaction matrix `M`,
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>one-body potential `V` (possibly of linear-gradient growth), and `invβ = β⁻¹ ∈ [0,∞)` (`ν`).
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>Gradient dynamics is `M = -1` (`-I`).  The standing constraints `0 ≤ s &lt; d`, `0 ≤ invβ` are
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>hypotheses of each statement. -/
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>structure WholeDyn (d : ℕ) where
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  s : ℝ
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  M : Matrix (Fin d) (Fin d) ℝ
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  V : Euc d → ℝ
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  invβ : ℝ
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>/-- The affine-quadratic potential `V(x) = xᵀQx/2 + c·x` (S lines 3203, 3828). -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>def quadV (Q : Matrix (Fin d) (Fin d) ℝ) (c : Euc d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  (1 / 2) * inner ℝ x (Torus.matVec Q x) + inner ℝ c x
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>/-- The collision set `{X : x_i = x_j for some i ≠ j}` of configurations of `ℝ^d`. -/
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>def eucCollisionSet (d N : ℕ) : Set (EucConfig d N) := {X | ∃ i j, i ≠ j ∧ X i = X j}
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>/-- The particle drift `b_i(X) = N⁻¹ ∑_{j≠i} M∇g(x_i - x_j) - ∇V(x_i)` (M line 171; S lines 200-203
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>with `M = -I`). -/
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>def particleDriftW (D : WholeDyn d) (X : EucConfig d N) (i : Fin N) : Euc d :=
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  (1 / (N : ℝ)) • ∑ j ∈ Finset.univ.erase i,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      Torus.matVec D.M (rieszKernelGrad d D.s (X i - X j)) - gradient D.V (X i)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-- A collision-free strong solution of the whole-space particle system on `[0,T]` driven by `W`
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>with initial configuration `X₀`, in integrated (pathwise) form
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>`X_t = X_0 + ∫_0^t b(X_s) ds + √(2ν)(W_t - W_0)` (additive noise), continuous, adapted
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>(each `X_t` measurable), with no collisions on `[0,T]` a.s. (the whole-space counterpart of
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>`B:thm:particle-wp`, S lines 9698-9724). -/
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>structure IsWholeStrongSolution {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) (D : WholeDyn d)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (T : ℝ) (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    (X : ℝ≥0 → Ω → EucConfig d N) : Prop where
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  init : ∀ᵐ ζ ∂P, X 0 ζ = X₀ ζ
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  eqn : ∀ᵐ ζ ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (∀ i, IntegrableOn (fun s : ℝ =&gt; particleDriftW D (X (Real.toNNReal s) ζ) i)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      (Set.Icc 0 (t : ℝ))) ∧
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    ∀ i, X t ζ i = X 0 ζ i +
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      (∫ s in Set.Icc (0 : ℝ) t, particleDriftW D (X (Real.toNNReal s) ζ) i) +
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      Real.sqrt (2 * D.invβ) • (W t ζ i - W 0 ζ i)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  cont : ∀ᵐ ζ ∂P, ∀ i, Continuous fun t =&gt; X t ζ i
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  adapted : ∀ t : ℝ≥0, Measurable (X t)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  no_collision : ∀ᵐ ζ ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ζ ∉ eucCollisionSet d N
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-- Filtration bookkeeping for the whole-space process (`HRS.IsFilteredSolution` on `ℝ^d`; moved here from `HRS.Whole.AppendixA` so that the headline statements can use it): `W&#x27;` is a Brownian
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>motion for `ℱ` with `W&#x27;(t)(i,j) = W_i^j(t)`, and `X` is `ℱ`-adapted and progressively measurable. -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>structure IsWholeFilteredSolution {Ω : Type*} [mΩ : MeasurableSpace Ω] {N : ℕ} (P : Measure Ω)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (ℱ : Filtration ℝ mΩ) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (X : ℝ≥0 → Ω → EucConfig d N) : Prop where
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  brownian : IsBrownianFiltration P ℱ W&#x27;
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  coords : ∀ᵐ ζ ∂P, ∀ t i j, W&#x27; t ζ (i, j) = W t ζ i j
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  adapted : ∀ t : ℝ≥0, Measurable[ℱ t] (X t)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  progressive : IsProgressive ℱ (ofNNRealTime X)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>/-! ### Mean-field equation, generator, adjoint solutions -/
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>/-- The force convolution `G * ρ (x)` by the cancellation convention
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>`B:eq:nabla-g-convolution` (M lines 10091-10101, valid for `𝔻 = ℝ^d`; the subtracted constant
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>contributes zero by oddness of `G = ∇g`):
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>`∫ G(x-y)(ρ(y)-ρ(x)) 1_{|x-y|≤1/4} dy + ∫ G(x-y) ρ(y) 1_{|x-y|&gt;1/4} dy`. -/
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>def convGradConvW (G : Euc d → Euc d) (ρ : Euc d → ℝ) (x : Euc d) : Euc d :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  ∫ y, (if ‖x - y‖ ≤ 1 / 4 then (ρ y - ρ x) • G (x - y) else ρ y • G (x - y))
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>/-- The mean-field drift `M ∇g*ρ - ∇V`. -/
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>def meanFieldDriftW (D : WholeDyn d) (ρ : Euc d → ℝ) (x : Euc d) : Euc d :=
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  Torus.matVec D.M (convGradConvW (rieszKernelGrad d D.s) ρ x) - gradient D.V x
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- The symmetrised interaction pairing `½ ∬_{x≠y} (∇ψ(x)-∇ψ(y))·M∇g(x-y) dν(x) dν&#x27;(y)`
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>(`B:eq:mf-weak`, M line 10104). -/
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>def interactionPairingW (D : WholeDyn d) (ψ : Euc d → ℝ) (ν ν&#x27; : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  (1 / 2) * ∫ x, ∫ y, (if x = y then 0 else
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    inner ℝ (gradient ψ x - gradient ψ y) (Torus.matVec D.M (rieszKernelGrad d D.s (x - y)))) ∂ν&#x27; ∂ν
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>/-- A weak solution of the whole-space mean-field equation on `[0,T]` (`H:eq:meanfield`,
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>`B:eq:mf-weak` &quot;interpreted with the physical kernel on `ℝ^d`&quot;, S lines 9667-9668): probability
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>densities with a finite second moment (technical: needed for the integrations by parts, S lines
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>9668-9670 &quot;the second-moment bound&quot;), and the weak identity for every `ψ ∈ C_b²(ℝ^d)`. -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>structure IsWholeMeanFieldSolution (D : WholeDyn d) (T : ℝ) (ρ : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  density : ∀ t ∈ Set.Icc 0 T, IsProbDensity (ρ t)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  second_moment : ∀ t ∈ Set.Icc 0 T, Integrable (fun x =&gt; ‖x‖ ^ 2 * ρ t x)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  weak : ∀ ψ : Euc d → ℝ, MemCb 2 ψ → ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    pair (withDensityReal (ρ t)) ψ - pair (withDensityReal (ρ 0)) ψ =
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ∫ r in Set.Icc 0 t,
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        (pair (withDensityReal (ρ r)) (fun x =&gt; D.invβ * Laplacian.laplacian ψ x -
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>            inner ℝ (gradient D.V x) (gradient ψ x)) +
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          interactionPairingW D ψ (withDensityReal (ρ r)) (withDensityReal (ρ r)))
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>/-- Coefficients of a linear (backward) generator on `ℝ^d`: exponent `s` of the kernel,
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>interaction matrix `M`, viscosity `ν ≥ 0`, the *full* transport field `b_t`, and the density
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>`ρ_t` of the nonlocal term. -/
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>structure WholeCoeff (d : ℕ) where
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  s : ℝ
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  M : Matrix (Fin d) (Fin d) ℝ
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  ν : ℝ
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  drift : ℝ → Euc d → Euc d
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  ρ : ℝ → Euc d → ℝ
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>/-- The coefficients of the dynamics `D` along a mean-field trajectory `ρ`:
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>transport `b_t = M∇g*ρ_t - ∇V`. -/
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>def WholeDyn.coeff (D : WholeDyn d) (ρ : ℝ → Euc d → ℝ) : WholeCoeff d :=
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  ⟨D.s, D.M, D.invβ, fun t =&gt; meanFieldDriftW D (ρ t), ρ⟩
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>/-- The backward generator `𝓛_t φ = νΔφ + b_t·∇φ - Div g*(ρ_t Mᵀ∇φ)` (`B:eq:adjoint-def`,
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>M line 1590; S lines 3213-3215, 3844-3845), with both convolutions by the cancellation
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>convention. -/
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>def generatorW (C : WholeCoeff d) (t : ℝ) (φ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  C.ν * Laplacian.laplacian φ x + inner ℝ (C.drift t x) (gradient φ x) -
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    ∑ j : Fin d, (convGradConvW (rieszKernelGrad d C.s)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      (fun y =&gt; C.ρ t y * (Torus.matVec C.M.transpose (gradient φ y)) j) x) j
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>/-- A classical adjoint solution on `[0,t]` with terminal datum `φ` on `ℝ^d`
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>(`B:rem:def-adjoint-rd`, S lines 10098-10100): `f`, `∇f`, `∇²f` are bounded and continuous
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>(local `C²` continuity in time), `f(t) = φ`, and `-∂_r f = 𝓛_r f` pointwise, with `∂_r f`
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>continuous.
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>SUSPECTED ISSUE (latent in the TeX): the source (S L10098-10100) asks `∂_r f` to be *bounded*.
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>For the confining drift `-Qx·∇` (`Q ≠ 0`) this fails already at `r = t` for a bounded smooth datum
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>such as `φ = sin x_i` (`∂_r f = -𝓛 φ` contains `Qx·∇φ`, which grows linearly), so the literal
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>notion would make every statement using it vacuous for quadratic `V` (and B:thm:adjoint-rd(a) false
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>as written).  The repaired notion used here (`bdd_time_deriv`) asks `∂_r f` to be of at most
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>linear growth, `|∂_r f(r,x)| ≤ B(1+|x|)` uniformly on `[0,t]` (the drift is `O(1+|x|)` by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>`B:eq:drift-bounds-rd`, S L10112, and `∇f` is bounded); in the unconfined case (`Q = 0`, bounded
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>drift) it is implied by the source&#x27;s boundedness. -/
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>structure IsClassicalAdjointW (C : WholeCoeff d) (t : ℝ) (φ : Euc d → ℝ)
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    (f : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  c2 : ∀ r ∈ Set.Icc 0 t, ContDiff ℝ 2 (f r)
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  bdd : ∀ j ≤ 2, ∃ B : ℝ, ∀ r ∈ Set.Icc 0 t, ∀ x, ‖iteratedFDeriv ℝ j (f r) x‖ ≤ B
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  cont_c2 : ∀ j ≤ 2, Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt;
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    iteratedFDeriv ℝ j (f p.1) p.2
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  terminal : f t = φ
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  time_deriv : ∀ x : Euc d, ∀ r ∈ Set.Ioo 0 t,
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    HasDerivAt (fun r&#x27; =&gt; f r&#x27; x) (-(generatorW C r (f r) x)) r
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  cont_time_deriv : Continuous fun p : Set.Icc (0 : ℝ) t × Euc d =&gt; generatorW C p.1 (f p.1) p.2
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  bdd_time_deriv : ∃ B : ℝ, ∀ r ∈ Set.Icc 0 t, ∀ x, |generatorW C r (f r) x| ≤ B * (1 + ‖x‖)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>open Classical in
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>/-- The adjoint propagator `U^{r,t} φ`: the classical adjoint solution at time `r` when one
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>exists (`0` otherwise; existence is an input of the statements, never assumed here). -/
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>def propagatorW (C : WholeCoeff d) (r t : ℝ) (φ : Euc d → ℝ) : Euc d → ℝ :=
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  if h : ∃ f, IsClassicalAdjointW C t φ f then h.choose r else 0
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>/-- The noise covariance `2q ∫_0^{t∧t&#x27;} ∫ ∇U^{r,t}φ·∇U^{r,t&#x27;}ψ ρ^r dx dr` of the linear equation
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>(`H:eq:linear-mild`, M line 498; `B:eq:surrogate-cov`). -/
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>def noiseCovW (C : WholeCoeff d) (q t t&#x27; : ℝ) (φ ψ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  2 * q * ∫ r in Set.Icc 0 (min t t&#x27;), ∫ x, inner ℝ (gradient (propagatorW C r t φ) x)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (gradient (propagatorW C r t&#x27; ψ) x) * C.ρ r x
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>/-! ### The linear fluctuation equation -/
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>/-- A smooth test function in the oscillator space `Σ^m` (so that the pairing
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>`OscDual.eval Y φ` of a field `Y ∈ B_m` with it is the genuine pairing, not a junk `tsum`). -/
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>def IsOscTest (m : ℝ) (φ : Euc d → ℝ) : Prop := ContDiff ℝ ∞ φ ∧ MemOsc m φ
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>/-- A solution `Y` of the linear fluctuation equation `H:eq:linear-equation` with noise level
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>`q ≥ 0` and prescribed random initial functional `η₀` (`Y⁰(f) = η₀(f)`), on `[0,T]`, in mild form
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>(`H:eq:linear-mild`): `Y` is continuous in `B_m` a.s., and for every finite family of times and
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>oscillator test functions the vector `(Y^{t_a}(φ_a) - η₀(U^{0,t_a}φ_a))_a` is a centered Gaussian,
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>independent of `η₀`, with covariance `noiseCovW`. -/
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>structure IsLinearFluctuationSolutionW {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    (C : WholeCoeff d) (m q T : ℝ) (η₀ : Ω → (Euc d → ℝ) → ℝ) (Y : ℝ → Ω → OscDual d m) :
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    Prop where
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  cont : ∀ᵐ ζ ∂P, ContinuousOn (fun t =&gt; Y t ζ) (Set.Icc 0 T)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  meas : ∀ t, Measurable (Y t)
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  gaussian_part : ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Euc d → ℝ),
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    (∀ a, ts a ∈ Set.Icc 0 T) → (∀ a, IsOscTest m (φ a)) →
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    let G : Ω → EuclideanSpace ℝ (Fin p) := fun ζ =&gt; WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>      OscDual.eval (Y (ts a) ζ) (φ a) - η₀ ζ (propagatorW C 0 (ts a) (φ a))
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    ProbabilityTheory.IndepFun G η₀ P ∧
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    law P G = ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun a b =&gt;
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      noiseCovW C q (ts a) (ts b) (φ a) (φ b))
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>/-- The linear Gaussian evolution `Z` along `C` with noise level `q` and initial covariance form
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>`C₀` (a bilinear form on bounded smooth functions), characterised by its finite-dimensional
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>laws: continuous in `B_m`, jointly centered Gaussian on oscillator test functions with
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>`Cov(Z^t(φ), Z^{t&#x27;}(ψ)) = C₀(U^{0,t}φ, U^{0,t&#x27;}ψ) + noiseCovW q t t&#x27; φ ψ` (the sum of the
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>initial covariance transported by the adjoint orbit and the noise covariance, `H:eq:linear-mild`
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>with an independent centered Gaussian initial field). -/
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>structure IsLinearGaussianEvolutionW {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    (C : WholeCoeff d) (m q T : ℝ) (C₀ : (Euc d → ℝ) → (Euc d → ℝ) → ℝ)
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (Z : ℝ → Ω → OscDual d m) : Prop where
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  cont : ∀ᵐ ζ ∂P, ContinuousOn (fun t =&gt; Z t ζ) (Set.Icc 0 T)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  meas : ∀ t, Measurable (Z t)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  gaussian : ∀ (p : ℕ) (ts : Fin p → ℝ) (φ : Fin p → Euc d → ℝ),
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    (∀ a, ts a ∈ Set.Icc 0 T) → (∀ a, IsOscTest m (φ a)) →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    law P (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; OscDual.eval (Z (ts a) ζ) (φ a) :
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        EuclideanSpace ℝ (Fin p))) =
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun a b =&gt;
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>        C₀ (propagatorW C 0 (ts a) (φ a)) (propagatorW C 0 (ts b) (φ b)) +
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>          noiseCovW C q (ts a) (ts b) (φ a) (φ b))
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>/-- The covariance `Cov(Z^t(φ), Z^{t&#x27;}(ψ))` of `IsLinearGaussianEvolutionW`. -/
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>def linearGaussianCov (C : WholeCoeff d) (q : ℝ) (C₀ : (Euc d → ℝ) → (Euc d → ℝ) → ℝ)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    (t t&#x27; : ℝ) (φ ψ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  C₀ (propagatorW C 0 t φ) (propagatorW C 0 t&#x27; ψ) + noiseCovW C q t t&#x27; φ ψ
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>/-! ### Window paths in `𝓧_T = C([0,T]; B_m)` -/
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>open Classical in
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>/-- The window `t ↦ f(a + t)`, `t ∈ [0,T]`, as an element of `𝓧_T`; the zero path if it is not
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>continuous (the statements below assert measurability/continuity where relevant). -/
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>def windowPathOf (m T a : ℝ) (f : ℝ → OscDual d m) : OscPath d m T :=
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  if h : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; f (a + t) then
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    (⟨fun t =&gt; f (a + t), h⟩ : C(Set.Icc (0 : ℝ) T, OscDual d m))
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  else 0
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>/-- The mean-field-centered window `η_N^{a+·}` scaled by `σ`: `t ↦ σ(μ_N^{a+t} - μ^{a+t}) ∈ B_m`
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>(`σ = √N` is `η_N`, S line 212), for the particle path `X` and the mean-field densities `ρ`. -/
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>def flucPathW {Ω : Type*} (m T a σ : ℝ) (X : ℝ≥0 → Ω → EucConfig d N) (ρ : ℝ → Euc d → ℝ) (ζ : Ω) :
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    OscPath d m T :=
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  windowPathOf m T a fun t =&gt;
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    σ • OscDual.ofMeasureDiff m (empirical (X (Real.toNNReal t) ζ)) (withDensityReal (ρ t))
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>/-- The exactly centered window `ζ_N^{a+·}`, `ζ_N^t = √N(μ_N^t - m_N^t)` with `m_N^t = E μ_N^t` the
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>actual first marginal (the law of `X_t` under `P`; S lines 211-213). -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>def zetaPathW {Ω : Type*} [MeasurableSpace Ω] (m T a : ℝ) (P : Measure Ω)
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    (X : ℝ≥0 → Ω → EucConfig d N) (ζ : Ω) : OscPath d m T :=
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  windowPathOf m T a fun t =&gt;
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    zetaB m (P.map (X (Real.toNNReal t))) (X (Real.toNNReal t) ζ)
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>/-- The window `Z^{a+·}` of a `B_m`-valued process. -/
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>def processWindow {Ω : Type*} (m T a : ℝ) (Z : ℝ → Ω → OscDual d m) (ζ : Ω) : OscPath d m T :=
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  windowPathOf m T a fun t =&gt; Z t ζ
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>end HRS.Whole
+</span></code></pre></main></body></html>

@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.ThmCons · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.ThmCons</code></h1><p><a href="../../lean/HRS/MS/ThmCons.lean">Open the unaltered Lean file</a> · 175 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.ThmConsAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Static
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># C-B: proof of `HRS.Whole.euc_thermal_moments` (`0 &lt; s &lt; d`, `d ≥ 2`)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Both clauses follow from `thermalDensity ≤ C γ` and Gaussian integrability (`ThmConsAux2`).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Also `cb_euc_thermal_gaussian_bounds_of_poincare`: the conclusion of `euc_thermal_gaussian_bounds` (two-sided Gaussian
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>comparison and the Poincare inequality for `μ_β`) from the Gaussian Poincare inequality `CbGaussPoincare d a β κ` for the
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>reference measure `γ dx` (the separate Maurey-Pisier packet C-POI; it is not in Mathlib or the repo).  The transfer from
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`γ` to `μ_β` is done here (`cb_poincare_transfer`) with `c = e^{-β M B}` and `C&#x27; = C (1 + κ)`; enlarging the upper constant
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>is harmless since the upper bound only gets weaker.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>Also `cb_admissible_of_smooth`: `isAdmissiblePerturbation_thermal` follows from `ContDiff ℝ ∞ thermalDensity`
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>(the first conjunct of the frozen, sorried `euc_thermal_regularity`) together with the lower Gaussian bound of
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>`ThmConsAux1`; the smoothness itself is NOT proved here (C-REG packets).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>-/
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open MeasureTheory
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open scoped ContDiff ENNReal
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>noncomputable section
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>namespace HRS.MS.Thm
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>open HRS.Whole
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>variable {d : ℕ}
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>/-- **C-B (moments).** Proof of `HRS.Whole.euc_thermal_moments`. -/
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>theorem euc_thermal_moments_proof : type_of% @HRS.Whole.euc_thermal_moments := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  intro d s hd hs0 hsd a β ha hβ
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  exact ⟨fun b hb =&gt; cb_thermal_exp_moment hd1 hs0 hsd ha hβ hb,
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    fun p hp =&gt; cb_thermal_poly_moment hd1 hs0 hsd ha hβ hp⟩
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- `isAdmissiblePerturbation_thermal` from the smoothness of `thermalDensity` (supplied by C-REG):
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>`√ρ ψ` is a smooth compactly supported (`ρ ≥ c γ &gt; 0`), hence Schwartz, hence in every `Σ^m`. -/
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>theorem cb_admissible_of_smooth (hd : 1 ≤ d) {s a β : ℝ} (hs0 : 0 &lt; s) (hsd : s &lt; d) (ha : 0 &lt; a)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (hβ : 0 &lt; β) (hsm : ContDiff ℝ ∞ (thermalDensity d s a β)) (εstar : ℝ) (hε : 0 &lt; εstar)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (ψ : Euc d → ℝ) (hψ : ContDiff ℝ ∞ ψ) (hc : HasCompactSupport ψ) (h0 : ψ ≠ 0)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (hmean : ∫ x, ψ x * thermalDensity d s a β x = 0) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    ∃ ε₀ &gt; 0, ∀ ε : ℝ, |ε| ≤ ε₀ →
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      IsAdmissiblePerturbation (thermalDensity d s a β) εstar ε ψ := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨-, c, C, hc0, -, hcC⟩ := cb_thermal_two_sided hd hs0 hsd ha hβ
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hγ : ∀ x : Euc d, 0 &lt; gaussianComparison d a β x := fun x =&gt; by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    unfold gaussianComparison
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    have : 0 &lt; β * a / (2 * Real.pi) := by positivity
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    positivity
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hpos : ∀ x, thermalDensity d s a β x ≠ 0 := fun x =&gt;
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (lt_of_lt_of_le (mul_pos hc0 (hγ x)) (hcC x).1).ne&#x27;
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hsq : ContDiff ℝ ∞ fun x =&gt; Real.sqrt (thermalDensity d s a β x) := hsm.sqrt hpos
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hg : ContDiff ℝ ∞ fun x =&gt; Real.sqrt (thermalDensity d s a β x) * ψ x := hsq.mul hψ
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hgc : HasCompactSupport fun x =&gt; Real.sqrt (thermalDensity d s a β x) * ψ x :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    hc.mul_left
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  refine isAdmissiblePerturbation_of_small _ εstar hε ψ hψ hc h0 hmean ?_
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  exact memOsc_schwartz _ (hgc.toSchwartzMap hg)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>/-! ### Transfer of a Gaussian Poincare inequality to `μ_β` -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- The Gaussian Poincare inequality for `γ_{βa} dx` with constant `κ / (β a)` (hypothesis of the conditional result). -/
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>def CbGaussPoincare (d : ℕ) (a β κ : ℝ) : Prop :=
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  ∀ f : Euc d → ℝ, ContDiff ℝ 1 f → MemLp f 2 (HRS.Whole.withDensityReal (gaussianComparison d a β)) →
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    Integrable (fun x =&gt; ‖gradient f x‖ ^ 2) (HRS.Whole.withDensityReal (gaussianComparison d a β)) →
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      ProbabilityTheory.variance f (HRS.Whole.withDensityReal (gaussianComparison d a β)) ≤
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        κ / (β * a) * ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal (gaussianComparison d a β))
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>lemma cb_withDensityReal_isProb {ρ : Euc d → ℝ} (hρ : HRS.Whole.IsProbDensity ρ) :
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  constructor
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  unfold HRS.Whole.withDensityReal
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  rw [withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hi : Integrable ρ := Integrable.of_integral_ne_zero (by rw [hρ.integral_one]; norm_num)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  rw [← ofReal_integral_eq_lintegral_ofReal hi (ae_of_all _ hρ.nonneg), hρ.integral_one]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  simp
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>lemma cb_withDensityReal_le_smul {ρ ρ&#x27; : Euc d → ℝ} {C : ℝ} (hρ&#x27; : Measurable ρ&#x27;) (hC : 0 ≤ C)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    (h : ∀ x, ρ x ≤ C * ρ&#x27; x) :
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    HRS.Whole.withDensityReal ρ ≤ ENNReal.ofReal C • HRS.Whole.withDensityReal ρ&#x27; := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  unfold HRS.Whole.withDensityReal
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hm : Measurable fun x =&gt; ENNReal.ofReal (ρ&#x27; x) := hρ&#x27;.ennreal_ofReal
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  rw [← withDensity_smul _ hm]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  refine withDensity_mono (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  simp only [Pi.smul_apply, smul_eq_mul]
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  rw [← ENNReal.ofReal_mul hC]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  exact ENNReal.ofReal_le_ofReal (h x)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>/-- Transfer of a Poincare inequality: if `c γ ≤ ρ ≤ C γ` and `γ dx` satisfies `Var ≤ κ/(βa) ∫|∇f|²`, then
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>`ρ dx` satisfies `Var ≤ C (1+κ) / (c β a) ∫|∇f|²`. -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>theorem cb_poincare_transfer {a β κ c C : ℝ} (ha : 0 &lt; a) (hβ : 0 &lt; β) (hκ : 0 ≤ κ) (hc : 0 &lt; c)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (hC : 0 &lt; C) (hP : CbGaussPoincare d a β κ) {ρ : Euc d → ℝ} (hρ : HRS.Whole.IsProbDensity ρ)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (hb : ∀ x, c * gaussianComparison d a β x ≤ ρ x ∧ ρ x ≤ C * gaussianComparison d a β x)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    {f : Euc d → ℝ} (hf : ContDiff ℝ 1 f) (hf2 : MemLp f 2 (HRS.Whole.withDensityReal ρ))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (hg : Integrable (fun x =&gt; ‖gradient f x‖ ^ 2) (HRS.Whole.withDensityReal ρ)) :
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    ProbabilityTheory.variance f (HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      C * (1 + κ) / (c * β * a) * ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  set G := HRS.Whole.withDensityReal (gaussianComparison d a β) with hG
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  set μ := HRS.Whole.withDensityReal ρ with hμ
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  haveI : IsProbabilityMeasure μ := cb_withDensityReal_isProb hρ
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  haveI : IsProbabilityMeasure G := cb_withDensityReal_isProb (gaussianComparison_isProbDensity ha hβ)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hγm := gaussianComparison_measurable (d := d) a β
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hGμ : G ≤ ENNReal.ofReal c⁻¹ • μ := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    refine cb_withDensityReal_le_smul hρ.measurable (inv_nonneg.2 hc.le) fun x =&gt; ?_
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    have := (hb x).1
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    rw [← mul_le_mul_iff_of_pos_left hc, ← mul_assoc, mul_inv_cancel₀ hc.ne&#x27;, one_mul]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    exact this
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hμG : μ ≤ ENNReal.ofReal C • G :=
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    cb_withDensityReal_le_smul hγm hC.le fun x =&gt; (hb x).2
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hf2G : MemLp f 2 G := (hf2.smul_measure ENNReal.ofReal_ne_top).mono_measure hGμ
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hgG : Integrable (fun x =&gt; ‖gradient f x‖ ^ 2) G :=
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    (hg.smul_measure ENNReal.ofReal_ne_top).mono_measure hGμ
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hfm : AEMeasurable f μ := hf.continuous.measurable.aemeasurable
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have hfmG : AEMeasurable f G := hf.continuous.measurable.aemeasurable
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  set m := ∫ x, f x ∂G with hm
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have h1 : ProbabilityTheory.variance f μ ≤ ∫ x, (f x - m) ^ 2 ∂μ := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    have e := ProbabilityTheory.variance_sub_const (μ := μ) (X := f) hfm.aestronglyMeasurable m
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have := ProbabilityTheory.variance_le_expectation_sq (μ := μ) (X := fun x =&gt; f x - m)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      (hfm.sub_const m).aestronglyMeasurable
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [e] at this
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    simpa using this
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hsqG : Integrable (fun x =&gt; (f x - m) ^ 2) G :=
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    (hf2G.sub (memLp_const m)).integrable_sq
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have h2 : ∫ x, (f x - m) ^ 2 ∂μ ≤ C * ∫ x, (f x - m) ^ 2 ∂G := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    have hsq&#x27; : Integrable (fun x =&gt; (f x - m) ^ 2) (ENNReal.ofReal C • G) :=
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      hsqG.smul_measure ENNReal.ofReal_ne_top
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    calc ∫ x, (f x - m) ^ 2 ∂μ ≤ ∫ x, (f x - m) ^ 2 ∂(ENNReal.ofReal C • G) :=
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>          integral_mono_measure hμG (ae_of_all _ fun x =&gt; sq_nonneg _) hsq&#x27;
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      _ = C * ∫ x, (f x - m) ^ 2 ∂G := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>          rw [integral_smul_measure, ENNReal.toReal_ofReal hC.le, smul_eq_mul]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have h3 : ∫ x, (f x - m) ^ 2 ∂G = ProbabilityTheory.variance f G :=
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (ProbabilityTheory.variance_eq_integral hfmG).symm
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have h4 := hP f hf hf2G hgG
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have h5 : ∫ x, ‖gradient f x‖ ^ 2 ∂G ≤ c⁻¹ * ∫ x, ‖gradient f x‖ ^ 2 ∂μ := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    have hg&#x27; : Integrable (fun x =&gt; ‖gradient f x‖ ^ 2) (ENNReal.ofReal c⁻¹ • μ) :=
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      hg.smul_measure ENNReal.ofReal_ne_top
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    calc ∫ x, ‖gradient f x‖ ^ 2 ∂G ≤ ∫ x, ‖gradient f x‖ ^ 2 ∂(ENNReal.ofReal c⁻¹ • μ) :=
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>          integral_mono_measure hGμ (ae_of_all _ fun x =&gt; sq_nonneg _) hg&#x27;
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      _ = c⁻¹ * ∫ x, ‖gradient f x‖ ^ 2 ∂μ := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          rw [integral_smul_measure, ENNReal.toReal_ofReal (inv_nonneg.2 hc.le), smul_eq_mul]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hI : 0 ≤ ∫ x, ‖gradient f x‖ ^ 2 ∂μ := integral_nonneg fun x =&gt; sq_nonneg _
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have hκβ : 0 ≤ κ / (β * a) := by positivity
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  calc ProbabilityTheory.variance f μ ≤ C * ProbabilityTheory.variance f G := by
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>        rw [← h3]; exact h1.trans h2
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    _ ≤ C * (κ / (β * a) * (c⁻¹ * ∫ x, ‖gradient f x‖ ^ 2 ∂μ)) :=
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        mul_le_mul_of_nonneg_left (h4.trans (mul_le_mul_of_nonneg_left h5 hκβ)) hC.le
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    _ = (C * κ) / (c * β * a) * ∫ x, ‖gradient f x‖ ^ 2 ∂μ := by field_simp
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    _ ≤ C * (1 + κ) / (c * β * a) * ∫ x, ‖gradient f x‖ ^ 2 ∂μ := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>        apply mul_le_mul_of_nonneg_right _ hI
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        apply div_le_div_of_nonneg_right _ (by positivity)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        nlinarith
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>/-- **Conditional form of `euc_thermal_gaussian_bounds`**: the two-sided comparison and the Poincare inequality for
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>`μ_β`, given the Gaussian Poincare inequality for `γ` (not proved here). -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>theorem cb_euc_thermal_gaussian_bounds_of_poincare (hd : 2 ≤ d) {s : ℝ} (hs0 : 0 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) {κ : ℝ} (hκ : 0 ≤ κ) (hP : CbGaussPoincare d a β κ) :
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    ∃ c &gt; 0, ∃ C : ℝ,
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      (∀ x, c * gaussianComparison d a β x ≤ thermalDensity d s a β x ∧
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        thermalDensity d s a β x ≤ C * gaussianComparison d a β x) ∧
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      ∀ f : Euc d → ℝ, ContDiff ℝ 1 f → MemLp f 2 (thermalMeasure d s a β) →
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        Integrable (fun x =&gt; ‖gradient f x‖ ^ 2) (thermalMeasure d s a β) →
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        ProbabilityTheory.variance f (thermalMeasure d s a β) ≤
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>          C / (c * β * a) * ∫ x, ‖gradient f x‖ ^ 2 ∂(thermalMeasure d s a β) := by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  obtain ⟨hρ, c, C, hc, hC, hb⟩ := cb_thermal_two_sided hd1 hs0 hsd ha hβ
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  refine ⟨c, hc, C * (1 + κ), ?_, fun f hf hf2 hg =&gt; ?_⟩
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  · intro x
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    refine ⟨(hb x).1, (hb x).2.trans ?_⟩
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    exact mul_le_mul_of_nonneg_right (by nlinarith) (gaussianComparison_pos ha hβ x).le
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  · exact cb_poincare_transfer ha hβ hκ hc hC hP hρ hb hf hf2 hg
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>end HRS.MS.Thm
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>end
+</span></code></pre></main></body></html>

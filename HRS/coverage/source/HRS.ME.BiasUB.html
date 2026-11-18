@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.BiasUB · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.BiasUB</code></h1><p><a href="../../lean/HRS/ME/BiasUB.lean">Open the unaltered Lean file</a> · 78 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.BiasH
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.ME.UnifP8A
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Uniform `critical_bias_constants`: the norm bound of the critical bias (proof of P2)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>-/
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>namespace HRS.ME.Bias
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>variable {d : ℕ}
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open HRS HRS.Main
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open HRS.External HRS.PoleCavityAux HRS.MarginalAux HRS.ProdTransfer HRS.CavResp HRS.PDE
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>/-- `L²` norm of `c • h` from the second moment bound. -/
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>theorem p_biasub_eLpNorm_le {μ : Measure (Torus d)} {h : Torus d → ℝ} (hm : MemLp h 2 μ)
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>    {c B : ℝ} (hc : 0 ≤ c) (hB : 0 ≤ B) (hint : ∫ x, h x ^ 2 ∂μ ≤ B ^ 2) :
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>    eLpNorm (fun x =&gt; c * h x) 2 μ ≤ ENNReal.ofReal (c * B) := by
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  have hm&#x27; : MemLp (fun x =&gt; c * h x) 2 μ := hm.const_mul c
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  rw [hm&#x27;.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)]
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  have e : ∫ x, ‖c * h x‖ ^ (ENNReal.toReal 2) ∂μ = c ^ 2 * ∫ x, h x ^ 2 ∂μ := by
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    rw [← integral_const_mul]
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    refine integral_congr_ae (Filter.Eventually.of_forall fun x =&gt; ?_)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    simp only [ENNReal.toReal_ofNat, Real.norm_eq_abs]
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    rw [Real.rpow_two, sq_abs, mul_pow]
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  have h1 : c ^ 2 * ∫ x, h x ^ 2 ∂μ ≤ (c * B) ^ 2 := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    rw [mul_pow]; exact mul_le_mul_of_nonneg_left hint (sq_nonneg c)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hcB : 0 ≤ c * B := mul_nonneg hc hB
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  rw [e]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  rw [ENNReal.toReal_ofNat, ← one_div, ← Real.sqrt_eq_rpow]
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  calc Real.sqrt (c ^ 2 * ∫ x, h x ^ 2 ∂μ) ≤ Real.sqrt ((c * B) ^ 2) := Real.sqrt_le_sqrt h1
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    _ = c * B := Real.sqrt_sq hcB
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- P2: norm bound of the critical bias for densities bounded above by `Λ`. -/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>theorem criticalBias_norm_le (hd : 2 ≤ d) {m : ℝ} (hm : (d : ℝ) &lt; 2 * m) {β : ℝ} (hβ : 0 &lt; β)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) {Λ : ℝ} (hΛ : ∀ x, ρ x ≤ Λ) :
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    ‖criticalBias d ((d : ℝ) / 2) β m ρ‖ ≤
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      Real.sqrt 2 * (β ^ 2 * sphereArea d / d) * Λ *
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>        Real.sqrt (∑&#x27; k : NonzeroLattice d, Lattice.jp k.1 ^ (-(2 * m))) := by
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hs0 : (0 : ℝ) ≤ (d : ℝ) / 2 := by positivity
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hsd : (d : ℝ) / 2 &lt; d := by linarith
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hμP : IsProbabilityMeasure (withDensityReal ρ) := PoleCavityAux.isProbabilityMeasure_mu hρ
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  obtain ⟨hmh, -, -⟩ := eqbias_response hd hs0 hsd hρ hβ.le
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  set h := responseInverse (periodicRiesz d ((d : ℝ) / 2)) (withDensityReal ρ) β ρ with hhdef
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  set c : ℝ := β ^ 2 * sphereArea d / d with hcdef
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hA : 0 &lt; sphereArea d := HRS.StaticLimitsAux.sphereArea_pos hd
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hdpos : (0 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hc : 0 ≤ c := by positivity
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hΛ0 : 0 ≤ Λ := (hρ.pos (0 : Torus d)).le.trans (hΛ _)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hL2 := HRS.ME.Unif.p8_resp_L2_le hd hρ hβ.le hΛ
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hFe := p_biasub_eLpNorm_le hmh hc hΛ0 hL2
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hGaesm : AEStronglyMeasurable (fun y =&gt; c * h y) (withDensityReal ρ) :=
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (hmh.const_mul c).aestronglyMeasurable
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  obtain ⟨hIG, hIGb⟩ := integral_abs_mul_le_aesm hρ.density hGaesm (mul_nonneg hc hΛ0) hFe
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hcbk : ∀ k : NonzeroLattice d,
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      NegSobolev.coord (criticalBias d ((d : ℝ) / 2) β m ρ) k =
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>        Lattice.jp k.1 ^ (-m) * Torus.funRealCoeff (fun y =&gt; c * h y * ρ y) k :=
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    fun k =&gt; coord_ofFun hm hIG k
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hK : 0 ≤ Real.sqrt 2 * (c * Λ) := mul_nonneg (Real.sqrt_nonneg 2) (mul_nonneg hc hΛ0)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hbnd : ∀ k : NonzeroLattice d,
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      |NegSobolev.coord (criticalBias d ((d : ℝ) / 2) β m ρ) k| ≤
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        (Real.sqrt 2 * (c * Λ)) * Lattice.jp k.1 ^ (-m) := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    intro k
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    have hjp : 0 &lt; Lattice.jp k.1 ^ (-m) := Real.rpow_pos_of_pos (Torus.jp_pos k.1) _
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    rw [hcbk k, abs_mul, abs_of_pos hjp]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have := (abs_funRealCoeff_le_integral hIG k).trans
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      (mul_le_mul_of_nonneg_left hIGb (Real.sqrt_nonneg 2))
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    nlinarith
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have := norm_le_of_coord_bound hm _ hK hbnd
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  calc _ ≤ _ := this
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    _ = _ := by ring
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>end HRS.ME.Bias
+</span></code></pre></main></body></html>

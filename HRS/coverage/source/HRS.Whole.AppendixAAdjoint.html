@@ -1,0 +1,1060 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.AppendixAAdjoint · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.AppendixAAdjoint</code></h1><p><a href="../../lean/HRS/Whole/AppendixAAdjoint.lean">Open the unaltered Lean file</a> · 1059 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.AppendixA
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Appendix S.A of the whole-space supplement: the adjoint linearized flow on `ℝ^d` (SPEC-WA, part 2)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Specification file (statements with `sorry` proofs).  Sources (`HRS_whole_space_supplement_20261008T010000Z.tex`, &quot;S&quot;):
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* S.A.12 `B:thm:adjoint-rd` (S L10089-10109): `adjoint_rd` (existence, uniqueness, bound), `adjoint_rd_classical` (a),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>  `adjoint_rd_planewave` (b), `adjoint_rd_sobolev` (c), `adjoint_rd_stability` (d), `adjoint_rd_weighted` (e);
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* S.A.13 `B:rem:def-adjoint-rd` (S L10111-10113): the notion is `HRS.Whole.IsClassicalAdjointW` (SUSPECTED ISSUE, see
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  below); its checkable claim &quot;sufficient for `B:prop:duality-identity`&quot; is `duality_identity_rd`;
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* S.A.14 `B:prop:low-frequency-obstruction` (S L10115-10121): `multipole_tail`, `multipole_not_lp`;
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S.A.15 `B:lem:lp-coefficient-commutator` (S L10141-10204): `lp_screened_negative_order`, `lp_positive_order_product`,
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `lp_Lambda_commutator_low`, `lp_Lambda_commutator_expansion`, `lp_tensor_absorption`;
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* S.A.16 `B:thm:adjoint-lp` (S L10265-10297): `adjoint_lp`, `adjoint_lp_classical`, `adjoint_lp_stability`;
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* S.A.17 `B:rem:lp-anisotropic` (S L10375-10383): `no_formal_content`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>## Representation decisions
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* The standing coefficient hypothesis `B:eq:coeff-hypothesis-rd` is `AdjointRdData` (+ the regime `RdRegimeHolds`
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  for `B:thm:adjoint-rd`, `AdjointLpRegime` for `B:thm:adjoint-lp`); the constants are chosen before the data
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  (`∃ C, 0 &lt; C ∧ ∀ D ν₀ μ …`), depending on `(d, s, m, |M|, Λ, Λ_V, |∇V(0)|, ν̄, T)` and the regime, with `ν₀` (regime R3)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  quantified after `C` as on the torus (`HRS.PDE.adjoint_torus`), `Λ_m = PDE.Regime.lambdaM Rg C ν₀ (s+2-d)`.
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* &quot;`F` solves `B:eq:adjoint-forward` in the distributional sense with `F(0) = φ`&quot; is `IsForwardSolutionRd`: the weak
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  (integrated in time) form against `C_c^∞` tests `ψ`, `d/dτ∫Fψ = ν∫FΔψ - ∫F div(b^τψ) - ∫𝒢^τ[F]ψ`, with
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  `𝒢^τ[F] = ∑_{ij} M^*_{ij} ∂_i g*(μ^{t-τ} ∂_jF)` and the nonlocal term moved onto the test function
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  (`∫ 𝒢[F]ψ = +∑ M^*_{ij} ∫ F ∂_j(μ ∂_i(g*ψ))`, `g*ψ ∈ C^∞`; no derivative of `F` is needed).  Integrability of every
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  term is part of the solution concept.
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>* `F(τ)` are functions defined a.e.; &quot;unique&quot; is a.e. equality for every `τ`.  `L^∞([0,t]; H^m_uloc)` is the bound for
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  every `τ`; `C([0,t]; H^{m&#x27;}_loc)` is continuity of `τ ↦ χ(·-z)F(τ)` in `H^{m&#x27;}` for each `z` (real `m&#x27; &lt; m`);
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  `C_w([0,t]; H^m)` is continuity of `τ ↦ ⟨F(τ), h⟩_{H^m}` for every `h ∈ H^m`.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>* `W^{m,p}(ℝ^d)` is `WmpSpace` of `HRS/Whole/AppendixA.lean` (closure of the jets of `C_c^∞` in `L^p`); &quot;`u ∈ W^{m,p}`
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  with norm `‖u‖`&quot; is `wNormE` (`⊤` if `u` is not the zeroth component of an element of `WmpSpace`).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  `C([0,t]; W^{m&#x27;,p}_loc)` is for integers `0 ≤ m&#x27; &lt; m`.
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>* SUSPECTED ISSUE (S.A.12(a), S.A.13, S L10098-10100, L10111-10113): a classical adjoint solution on `ℝ^d` is required to have
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  *bounded* `∂_r f` (`f, ∇f, ∇²f, ∂_rf` bounded and continuous).  For a confining drift `-Qx` (`Q ≠ 0`; `V = |x|²/2`) this
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  fails already at `r = t` for a bounded smooth datum such as `φ = sin x_i`, since `∂_rf = -𝓛φ` contains `Qx·∇φ`, which grows
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  linearly.  The repository&#x27;s notion `HRS.Whole.IsClassicalAdjointW` asks `|∂_rf| ≤ B(1+|x|)` instead (`bdd_time_deriv`);
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  the statements here (a), `adjoint_lp_classical`, `duality_identity_rd` and `WeightedPathInput` use it.  See
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  `docs/ISSUES.md` §I.
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>-/
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>noncomputable section
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>open scoped ENNReal NNReal BigOperators ContDiff FourierTransform
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>namespace HRS.Whole.AppendixA
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>variable {d : ℕ}
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>/-! ### The distributional solution concept -/
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- The nonlocal part of the weak form: `∑_{i,j} M^*_{ij} ∂_j(μ^{τ&#x27;} ∂_i(g*ψ))` (`M^*_{ij} = M_{ji}`), the function
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>by which `F` is integrated in `∫ 𝒢[F]ψ = +∫ F · nonlocalTestRd` (`∫ ∂_ig*(μ∂_jF) ψ = -∫ μ ∂_jF ∂_i(g*ψ)` since `∂_ig` is
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>odd, then integrate by parts in `∂_j`); so `forwardWeakTerm` carries `-∫ F · nonlocalTestRd`. -/
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>def nonlocalTestRd (C : WholeCoeff d) (τ&#x27; : ℝ) (ψ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  ∑ i : Fin d, ∑ j : Fin d, C.M j i *
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    partialDeriv (fun _ : Fin 1 =&gt; j)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      (fun y =&gt; C.ρ τ&#x27; y * gradient (convFun (rieszKernel d C.s) ψ) y i) x
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- The time-`σ` integrand of the weak form of `∂_σF = νΔF + b^σ·∇F - 𝒢^σ[F]` against `ψ`, coefficients at time `t - σ`:
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>`ν∫FΔψ - ∫F div(b ψ) - ∫F·nonlocalTestRd`, `b = C.drift (t-σ)`. -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>def forwardWeakTerm (C : WholeCoeff d) (t : ℝ) (F : ℝ → Euc d → ℝ) (ψ : Euc d → ℝ) (σ : ℝ) : ℝ :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  C.ν * (∫ x, F σ x * Laplacian.laplacian ψ x) -
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (∫ x, F σ x * movDiv (fun y =&gt; ψ y • C.drift (t - σ) y) x) -
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ∫ x, F σ x * nonlocalTestRd C (t - σ) ψ x
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- `F` solves the forward adjoint equation `B:eq:adjoint-forward` (`∂_τF = νΔF + b^τ·∇F - 𝒢^τ[F]`,
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>`b^τ = M∇g*μ^{t-τ} - ∇V`, `𝒢^τ[F] = Div g*(μ^{t-τ}M^*∇F)`) on `[0,t]` in the distributional sense with `F(0) = φ`, in the
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>integrated weak form against `ψ ∈ C_c^∞(ℝ^d)` (see the module docstring); every pairing is absolutely convergent and the
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>time integrand is integrable. -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>structure IsForwardSolutionRd (C : WholeCoeff d) (t : ℝ) (φ : Euc d → ℝ) (F : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  integrable_x : ∀ ψ : Euc d → ℝ, IsCcInfty ψ → ∀ σ ∈ Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    Integrable (fun x =&gt; F σ x * ψ x) ∧ Integrable (fun x =&gt; F σ x * Laplacian.laplacian ψ x) ∧
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    Integrable (fun x =&gt; F σ x * movDiv (fun y =&gt; ψ y • C.drift (t - σ) y) x) ∧
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    Integrable (fun x =&gt; F σ x * nonlocalTestRd C (t - σ) ψ x)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  integrable_σ : ∀ ψ : Euc d → ℝ, IsCcInfty ψ →
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    IntegrableOn (fun σ =&gt; forwardWeakTerm C t F ψ σ) (Set.Icc (0 : ℝ) t)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  eq : ∀ ψ : Euc d → ℝ, IsCcInfty ψ → ∀ τ ∈ Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    ∫ x, F τ x * ψ x = (∫ x, φ x * ψ x) + ∫ σ in Set.Icc (0 : ℝ) τ, forwardWeakTerm C t F ψ σ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- The solution class of `B:thm:adjoint-rd`: `F ∈ L^∞([0,t]; H^m_uloc) ∩ C([0,t]; H^{m&#x27;}_loc)`, `m&#x27; &lt; m`, solving
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>`B:eq:adjoint-forward` (`IsForwardSolutionRd`).  `L^∞H^m_uloc`: `‖F(τ)‖_{H^m_uloc} ≤ B` for all `τ ∈ [0,t]`;
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>`C([0,t];H^{m&#x27;}_loc)`: for every `z` the map `τ ↦ χ(·-z)F(τ)` is continuous into `H^{m&#x27;}(ℝ^d)`. -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>structure IsUlocSolutionRd (χ : Euc d → ℝ) (m : ℕ) (C : WholeCoeff d) (t : ℝ) (φ : Euc d → ℝ)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (F : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  sol : IsForwardSolutionRd C t φ F
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  bounded : ∃ B : ℝ, ∀ τ ∈ Set.Icc (0 : ℝ) t, ulocNormE m χ (F τ) ≤ ENNReal.ofReal B
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  cont : ∀ m&#x27; : ℝ, m&#x27; &lt; m → ∀ z : Euc d, ∀ τ₀ ∈ Set.Icc (0 : ℝ) t, ∀ ε : ℝ, 0 &lt; ε →
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    ∃ δ : ℝ, 0 &lt; δ ∧ ∀ τ ∈ Set.Icc (0 : ℝ) t, |τ - τ₀| &lt; δ →
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      sobolevNormE m&#x27; (fun x =&gt; χ (x - z) * (F τ x - F τ₀ x)) ≤ ENNReal.ofReal ε
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>/-- The `H^m(ℝ^d)` inner product `⟨u,v⟩_{H^m} = Re ∫ (1+4π²|ξ|²)^m û \bar{v̂} dξ`. -/
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>def sobolevInnerRd (m : ℕ) (u v : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  HRS.PDE.ToolboxRd.symbolForm (fun ξ : Euc d =&gt; (1 + 4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ (m : ℝ)) u v
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>/-! ### Proposition S.A.12 -/
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>/-- Proposition S.A.12 `B:thm:adjoint-rd` (S L10089-10109), existence, uniqueness and bound.  Let `0 ≤ s &lt; d`, `m ≥ 1`,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>assume `B:eq:coeff-hypothesis-rd` (`AdjointRdData`, level `m`: `μ` is `(m+3,Λ)`-regular with the decay of
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>`S:eq:mf-regularity-whole`, `V` with `m_V = m+3`, `ν = β⁻¹ ∈ [0,ν̄]`), and one of the regimes R1, R2a, R2c, R3
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>(`RdRegimeHolds`).  There is `C` (depending on `d, s, m, |M|, Λ, Λ_V, |∇V(0)|, ν̄, T`, the regime, the cutoff `χ`) such that for
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>every `t ∈ (0,T]` and `φ ∈ H^m_uloc` there is a unique `F ∈ L^∞([0,t];H^m_uloc) ∩ C([0,t];H^{m&#x27;}_loc)`, `m&#x27; &lt; m`,
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>solving `B:eq:adjoint-forward`, and `‖F(τ)‖_{H^m_uloc} ≤ C e^{Λ_mτ}‖φ‖_{H^m_uloc}`, `Λ_m = lambdaM Rg C ν₀ θ`.
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>Technical hypotheses: none beyond the TeX (the uniqueness clause is within the solution class `IsUlocSolutionRd`). -/
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>theorem adjoint_rd (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : WholeDyn d) (ν₀ : ℝ) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → RdRegimeHolds Rg d s D.M D.invβ ν₀ →
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, ulocNormE m χ φ &lt; ⊤ →
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        (∃ F : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F ∧
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, ulocNormE m χ (F τ) ≤
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>            ENNReal.ofReal (C * Real.exp (Rg.lambdaM C ν₀ (PDE.thetaOrder d s) * τ)) *
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>              ulocNormE m χ φ) ∧
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        ∀ F₁ F₂ : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F₁ →
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>          IsUlocSolutionRd χ m (D.coeff μ) t φ F₂ →
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, F₁ τ =ᵐ[volume] F₂ τ := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  sorry
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>/-- Proposition S.A.12(a) (S L10097-10100): if `m ≥ m_*`, `f^r = F(t-r)` is a classical adjoint solution in the sense of
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>`B:rem:def-adjoint-rd` (`IsClassicalAdjointW`, with the repaired growth condition on `∂_rf`, see the module docstring)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>and `‖U^{r,t}φ‖_{C_b²} ≤ C e^{Λ_{m_*}(t-r)}‖φ‖_{H^{m_*}_uloc}`.  The constant `C` is chosen before `m` (it is that of level
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>`m_*`, so `Λ_{m_*}`; the `C_b²` norm is the project&#x27;s sum convention `cbNorm`, equivalent to the max norm up to a factor).
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>Technical hypotheses: the terminal datum `φ` is a `C²` function (a representative; `H^{m_*}_uloc ⊂ C_b²`); the solution
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>`F` is the one of `adjoint_rd`.
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>SUSPECTED ISSUE: the literal TeX notion (bounded `∂_rf`) is false for confining drift, see the module docstring. -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>theorem adjoint_rd_classical (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ m : ℕ, mStar d ≤ m → ∀ (D : WholeDyn d) (ν₀ : ℝ) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → RdRegimeHolds Rg d s D.M D.invβ ν₀ →
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, ContDiff ℝ 2 φ → ulocNormE m χ φ &lt; ⊤ →
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        ∀ F : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F →
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>          (∃ f : ℝ → Euc d → ℝ, IsClassicalAdjointW (D.coeff μ) t φ f ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>            ∀ r ∈ Set.Icc (0 : ℝ) t, f r =ᵐ[volume] F (t - r)) ∧
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          ∀ r ∈ Set.Icc (0 : ℝ) t, MemCb 2 (propagatorW (D.coeff μ) r t φ) ∧
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>            cbNorm 2 (propagatorW (D.coeff μ) r t φ) ≤
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>              C * Real.exp (Rg.lambdaM C ν₀ (PDE.thetaOrder d s) * (t - r)) *
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>                (ulocNormE (mStar d) χ φ).toReal := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  sorry
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-- Proposition S.A.12(b) (S L10101): for plane waves (real and imaginary parts of `e_k = e^{2πik·x}`),
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>`‖U^{r,t}e_k‖_{H^m_uloc} ≤ C e^{Λ_m(t-r)}(1+|k|)^m`; the solution `F` with datum `cos(2πk·x)` resp. `sin(2πk·x)` satisfies
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>`‖F(τ)‖_{H^m_uloc} ≤ C e^{Λ_mτ}(1+|k|)^m`, `τ = t - r` (`C` independent of `k`).  The &quot;corresponding bounded-derivative
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>estimates supplied by `B:lem:uloc-embedding`&quot; are S.A.31 (not stated here). -/
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>theorem adjoint_rd_planewave (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : WholeDyn d) (ν₀ : ℝ) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → RdRegimeHolds Rg d s D.M D.invβ ν₀ →
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ k : Euc d,
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        ∀ φ : Euc d → ℝ, (φ = (fun x =&gt; Real.cos (2 * Real.pi * inner ℝ k x)) ∨
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>          φ = (fun x =&gt; Real.sin (2 * Real.pi * inner ℝ k x))) →
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        ∀ F : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, ulocNormE m χ (F τ) ≤
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>            ENNReal.ofReal (C * Real.exp (Rg.lambdaM C ν₀ (PDE.thetaOrder d s) * τ) *
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>              (1 + ‖k‖) ^ m) := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  sorry
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>/-- Proposition S.A.12(c) (S L10102-10103): if `2(s+1) &gt; d` and `φ ∈ H^m(ℝ^d)`, then `F ∈ C_w([0,t];H^m(ℝ^d))` and
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>`‖F(τ)‖_{H^m} ≤ e^{Λ_mτ}‖φ‖_{H^m}` (constant `1`, `Λ_m = lambdaM Rg C ν₀ θ`).  The sentence &quot;without a moment cancellation
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>this conclusion is in general false when `2(s+1) ≤ d`&quot; is `multipole_not_lp`. -/
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>theorem adjoint_rd_sobolev (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (hs : (d : ℝ) &lt; 2 * (s + 1))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>    (m : ℕ) (hm : 1 ≤ m) (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : WholeDyn d) (ν₀ : ℝ) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → RdRegimeHolds Rg d s D.M D.invβ ν₀ →
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, HRS.PDE.ToolboxRd.MemSobolev (m : ℝ) φ →
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>        ulocNormE m χ φ &lt; ⊤ →
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>        ∀ F : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F →
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>          (∀ τ ∈ Set.Icc (0 : ℝ) t, HRS.PDE.ToolboxRd.MemSobolev (m : ℝ) (F τ)) ∧
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>          (∀ h : Euc d → ℝ, HRS.PDE.ToolboxRd.MemSobolev (m : ℝ) h →
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>            ContinuousOn (fun τ =&gt; sobolevInnerRd m (F τ) h) (Set.Icc (0 : ℝ) t)) ∧
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (m : ℝ) (F τ)) ≤
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>            Real.exp (Rg.lambdaM C ν₀ (PDE.thetaOrder d s) * τ) *
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>              Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (m : ℝ) φ) := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  sorry
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>/-- Proposition S.A.12(d) (S L10103): the stability estimate `B:eq:propagator-stability` holds both in `H^m_uloc` and in
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>`H^m(ϖ)`, with the coefficient distance augmented by the weighted `C^{m+2}` distance of `S:eq:mf-regularity-whole`.
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>For `a ∈ {1,2}` let `(ν_a, μ_a)` satisfy `B:eq:coeff-hypothesis-rd` at level `m+2` with a common regime and common
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>constants and the same confinement `(M, V)`; for `F_a` the solutions with datum `φ ∈ H^{m+2}_uloc` and `δ ≥ 0` bounding
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>`sup_{r ≤ T}‖μ_1^r - μ_2^r‖` in the coefficient norm `coeffNormE` (`C_b^{m+2}` + weighted `C^{m+2}` (+ the fractional
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>force bound when `s ≥ d-1`)),
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>`‖F_1(τ) - F_2(τ)‖_{H^m_uloc} ≤ C τ e^{Λ_{m+2}τ}(|ν_1-ν_2| + δ)‖φ‖_{H^{m+2}_uloc}` and the same in `H^m(ϖ)` with
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>`‖φ‖_{H^{m+2}(ϖ)}`, `0 ≤ τ ≤ t`, `Λ_{m+2} = lambdaM Rg C&#x27; ν₀ θ`.
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>AMBIGUITY: the exact form of the coefficient norm &quot;augmented by the weighted distance&quot; (S L10103) and of the weighted
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>norm `H^m(ϖ)` (`varpiNormE`, an equivalent norm). -/
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>theorem adjoint_rd_stability (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    ∃ C C&#x27; : ℝ, 0 &lt; C ∧ 0 &lt; C&#x27; ∧ ∀ (D₁ D₂ : WholeDyn d) (ν₀ : ℝ) (μ₁ μ₂ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      AdjointRdData s (m + 2) MB Λ ΛV G₀ νbar D₁ T μ₁ →
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      AdjointRdData s (m + 2) MB Λ ΛV G₀ νbar D₂ T μ₂ →
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      RdRegimeHolds Rg d s D₁.M D₁.invβ ν₀ → RdRegimeHolds Rg d s D₂.M D₂.invβ ν₀ →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      D₁.M = D₂.M → D₁.V = D₂.V →
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      ∀ δ : ℝ, 0 ≤ δ → (∀ r ∈ Set.Icc (0 : ℝ) T, coeffNormE d s m (μ₁ r - μ₂ r) ≤ ENNReal.ofReal δ) →
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, ulocNormE (m + 2) χ φ &lt; ⊤ →
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      ∀ F₁ F₂ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        IsUlocSolutionRd χ (m + 2) (D₁.coeff μ₁) t φ F₁ →
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>        IsUlocSolutionRd χ (m + 2) (D₂.coeff μ₂) t φ F₂ →
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>        ∀ τ ∈ Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>          ulocNormE m χ (fun x =&gt; F₁ τ x - F₂ τ x) ≤
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>            ENNReal.ofReal (C * τ * Real.exp (Rg.lambdaM C&#x27; ν₀ (PDE.thetaOrder d s) * τ) *
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>              (|D₁.invβ - D₂.invβ| + δ)) * ulocNormE (m + 2) χ φ ∧
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>          varpiNormE m χ (fun x =&gt; F₁ τ x - F₂ τ x) ≤
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>            ENNReal.ofReal (C * τ * Real.exp (Rg.lambdaM C&#x27; ν₀ (PDE.thetaOrder d s) * τ) *
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>              (|D₁.invβ - D₂.invβ| + δ)) * varpiNormE (m + 2) χ φ := by
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  sorry
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>/-- Proposition S.A.12(e) (S L10104-10106): for `ϖ(x) = ⟨x⟩^{-(d+3)}`,
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>`‖F(τ)‖_{H^m(ϖ)} ≤ C e^{Λ_mτ}‖φ‖_{H^m(ϖ)}` (for the solution of `adjoint_rd`, `φ ∈ H^m_uloc`). -/
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>theorem adjoint_rd_weighted (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    (Rg : PDE.Regime) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : WholeDyn d) (ν₀ : ℝ) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → RdRegimeHolds Rg d s D.M D.invβ ν₀ →
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, ulocNormE m χ φ &lt; ⊤ →
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        ∀ F : ℝ → Euc d → ℝ, IsUlocSolutionRd χ m (D.coeff μ) t φ F →
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, varpiNormE m χ (F τ) ≤
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>            ENNReal.ofReal (C * Real.exp (Rg.lambdaM C ν₀ (PDE.thetaOrder d s) * τ)) *
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>              varpiNormE m χ φ := by
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  sorry
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>/-! ### Remark S.A.13 -/
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>/-- Remark S.A.13 `B:rem:def-adjoint-rd` (S L10111-10113): &quot;a classical adjoint solution on `ℝ^d` means that `f, ∇f, ∇²f` and `∂_rf`
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>are bounded and continuous, with local `C²` continuity in time.  This is sufficient for `B:prop:duality-identity`&quot;.  The notion
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>is `HRS.Whole.IsClassicalAdjointW` (SUSPECTED ISSUE: the literal &quot;bounded `∂_rf`&quot; is false for confining drift; the repository
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>notion asks linear growth, see the module docstring).  The checkable claim is that this notion suffices for the whole-space
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>duality identity `B:eq:duality-identity` (`DualityIdentityRd`): for a selected flow (A.1) and a mean-field solution that is
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>`(3,Λ)`-regular (with the proviso for `s ≥ d-1`) with `V` having bounded second derivatives, and every classical adjoint
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>solution `f` on `[0,t]`, the identity holds for every Brownian-filtration data `(ℱ, W&#x27;)` of the flow.  (The sentence &quot;the
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>second-moment bound gives uniform tightness of `μ^r`&quot; is prose.) -/
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>theorem duality_identity_rd {N : ℕ} (s Λ T ΛV G₀ : ℝ) (D : WholeDyn d) (hs : D.s = s) (hs0 : 0 ≤ s) (hsd : s &lt; d) (hinv : 0 ≤ D.invβ)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    (hV : VHypRd 2 ΛV G₀ D.V) (ρ : ℝ → Euc d → ℝ) (hρ : IsWholeMeanFieldSolution D T ρ)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    (hreg : IsRegularMFRd s 3 Λ T ρ)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    (hflow : SelectedFlowRd P D T X₀ W X) (ℱ : Filtration ℝ mΩ)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ) (hF : IsWholeFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    (t : ℝ) (ht : t ∈ Set.Icc (0 : ℝ) T) (φ : Euc d → ℝ) (f : ℝ → Euc d → ℝ)
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    (hf : IsClassicalAdjointW (D.coeff ρ) t φ f) :
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    DualityIdentityRd P ℱ W&#x27; D ρ X t f := by
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  sorry
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>/-! ### Proposition S.A.14 -/
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-! ### Helpers for Proposition S.A.14 (`q09_` prefix): derivatives of the Riesz kernel -/
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>section Q09Helpers
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>open scoped RealInnerProductSpace
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>theorem q09_norm_rpow_hasFDerivAt {z : Euc d} (hz : z ≠ 0) (p : ℝ) :
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    HasFDerivAt (fun x : Euc d =&gt; ‖x‖ ^ p) ((p * ‖z‖ ^ (p - 2)) • innerSL ℝ z) z := by
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  apply HasStrictFDerivAt.hasFDerivAt
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  convert! (hasStrictFDerivAt_norm_sq z).rpow_const (p := p / 2) (by simp [hz]) using 0
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  simp_rw [← Real.rpow_natCast_mul (norm_nonneg _), ← Nat.cast_smul_eq_nsmul ℝ, smul_smul]
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  ring_nf
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>theorem q09_gradient_apply {ι : Type*} [Fintype ι] [DecidableEq ι] (f : EuclideanSpace ℝ ι → ℝ)
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    (x : EuclideanSpace ℝ ι) (i : ι) :
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    gradient f x i = fderiv ℝ f x (EuclideanSpace.single i 1) := by
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  unfold gradient
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  have h := InnerProductSpace.toDual_symm_apply (𝕜 := ℝ) (E := EuclideanSpace ℝ ι)
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    (x := EuclideanSpace.single i 1) (y := fderiv ℝ f x)
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  rw [← h, EuclideanSpace.inner_single_right]
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  simp
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>def q09_c (s : ℝ) : ℝ := if s = 0 then -1 else -s
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>theorem q09_rk_hasFDerivAt (s : ℝ) {z : Euc d} (hz : z ≠ 0) :
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    HasFDerivAt (rieszKernel d s) ((q09_c s * ‖z‖ ^ (-s - 2)) • innerSL ℝ z) z := by
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  by_cases h0 : s = 0
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  · subst h0
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    have hk : rieszKernel d 0 = fun x : Euc d =&gt; -Real.log ‖x‖ := by
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>      funext x; simp [rieszKernel]
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    have h1 := q09_norm_rpow_hasFDerivAt hz 1
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    simp only [Real.rpow_one] at h1
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    have hn : HasFDerivAt (fun x : Euc d =&gt; ‖x‖) ((‖z‖⁻¹) • innerSL ℝ z) z := by
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      convert h1 using 2
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      rw [show (1 : ℝ) - 2 = -1 by norm_num, Real.rpow_neg_one, one_mul]
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    have hl : HasFDerivAt (fun x : Euc d =&gt; -Real.log ‖x‖) (-(‖z‖⁻¹ • ‖z‖⁻¹ • innerSL ℝ z)) z :=
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      (hn.log (norm_ne_zero_iff.2 hz)).neg
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    rw [hk]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    refine hl.congr_fderiv ?_
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    have hc : q09_c 0 = -1 := by simp [q09_c]
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    rw [hc, show (-(0:ℝ) - 2) = -((2:ℕ):ℝ) by norm_num, Real.rpow_neg (norm_nonneg _),
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>      Real.rpow_natCast, smul_smul, ← neg_smul]
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    congr 1
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    ring
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  · have hk : rieszKernel d s = fun x : Euc d =&gt; ‖x‖ ^ (-s) := by
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>      funext x; simp [rieszKernel, h0]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    rw [hk]
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    refine (q09_norm_rpow_hasFDerivAt hz (-s)).congr_fderiv ?_
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    simp [q09_c, h0]
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>/-- The scalar `H_i(z) = c_s ‖z‖^{-s-2} z_i`, the `i`-th coordinate of the force `∇g`. -/
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>def q09_H (s : ℝ) (i : Fin d) (z : Euc d) : ℝ :=
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  q09_c s * (‖z‖ ^ (-s - 2) * z i)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>theorem q09_H_eq_fderiv (s : ℝ) (i : Fin d) {z : Euc d} (hz : z ≠ 0) :
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    fderiv ℝ (rieszKernel d s) z (EuclideanSpace.single i 1) = q09_H s i z := by
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  rw [(q09_rk_hasFDerivAt s hz).fderiv]
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  simp [q09_H, EuclideanSpace.inner_single_right, innerSL_apply_apply]
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  ring
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>/-- The derivative of `H_i` at `z ≠ 0`. -/
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>def q09_DH (s : ℝ) (i : Fin d) (z : Euc d) : Euc d →L[ℝ] ℝ :=
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  q09_c s • (‖z‖ ^ (-s - 2) • (EuclideanSpace.proj i : Euc d →L[ℝ] ℝ) +
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    (z i * ((-s - 2) * ‖z‖ ^ (-s - 2 - 2))) • innerSL ℝ z)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>theorem q09_H_hasFDerivAt (s : ℝ) (i : Fin d) {z : Euc d} (hz : z ≠ 0) :
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    HasFDerivAt (q09_H s i) (q09_DH s i z) z := by
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  have h1 := q09_norm_rpow_hasFDerivAt hz (-s - 2)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  have h2 : HasFDerivAt (fun x : Euc d =&gt; x i) (EuclideanSpace.proj i : Euc d →L[ℝ] ℝ) z :=
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>    (EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).hasFDerivAt
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have h3 := (h1.mul h2).const_mul (q09_c s)
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  unfold q09_DH q09_H
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  convert h3 using 1
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  ext v
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  simp only [ContinuousLinearMap.smul_apply, ContinuousLinearMap.add_apply, smul_eq_mul,
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>    innerSL_apply_apply]
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  ring
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>theorem q09_DH_norm_le (s : ℝ) (i : Fin d) {ξ : Euc d} (hξ : ξ ≠ 0) :
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    ‖q09_DH s i ξ‖ ≤ |q09_c s| * (1 + |-s - 2|) * ‖ξ‖ ^ (-s - 2) := by
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>  have hpos : 0 &lt; ‖ξ‖ := norm_pos_iff.2 hξ
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  have key : ‖ξ‖ ^ (-s - 2 - 2) * ‖ξ‖ ^ 2 = ‖ξ‖ ^ (-s - 2) := by
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    rw [Real.rpow_sub hpos, Real.rpow_two]
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    field_simp
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  apply ContinuousLinearMap.opNorm_le_bound _ (by positivity)
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  intro v
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  have hv1 : |v i| ≤ ‖v‖ := by
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    have := PiLp.norm_apply_le v i
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    simpa [Real.norm_eq_abs] using this
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hξ1 : |ξ i| ≤ ‖ξ‖ := by
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    have := PiLp.norm_apply_le ξ i
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>    simpa [Real.norm_eq_abs] using this
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  have hip : |inner ℝ ξ v| ≤ ‖ξ‖ * ‖v‖ := abs_real_inner_le_norm ξ v
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  have hA : 0 &lt; ‖ξ‖ ^ (-s - 2) := Real.rpow_pos_of_pos hpos _
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  have hB : 0 &lt; ‖ξ‖ ^ (-s - 2 - 2) := Real.rpow_pos_of_pos hpos _
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  set A := ‖ξ‖ ^ (-s - 2) with hAdef
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  set B := ‖ξ‖ ^ (-s - 2 - 2) with hBdef
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  set p := -s - 2 with hp
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  have expand : q09_DH s i ξ v = q09_c s * (A * v i + (ξ i * (p * B)) * inner ℝ ξ v) := by
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    simp [q09_DH, innerSL_apply_apply, hAdef, hBdef, hp]
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    ring
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  rw [expand, norm_mul, Real.norm_eq_abs, Real.norm_eq_abs]
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  have hterm : |A * v i + (ξ i * (p * B)) * inner ℝ ξ v| ≤ A * ‖v‖ + |p| * A * ‖v‖ := by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    have h1 : |A * v i| ≤ A * ‖v‖ := by
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>      rw [abs_mul, abs_of_pos hA]; exact mul_le_mul_of_nonneg_left hv1 hA.le
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    have h2 : |(ξ i * (p * B)) * inner ℝ ξ v| ≤ |p| * A * ‖v‖ := by
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>      rw [abs_mul, abs_mul, abs_mul, abs_of_pos hB]
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>      have hpB : |p| * B = |p| * B := rfl
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>      calc |ξ i| * (|p| * B) * |inner ℝ ξ v| ≤ ‖ξ‖ * (|p| * B) * (‖ξ‖ * ‖v‖) := by
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>            gcongr
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>        _ = |p| * (B * ‖ξ‖ ^ 2) * ‖v‖ := by ring
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>        _ = |p| * A * ‖v‖ := by rw [key]
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    calc |A * v i + (ξ i * (p * B)) * inner ℝ ξ v|
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>        ≤ |A * v i| + |(ξ i * (p * B)) * inner ℝ ξ v| := abs_add_le _ _
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>      _ ≤ A * ‖v‖ + |p| * A * ‖v‖ := add_le_add h1 h2
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  have hfin : |q09_c s| * |A * v i + (ξ i * (p * B)) * inner ℝ ξ v| ≤
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>      |q09_c s| * (1 + |p|) * A * ‖v‖ := by
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    have := mul_le_mul_of_nonneg_left hterm (abs_nonneg (q09_c s))
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    nlinarith [this]
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  calc |q09_c s| * |A * v i + (ξ i * (p * B)) * inner ℝ ξ v|
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>      ≤ |q09_c s| * (1 + |p|) * A * ‖v‖ := hfin
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    _ = (|q09_c s| * (1 + |p|) * A) * ‖v‖ := by ring
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>theorem q09_H_diff_le (s : ℝ) (hs0 : 0 ≤ s) (i : Fin d) {x y : Euc d} (hx : x ≠ 0)
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    (hy : ‖y‖ ≤ ‖x‖ / 2) :
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>    |q09_H s i (x - y) - q09_H s i x| ≤
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>      |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) * ‖y‖ := by
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  have hxpos : 0 &lt; ‖x‖ := norm_pos_iff.2 hx
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  have hp : -s - 2 ≤ 0 := by linarith
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>  set S : Set (Euc d) := Metric.closedBall x (‖x‖ / 2) with hSdef
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  have hS : Convex ℝ S := convex_closedBall _ _
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  have hmem : ∀ ξ ∈ S, ‖x‖ / 2 ≤ ‖ξ‖ := by
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    intro ξ hξ
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    rw [hSdef, Metric.mem_closedBall, dist_eq_norm] at hξ
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    have h1 : ‖x‖ ≤ ‖x - ξ‖ + ‖ξ‖ := by
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>      have := norm_add_le (x - ξ) ξ
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      simpa using this
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>    have h2 : ‖x - ξ‖ = ‖ξ - x‖ := norm_sub_rev _ _
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    linarith
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>  have hne : ∀ ξ ∈ S, ξ ≠ 0 := by
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    intro ξ hξ h0
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    have := hmem ξ hξ
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    rw [h0, norm_zero] at this
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    linarith
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  have hd : ∀ ξ ∈ S, HasFDerivWithinAt (q09_H s i) (q09_DH s i ξ) S ξ :=
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>    fun ξ hξ =&gt; (q09_H_hasFDerivAt s i (hne ξ hξ)).hasFDerivWithinAt
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>  have hb : ∀ ξ ∈ S, ‖q09_DH s i ξ‖ ≤
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) := by
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>    intro ξ hξ
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    have h1 := q09_DH_norm_le s i (hne ξ hξ)
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    have h2 : ‖ξ‖ ^ (-s - 2) ≤ (‖x‖ / 2) ^ (-s - 2) :=
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      Real.rpow_le_rpow_of_nonpos (by positivity) (hmem ξ hξ) hp
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    have h3 : 0 ≤ |q09_c s| * (1 + |-s - 2|) := by positivity
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    calc ‖q09_DH s i ξ‖ ≤ |q09_c s| * (1 + |-s - 2|) * ‖ξ‖ ^ (-s - 2) := h1
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      _ ≤ |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) := mul_le_mul_of_nonneg_left h2 h3
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  have hxS : x ∈ S := Metric.mem_closedBall_self (by positivity)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  have hyS : x - y ∈ S := by
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    rw [hSdef, Metric.mem_closedBall, dist_eq_norm]
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    have : x - y - x = -y := by abel
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    rw [this, norm_neg]; exact hy
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  have key := Convex.norm_image_sub_le_of_norm_hasFDerivWithin_le hd hb hS hxS hyS
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  have e : x - y - x = -y := by abel
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  rw [e, norm_neg, Real.norm_eq_abs] at key
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  exact key
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>theorem q09_conv_grad (K F : Euc d → ℝ) (hK : LocallyIntegrable K volume)
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    (hF : HasCompactSupport F) (hFc : ContDiff ℝ 1 F) (x : Euc d) (i : Fin d) :
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    gradient (convFun K F) x i = ∫ t, fderiv ℝ F t (EuclideanSpace.single i 1) * K (x - t) := by
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>  have hconv : convFun K F = convolution F K (ContinuousLinearMap.mul ℝ ℝ) volume := by
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    funext y
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    simp only [convFun, convolution_def, ContinuousLinearMap.mul_apply&#x27;]
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    congr 1
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    funext t
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    ring
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  have hd := hF.hasFDerivAt_convolution_left (ContinuousLinearMap.mul ℝ ℝ) hFc hK x
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  have hint := ((hF.fderiv ℝ).convolutionExists_left
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    (ContinuousLinearMap.precompL (Euc d) (ContinuousLinearMap.mul ℝ ℝ))
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>    (hFc.continuous_fderiv one_ne_zero) hK) x
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  rw [hconv, q09_gradient_apply, hd.fderiv, convolution_def,
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    ContinuousLinearMap.integral_apply hint]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  simp only [ContinuousLinearMap.precompL_apply, ContinuousLinearMap.mul_apply&#x27;]
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>theorem q09_integrable_of_zero_outside {φ : Euc d → ℝ} {S : Set (Euc d)} (hS : IsCompact S)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    (hc : ContinuousOn φ S) (h0 : ∀ t, t ∉ S → φ t = 0) : Integrable φ volume := by
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  have hEq : φ = S.indicator φ := by
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    funext t
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    by_cases ht : t ∈ S
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    · simp [ht]
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    · simp [ht, h0 t ht]
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  rw [hEq]
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>  exact (integrable_indicator_iff hS.measurableSet).2 (hc.integrableOn_compact hS)
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>theorem q09_ibp (s : ℝ) (i : Fin d) (F : Euc d → ℝ) (hF : HasCompactSupport F)
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    (hFc : ContDiff ℝ 1 F) (R0 : ℝ) (hR0 : 1 ≤ R0)
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    (hsupp : tsupport F ⊆ Metric.closedBall 0 R0) (x : Euc d) (hx : 2 * R0 ≤ ‖x‖) :
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    ∫ t, fderiv ℝ F t (EuclideanSpace.single i 1) * rieszKernel d s (x - t) =
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>      ∫ t, q09_H s i (x - t) * F t := by
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  have hbd : ∀ t ∈ tsupport F, R0 ≤ ‖x - t‖ := by
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    intro t ht
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    have h1 : ‖t‖ ≤ R0 := by
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>      have := hsupp ht
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>      rwa [Metric.mem_closedBall, dist_zero_right] at this
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>    have h2 := norm_sub_norm_le x t
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    linarith
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  have hne : ∀ t ∈ tsupport F, x - t ≠ 0 := by
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    intro t ht h0
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>    have := hbd t ht
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    rw [h0, norm_zero] at this
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    linarith
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  have hK&#x27; : ∀ z : Euc d, z ≠ 0 → HasFDerivAt (rieszKernel d s) (fderiv ℝ (rieszKernel d s) z) z :=
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    fun z hz =&gt; (q09_rk_hasFDerivAt s hz).differentiableAt.hasFDerivAt
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>  have hdiff : ∀ t ∈ tsupport F, DifferentiableAt ℝ (fun t =&gt; rieszKernel d s (x - t)) t := by
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>    intro t ht
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    have h := (hK&#x27; _ (hne t ht)).comp t ((hasFDerivAt_const x t).sub (hasFDerivAt_id t))
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    exact h.differentiableAt
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>  have hdu : ∀ t ∈ tsupport F,
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>      fderiv ℝ (fun t =&gt; rieszKernel d s (x - t)) t (EuclideanSpace.single i 1) =
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>        -(q09_H s i (x - t)) := by
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    intro t ht
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>    have h : HasFDerivAt (fun t =&gt; rieszKernel d s (x - t))
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>        ((fderiv ℝ (rieszKernel d s) (x - t)).comp (0 - ContinuousLinearMap.id ℝ (Euc d))) t :=
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      (hK&#x27; _ (hne t ht)).comp t ((hasFDerivAt_const x t).sub (hasFDerivAt_id t))
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    rw [h.fderiv]
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    simp [q09_H_eq_fderiv s i (hne t ht)]
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  have hKc : ContinuousOn (fun t =&gt; rieszKernel d s (x - t)) (tsupport F) := by
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>    intro t ht
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    exact ((hK&#x27; _ (hne t ht)).continuousAt.comp (f := fun t : Euc d =&gt; x - t)
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>      (by fun_prop)).continuousWithinAt
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>  have hHc : ContinuousOn (fun t =&gt; q09_H s i (x - t)) (tsupport F) := by
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>    intro t ht
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>    exact ((q09_H_hasFDerivAt s i (hne t ht)).continuousAt.comp (f := fun t : Euc d =&gt; x - t)
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>      (by fun_prop)).continuousWithinAt
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  have hFcont : Continuous (fun t =&gt; fderiv ℝ F t (EuclideanSpace.single i 1)) :=
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    (hFc.continuous_fderiv one_ne_zero).clm_apply continuous_const
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  have hfd0 : ∀ t, t ∉ tsupport F → fderiv ℝ F t = 0 := by
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    intro t ht
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>    by_contra h
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    exact ht ((support_fderiv_subset (𝕜 := ℝ)) (Function.mem_support.2 h))
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>  have hF0 : ∀ t, t ∉ tsupport F → F t = 0 := fun t ht =&gt; image_eq_zero_of_notMem_tsupport ht
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  have hi2 : Integrable (fun t =&gt; rieszKernel d s (x - t) *
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>      fderiv ℝ F t (EuclideanSpace.single i 1)) volume := by
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    apply q09_integrable_of_zero_outside hF.isCompact
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>    · exact hKc.mul hFcont.continuousOn
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>    · intro t ht; simp [hfd0 t ht]
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>  have hi3 : Integrable (fun t =&gt; rieszKernel d s (x - t) * F t) volume := by
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    apply q09_integrable_of_zero_outside hF.isCompact
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    · exact hKc.mul hFc.continuous.continuousOn
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    · intro t ht; simp [hF0 t ht]
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  have hpt : ∀ t, fderiv ℝ (fun t =&gt; rieszKernel d s (x - t)) t (EuclideanSpace.single i 1) * F t
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>      = -(q09_H s i (x - t) * F t) := by
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>    intro t
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>    by_cases ht : t ∈ tsupport F
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>    · rw [hdu t ht]; ring
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    · rw [hF0 t ht]; simp
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>  have hi1 : Integrable (fun t =&gt; fderiv ℝ (fun t =&gt; rieszKernel d s (x - t)) t
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>      (EuclideanSpace.single i 1) * F t) volume := by
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    have : (fun t =&gt; fderiv ℝ (fun t =&gt; rieszKernel d s (x - t)) t
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>        (EuclideanSpace.single i 1) * F t) = fun t =&gt; -(q09_H s i (x - t) * F t) :=
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>      funext hpt
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    rw [this]
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    apply Integrable.neg
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    apply q09_integrable_of_zero_outside hF.isCompact
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    · exact hHc.mul hFc.continuous.continuousOn
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    · intro t ht; simp [hF0 t ht]
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  have hIBP := integral_mul_fderiv_eq_neg_fderiv_mul_of_integrable (μ := volume)
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    (f := fun t =&gt; rieszKernel d s (x - t)) (g := F) (v := EuclideanSpace.single i 1)
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>    hi1 hi2 hi3 (fun t ht =&gt; hdiff t ht) (fun t _ =&gt; (hFc.differentiable (by norm_num)) t)
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  calc ∫ t, fderiv ℝ F t (EuclideanSpace.single i 1) * rieszKernel d s (x - t)
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>      = ∫ t, rieszKernel d s (x - t) * fderiv ℝ F t (EuclideanSpace.single i 1) := by
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>        congr 1; funext t; ring
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>    _ = -∫ t, fderiv ℝ (fun t =&gt; rieszKernel d s (x - t)) t (EuclideanSpace.single i 1) * F t :=
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>        hIBP
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    _ = -∫ t, -(q09_H s i (x - t) * F t) := by
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>        congr 1; exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    _ = ∫ t, q09_H s i (x - t) * F t := by
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>        rw [integral_neg, neg_neg]
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>theorem q09_int_H (s : ℝ) (i : Fin d) (F : Euc d → ℝ) (hF : HasCompactSupport F)
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>    (hFc : ContDiff ℝ 1 F) (R0 : ℝ) (hR0 : 1 ≤ R0)
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>    (hsupp : tsupport F ⊆ Metric.closedBall 0 R0) (x : Euc d) (hx : 2 * R0 ≤ ‖x‖) :
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    Integrable (fun t =&gt; q09_H s i (x - t) * F t) volume := by
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>  have hbd : ∀ t ∈ tsupport F, R0 ≤ ‖x - t‖ := by
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    intro t ht
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    have h1 : ‖t‖ ≤ R0 := by
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      have := hsupp ht
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>      rwa [Metric.mem_closedBall, dist_zero_right] at this
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    have h2 := norm_sub_norm_le x t
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    linarith
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  have hne : ∀ t ∈ tsupport F, x - t ≠ 0 := by
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    intro t ht h0
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    have := hbd t ht
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    rw [h0, norm_zero] at this
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>    linarith
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>  have hHc : ContinuousOn (fun t =&gt; q09_H s i (x - t)) (tsupport F) := by
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    intro t ht
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    exact ((q09_H_hasFDerivAt s i (hne t ht)).continuousAt.comp (f := fun t : Euc d =&gt; x - t)
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      (by fun_prop)).continuousWithinAt
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>  apply q09_integrable_of_zero_outside hF.isCompact
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>  · exact hHc.mul hFc.continuous.continuousOn
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>  · intro t ht; simp [image_eq_zero_of_notMem_tsupport ht]
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>theorem q09_multipole (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (i : Fin d) (F : Euc d → ℝ)
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>    (hF : HasCompactSupport F) (hFc : ContDiff ℝ 1 F) (x : Euc d) (hx0 : x ≠ 0) (R1 : ℝ)
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>    (hR1 : 1 ≤ R1) (hsupp : tsupport F ⊆ Metric.closedBall 0 R1) (hx : 2 * R1 ≤ ‖x‖) :
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>    |gradient (convFun (rieszKernel d s) F) x i - (∫ y, F y) * rieszKernelGrad d s x i| ≤
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>      |q09_c s| * (1 + |-s - 2|) * R1 * (∫ t, |F t|) / 2 ^ (-s - 2) * ‖x‖ ^ (-s - 2) := by
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  have hloc := rieszKernel_locallyIntegrable hs0 hsd
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>  have hFint : Integrable F volume := hFc.continuous.integrable_of_hasCompactSupport hF
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  have hIH := q09_int_H s i F hF hFc R1 hR1 hsupp x hx
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>  have hIC : Integrable (fun t =&gt; q09_H s i x * F t) volume := hFint.const_mul _
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>  have hCb : 0 ≤ |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) := by positivity
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>  rw [q09_conv_grad (rieszKernel d s) F hloc hF hFc x i, rieszKernelGrad, q09_gradient_apply,
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>    q09_H_eq_fderiv s i hx0, q09_ibp s i F hF hFc R1 hR1 hsupp x hx]
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>  have e1 : (∫ y, F y) * q09_H s i x = ∫ t, q09_H s i x * F t := by
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>    rw [integral_const_mul, mul_comm]
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>  rw [e1, ← integral_sub hIH hIC, ← Real.norm_eq_abs]
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>  have hbound : ∀ t, ‖q09_H s i (x - t) * F t - q09_H s i x * F t‖ ≤
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>      (|q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) * R1) * |F t| := by
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>    intro t
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    rw [← sub_mul, Real.norm_eq_abs, abs_mul]
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>    by_cases ht : t ∈ tsupport F
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>    · have ht1 : ‖t‖ ≤ R1 := by
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>        have := hsupp ht
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>        rwa [Metric.mem_closedBall, dist_zero_right] at this
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>      have hy : ‖t‖ ≤ ‖x‖ / 2 := by linarith
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>      have hd := q09_H_diff_le s hs0 i hx0 hy
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>      have hmul : |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) * ‖t‖ ≤
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>          |q09_c s| * (1 + |-s - 2|) * (‖x‖ / 2) ^ (-s - 2) * R1 :=
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>        mul_le_mul_of_nonneg_left ht1 hCb
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>      exact mul_le_mul_of_nonneg_right (le_trans hd hmul) (abs_nonneg _)
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    · have h0 : F t = 0 := image_eq_zero_of_notMem_tsupport ht
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>      simp [h0]
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>  refine (norm_integral_le_of_norm_le (g := fun t =&gt; (|q09_c s| * (1 + |-s - 2|) *
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>    (‖x‖ / 2) ^ (-s - 2) * R1) * |F t|) (hFint.abs.const_mul _)
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>    (Filter.Eventually.of_forall hbound)).trans ?_
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>  rw [integral_const_mul, Real.div_rpow (norm_nonneg x) (by norm_num : (0:ℝ) ≤ 2)]
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>  apply le_of_eq
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>  ring
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>end Q09Helpers
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>/-- Proposition S.A.14 `B:prop:low-frequency-obstruction` (S L10115-10121), the multipole expansion: for `a, ψ ∈ C_c^∞(ℝ^d)`
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>with `m_0 = ∫aψ ≠ 0`, `∂_i g*(aψ)(x) = m_0 ∂_ig(x) + O(|x|^{-s-2})` as `|x| → ∞` (`g = rieszKernel d s`, `∂_ig =
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>rieszKernelGrad d s · i`; the convolution is the plain integral, absolutely convergent as `∂_ig` is locally integrable
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>for `s &lt; d - 1`; for `d-1 ≤ s &lt; d` it is the integral of the compactly supported `aψ` against `∂_ig`, which is read
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>as the convention-free integral when it converges; the `O` is stated for `|x| ≥ R`).  (Technical: `0 ≤ s &lt; d`, `d ≥ 1`.) -/
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>theorem multipole_tail (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (i : Fin d)
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>    (a ψ : Euc d → ℝ) (ha : IsCcInfty a) (hψ : IsCcInfty ψ) (hm0 : ∫ x, a x * ψ x ≠ 0) :
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>    ∃ C R : ℝ, 0 &lt; R ∧ ∀ x : Euc d, R ≤ ‖x‖ →
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>      |gradient (convFun (rieszKernel d s) (fun y =&gt; a y * ψ y)) x i -
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>          (∫ y, a y * ψ y) * rieszKernelGrad d s x i| ≤ C * ‖x‖ ^ (-s - 2) := by
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>  have hFs : HasCompactSupport (fun y =&gt; a y * ψ y) := ha.2.mul_right
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>  have hFc : ContDiff ℝ 1 (fun y =&gt; a y * ψ y) :=
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>    (ha.1.mul hψ.1).of_le (by exact_mod_cast le_top)
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  obtain ⟨R0, hR0⟩ := hFs.isCompact.isBounded.subset_closedBall (0 : Euc d)
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>  have hsupp : tsupport (fun y =&gt; a y * ψ y) ⊆ Metric.closedBall 0 (max R0 1) :=
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    hR0.trans (Metric.closedBall_subset_closedBall (le_max_left _ _))
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>  have hR1 : 1 ≤ max R0 1 := le_max_right _ _
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>  refine ⟨|q09_c s| * (1 + |-s - 2|) * max R0 1 * (∫ t, |a t * ψ t|) / 2 ^ (-s - 2),
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>    2 * max R0 1, by linarith, ?_⟩
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>  intro x hx
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>  have hx0 : x ≠ 0 := by
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>    intro h
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>    rw [h, norm_zero] at hx
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>    linarith
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>  exact q09_multipole s hs0 hsd i _ hFs hFc x hx0 (max R0 1) hR1 hsupp hx
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>/-- The coordinate formula of `rieszKernelGrad` away from `0`. -/
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>theorem q09_rkg_eq (s : ℝ) (i : Fin d) {x : Euc d} (hx : x ≠ 0) :
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    rieszKernelGrad d s x i = q09_H s i x := by
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>  unfold rieszKernelGrad
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>  rw [q09_gradient_apply, q09_H_eq_fderiv s i hx]
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>theorem q09_c_ne (s : ℝ) (hs0 : 0 ≤ s) : q09_c s ≠ 0 := by
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>  unfold q09_c
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>  split_ifs with h
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>  · norm_num
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>  · exact neg_ne_zero.2 h
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>/-- Far out on the cone `x_i ≥ ‖x‖/2`, the leading term forces `|G x| ≥ κ ‖x‖^{-s-1}`. -/
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>theorem q09_cone_lower (s : ℝ) (hs0 : 0 ≤ s) (i : Fin d) (m0 C R0 : ℝ) (G : Euc d → ℝ)
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>    (hm0 : m0 ≠ 0)
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>    (hG : ∀ x : Euc d, R0 ≤ ‖x‖ → |G x - m0 * rieszKernelGrad d s x i| ≤ C * ‖x‖ ^ (-s - 2))
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>    (x : Euc d) (hx : x ≠ 0)
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>    (hxR : max R0 (C / (|m0| * |q09_c s| / 4)) ≤ ‖x‖) (hcone : ‖x‖ / 2 ≤ x i) :
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>    (|m0| * |q09_c s| / 4) * ‖x‖ ^ (-s - 1) ≤ |G x| := by
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>  have hc : q09_c s ≠ 0 := q09_c_ne s hs0
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>  have hm0&#x27; : 0 &lt; |m0| := abs_pos.2 hm0
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>  have hc&#x27; : 0 &lt; |q09_c s| := abs_pos.2 hc
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>  set κ := |m0| * |q09_c s| / 4 with hκdef
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>  have hκ : 0 &lt; κ := by rw [hκdef]; positivity
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>  have hxpos : 0 &lt; ‖x‖ := norm_pos_iff.2 hx
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>  have hu : 0 &lt; ‖x‖ ^ (-s - 2) := Real.rpow_pos_of_pos hxpos _
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>  have hbd := hG x (le_trans (le_max_left _ _) hxR)
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>  have hCκ : C ≤ κ * ‖x‖ := by
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>    have h1 : C / κ ≤ ‖x‖ := le_trans (le_max_right _ _) hxR
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    have := (div_le_iff₀ hκ).1 h1
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>    linarith [mul_comm κ ‖x‖]
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>  have hH : |m0 * rieszKernelGrad d s x i| =
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>      |m0| * |q09_c s| * ‖x‖ ^ (-s - 2) * |x i| := by
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>    rw [q09_rkg_eq s i hx]
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>    unfold q09_H
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>    rw [abs_mul, abs_mul, abs_mul, abs_of_pos hu]
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>    ring
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>  have hxi : ‖x‖ / 2 ≤ |x i| := le_trans hcone (le_abs_self _)
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>  have hlow : 2 * κ * ‖x‖ ^ (-s - 2) * ‖x‖ ≤ |m0 * rieszKernelGrad d s x i| := by
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>    rw [hH]
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>    have hpos : 0 ≤ |m0| * |q09_c s| * ‖x‖ ^ (-s - 2) := by positivity
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>    have := mul_le_mul_of_nonneg_left hxi hpos
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>    rw [hκdef]
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>    nlinarith [this]
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>  have htri : |m0 * rieszKernelGrad d s x i| - |G x - m0 * rieszKernelGrad d s x i| ≤ |G x| := by
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>    have := abs_sub_abs_le_abs_sub (m0 * rieszKernelGrad d s x i) (G x)
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>    rw [abs_sub_comm] at this
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>    linarith
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>  have hCu : C * ‖x‖ ^ (-s - 2) ≤ κ * ‖x‖ * ‖x‖ ^ (-s - 2) :=
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>    mul_le_mul_of_nonneg_right hCκ hu.le
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>  have hfin : κ * ‖x‖ ^ (-s - 2) * ‖x‖ ≤ |G x| := by nlinarith [hbd, hlow, hCu, htri]
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>  have e : ‖x‖ ^ (-s - 1) = ‖x‖ ^ (-s - 2) * ‖x‖ := by
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>    rw [show (-s - 1) = (-s - 2) + 1 by ring, Real.rpow_add_one hxpos.ne&#x27;]
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>  rw [e]
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>  linarith [hfin]
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>/-- The ball `B(λ) = B(λ e_i, λ/4)`. -/
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>def q09_ball (i : Fin d) (lam : ℝ) : Set (Euc d) :=
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>  Metric.ball (EuclideanSpace.single i lam) (lam / 4)
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>theorem q09_ball_mem (i : Fin d) {lam : ℝ} (hlam : 0 &lt; lam) {x : Euc d}
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>    (hx : x ∈ q09_ball i lam) :
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>    ‖x‖ ≤ 5 * lam / 4 ∧ 3 * lam / 4 ≤ ‖x‖ ∧ ‖x‖ / 2 ≤ x i := by
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  unfold q09_ball at hx
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>  rw [Metric.mem_ball, dist_eq_norm] at hx
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>  have hc : ‖(EuclideanSpace.single i lam : Euc d)‖ = lam := by
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>    rw [EuclideanSpace.norm_single, Real.norm_eq_abs, abs_of_pos hlam]
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>  have hci : (EuclideanSpace.single i lam : Euc d) i = lam := by
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>    simp
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>  have h1 : ‖x‖ ≤ ‖x - EuclideanSpace.single i lam‖ + ‖(EuclideanSpace.single i lam : Euc d)‖ := by
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>    have := norm_add_le (x - EuclideanSpace.single i lam) (EuclideanSpace.single i lam)
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>    rwa [sub_add_cancel] at this
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>  have h2 : ‖(EuclideanSpace.single i lam : Euc d)‖ - ‖x‖ ≤
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>      ‖(EuclideanSpace.single i lam : Euc d) - x‖ := norm_sub_norm_le _ _
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>  rw [norm_sub_rev] at h2
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>  have h3 : |x i - lam| ≤ ‖x - EuclideanSpace.single i lam‖ := by
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>    have := PiLp.norm_apply_le (x - EuclideanSpace.single i lam) i
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>    rw [PiLp.sub_apply, hci, Real.norm_eq_abs] at this
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>    exact this
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>  have h4 := (abs_le.1 h3).1
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  refine ⟨by linarith, by linarith, by linarith⟩
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>theorem q09_ball_disj (i : Fin d) {l1 l2 : ℝ} (hl1 : 0 &lt; l1) (h12 : 2 * l1 ≤ l2) :
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>    Disjoint (q09_ball i l1) (q09_ball i l2) := by
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>  rw [Set.disjoint_left]
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>  intro x hx1 hx2
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>  have a1 := q09_ball_mem i hl1 hx1
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>  have a2 := q09_ball_mem i (lt_of_lt_of_le (by linarith) h12) hx2
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>  linarith [a1.1, a1.2.1, a2.2.1, a2.1]
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>/-- Proposition S.A.14, consequence (S L10118-10119): `∂_ig*(aψ) ∉ L^p(ℝ^d)` whenever `p(s+1) ≤ d` (`1 ≤ p &lt; ∞`), for
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>`a, ψ ∈ C_c^∞` with `∫aψ ≠ 0` and some coordinate `i`.  (&quot;In particular an unweighted `H^m` theory cannot hold for
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>arbitrary compactly supported data when `2(s+1) ≤ d`&quot; is the case `p = 2`, a prose consequence for the adjoint theory.)
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>Statement: there is an `i` for which `∂_ig*(aψ) ∉ L^p` (the TeX asserts it for the cone `|x_i| ≥ |x|/2`, i.e. for every
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>`i`; we assert it for every `i`). -/
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>theorem multipole_not_lp (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (i : Fin d)
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>    (a ψ : Euc d → ℝ) (ha : IsCcInfty a) (hψ : IsCcInfty ψ) (hm0 : ∫ x, a x * ψ x ≠ 0)
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>    (p : ℝ) (hp : 1 ≤ p) (hps : p * (s + 1) ≤ d) :
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>    ¬ MemLp (fun x : Euc d =&gt; gradient (convFun (rieszKernel d s) (fun y =&gt; a y * ψ y)) x i) (ENNReal.ofReal p)
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>      volume := by
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>  intro hG
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>  obtain ⟨C, R, hR, hbd⟩ := multipole_tail hd s hs0 hsd i a ψ ha hψ hm0
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>  haveI : Nontrivial (Euc d) := by
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>    rw [← Module.finrank_pos_iff (R := ℝ), finrank_euclideanSpace_fin]
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>    exact hd
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>  set m0 := ∫ y, a y * ψ y with hm0def
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>  set G : Euc d → ℝ := fun x =&gt; gradient (convFun (rieszKernel d s) (fun y =&gt; a y * ψ y)) x i
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>    with hGdef
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>  have hc : q09_c s ≠ 0 := q09_c_ne s hs0
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>  have hm0&#x27; : 0 &lt; |m0| := abs_pos.2 hm0
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>  have hc&#x27; : 0 &lt; |q09_c s| := abs_pos.2 hc
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>  set κ := |m0| * |q09_c s| / 4 with hκdef
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>  have hκ : 0 &lt; κ := by rw [hκdef]; positivity
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>  set Rb := max R (C / κ) with hRbdef
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>  set L := max 1 (2 * |Rb|) with hLdef
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>  have hL1 : 1 ≤ L := le_max_left _ _
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>  have hLRb : 4 * Rb / 3 ≤ L := by
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>    have h1 := le_abs_self Rb
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>    have h2 := abs_nonneg Rb
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>    have h3 : 2 * |Rb| ≤ L := le_max_right _ _
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>    linarith
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>  set p&#x27; := p with hp&#x27;def
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>  set V : ℝ := (volume (Metric.ball (0 : Euc d) 1)).toReal with hVdef
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>  have hVpos : 0 &lt; V := by
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>    rw [hVdef]
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>    exact ENNReal.toReal_pos (Metric.measure_ball_pos volume _ one_pos).ne&#x27;
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>      measure_ball_lt_top.ne
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>  -- integrability of the power
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>  have hint : Integrable (fun x =&gt; ‖G x‖ ^ p) volume := by
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>    have h := hG.integrable_norm_rpow (ENNReal.ofReal_pos.2 (by linarith)).ne&#x27;
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>      ENNReal.ofReal_ne_top
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>    rwa [ENNReal.toReal_ofReal (by linarith)] at h
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>  -- the constant
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>  set e : ℝ := (-s - 1) * p with hedef
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>  set c0 : ℝ := κ ^ p * (5 / 4 : ℝ) ^ e * (1 / 4 : ℝ) ^ d * V with hc0def
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>  have hc0 : 0 &lt; c0 := by
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>    rw [hc0def]
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>    have : 0 &lt; (5 / 4 : ℝ) ^ e := Real.rpow_pos_of_pos (by norm_num) _
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>    have : 0 &lt; (1 / 4 : ℝ) ^ d := pow_pos (by norm_num) _
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>    have : 0 &lt; κ ^ p := Real.rpow_pos_of_pos hκ _
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>    positivity
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>  -- pointwise lower bound on the cone far out
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>  have hpt : ∀ (lam : ℝ), L ≤ lam → ∀ x ∈ q09_ball i lam,
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>      (κ * (5 * lam / 4) ^ ((-s - 1))) ^ p ≤ ‖G x‖ ^ p := by
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>    intro lam hlamL x hx
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>    have hlam : 0 &lt; lam := lt_of_lt_of_le (by linarith) hlamL
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>    obtain ⟨h1, h2, h3⟩ := q09_ball_mem i hlam hx
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>    have hxpos : 0 &lt; ‖x‖ := lt_of_lt_of_le (by linarith) h2
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>    have hx0 : x ≠ 0 := norm_pos_iff.1 hxpos
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>    have hxR : max R (C / κ) ≤ ‖x‖ := by
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>      have : Rb ≤ ‖x‖ := by
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>        have : Rb ≤ 3 * L / 4 := by linarith
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>        linarith
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>      exact this
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>    have hlow := q09_cone_lower s hs0 i m0 C R G hm0 hbd x hx0 hxR h3
+</span><span class="line" id="L773"><a class="ln" aria-label="Line 773" href="#L773">773</a>    have hpow : (5 * lam / 4) ^ ((-s - 1)) ≤ ‖x‖ ^ ((-s - 1)) :=
+</span><span class="line" id="L774"><a class="ln" aria-label="Line 774" href="#L774">774</a>      Real.rpow_le_rpow_of_nonpos hxpos h1 (by linarith)
+</span><span class="line" id="L775"><a class="ln" aria-label="Line 775" href="#L775">775</a>    have ha0 : 0 ≤ κ * (5 * lam / 4) ^ ((-s - 1)) := by positivity
+</span><span class="line" id="L776"><a class="ln" aria-label="Line 776" href="#L776">776</a>    have hle : κ * (5 * lam / 4) ^ ((-s - 1)) ≤ ‖G x‖ := by
+</span><span class="line" id="L777"><a class="ln" aria-label="Line 777" href="#L777">777</a>      rw [Real.norm_eq_abs]
+</span><span class="line" id="L778"><a class="ln" aria-label="Line 778" href="#L778">778</a>      have : κ * (5 * lam / 4) ^ ((-s - 1)) ≤ κ * ‖x‖ ^ ((-s - 1)) :=
+</span><span class="line" id="L779"><a class="ln" aria-label="Line 779" href="#L779">779</a>        mul_le_mul_of_nonneg_left hpow hκ.le
+</span><span class="line" id="L780"><a class="ln" aria-label="Line 780" href="#L780">780</a>      have hh : κ * ‖x‖ ^ ((-s - 1)) ≤ |G x| := hlow
+</span><span class="line" id="L781"><a class="ln" aria-label="Line 781" href="#L781">781</a>      linarith
+</span><span class="line" id="L782"><a class="ln" aria-label="Line 782" href="#L782">782</a>    exact Real.rpow_le_rpow ha0 hle (by linarith)
+</span><span class="line" id="L783"><a class="ln" aria-label="Line 783" href="#L783">783</a>  -- lower bound on each ball
+</span><span class="line" id="L784"><a class="ln" aria-label="Line 784" href="#L784">784</a>  have hball : ∀ k : ℕ, c0 ≤ ∫ x in q09_ball i (2 ^ k * L), ‖G x‖ ^ p := by
+</span><span class="line" id="L785"><a class="ln" aria-label="Line 785" href="#L785">785</a>    intro k
+</span><span class="line" id="L786"><a class="ln" aria-label="Line 786" href="#L786">786</a>    set lam : ℝ := 2 ^ k * L with hlamdef
+</span><span class="line" id="L787"><a class="ln" aria-label="Line 787" href="#L787">787</a>    have hL0 : 0 &lt; L := by linarith
+</span><span class="line" id="L788"><a class="ln" aria-label="Line 788" href="#L788">788</a>    have hlamL : L ≤ lam := by
+</span><span class="line" id="L789"><a class="ln" aria-label="Line 789" href="#L789">789</a>      have : (1 : ℝ) ≤ 2 ^ k := one_le_pow₀ (by norm_num)
+</span><span class="line" id="L790"><a class="ln" aria-label="Line 790" href="#L790">790</a>      rw [hlamdef]; nlinarith
+</span><span class="line" id="L791"><a class="ln" aria-label="Line 791" href="#L791">791</a>    have hlam1 : 1 ≤ lam := le_trans hL1 hlamL
+</span><span class="line" id="L792"><a class="ln" aria-label="Line 792" href="#L792">792</a>    have hlam : 0 &lt; lam := by linarith
+</span><span class="line" id="L793"><a class="ln" aria-label="Line 793" href="#L793">793</a>    have hvol : volume.real (q09_ball i lam) = (lam / 4) ^ d * V := by
+</span><span class="line" id="L794"><a class="ln" aria-label="Line 794" href="#L794">794</a>      unfold q09_ball
+</span><span class="line" id="L795"><a class="ln" aria-label="Line 795" href="#L795">795</a>      rw [measureReal_def, Measure.addHaar_ball volume _ (by positivity),
+</span><span class="line" id="L796"><a class="ln" aria-label="Line 796" href="#L796">796</a>        finrank_euclideanSpace_fin, ENNReal.toReal_mul, ENNReal.toReal_ofReal (by positivity)]
+</span><span class="line" id="L797"><a class="ln" aria-label="Line 797" href="#L797">797</a>    have hset := setIntegral_ge_of_const_le_real (μ := volume) (f := fun x =&gt; ‖G x‖ ^ p)
+</span><span class="line" id="L798"><a class="ln" aria-label="Line 798" href="#L798">798</a>      (c := (κ * (5 * lam / 4) ^ ((-s - 1))) ^ p) (s := q09_ball i lam)
+</span><span class="line" id="L799"><a class="ln" aria-label="Line 799" href="#L799">799</a>      measurableSet_ball (by unfold q09_ball; exact measure_ball_lt_top.ne)
+</span><span class="line" id="L800"><a class="ln" aria-label="Line 800" href="#L800">800</a>      (fun x hx =&gt; hpt lam hlamL x hx)
+</span><span class="line" id="L801"><a class="ln" aria-label="Line 801" href="#L801">801</a>      hint.integrableOn
+</span><span class="line" id="L802"><a class="ln" aria-label="Line 802" href="#L802">802</a>    have heq : (κ * (5 * lam / 4) ^ ((-s - 1))) ^ p * volume.real (q09_ball i lam)
+</span><span class="line" id="L803"><a class="ln" aria-label="Line 803" href="#L803">803</a>        = c0 * (lam ^ e * lam ^ (d : ℕ)) := by
+</span><span class="line" id="L804"><a class="ln" aria-label="Line 804" href="#L804">804</a>      rw [hvol, hc0def, Real.mul_rpow hκ.le (by positivity), ← Real.rpow_mul (by positivity)]
+</span><span class="line" id="L805"><a class="ln" aria-label="Line 805" href="#L805">805</a>      rw [show 5 * lam / 4 = (5 / 4 : ℝ) * lam by ring, Real.mul_rpow (by norm_num) hlam.le,
+</span><span class="line" id="L806"><a class="ln" aria-label="Line 806" href="#L806">806</a>        show (lam / 4) = lam * (1 / 4 : ℝ) by ring, mul_pow, ← hedef]
+</span><span class="line" id="L807"><a class="ln" aria-label="Line 807" href="#L807">807</a>      ring
+</span><span class="line" id="L808"><a class="ln" aria-label="Line 808" href="#L808">808</a>    have hone : 1 ≤ lam ^ e * lam ^ (d : ℕ) := by
+</span><span class="line" id="L809"><a class="ln" aria-label="Line 809" href="#L809">809</a>      rw [← Real.rpow_natCast lam d, ← Real.rpow_add (by linarith)]
+</span><span class="line" id="L810"><a class="ln" aria-label="Line 810" href="#L810">810</a>      apply Real.one_le_rpow hlam1
+</span><span class="line" id="L811"><a class="ln" aria-label="Line 811" href="#L811">811</a>      rw [hedef]
+</span><span class="line" id="L812"><a class="ln" aria-label="Line 812" href="#L812">812</a>      nlinarith [hps]
+</span><span class="line" id="L813"><a class="ln" aria-label="Line 813" href="#L813">813</a>    have : c0 ≤ c0 * (lam ^ e * lam ^ (d : ℕ)) := le_mul_of_one_le_right hc0.le hone
+</span><span class="line" id="L814"><a class="ln" aria-label="Line 814" href="#L814">814</a>    linarith [hset, heq]
+</span><span class="line" id="L815"><a class="ln" aria-label="Line 815" href="#L815">815</a>  -- the disjoint union
+</span><span class="line" id="L816"><a class="ln" aria-label="Line 816" href="#L816">816</a>  have hsum : ∀ N : ℕ, (N : ℝ) * c0 ≤ ∫ x, ‖G x‖ ^ p := by
+</span><span class="line" id="L817"><a class="ln" aria-label="Line 817" href="#L817">817</a>    intro N
+</span><span class="line" id="L818"><a class="ln" aria-label="Line 818" href="#L818">818</a>    have hdisj : (↑(Finset.range N) : Set ℕ).Pairwise
+</span><span class="line" id="L819"><a class="ln" aria-label="Line 819" href="#L819">819</a>        (Function.onFun Disjoint fun k : ℕ =&gt; q09_ball i (2 ^ k * L)) := by
+</span><span class="line" id="L820"><a class="ln" aria-label="Line 820" href="#L820">820</a>      intro k _ j _ hkj
+</span><span class="line" id="L821"><a class="ln" aria-label="Line 821" href="#L821">821</a>      rcases lt_or_gt_of_ne hkj with h | h
+</span><span class="line" id="L822"><a class="ln" aria-label="Line 822" href="#L822">822</a>      · have hk0 : 0 &lt; 2 ^ k * L := by positivity
+</span><span class="line" id="L823"><a class="ln" aria-label="Line 823" href="#L823">823</a>        have hpow : (2 : ℝ) ^ (k + 1) ≤ 2 ^ j := pow_le_pow_right₀ (by norm_num) h
+</span><span class="line" id="L824"><a class="ln" aria-label="Line 824" href="#L824">824</a>        have h12 : 2 * (2 ^ k * L) ≤ 2 ^ j * L := by
+</span><span class="line" id="L825"><a class="ln" aria-label="Line 825" href="#L825">825</a>          have : 2 * (2 ^ k * L) = 2 ^ (k + 1) * L := by ring
+</span><span class="line" id="L826"><a class="ln" aria-label="Line 826" href="#L826">826</a>          rw [this]
+</span><span class="line" id="L827"><a class="ln" aria-label="Line 827" href="#L827">827</a>          exact mul_le_mul_of_nonneg_right hpow (by linarith)
+</span><span class="line" id="L828"><a class="ln" aria-label="Line 828" href="#L828">828</a>        exact q09_ball_disj i hk0 h12
+</span><span class="line" id="L829"><a class="ln" aria-label="Line 829" href="#L829">829</a>      · have hk0 : 0 &lt; 2 ^ j * L := by positivity
+</span><span class="line" id="L830"><a class="ln" aria-label="Line 830" href="#L830">830</a>        have hpow : (2 : ℝ) ^ (j + 1) ≤ 2 ^ k := pow_le_pow_right₀ (by norm_num) h
+</span><span class="line" id="L831"><a class="ln" aria-label="Line 831" href="#L831">831</a>        have h12 : 2 * (2 ^ j * L) ≤ 2 ^ k * L := by
+</span><span class="line" id="L832"><a class="ln" aria-label="Line 832" href="#L832">832</a>          have : 2 * (2 ^ j * L) = 2 ^ (j + 1) * L := by ring
+</span><span class="line" id="L833"><a class="ln" aria-label="Line 833" href="#L833">833</a>          rw [this]
+</span><span class="line" id="L834"><a class="ln" aria-label="Line 834" href="#L834">834</a>          exact mul_le_mul_of_nonneg_right hpow (by linarith)
+</span><span class="line" id="L835"><a class="ln" aria-label="Line 835" href="#L835">835</a>        exact (q09_ball_disj i hk0 h12).symm
+</span><span class="line" id="L836"><a class="ln" aria-label="Line 836" href="#L836">836</a>    have hU := integral_biUnion_finset (μ := volume) (f := fun x =&gt; ‖G x‖ ^ p)
+</span><span class="line" id="L837"><a class="ln" aria-label="Line 837" href="#L837">837</a>      (Finset.range N) (s := fun k : ℕ =&gt; q09_ball i (2 ^ k * L))
+</span><span class="line" id="L838"><a class="ln" aria-label="Line 838" href="#L838">838</a>      (fun k _ =&gt; measurableSet_ball) hdisj (fun k _ =&gt; hint.integrableOn)
+</span><span class="line" id="L839"><a class="ln" aria-label="Line 839" href="#L839">839</a>    have hle : ∫ x in ⋃ k ∈ Finset.range N, q09_ball i (2 ^ k * L), ‖G x‖ ^ p
+</span><span class="line" id="L840"><a class="ln" aria-label="Line 840" href="#L840">840</a>        ≤ ∫ x, ‖G x‖ ^ p :=
+</span><span class="line" id="L841"><a class="ln" aria-label="Line 841" href="#L841">841</a>      setIntegral_le_integral hint (Filter.Eventually.of_forall fun x =&gt; by positivity)
+</span><span class="line" id="L842"><a class="ln" aria-label="Line 842" href="#L842">842</a>    have hge : ∑ k ∈ Finset.range N, c0 ≤ ∑ k ∈ Finset.range N,
+</span><span class="line" id="L843"><a class="ln" aria-label="Line 843" href="#L843">843</a>        ∫ x in q09_ball i (2 ^ k * L), ‖G x‖ ^ p :=
+</span><span class="line" id="L844"><a class="ln" aria-label="Line 844" href="#L844">844</a>      Finset.sum_le_sum (fun k _ =&gt; hball k)
+</span><span class="line" id="L845"><a class="ln" aria-label="Line 845" href="#L845">845</a>    rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul] at hge
+</span><span class="line" id="L846"><a class="ln" aria-label="Line 846" href="#L846">846</a>    rw [hU] at hle
+</span><span class="line" id="L847"><a class="ln" aria-label="Line 847" href="#L847">847</a>    linarith
+</span><span class="line" id="L848"><a class="ln" aria-label="Line 848" href="#L848">848</a>  obtain ⟨N, hN⟩ := exists_nat_gt ((∫ x, ‖G x‖ ^ p) / c0)
+</span><span class="line" id="L849"><a class="ln" aria-label="Line 849" href="#L849">849</a>  have hlt := (div_lt_iff₀ hc0).1 hN
+</span><span class="line" id="L850"><a class="ln" aria-label="Line 850" href="#L850">850</a>  linarith [hsum N]
+</span><span class="line" id="L851"><a class="ln" aria-label="Line 851" href="#L851">851</a>
+</span><span class="line" id="L852"><a class="ln" aria-label="Line 852" href="#L852">852</a>/-! ### Lemma S.A.15 -/
+</span><span class="line" id="L853"><a class="ln" aria-label="Line 853" href="#L853">853</a>
+</span><span class="line" id="L854"><a class="ln" aria-label="Line 854" href="#L854">854</a>/-- The odd homogeneous multiplier `𝒯_θ` of order `θ - 1` (S L10143-10148): on a function `u`,
+</span><span class="line" id="L855"><a class="ln" aria-label="Line 855" href="#L855">855</a>`𝒯_θ u(x) = p.v.∫ Ω(z/|z|)|z|^{-(d+θ-1)}u(x-z) dz = lim_{ε→0}∫_{|z|&gt;ε} …` (the limit exists for Schwartz `u`, and a.e. for
+</span><span class="line" id="L856"><a class="ln" aria-label="Line 856" href="#L856">856</a>`u ∈ L^q` in the cases below; for `θ &lt; 1` it is the absolutely convergent integral, i.e. the fractional integral
+</span><span class="line" id="L857"><a class="ln" aria-label="Line 857" href="#L857">857</a>multiplier).  The `finitely many` multipliers are indexed by the smooth odd `Ω`. -/
+</span><span class="line" id="L858"><a class="ln" aria-label="Line 858" href="#L858">858</a>def pvOdd (d : ℕ) (θ : ℝ) (Ω : Euc d → ℝ) (u : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L859"><a class="ln" aria-label="Line 859" href="#L859">859</a>  limUnder (𝓝[&gt;] (0 : ℝ)) fun ε : ℝ =&gt;
+</span><span class="line" id="L860"><a class="ln" aria-label="Line 860" href="#L860">860</a>    ∫ z in {z : Euc d | ε &lt; ‖z‖}, Ω (‖z‖⁻¹ • z) / ‖z‖ ^ ((d : ℝ) + θ - 1) * u (x - z)
+</span><span class="line" id="L861"><a class="ln" aria-label="Line 861" href="#L861">861</a>
+</span><span class="line" id="L862"><a class="ln" aria-label="Line 862" href="#L862">862</a>/-- `Ω` is smooth and odd on the sphere. -/
+</span><span class="line" id="L863"><a class="ln" aria-label="Line 863" href="#L863">863</a>def IsOddSmooth (Ω : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L864"><a class="ln" aria-label="Line 864" href="#L864">864</a>  ContDiff ℝ ∞ Ω ∧ ∀ u : Euc d, ‖u‖ = 1 → Ω (-u) = -Ω u
+</span><span class="line" id="L865"><a class="ln" aria-label="Line 865" href="#L865">865</a>
+</span><span class="line" id="L866"><a class="ln" aria-label="Line 866" href="#L866">866</a>/-- The fractional Laplacian `Λ^θ = (-Δ)^{θ/2}` as the singular integral `p.v.∫(W(x)-W(x-z))|z|^{-(d+θ)}dz` (the positive
+</span><span class="line" id="L867"><a class="ln" aria-label="Line 867" href="#L867">867</a>normalizing constant `c_{d,θ}` of S L10188 is omitted: it is absorbed in the constants of the estimates and in `c_θ`
+</span><span class="line" id="L868"><a class="ln" aria-label="Line 868" href="#L868">868</a>of `lp_Lambda_commutator_expansion`). -/
+</span><span class="line" id="L869"><a class="ln" aria-label="Line 869" href="#L869">869</a>def fracLap (d : ℕ) (θ : ℝ) (W : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L870"><a class="ln" aria-label="Line 870" href="#L870">870</a>  limUnder (𝓝[&gt;] (0 : ℝ)) fun ε : ℝ =&gt;
+</span><span class="line" id="L871"><a class="ln" aria-label="Line 871" href="#L871">871</a>    ∫ z in {z : Euc d | ε &lt; ‖z‖}, (W x - W (x - z)) / ‖z‖ ^ ((d : ℝ) + θ)
+</span><span class="line" id="L872"><a class="ln" aria-label="Line 872" href="#L872">872</a>
+</span><span class="line" id="L873"><a class="ln" aria-label="Line 873" href="#L873">873</a>/-- The commutator `[Λ^θ, μ]W = Λ^θ(μW) - μΛ^θW`. -/
+</span><span class="line" id="L874"><a class="ln" aria-label="Line 874" href="#L874">874</a>def lamComm (d : ℕ) (θ : ℝ) (μ W : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L875"><a class="ln" aria-label="Line 875" href="#L875">875</a>  fracLap d θ (fun y =&gt; μ y * W y) x - μ x * fracLap d θ W x
+</span><span class="line" id="L876"><a class="ln" aria-label="Line 876" href="#L876">876</a>
+</span><span class="line" id="L877"><a class="ln" aria-label="Line 877" href="#L877">877</a>/-- The Euclidean norm `|v|` of a finite-dimensional tensor `v ∈ ℝ^ι`. -/
+</span><span class="line" id="L878"><a class="ln" aria-label="Line 878" href="#L878">878</a>def vnorm {ι : Type*} [Fintype ι] (v : ι → ℝ) : ℝ := Real.sqrt (∑ i, v i ^ 2)
+</span><span class="line" id="L879"><a class="ln" aria-label="Line 879" href="#L879">879</a>
+</span><span class="line" id="L880"><a class="ln" aria-label="Line 880" href="#L880">880</a>/-- The dissipation density `𝔡_p[W](x) = ∫(|W(x)|+|W(x-z)|)^{p-2}|W(x)-W(x-z)|²|z|^{-(d+θ)}dz`
+</span><span class="line" id="L881"><a class="ln" aria-label="Line 881" href="#L881">881</a>(`B:eq:lp-dissipation-density`, S L10133-10138) of a finite-dimensional tensor field `W : ℝ^d → ℝ^ι` (`|·|` the Euclidean
+</span><span class="line" id="L882"><a class="ln" aria-label="Line 882" href="#L882">882</a>norm), valued in `ℝ≥0∞`. -/
+</span><span class="line" id="L883"><a class="ln" aria-label="Line 883" href="#L883">883</a>def dissipationDensity {ι : Type*} [Fintype ι] (d : ℕ) (θ p : ℝ) (W : Euc d → ι → ℝ) (x : Euc d) :
+</span><span class="line" id="L884"><a class="ln" aria-label="Line 884" href="#L884">884</a>    ℝ≥0∞ :=
+</span><span class="line" id="L885"><a class="ln" aria-label="Line 885" href="#L885">885</a>  ∫⁻ z : Euc d, ENNReal.ofReal ((vnorm (W x) + vnorm (W (x - z))) ^ (p - 2) *
+</span><span class="line" id="L886"><a class="ln" aria-label="Line 886" href="#L886">886</a>    vnorm (fun i =&gt; W x i - W (x - z) i) ^ 2 / ‖z‖ ^ ((d : ℝ) + θ))
+</span><span class="line" id="L887"><a class="ln" aria-label="Line 887" href="#L887">887</a>
+</span><span class="line" id="L888"><a class="ln" aria-label="Line 888" href="#L888">888</a>/-- The Bessel-potential norm `‖Z‖_{W^{r,p}} = ‖𝓕⁻[(1+4π²|ξ|²)^{r/2}𝓕Z]‖_{L^p}` of a Schwartz function. -/
+</span><span class="line" id="L889"><a class="ln" aria-label="Line 889" href="#L889">889</a>def besselNormE (d : ℕ) (r p : ℝ) (Z : SchwartzMap (Euc d) ℝ) : ℝ≥0∞ :=
+</span><span class="line" id="L890"><a class="ln" aria-label="Line 890" href="#L890">890</a>  eLpNorm (𝓕⁻ (fun ξ : Euc d =&gt; (((1 + 4 * Real.pi ^ 2 * ‖ξ‖ ^ 2) ^ (r / 2) : ℝ) : ℂ) *
+</span><span class="line" id="L891"><a class="ln" aria-label="Line 891" href="#L891">891</a>    𝓕 (fun y : Euc d =&gt; ((Z y : ℝ) : ℂ)) ξ)) (ENNReal.ofReal p) volume
+</span><span class="line" id="L892"><a class="ln" aria-label="Line 892" href="#L892">892</a>
+</span><span class="line" id="L893"><a class="ln" aria-label="Line 893" href="#L893">893</a>/-- Lemma S.A.15(i) `B:item:screened-negative-order` (S L10150-10155): `0 &lt; θ &lt; 1`, `2 ≤ p &lt; ∞`, `1/p + (1-θ)/d &lt; 1`,
+</span><span class="line" id="L894"><a class="ln" aria-label="Line 894" href="#L894">894</a>`a ∈ L^{d/(1-θ)}`: `‖𝒯_θ(aW)‖_{L^p} ≤ C‖a‖_{L^{d/(1-θ)}}‖W‖_{L^p}`, `C = C(d,θ,p)` (here `Ω(u) = u_i`, the coordinate kernel); and at `θ = 1`
+</span><span class="line" id="L895"><a class="ln" aria-label="Line 895" href="#L895">895</a>(Calderón-Zygmund) `‖𝒯_1(aW)‖_p ≤ C‖a‖_{L^∞}‖W‖_p`.  Scalar `W`; for finite-dimensional tensor fields and tensor
+</span><span class="line" id="L896"><a class="ln" aria-label="Line 896" href="#L896">896</a>contractions the proof is componentwise (S L10256).  The estimates are for `W ∈ L^p` (`MemLp`).
+</span><span class="line" id="L897"><a class="ln" aria-label="Line 897" href="#L897">897</a>
+</span><span class="line" id="L898"><a class="ln" aria-label="Line 898" href="#L898">898</a>Statement change 2026-10-22 (owner approved): `Ω` restricted to the coordinate kernel `u_i` (linear `Ω`); all S.A.16 uses are of this form. -/
+</span><span class="line" id="L899"><a class="ln" aria-label="Line 899" href="#L899">899</a>theorem lp_screened_negative_order (hd : 1 ≤ d) (θ p : ℝ) (hp : 2 ≤ p) (i : Fin d) :
+</span><span class="line" id="L900"><a class="ln" aria-label="Line 900" href="#L900">900</a>    (0 &lt; θ → θ &lt; 1 → 1 / p + (1 - θ) / d &lt; 1 →
+</span><span class="line" id="L901"><a class="ln" aria-label="Line 901" href="#L901">901</a>      ∃ C : ℝ, ∀ a W : Euc d → ℝ, MemLp a (ENNReal.ofReal ((d : ℝ) / (1 - θ))) volume →
+</span><span class="line" id="L902"><a class="ln" aria-label="Line 902" href="#L902">902</a>        MemLp W (ENNReal.ofReal p) volume →
+</span><span class="line" id="L903"><a class="ln" aria-label="Line 903" href="#L903">903</a>        eLpNorm (pvOdd d θ (fun u : Euc d =&gt; u i) fun x =&gt; a x * W x) (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L904"><a class="ln" aria-label="Line 904" href="#L904">904</a>          ENNReal.ofReal C * eLpNorm a (ENNReal.ofReal ((d : ℝ) / (1 - θ))) volume *
+</span><span class="line" id="L905"><a class="ln" aria-label="Line 905" href="#L905">905</a>            eLpNorm W (ENNReal.ofReal p) volume) ∧
+</span><span class="line" id="L906"><a class="ln" aria-label="Line 906" href="#L906">906</a>    (∃ C : ℝ, ∀ a W : Euc d → ℝ, MemLp a ⊤ volume → MemLp W (ENNReal.ofReal p) volume →
+</span><span class="line" id="L907"><a class="ln" aria-label="Line 907" href="#L907">907</a>      eLpNorm (pvOdd d 1 (fun u : Euc d =&gt; u i) fun x =&gt; a x * W x) (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L908"><a class="ln" aria-label="Line 908" href="#L908">908</a>        ENNReal.ofReal C * eLpNorm a ⊤ volume * eLpNorm W (ENNReal.ofReal p) volume) := by
+</span><span class="line" id="L909"><a class="ln" aria-label="Line 909" href="#L909">909</a>  sorry
+</span><span class="line" id="L910"><a class="ln" aria-label="Line 910" href="#L910">910</a>
+</span><span class="line" id="L911"><a class="ln" aria-label="Line 911" href="#L911">911</a>/-- Lemma S.A.15(ii) `B:item:positive-order-product` (S L10157-10165): `1 &lt; θ &lt; 2`, `a ∈ C_b^1`, `W` Schwartz:
+</span><span class="line" id="L912"><a class="ln" aria-label="Line 912" href="#L912">912</a>`𝒯_θ(aW) = a𝒯_θW + [𝒯_θ,a]W` (definition of the commutator) with
+</span><span class="line" id="L913"><a class="ln" aria-label="Line 913" href="#L913">913</a>`‖[𝒯_θ,a]W‖_{L^p} ≤ C‖a‖_{C_b^1}‖W‖_{L^p}` (`B:eq:positive-order-product`), and for Schwartz `Z` (a dense class of
+</span><span class="line" id="L914"><a class="ln" aria-label="Line 914" href="#L914">914</a>`W^{θ-1,p}`) `‖𝒯_θ(aZ)‖_{L^p} ≤ C‖a‖_{C_b^1}‖Z‖_{W^{θ-1,p}}` (`B:eq:positive-order-lower`).
+</span><span class="line" id="L915"><a class="ln" aria-label="Line 915" href="#L915">915</a>
+</span><span class="line" id="L916"><a class="ln" aria-label="Line 916" href="#L916">916</a>Statement change 2026-10-22 (owner approved): `Ω` restricted to the coordinate kernel `u_i` (linear `Ω`); all S.A.16 uses are of this form. -/
+</span><span class="line" id="L917"><a class="ln" aria-label="Line 917" href="#L917">917</a>theorem lp_positive_order_product (hd : 1 ≤ d) (θ p : ℝ) (hθ1 : 1 &lt; θ) (hθ2 : θ &lt; 2) (hp : 2 ≤ p)
+</span><span class="line" id="L918"><a class="ln" aria-label="Line 918" href="#L918">918</a>    (i : Fin d) :
+</span><span class="line" id="L919"><a class="ln" aria-label="Line 919" href="#L919">919</a>    ∃ C : ℝ, ∀ a : Euc d → ℝ, MemCb 1 a →
+</span><span class="line" id="L920"><a class="ln" aria-label="Line 920" href="#L920">920</a>      (∀ W : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L921"><a class="ln" aria-label="Line 921" href="#L921">921</a>        eLpNorm (fun x =&gt; pvOdd d θ (fun u : Euc d =&gt; u i) (fun y =&gt; a y * W y) x -
+</span><span class="line" id="L922"><a class="ln" aria-label="Line 922" href="#L922">922</a>            a x * pvOdd d θ (fun u : Euc d =&gt; u i) W x)
+</span><span class="line" id="L923"><a class="ln" aria-label="Line 923" href="#L923">923</a>            (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L924"><a class="ln" aria-label="Line 924" href="#L924">924</a>          ENNReal.ofReal (C * cbNorm 1 a) * eLpNorm W (ENNReal.ofReal p) volume) ∧
+</span><span class="line" id="L925"><a class="ln" aria-label="Line 925" href="#L925">925</a>      ∀ Z : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L926"><a class="ln" aria-label="Line 926" href="#L926">926</a>        eLpNorm (pvOdd d θ (fun u : Euc d =&gt; u i) fun y =&gt; a y * Z y) (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L927"><a class="ln" aria-label="Line 927" href="#L927">927</a>          ENNReal.ofReal (C * cbNorm 1 a) * besselNormE d (θ - 1) p Z := by
+</span><span class="line" id="L928"><a class="ln" aria-label="Line 928" href="#L928">928</a>  sorry
+</span><span class="line" id="L929"><a class="ln" aria-label="Line 929" href="#L929">929</a>
+</span><span class="line" id="L930"><a class="ln" aria-label="Line 930" href="#L930">930</a>/-- Lemma S.A.15(iii), first part `B:item:Lambda-commutator` (S L10167-10178): for `μ ∈ C_b²` and `0 &lt; θ ≤ 1` (`θ &lt; 1`:
+</span><span class="line" id="L931"><a class="ln" aria-label="Line 931" href="#L931">931</a>`B:eq:Lambda-commutator-low`; `θ = 1`: the first Calderón commutator estimate), `‖[Λ^θ,μ]W‖_{L^p} ≤ C‖μ‖_{C_b^2}‖W‖_{L^p}`
+</span><span class="line" id="L932"><a class="ln" aria-label="Line 932" href="#L932">932</a>for Schwartz `W`.
+</span><span class="line" id="L933"><a class="ln" aria-label="Line 933" href="#L933">933</a>
+</span><span class="line" id="L934"><a class="ln" aria-label="Line 934" href="#L934">934</a>Statement change 2026-10-22 (project owner approved): the norm is `‖μ‖_{C_b^2}` (was `C_b^1`), i.e. weaker than the TeX at `θ = 1`
+</span><span class="line" id="L935"><a class="ln" aria-label="Line 935" href="#L935">935</a>(the first Calderón commutator is skipped); the proof is `lp_Lambda_commutator_low_cb2` in `CzElemAux4`. -/
+</span><span class="line" id="L936"><a class="ln" aria-label="Line 936" href="#L936">936</a>theorem lp_Lambda_commutator_low (hd : 1 ≤ d) (θ p : ℝ) (hθ0 : 0 &lt; θ) (hθ1 : θ ≤ 1) (hp : 2 ≤ p) :
+</span><span class="line" id="L937"><a class="ln" aria-label="Line 937" href="#L937">937</a>    ∃ C : ℝ, ∀ μ : Euc d → ℝ, MemCb 2 μ → ∀ W : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L938"><a class="ln" aria-label="Line 938" href="#L938">938</a>      eLpNorm (lamComm d θ μ W) (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L939"><a class="ln" aria-label="Line 939" href="#L939">939</a>        ENNReal.ofReal (C * cbNorm 2 μ) * eLpNorm W (ENNReal.ofReal p) volume := by
+</span><span class="line" id="L940"><a class="ln" aria-label="Line 940" href="#L940">940</a>  sorry
+</span><span class="line" id="L941"><a class="ln" aria-label="Line 941" href="#L941">941</a>
+</span><span class="line" id="L942"><a class="ln" aria-label="Line 942" href="#L942">942</a>/-- Lemma S.A.15(iii), second part (S L10179-10187, `B:eq:Lambda-commutator-expansion`): for `1 &lt; θ &lt; 2`,
+</span><span class="line" id="L943"><a class="ln" aria-label="Line 943" href="#L943">943</a>`[Λ^θ,μ]W = c_θ∇μ·∇Λ^{θ-2}W + 𝓡_μW` with `‖𝓡_μW‖_{L^p} ≤ C‖μ‖_{C_b²}‖W‖_{L^p}`; `∇Λ^{θ-2}` is the finite vector of
+</span><span class="line" id="L944"><a class="ln" aria-label="Line 944" href="#L944">944</a>operators `𝒯^{(i)}_θ` of the form above with `Ω(u) = u_i` (symbol `iξ_i|ξ|^{θ-2}`), so the statement is: there are
+</span><span class="line" id="L945"><a class="ln" aria-label="Line 945" href="#L945">945</a>`c_θ` and `C` such that `‖[Λ^θ,μ]W - c_θ∑_i∂_iμ·𝒯^{(i)}_θW‖_{L^p} ≤ C‖μ‖_{C_b²}‖W‖_{L^p}` for `μ ∈ C_b²`, `W` Schwartz
+</span><span class="line" id="L946"><a class="ln" aria-label="Line 946" href="#L946">946</a>(`c_θ` depends on the normalization omitted in `fracLap`). -/
+</span><span class="line" id="L947"><a class="ln" aria-label="Line 947" href="#L947">947</a>theorem lp_Lambda_commutator_expansion (hd : 1 ≤ d) (θ p : ℝ) (hθ1 : 1 &lt; θ) (hθ2 : θ &lt; 2) (hp : 2 ≤ p) :
+</span><span class="line" id="L948"><a class="ln" aria-label="Line 948" href="#L948">948</a>    ∃ cθ C : ℝ, ∀ μ : Euc d → ℝ, MemCb 2 μ → ∀ W : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L949"><a class="ln" aria-label="Line 949" href="#L949">949</a>      eLpNorm (fun x =&gt; lamComm d θ μ W x - cθ * ∑ i : Fin d,
+</span><span class="line" id="L950"><a class="ln" aria-label="Line 950" href="#L950">950</a>          gradient μ x i * pvOdd d θ (fun u : Euc d =&gt; u i) W x) (ENNReal.ofReal p) volume ≤
+</span><span class="line" id="L951"><a class="ln" aria-label="Line 951" href="#L951">951</a>        ENNReal.ofReal (C * cbNorm 2 μ) * eLpNorm W (ENNReal.ofReal p) volume := by
+</span><span class="line" id="L952"><a class="ln" aria-label="Line 952" href="#L952">952</a>  sorry
+</span><span class="line" id="L953"><a class="ln" aria-label="Line 953" href="#L953">953</a>
+</span><span class="line" id="L954"><a class="ln" aria-label="Line 954" href="#L954">954</a>/-- Lemma S.A.15(iv) `B:item:tensor-absorption` (S L10189-10196): `1 &lt; θ &lt; 2`, `μ ≥ 0`, `a = √μ b` with `b ∈ L^∞`: for every
+</span><span class="line" id="L955"><a class="ln" aria-label="Line 955" href="#L955">955</a>`ε &gt; 0`,
+</span><span class="line" id="L956"><a class="ln" aria-label="Line 956" href="#L956">956</a>`|∫|W|^{p-2}W : a𝒯_θW dx| ≤ ε∫μ𝔡_p[W]dx + C_{ε,θ,p,Λ}(1+‖b‖_∞²)‖W‖_p^p` (`B:eq:tensor-absorption`).  The inequality is
+</span><span class="line" id="L957"><a class="ln" aria-label="Line 957" href="#L957">957</a>nonlinear in `W`, so it is stated for a finite-dimensional tensor field `W = (W_i)_{i ∈ ι}`, `W_i` Schwartz (used for
+</span><span class="line" id="L958"><a class="ln" aria-label="Line 958" href="#L958">958</a>`W = ∇^{⊗m}F`), `𝒯_θ` acting componentwise, `a = √μ B` with a matrix field `B(x) ∈ ℝ^{ι×ι}` (the tensor contraction; `|B_{ij}| ≤ Bb`
+</span><span class="line" id="L959"><a class="ln" aria-label="Line 959" href="#L959">959</a>plays the role of `‖b‖_∞`), and `|W|` the Euclidean norm; `ι` is `Unit` for the scalar case.  `Λ` bounds `‖μ‖_∞` (the
+</span><span class="line" id="L960"><a class="ln" aria-label="Line 960" href="#L960">960</a>dependence `C_{ε,θ,p,Λ}` of the TeX; S L10250: &quot;far part bounded by `C‖a‖_∞‖W‖_p^p`&quot;).  `C` may depend on `ι`.  Valued in `ℝ≥0∞` (the dissipation integral may be `∞`). -/
+</span><span class="line" id="L961"><a class="ln" aria-label="Line 961" href="#L961">961</a>theorem lp_tensor_absorption (hd : 1 ≤ d) (θ p : ℝ) (hθ1 : 1 &lt; θ) (hθ2 : θ &lt; 2) (hp : 2 ≤ p)
+</span><span class="line" id="L962"><a class="ln" aria-label="Line 962" href="#L962">962</a>    (Ω : Euc d → ℝ) (hΩ : IsOddSmooth Ω) (Λ : ℝ) (ε : ℝ) (hε : 0 &lt; ε) (ι : Type*) [Fintype ι] :
+</span><span class="line" id="L963"><a class="ln" aria-label="Line 963" href="#L963">963</a>    ∃ C : ℝ, ∀ (μ : Euc d → ℝ) (B : Euc d → Matrix ι ι ℝ) (Bb : ℝ), (∀ x, 0 ≤ μ x ∧ μ x ≤ Λ) →
+</span><span class="line" id="L964"><a class="ln" aria-label="Line 964" href="#L964">964</a>      (∀ x i j, |B x i j| ≤ Bb) → ∀ W : ι → SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L965"><a class="ln" aria-label="Line 965" href="#L965">965</a>        ENNReal.ofReal |∫ x, vnorm (fun i =&gt; W i x) ^ (p - 2) *
+</span><span class="line" id="L966"><a class="ln" aria-label="Line 966" href="#L966">966</a>            ∑ i, W i x * (Real.sqrt (μ x) * ∑ j, B x i j * pvOdd d θ Ω (fun y =&gt; W j y) x)| ≤
+</span><span class="line" id="L967"><a class="ln" aria-label="Line 967" href="#L967">967</a>          ENNReal.ofReal ε * (∫⁻ x, ENNReal.ofReal (μ x) *
+</span><span class="line" id="L968"><a class="ln" aria-label="Line 968" href="#L968">968</a>              dissipationDensity d θ p (fun y i =&gt; W i y) x) +
+</span><span class="line" id="L969"><a class="ln" aria-label="Line 969" href="#L969">969</a>            ENNReal.ofReal (C * (1 + Bb ^ 2)) *
+</span><span class="line" id="L970"><a class="ln" aria-label="Line 970" href="#L970">970</a>              ∫⁻ x, ENNReal.ofReal (vnorm (fun i =&gt; W i x) ^ p) := by
+</span><span class="line" id="L971"><a class="ln" aria-label="Line 971" href="#L971">971</a>  sorry
+</span><span class="line" id="L972"><a class="ln" aria-label="Line 972" href="#L972">972</a>
+</span><span class="line" id="L973"><a class="ln" aria-label="Line 973" href="#L973">973</a>/-! ### Proposition S.A.16 -/
+</span><span class="line" id="L974"><a class="ln" aria-label="Line 974" href="#L974">974</a>
+</span><span class="line" id="L975"><a class="ln" aria-label="Line 975" href="#L975">975</a>/-- `F ∈ C_w([0,t]; W^{m,p}(ℝ^d))`: `F(τ) ∈ W^{m,p}` for every `τ ∈ [0,t]` and for every choice `G(τ)` of the
+</span><span class="line" id="L976"><a class="ln" aria-label="Line 976" href="#L976">976</a>corresponding element of `W^{m,p}`, `τ ↦ ℓ(G(τ))` is continuous for every `ℓ ∈ (W^{m,p})^*`. -/
+</span><span class="line" id="L977"><a class="ln" aria-label="Line 977" href="#L977">977</a>def IsWmpWeaklyContinuous (m : ℕ) (p : ℝ) [Fact (2 ≤ p)] (t : ℝ) (F : ℝ → Euc d → ℝ) : Prop :=
+</span><span class="line" id="L978"><a class="ln" aria-label="Line 978" href="#L978">978</a>  (∀ τ ∈ Set.Icc (0 : ℝ) t, wNormE m p (F τ) &lt; ⊤) ∧
+</span><span class="line" id="L979"><a class="ln" aria-label="Line 979" href="#L979">979</a>    ∀ G : ℝ → WmpSpace d m p,
+</span><span class="line" id="L980"><a class="ln" aria-label="Line 980" href="#L980">980</a>      (∀ τ ∈ Set.Icc (0 : ℝ) t, ∀ᵐ x ∂(volume : Measure (Euc d)),
+</span><span class="line" id="L981"><a class="ln" aria-label="Line 981" href="#L981">981</a>        ((G τ : WLp d m p) : Euc d → (WIndex d m → ℝ)) x (wZero d m) = F τ x) →
+</span><span class="line" id="L982"><a class="ln" aria-label="Line 982" href="#L982">982</a>      ∀ ℓ : StrongDual ℝ (WmpSpace d m p), ContinuousOn (fun τ =&gt; ℓ (G τ)) (Set.Icc (0 : ℝ) t)
+</span><span class="line" id="L983"><a class="ln" aria-label="Line 983" href="#L983">983</a>
+</span><span class="line" id="L984"><a class="ln" aria-label="Line 984" href="#L984">984</a>/-- The solution class of `B:thm:adjoint-lp`: `F ∈ C_w([0,t];W^{m,p}) ∩ C([0,t];W^{m&#x27;,p}_loc)`, `0 ≤ m&#x27; &lt; m` (integers),
+</span><span class="line" id="L985"><a class="ln" aria-label="Line 985" href="#L985">985</a>a distributional solution of `B:eq:adjoint-forward` with `F(0) = φ`, bounded in `W^{m,p}` (a consequence of weak
+</span><span class="line" id="L986"><a class="ln" aria-label="Line 986" href="#L986">986</a>continuity, stated for definiteness). -/
+</span><span class="line" id="L987"><a class="ln" aria-label="Line 987" href="#L987">987</a>structure IsLpSolutionRd (m : ℕ) (p : ℝ) [Fact (2 ≤ p)] (χ : Euc d → ℝ) (C : WholeCoeff d) (t : ℝ)
+</span><span class="line" id="L988"><a class="ln" aria-label="Line 988" href="#L988">988</a>    (φ : Euc d → ℝ) (F : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L989"><a class="ln" aria-label="Line 989" href="#L989">989</a>  sol : IsForwardSolutionRd C t φ F
+</span><span class="line" id="L990"><a class="ln" aria-label="Line 990" href="#L990">990</a>  wcont : IsWmpWeaklyContinuous m p t F
+</span><span class="line" id="L991"><a class="ln" aria-label="Line 991" href="#L991">991</a>  bounded : ∃ B : ℝ, ∀ τ ∈ Set.Icc (0 : ℝ) t, wNormE m p (F τ) ≤ ENNReal.ofReal B
+</span><span class="line" id="L992"><a class="ln" aria-label="Line 992" href="#L992">992</a>  cont : ∀ m&#x27; : ℕ, m&#x27; &lt; m → ∀ z : Euc d, ∀ τ₀ ∈ Set.Icc (0 : ℝ) t, ∀ ε : ℝ, 0 &lt; ε →
+</span><span class="line" id="L993"><a class="ln" aria-label="Line 993" href="#L993">993</a>    ∃ δ : ℝ, 0 &lt; δ ∧ ∀ τ ∈ Set.Icc (0 : ℝ) t, |τ - τ₀| &lt; δ →
+</span><span class="line" id="L994"><a class="ln" aria-label="Line 994" href="#L994">994</a>      wNormE m&#x27; p (fun x =&gt; χ (x - z) * (F τ x - F τ₀ x)) ≤ ENNReal.ofReal ε
+</span><span class="line" id="L995"><a class="ln" aria-label="Line 995" href="#L995">995</a>
+</span><span class="line" id="L996"><a class="ln" aria-label="Line 996" href="#L996">996</a>/-- Proposition S.A.16 `B:thm:adjoint-lp` (S L10265-10297), existence, uniqueness and bound.  Let `m ≥ 1`, `p ∈ [2,∞)`,
+</span><span class="line" id="L997"><a class="ln" aria-label="Line 997" href="#L997">997</a>assume `B:eq:coeff-hypothesis-rd` (`AdjointRdData`, level `m`).  In each case (i), (ii), (iii) (`LpCase.Holds`), for every
+</span><span class="line" id="L998"><a class="ln" aria-label="Line 998" href="#L998">998</a>`t ∈ (0,T]` and `φ ∈ W^{m,p}(ℝ^d)` there is a unique distributional solution
+</span><span class="line" id="L999"><a class="ln" aria-label="Line 999" href="#L999">999</a>`F ∈ C_w([0,t];W^{m,p}) ∩ C([0,t];W^{m&#x27;,p}_loc)` (`0 ≤ m&#x27; &lt; m`) of `B:eq:adjoint-forward` with `F(0) = φ`, and
+</span><span class="line" id="L1000"><a class="ln" aria-label="Line 1000" href="#L1000">1000</a>`‖F(τ)‖_{W^{m,p}} ≤ Ce^{Cτ}‖φ‖_{W^{m,p}}` (`B:eq:adjoint-lp-bound`; the exponent constant is also `C`: &quot;`C e^{Cτ}`&quot;).
+</span><span class="line" id="L1001"><a class="ln" aria-label="Line 1001" href="#L1001">1001</a>`C` depends on `d, s, m, p`, the case, `|M|, Λ, Λ_V, |∇V(0)|, ν̄, T`.  The prose &quot;in case (ii) the solution is constructed
+</span><span class="line" id="L1002"><a class="ln" aria-label="Line 1002" href="#L1002">1002</a>directly ... in the overlap uniqueness identifies the solutions&quot; is the compatibility with `adjoint_rd`.
+</span><span class="line" id="L1003"><a class="ln" aria-label="Line 1003" href="#L1003">1003</a>Technical hypotheses: `m&#x27; ` ranges over integers `&lt; m` (see the module docstring); the norm `‖·‖_{W^{m,p}}` is the
+</span><span class="line" id="L1004"><a class="ln" aria-label="Line 1004" href="#L1004">1004</a>equivalent sup-on-jets norm `wNormE`. -/
+</span><span class="line" id="L1005"><a class="ln" aria-label="Line 1005" href="#L1005">1005</a>theorem adjoint_lp (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m) (p : ℝ)
+</span><span class="line" id="L1006"><a class="ln" aria-label="Line 1006" href="#L1006">1006</a>    [Fact (2 ≤ p)] (κc : LpCase) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L1007"><a class="ln" aria-label="Line 1007" href="#L1007">1007</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D : WholeDyn d) (μ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L1008"><a class="ln" aria-label="Line 1008" href="#L1008">1008</a>      AdjointRdData s m MB Λ ΛV G₀ νbar D T μ → κc.Holds d s p D.M →
+</span><span class="line" id="L1009"><a class="ln" aria-label="Line 1009" href="#L1009">1009</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, wNormE m p φ &lt; ⊤ →
+</span><span class="line" id="L1010"><a class="ln" aria-label="Line 1010" href="#L1010">1010</a>        (∃ F : ℝ → Euc d → ℝ, IsLpSolutionRd m p χ (D.coeff μ) t φ F ∧
+</span><span class="line" id="L1011"><a class="ln" aria-label="Line 1011" href="#L1011">1011</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, wNormE m p (F τ) ≤
+</span><span class="line" id="L1012"><a class="ln" aria-label="Line 1012" href="#L1012">1012</a>            ENNReal.ofReal (C * Real.exp (C * τ)) * wNormE m p φ) ∧
+</span><span class="line" id="L1013"><a class="ln" aria-label="Line 1013" href="#L1013">1013</a>        ∀ F₁ F₂ : ℝ → Euc d → ℝ, IsLpSolutionRd m p χ (D.coeff μ) t φ F₁ →
+</span><span class="line" id="L1014"><a class="ln" aria-label="Line 1014" href="#L1014">1014</a>          IsLpSolutionRd m p χ (D.coeff μ) t φ F₂ →
+</span><span class="line" id="L1015"><a class="ln" aria-label="Line 1015" href="#L1015">1015</a>          ∀ τ ∈ Set.Icc (0 : ℝ) t, F₁ τ =ᵐ[volume] F₂ τ := by
+</span><span class="line" id="L1016"><a class="ln" aria-label="Line 1016" href="#L1016">1016</a>  sorry
+</span><span class="line" id="L1017"><a class="ln" aria-label="Line 1017" href="#L1017">1017</a>
+</span><span class="line" id="L1018"><a class="ln" aria-label="Line 1018" href="#L1018">1018</a>/-- Proposition S.A.16, last sentence of the first paragraph (S L10286-10287): if `m &gt; 2 + d/p`, then `f^r := F(t-r)` is a
+</span><span class="line" id="L1019"><a class="ln" aria-label="Line 1019" href="#L1019">1019</a>classical adjoint solution in the sense of `B:rem:def-adjoint-rd` (`IsClassicalAdjointW`, see SUSPECTED ISSUE in the module
+</span><span class="line" id="L1020"><a class="ln" aria-label="Line 1020" href="#L1020">1020</a>docstring).  Technical: the terminal datum `φ` is a `C²` representative. -/
+</span><span class="line" id="L1021"><a class="ln" aria-label="Line 1021" href="#L1021">1021</a>theorem adjoint_lp_classical (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (p : ℝ)
+</span><span class="line" id="L1022"><a class="ln" aria-label="Line 1022" href="#L1022">1022</a>    [Fact (2 ≤ p)] (hmp : 2 + (d : ℝ) / p &lt; m) (κc : LpCase) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ)
+</span><span class="line" id="L1023"><a class="ln" aria-label="Line 1023" href="#L1023">1023</a>    (D : WholeDyn d) (μ : ℝ → Euc d → ℝ) (hA : AdjointRdData s m MB Λ ΛV G₀ νbar D T μ)
+</span><span class="line" id="L1024"><a class="ln" aria-label="Line 1024" href="#L1024">1024</a>    (hκ : κc.Holds d s p D.M) (t : ℝ) (ht : t ∈ Set.Ioc (0 : ℝ) T) (φ : Euc d → ℝ) (hφ : ContDiff ℝ 2 φ)
+</span><span class="line" id="L1025"><a class="ln" aria-label="Line 1025" href="#L1025">1025</a>    (F : ℝ → Euc d → ℝ) (hF : IsLpSolutionRd m p χ (D.coeff μ) t φ F) :
+</span><span class="line" id="L1026"><a class="ln" aria-label="Line 1026" href="#L1026">1026</a>    ∃ f : ℝ → Euc d → ℝ, IsClassicalAdjointW (D.coeff μ) t φ f ∧
+</span><span class="line" id="L1027"><a class="ln" aria-label="Line 1027" href="#L1027">1027</a>      ∀ r ∈ Set.Icc (0 : ℝ) t, f r =ᵐ[volume] F (t - r) := by
+</span><span class="line" id="L1028"><a class="ln" aria-label="Line 1028" href="#L1028">1028</a>  sorry
+</span><span class="line" id="L1029"><a class="ln" aria-label="Line 1029" href="#L1029">1029</a>
+</span><span class="line" id="L1030"><a class="ln" aria-label="Line 1030" href="#L1030">1030</a>/-- Proposition S.A.16, stability (S L10289-10297, `B:eq:adjoint-lp-stability`): for `a ∈ {1,2}` let `(ν_a, μ_a)` satisfy the
+</span><span class="line" id="L1031"><a class="ln" aria-label="Line 1031" href="#L1031">1031</a>hypotheses at level `m+2` with a common regime (`κc`), common constants and the same confinement `(M,V)`, `F_a` the solutions
+</span><span class="line" id="L1032"><a class="ln" aria-label="Line 1032" href="#L1032">1032</a>with datum `φ ∈ W^{m+2,p}`, and `δ` bound `sup_{τ ≤ T}‖μ_1^τ - μ_2^τ‖` in the coefficient norm `coeffNormE` (`𝒞^{m+2}` plus the
+</span><span class="line" id="L1033"><a class="ln" aria-label="Line 1033" href="#L1033">1033</a>weighted `𝒞_w^{m+2}` and, for `s ≥ d-1`, the fractional force bound).  Then
+</span><span class="line" id="L1034"><a class="ln" aria-label="Line 1034" href="#L1034">1034</a>`‖F_1(τ) - F_2(τ)‖_{W^{m,p}} ≤ C τ e^{Cτ}(|ν_1-ν_2| + δ)‖φ‖_{W^{m+2,p}}`, `τ = t - r`. -/
+</span><span class="line" id="L1035"><a class="ln" aria-label="Line 1035" href="#L1035">1035</a>theorem adjoint_lp_stability (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ) (hm : 1 ≤ m) (p : ℝ)
+</span><span class="line" id="L1036"><a class="ln" aria-label="Line 1036" href="#L1036">1036</a>    [Fact (2 ≤ p)] (κc : LpCase) (MB Λ ΛV G₀ νbar T : ℝ) (χ : Euc d → ℝ) (hχ : IsUlocCutoff χ) :
+</span><span class="line" id="L1037"><a class="ln" aria-label="Line 1037" href="#L1037">1037</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ (D₁ D₂ : WholeDyn d) (μ₁ μ₂ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L1038"><a class="ln" aria-label="Line 1038" href="#L1038">1038</a>      AdjointRdData s (m + 2) MB Λ ΛV G₀ νbar D₁ T μ₁ →
+</span><span class="line" id="L1039"><a class="ln" aria-label="Line 1039" href="#L1039">1039</a>      AdjointRdData s (m + 2) MB Λ ΛV G₀ νbar D₂ T μ₂ →
+</span><span class="line" id="L1040"><a class="ln" aria-label="Line 1040" href="#L1040">1040</a>      κc.Holds d s p D₁.M → κc.Holds d s p D₂.M → D₁.M = D₂.M → D₁.V = D₂.V →
+</span><span class="line" id="L1041"><a class="ln" aria-label="Line 1041" href="#L1041">1041</a>      ∀ δ : ℝ, 0 ≤ δ → (∀ r ∈ Set.Icc (0 : ℝ) T, coeffNormE d s m (μ₁ r - μ₂ r) ≤ ENNReal.ofReal δ) →
+</span><span class="line" id="L1042"><a class="ln" aria-label="Line 1042" href="#L1042">1042</a>      ∀ t ∈ Set.Ioc (0 : ℝ) T, ∀ φ : Euc d → ℝ, wNormE (m + 2) p φ &lt; ⊤ →
+</span><span class="line" id="L1043"><a class="ln" aria-label="Line 1043" href="#L1043">1043</a>      ∀ F₁ F₂ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L1044"><a class="ln" aria-label="Line 1044" href="#L1044">1044</a>        IsLpSolutionRd (m + 2) p χ (D₁.coeff μ₁) t φ F₁ →
+</span><span class="line" id="L1045"><a class="ln" aria-label="Line 1045" href="#L1045">1045</a>        IsLpSolutionRd (m + 2) p χ (D₂.coeff μ₂) t φ F₂ →
+</span><span class="line" id="L1046"><a class="ln" aria-label="Line 1046" href="#L1046">1046</a>        ∀ τ ∈ Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L1047"><a class="ln" aria-label="Line 1047" href="#L1047">1047</a>          wNormE m p (fun x =&gt; F₁ τ x - F₂ τ x) ≤
+</span><span class="line" id="L1048"><a class="ln" aria-label="Line 1048" href="#L1048">1048</a>            ENNReal.ofReal (C * τ * Real.exp (C * τ) * (|D₁.invβ - D₂.invβ| + δ)) * wNormE (m + 2) p φ := by
+</span><span class="line" id="L1049"><a class="ln" aria-label="Line 1049" href="#L1049">1049</a>  sorry
+</span><span class="line" id="L1050"><a class="ln" aria-label="Line 1050" href="#L1050">1050</a>
+</span><span class="line" id="L1051"><a class="ln" aria-label="Line 1051" href="#L1051">1051</a>/-! ### Remark S.A.17 -/
+</span><span class="line" id="L1052"><a class="ln" aria-label="Line 1052" href="#L1052">1052</a>
+</span><span class="line" id="L1053"><a class="ln" aria-label="Line 1053" href="#L1053">1053</a>-- Remark S.A.17 `B:rem:lp-anisotropic` (S L10375-10383): no_formal_content.  It explains why `B:thm:adjoint-lp` separates the
+</span><span class="line" id="L1054"><a class="ln" aria-label="Line 1054" href="#L1054">1054</a>-- isotropic `L^p` case from the Hilbert-space case (&quot;for `p ≠ 2` the test `|W|^{p-2}W` changes the quadratic-form
+</span><span class="line" id="L1055"><a class="ln" aria-label="Line 1055" href="#L1055">1055</a>-- calculation; the argument above does not provide the corresponding estimate for a general anisotropic matrix&quot;).  It
+</span><span class="line" id="L1056"><a class="ln" aria-label="Line 1056" href="#L1056">1056</a>-- asserts only that a certain proof does not supply an estimate, not a mathematical claim; the scope of the theorem is the
+</span><span class="line" id="L1057"><a class="ln" aria-label="Line 1057" href="#L1057">1057</a>-- hypotheses of `adjoint_lp` (cases (ii), (iii)).
+</span><span class="line" id="L1058"><a class="ln" aria-label="Line 1058" href="#L1058">1058</a>
+</span><span class="line" id="L1059"><a class="ln" aria-label="Line 1059" href="#L1059">1059</a>end HRS.Whole.AppendixA
+</span></code></pre></main></body></html>

@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.ThermLinCond · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.ThermLinCond</code></h1><p><a href="../../lean/HRS/Main/ThermLinCond.lean">Open the unaltered Lean file</a> · 205 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.ThermLinFinal
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Main.ThermLin2As3
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Main.T25PFinal
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Main.ThermAux12
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>/-!
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a># THERMLIN (conditional): `thermalization_proof`, `thermalization_W2_proof`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>(Formerly conditional; now unconditional: the rows below are the `_proof` versions.)  Was conditional on (i) the frozen Theorem 2.5 rows `prepared_fluctuations`, `prepared_fluctuations_W2` and
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>(ii) the new lemma `thermlin_gaussian_comparison` (`ThermLinAux5`, the Gaussian comparison `Y` vs `Z_β`).  The
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>existence of the prepared linear process is `preparedLinear_exists_proof` (`ThermLinFinal`, unconditional).  The
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>statements are derived from these as lemmas, so `#print axioms` shows `sorryAx` until (i), (ii) are replaced by
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>proofs.  Route (TeX `M:proof:L6969`): apply 2.5 with `ν = law(η_N^0)` (so `a_{N,p} = 0`), then the triangle inequality for
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`d_2`, `W_1`, `W_2` and the Gaussian comparison.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>namespace Main
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem thermlin_wassersteinE_self {B : Type*} [NormedAddCommGroup B] [NormedSpace ℝ B] [MeasurableSpace B]
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    [BorelSpace B] (p : ℝ) (hp : 1 ≤ p) (μ : Measure B) [IsProbabilityMeasure μ] :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    wassersteinE p μ μ = 0 := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  have hp0 : 0 &lt; p := by linarith
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have h := wassersteinE_le_of_coupling μ p hp id id measurable_id.aemeasurable measurable_id.aemeasurable
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  simp only [law, Measure.map_id, sub_self, norm_zero] at h
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  rw [Real.zero_rpow hp0.ne&#x27;] at h
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  refine le_antisymm (h.trans ?_) zero_le
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  simp [ENNReal.zero_rpow_of_pos (inv_pos.2 hp0)]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>instance thermlin_pathSpace_complete {m T : ℝ} : CompleteSpace (PathSpace d m T) :=
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  inferInstanceAs (CompleteSpace C(Set.Icc (0 : ℝ) T, NegSobolev d m))
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem thermlin_ofReal_mul_le {C₁ C : ℝ} (hC₁ : 0 ≤ C₁) (h : C₁ ≤ C) (x : ℝ) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    ENNReal.ofReal (C₁ * x) ≤ ENNReal.ofReal (C * x) := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  rcases le_total 0 x with hx | hx
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  · exact ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right h hx)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  · rw [ENNReal.ofReal_of_nonpos (mul_nonpos_of_nonneg_of_nonpos hC₁ hx)]
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    exact zero_le
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>theorem thermlin_eta_measurable (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) {N : ℕ} (hN : 2 ≤ N) :
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    Measurable (fun X : Config d N =&gt; etaE m X S.μ0) := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  haveI : IsProbabilityMeasure S.μ0 := HRS.isProb_withDensityReal S.hρ0.density
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hm2 : (d : ℝ) &lt; 2 * m := by
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    linarith
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have := measurable_ofMeasureDiff_empirical (N := N) hm2 S.μ0 (by omega)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  unfold etaE flucE
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  exact this.const_smul (Real.sqrt N)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>theorem thermalization_proof (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (ρβ : Torus d → ℝ) (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ∃ C c : ℝ, 0 &lt; C ∧ 0 &lt; c ∧
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        relEntropy (law P X₀) (S.refMeasure N 0) &lt; ⊤ →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        (Z : ℝ → Ω&#x27;&#x27; → NegSobolev d m), IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Z →
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>        ENNReal.ofReal (smoothDist 2 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z))) ≤
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          ENNReal.ofReal (C * (S.B N (law P X₀) / Real.sqrt N +
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>              Real.sqrt (S.B N (law P X₀) / N))) +
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>            ENNReal.ofReal (C * Real.exp (-c * a)) *
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>              (1 + ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P) ∧
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        wassersteinE 1 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z)) ≤
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>          ENNReal.ofReal (C * (S.B N (law P X₀) / Real.sqrt N +
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>              (S.B N (law P X₀) / N) ^ ((1 : ℝ) / 4))) +
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>            ENNReal.ofReal (C * Real.exp (-c * a)) *
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>              (1 + ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P) := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  classical
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  obtain ⟨C1, c1, hC1, hc1, hpf⟩ := prepared_fluctuations_proof S m hm T hT
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  obtain ⟨C2, c2, hC2, hc2, hgc⟩ := thermlin_gaussian_comparison_proof S m hm T hT ρβ hρβ
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  refine ⟨max C1 C2, min c1 c2, lt_max_of_lt_left hC1, lt_min hc1 hc2, ?_⟩
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  intro a ha N hN Ω _ P _ X₀ W X hflow hfilt hent Ω&#x27;&#x27; _ P&#x27;&#x27; _ Z hZ
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hηm := thermlin_eta_measurable S m hm hN
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hη0 : Measurable (fun ω =&gt; etaE m (X₀ ω) S.μ0) := hηm.comp (hflow.init_meas)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  set ν : Measure (NegSobolev d m) := law P (fun ω =&gt; etaE m (X₀ ω) S.μ0) with hν
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  haveI : IsProbabilityMeasure ν := by rw [hν]; unfold law; infer_instance
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  obtain ⟨Ω&#x27;, mΩ&#x27;, P&#x27;, hP&#x27;, Y₀, Y, hY⟩ := preparedLinear_exists_proof S m hm (a + T) (by linarith) ν
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have h1 := hpf a ha N hN P X₀ W X hflow hfilt hent ν P&#x27; Y₀ Y hY
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hinit : S.initW m 1 P X₀ ν = 0 := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    unfold PreparedData.initW
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    exact thermlin_wassersteinE_self 1 le_rfl ν
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  obtain ⟨h1s, h1w⟩ := h1.1 (by rw [hinit]; exact ENNReal.zero_ne_top)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  rw [hinit, ENNReal.toReal_zero, mul_zero, zero_add] at h1s h1w
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  obtain ⟨g1, -⟩ := hgc a ha ν P&#x27; Y₀ Y hY P&#x27;&#x27; Z hZ
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  haveI : IsProbabilityMeasure (S.etaLaw m T a P X) := by unfold PreparedData.etaLaw; infer_instance
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hmom : ∫⁻ y, ‖y‖ₑ ∂ν = ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    rw [hν, law, lintegral_map (f := fun y : NegSobolev d m =&gt; ‖y‖ₑ) (by fun_prop) hη0]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hexp : ENNReal.ofReal (C2 * Real.exp (-c2 * a)) ≤ ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    refine ENNReal.ofReal_le_ofReal (mul_le_mul (le_max_right _ _) ?_ (Real.exp_pos _).le
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      (le_trans hC1.le (le_max_left _ _)))
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    refine Real.exp_le_exp.2 ?_
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    nlinarith [min_le_right c1 c2]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hrhs : ENNReal.ofReal (C2 * Real.exp (-c2 * a)) * (1 + ∫⁻ y, ‖y‖ₑ ∂ν) ≤
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) *
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        (1 + ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P) := by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    rw [hmom]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    gcongr
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  constructor
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  · calc ENNReal.ofReal (smoothDist 2 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z)))
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        ≤ ENNReal.ofReal (smoothDist 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) +
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>            smoothDist 2 (law P&#x27; (windowPath m T a Y)) (law P&#x27;&#x27; (windowPath m T 0 Z))) :=
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>          ENNReal.ofReal_le_ofReal (smoothDist_triangle 2 _ _ _)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      _ = ENNReal.ofReal (smoothDist 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y))) +
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>            ENNReal.ofReal (smoothDist 2 (law P&#x27; (windowPath m T a Y)) (law P&#x27;&#x27; (windowPath m T 0 Z))) :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>          ENNReal.ofReal_add (smoothDist_nonneg _ _ _) (smoothDist_nonneg _ _ _)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      _ ≤ ENNReal.ofReal (max C1 C2 * (S.B N (law P X₀) / Real.sqrt N +
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>              Real.sqrt (S.B N (law P X₀) / N))) +
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>            ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) *
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>              (1 + ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P) := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          refine add_le_add ?_ (le_trans ?_ hrhs)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>          · exact (ENNReal.ofReal_le_ofReal h1s).trans
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>              (thermlin_ofReal_mul_le hC1.le (le_max_left _ _) _)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          · exact (ENNReal.ofReal_le_ofReal (smoothDist_succ_le 1 _ _)).trans
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>              ((smoothDist_one_le_wasserstein _ _).trans g1)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  · calc wassersteinE 1 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z))
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>        ≤ wassersteinE 1 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) +
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>            wassersteinE 1 (law P&#x27; (windowPath m T a Y)) (law P&#x27;&#x27; (windowPath m T 0 Z)) :=
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>          wassersteinE_triangle 1 le_rfl _ _ _
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      _ ≤ ENNReal.ofReal (max C1 C2 * (S.B N (law P X₀) / Real.sqrt N +
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>              (S.B N (law P X₀) / N) ^ ((1 : ℝ) / 4))) +
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>            ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) *
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>              (1 + ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ∂P) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>          refine add_le_add ?_ (le_trans g1 hrhs)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          exact h1w.trans (thermlin_ofReal_mul_le hC1.le (le_max_left _ _) _)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>example := (@thermalization_proof : type_of% @HRS.Main.thermalization)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>theorem thermalization_W2_proof (S : PreparedData d) (m : ℝ) (hm : (d : ℝ) + 2 &lt; m) (T : ℝ)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    (hT : 0 &lt; T) (ρβ : Torus d → ℝ) (hρβ : IsThermalDensity (periodicRiesz d S.s) S.V S.β ρβ)
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    (p₀ : ℝ) (hp₀ : 1 &lt; p₀) :
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    ∃ C c : ℝ, 0 &lt; C ∧ 0 &lt; c ∧
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      ∀ a : ℝ, 0 ≤ a → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        SelectedFlow P S.dyn (a + T) X₀ W X →
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>          (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        relEntropy (law P X₀) (S.refMeasure N 0) &lt; ⊤ →
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        MemLp (fun Y =&gt; (((law P X₀).rnDeriv (S.refMeasure N 0)) Y).toReal) (ENNReal.ofReal p₀)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>          (S.refMeasure N 0) →
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      ∀ {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        (Z : ℝ → Ω&#x27;&#x27; → NegSobolev d m), IsStationaryGaussianField P&#x27;&#x27; S.s S.β S.hs0 S.hsd S.hβ S.V ρβ m Z →
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>        wassersteinE 2 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z)) ≤
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          ENNReal.ofReal (C * (S.J N (law P X₀) p₀ / Real.sqrt N +
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>              (S.B N (law P X₀) / N) ^ ((1 : ℝ) / 4))) +
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>            ENNReal.ofReal (C * Real.exp (-c * a)) *
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>              (1 + (∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ^ (2 : ℝ) ∂P) ^ ((1 : ℝ) / 2)) := by
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  classical
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  obtain ⟨C1, c1, hC1, hc1, hpf⟩ := prepared_fluctuations_W2_proof S m hm T hT p₀ hp₀
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  obtain ⟨C2, c2, hC2, hc2, hgc⟩ := thermlin_gaussian_comparison_proof S m hm T hT ρβ hρβ
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  refine ⟨max C1 C2, min c1 c2, lt_max_of_lt_left hC1, lt_min hc1 hc2, ?_⟩
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  intro a ha N hN Ω _ P _ X₀ W X hflow hfilt hent hMem Ω&#x27;&#x27; _ P&#x27;&#x27; _ Z hZ
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hηm := thermlin_eta_measurable S m hm hN
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have hη0 : Measurable (fun ω =&gt; etaE m (X₀ ω) S.μ0) := hηm.comp (hflow.init_meas)
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  set ν : Measure (NegSobolev d m) := law P (fun ω =&gt; etaE m (X₀ ω) S.μ0) with hν
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  haveI : IsProbabilityMeasure ν := by rw [hν]; unfold law; infer_instance
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  obtain ⟨Ω&#x27;, mΩ&#x27;, P&#x27;, hP&#x27;, Y₀, Y, hY⟩ := preparedLinear_exists_proof S m hm (a + T) (by linarith) ν
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hinit : S.initW m 2 P X₀ ν = 0 := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    unfold PreparedData.initW
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    exact thermlin_wassersteinE_self 2 (by norm_num) ν
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have h1 := hpf a ha N hN P X₀ W X hflow hfilt hent hMem ν P&#x27; Y₀ Y hY (by rw [hinit]; exact ENNReal.zero_ne_top)
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  rw [hinit, ENNReal.toReal_zero, mul_zero, zero_add] at h1
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  obtain ⟨-, g2⟩ := hgc a ha ν P&#x27; Y₀ Y hY P&#x27;&#x27; Z hZ
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  haveI : IsProbabilityMeasure (S.etaLaw m T a P X) := by unfold PreparedData.etaLaw; infer_instance
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hmom : ∫⁻ y, ‖y‖ₑ ^ (2 : ℝ) ∂ν = ∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ^ (2 : ℝ) ∂P := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    rw [hν, law, lintegral_map (f := fun y : NegSobolev d m =&gt; ‖y‖ₑ ^ (2 : ℝ)) (by fun_prop) hη0]
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  have hexp : ENNReal.ofReal (C2 * Real.exp (-c2 * a)) ≤ ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) := by
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    refine ENNReal.ofReal_le_ofReal (mul_le_mul (le_max_right _ _) ?_ (Real.exp_pos _).le
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      (le_trans hC1.le (le_max_left _ _)))
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    refine Real.exp_le_exp.2 ?_
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    nlinarith [min_le_right c1 c2]
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  have hrhs : ENNReal.ofReal (C2 * Real.exp (-c2 * a)) *
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      (1 + (∫⁻ y, ‖y‖ₑ ^ (2 : ℝ) ∂ν) ^ ((1 : ℝ) / 2)) ≤
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) *
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        (1 + (∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ^ (2 : ℝ) ∂P) ^ ((1 : ℝ) / 2)) := by
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    rw [hmom]
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    gcongr
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  calc wassersteinE 2 (S.etaLaw m T a P X) (law P&#x27;&#x27; (windowPath m T 0 Z))
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      ≤ wassersteinE 2 (S.etaLaw m T a P X) (law P&#x27; (windowPath m T a Y)) +
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>          wassersteinE 2 (law P&#x27; (windowPath m T a Y)) (law P&#x27;&#x27; (windowPath m T 0 Z)) :=
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        wassersteinE_triangle 2 (by norm_num) _ _ _
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    _ ≤ ENNReal.ofReal (max C1 C2 * (S.J N (law P X₀) p₀ / Real.sqrt N +
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>            (S.B N (law P X₀) / N) ^ ((1 : ℝ) / 4))) +
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>          ENNReal.ofReal (max C1 C2 * Real.exp (-min c1 c2 * a)) *
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>            (1 + (∫⁻ ω, ‖etaE m (X₀ ω) S.μ0‖ₑ ^ (2 : ℝ) ∂P) ^ ((1 : ℝ) / 2)) := by
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        refine add_le_add ?_ (le_trans g2 hrhs)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>        exact h1.trans (thermlin_ofReal_mul_le hC1.le (le_max_left _ _) _)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>example := (@thermalization_W2_proof : type_of% @HRS.Main.thermalization_W2)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>end Main
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>end HRS
+</span></code></pre></main></body></html>

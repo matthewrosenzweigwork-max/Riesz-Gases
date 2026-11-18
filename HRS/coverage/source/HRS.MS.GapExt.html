@@ -1,0 +1,525 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.GapExt · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.GapExt</code></h1><p><a href="../../lean/HRS/MS/GapExt.lean">Open the unaltered Lean file</a> · 524 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.GapPoincAux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.GapRefAux2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Whole.Thermal
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># GAP-4: extension of the Poincare inequality to `C^1` functions, assembly of `reflection_gap_poincare`
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Supplement foundation packet GAP-4 (`docs/S4_PLAN.md`, section 2.4, steps 6 and 7; row S4.9).  Namespace
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`HRS.MS.Gap`, helper prefix `gap234_`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `gap_ext`: for `GapRef d ρ q B` (`μ = ρ dx`), `q &gt; 0`, `B ∈ C_b^2`, there is `c &gt; 0` such that every `f ∈ C^1`
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  with bounded gradient and `f ∈ L²(μ)` satisfies `c Var_μ f ≤ ∫ ‖∇f‖² dμ`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  Route: (A) for `h ∈ C^1` bounded with bounded gradient, the mollifications `h_n = η_n * h`
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  (`η_n = invBump n` normalised, `PoisInvAux1.invMoll`) lie in the bounded `C²` class `gap234_Sm`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  (`‖D h_n‖ ≤ ‖Dh‖_∞`, `D² h_n` bounded because `D²(h * η) = h * D²η` for bounded `h`), so the smooth inequality
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `gap_smooth_const` (applied to `h_n - ∫ h_n`) gives it for `h_n`; `h_n → h`, `∇h_n → ∇h` pointwise with uniform
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  bounds, so dominated convergence passes to the limit.  (B) for general `f`, the truncations
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  `n sin(f/n)` are bounded `C^1` with `‖∇‖ ≤ ‖∇f‖_∞`, converge to `f` pointwise with `|n sin(f/n)| ≤ |f|`, and
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  dominated convergence passes to the limit again.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* `reflection_gap_poincare_proof : type_of% @HRS.Whole.reflection_gap_poincare` (the frozen S4.9 statement).
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>Statement adjustments relative to the plan sketch (documented, harmless): the truncation is `n sin(f/n)` (bounded,
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>`1`-Lipschitz, `n sin(y/n) → y`) and the mollification is applied to the truncated function (so that the second
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>derivative of the mollification is bounded by `‖h‖_∞ ∫‖D²η‖`); the variance is handled through the formula
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>`Var f = ∫ f² - (∫ f)²` (`ProbabilityTheory.variance_eq_sub`).
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>-/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open MeasureTheory Set Filter Topology
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open scoped ContDiff ENNReal NNReal Interval Convolution
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open HRS HRS.Whole HRS.MS.PoisInv
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>noncomputable section
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>namespace HRS.MS.Gap
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>variable {d : ℕ}
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-! ### Differentiation of convolutions with a compactly supported kernel -/
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>/-- Derivative of `x ↦ ∫ η s * h(x - s) ds` for `h ∈ C^1` with bounded derivative (derivative on `h`). -/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem gap234_conv_hasFDerivAt_right {η h : Euc d → ℝ} (hη : Continuous η)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hηc : HasCompactSupport η) (hh : ContDiff ℝ 1 h) {C : ℝ} (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (x₀ : Euc d) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    HasFDerivAt (fun x =&gt; ∫ s, η s * h (x - s)) (∫ s, η s • fderiv ℝ h (x₀ - s)) x₀ := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hhc : Continuous h := hh.continuous
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hfd : Continuous (fderiv ℝ h) := hh.continuous_fderiv one_ne_zero
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hdiff : ∀ x : Euc d, ∀ s : Euc d,
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      HasFDerivAt (fun x =&gt; η s * h (x - s)) (η s • fderiv ℝ h (x - s)) x := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    intro x s
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    have h1 : HasFDerivAt (fun x : Euc d =&gt; x - s) (ContinuousLinearMap.id ℝ (Euc d)) x :=
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      (hasFDerivAt_id x).sub_const s
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have h2 := (hh.differentiable one_ne_zero (x - s)).hasFDerivAt.comp x h1
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    have h3 := h2.const_mul (η s)
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    simpa using h3
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hint : Integrable (fun s =&gt; |η s| * C) volume :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    (hη.integrable_of_hasCompactSupport hηc).abs.mul_const C
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  refine hasFDerivAt_integral_of_dominated_of_fderiv_le (𝕜 := ℝ) (μ := volume) (s := univ)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (F := fun (x : Euc d) (s : Euc d) =&gt; η s * h (x - s))
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (F&#x27; := fun (x : Euc d) (s : Euc d) =&gt; η s • fderiv ℝ h (x - s)) (x₀ := x₀)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (bound := fun s =&gt; |η s| * C) Filter.univ_mem ?_ ?_ ?_ ?_ hint ?_
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  · exact Eventually.of_forall fun x =&gt;
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      (hη.mul (hhc.comp (continuous_const.sub continuous_id))).aestronglyMeasurable
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  · exact (hη.mul (hhc.comp (continuous_const.sub continuous_id))).integrable_of_hasCompactSupport
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      (hηc.mul_right)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  · exact (hη.smul (hfd.comp (continuous_const.sub continuous_id))).aestronglyMeasurable
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  · refine ae_of_all _ fun s x _ =&gt; ?_
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    rw [norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    exact mul_le_mul_of_nonneg_left (hC _) (abs_nonneg _)
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  · exact ae_of_all _ fun s x _ =&gt; hdiff x s
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- Derivative of `x ↦ ∫ h t • κ(x - t) dt` for a bounded continuous `h` and a `C^1` compactly supported kernel
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>`κ` (derivative on the kernel). -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>theorem gap234_conv_hasFDerivAt_left {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    [CompleteSpace V] {κ : Euc d → V} (hκ : ContDiff ℝ 1 κ) (hκc : HasCompactSupport κ)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    {h : Euc d → ℝ} (hh : Continuous h) {M : ℝ} (hM : ∀ t, |h t| ≤ M) (x₀ : Euc d) :
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    HasFDerivAt (fun x =&gt; ∫ t, h t • κ (x - t)) (∫ t, h t • fderiv ℝ κ (x₀ - t)) x₀ := by
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hκ0 : Continuous κ := hκ.continuous
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hfd : Continuous (fderiv ℝ κ) := hκ.continuous_fderiv one_ne_zero
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨R, hR⟩ := hκc.isCompact.isBounded.subset_closedBall (0 : Euc d)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  obtain ⟨K, hK⟩ := hfd.bounded_above_of_compact_support (hκc.fderiv ℝ)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM 0)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hK0 : 0 ≤ K := (norm_nonneg _).trans (hK 0)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  set S : Set (Euc d) := Metric.closedBall x₀ (R + 1) with hS
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hSm : MeasurableSet S := measurableSet_closedBall
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hbint : Integrable (fun t =&gt; S.indicator (fun _ =&gt; M * K) t) volume :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (integrable_indicator_iff hSm).2 (integrableOn_const (measure_closedBall_lt_top.ne))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hdiff : ∀ x : Euc d, ∀ t : Euc d,
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      HasFDerivAt (fun x =&gt; h t • κ (x - t)) (h t • fderiv ℝ κ (x - t)) x := by
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    intro x t
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    have h1 : HasFDerivAt (fun x : Euc d =&gt; x - t) (ContinuousLinearMap.id ℝ (Euc d)) x :=
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      (hasFDerivAt_id x).sub_const t
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have h2 := (hκ.differentiable one_ne_zero (x - t)).hasFDerivAt.comp x h1
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have h3 := h2.const_smul (h t)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    convert h3 using 1 &lt;;&gt; first | rfl | simp
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  refine hasFDerivAt_integral_of_dominated_of_fderiv_le (𝕜 := ℝ) (μ := volume)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    (s := Metric.ball x₀ 1)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (F := fun (x : Euc d) (t : Euc d) =&gt; h t • κ (x - t))
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (F&#x27; := fun (x : Euc d) (t : Euc d) =&gt; h t • fderiv ℝ κ (x - t)) (x₀ := x₀)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (bound := fun t =&gt; S.indicator (fun _ =&gt; M * K) t) (Metric.ball_mem_nhds x₀ one_pos) ?_ ?_ ?_ ?_
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    hbint ?_
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  · exact Eventually.of_forall fun x =&gt;
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      (hh.smul (hκ0.comp (continuous_const.sub continuous_id))).aestronglyMeasurable
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  · exact (hh.smul (hκ0.comp (continuous_const.sub continuous_id))).integrable_of_hasCompactSupport
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        have : HasCompactSupport (fun t : Euc d =&gt; κ (x₀ - t)) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>          have := hκc.comp_homeomorph ((Homeomorph.neg (Euc d)).trans (Homeomorph.addLeft x₀))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>          simpa [Function.comp_def, sub_eq_add_neg] using this
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        exact this.smul_left)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  · exact (hh.smul (hfd.comp (continuous_const.sub continuous_id))).aestronglyMeasurable
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  · refine ae_of_all _ fun t x hx =&gt; ?_
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    by_cases ht : t ∈ S
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    · rw [Set.indicator_of_mem ht, norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      exact mul_le_mul (hM t) (hK _) (norm_nonneg _) hM0
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    · rw [Set.indicator_of_notMem ht]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      have hxt : x - t ∉ tsupport κ := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>        intro hmem
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>        have h1 := hR hmem
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        rw [mem_closedBall_zero_iff] at h1
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        apply ht
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        rw [hS, Metric.mem_closedBall, dist_eq_norm]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>        have hx&#x27; : ‖x - x₀‖ &lt; 1 := by simpa [dist_eq_norm] using hx
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        calc ‖t - x₀‖ = ‖(x - x₀) - (x - t)‖ := by congr 1; abel
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>          _ ≤ ‖x - x₀‖ + ‖x - t‖ := norm_sub_le _ _
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          _ ≤ R + 1 := by linarith
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      rw [fderiv_of_notMem_tsupport ℝ hxt]
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      simp
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  · exact ae_of_all _ fun t x _ =&gt; hdiff x t
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>theorem gap234_int_norm_fderiv {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V] {κ : Euc d → V}
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (hκ : ContDiff ℝ 1 κ) (hc : HasCompactSupport κ) : Integrable (fun x =&gt; ‖fderiv ℝ κ x‖) :=
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  ((hκ.continuous_fderiv one_ne_zero).norm).integrable_of_hasCompactSupport (hc.fderiv ℝ).norm
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>/-! ### The mollifiers -/
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>/-- The normalised mollifier of radius `1/(n+1)`. -/
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>def gap234_eta (d n : ℕ) : Euc d → ℝ := (invBump (d := d) n).normed volume
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>theorem gap234_eta_nonneg (n : ℕ) (x : Euc d) : 0 ≤ gap234_eta d n x :=
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  (invBump (d := d) n).nonneg_normed x
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>theorem gap234_eta_integral (n : ℕ) : ∫ x, gap234_eta d n x = 1 :=
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  (invBump (d := d) n).integral_normed
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>theorem gap234_eta_cont (n : ℕ) : Continuous (gap234_eta d n) :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  (invBump (d := d) n).continuous_normed
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>theorem gap234_eta_smooth (n : ℕ) : ContDiff ℝ ∞ (gap234_eta d n) :=
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  (invBump (d := d) n).contDiff_normed
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>theorem gap234_eta_compact (n : ℕ) : HasCompactSupport (gap234_eta d n) :=
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  (invBump (d := d) n).hasCompactSupport_normed
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>theorem gap234_eta_int (n : ℕ) : Integrable (gap234_eta d n) :=
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  (gap234_eta_cont n).integrable_of_hasCompactSupport (gap234_eta_compact n)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>theorem gap234_invMoll_eq (n : ℕ) (h : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    invMoll n h x = ∫ s, gap234_eta d n s * h (x - s) := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  simp [invMoll, convolution_def, gap234_eta]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>theorem gap234_invMoll_eq&#x27; (n : ℕ) (h : Euc d → ℝ) (x : Euc d) :
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    invMoll n h x = ∫ t, h t • gap234_eta d n (x - t) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [gap234_invMoll_eq]
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have := integral_sub_left_eq_self (fun s =&gt; gap234_eta d n s * h (x - s)) volume x
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  simp only [sub_sub_cancel] at this
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  rw [← this]
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  refine integral_congr_ae (ae_of_all _ fun t =&gt; ?_)
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  simp [mul_comm]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>theorem gap234_moll_fderiv {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {C : ℝ}
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) (n : ℕ) (x : Euc d) :
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    fderiv ℝ (invMoll n h) x = ∫ s, gap234_eta d n s • fderiv ℝ h (x - s) := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have := gap234_conv_hasFDerivAt_right (gap234_eta_cont n) (gap234_eta_compact n) hh hC x
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have e : invMoll n h = fun x =&gt; ∫ s, gap234_eta d n s * h (x - s) :=
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    funext (gap234_invMoll_eq n h)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  rw [e]
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  exact this.fderiv
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>theorem gap234_moll_fderiv_bound {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {C : ℝ}
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) (n : ℕ) (x : Euc d) : ‖fderiv ℝ (invMoll n h) x‖ ≤ C := by
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  rw [gap234_moll_fderiv hh hC n x]
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hC0 : 0 ≤ C := (norm_nonneg _).trans (hC 0)
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  have hint : Integrable (fun s =&gt; gap234_eta d n s * C) := (gap234_eta_int n).mul_const C
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  refine (norm_integral_le_of_norm_le hint (ae_of_all _ fun s =&gt; ?_)).trans (le_of_eq ?_)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  · rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (gap234_eta_nonneg n s)]
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    exact mul_le_mul_of_nonneg_left (hC _) (gap234_eta_nonneg n s)
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  · rw [integral_mul_const, gap234_eta_integral, one_mul]
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>theorem gap234_moll_fderiv_tendsto {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {C : ℝ}
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) (x : Euc d) :
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    Tendsto (fun n : ℕ =&gt; fderiv ℝ (invMoll n h) x) atTop (𝓝 (fderiv ℝ h x)) := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hfd : Continuous (fderiv ℝ h) := hh.continuous_fderiv one_ne_zero
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have := ContDiffBump.convolution_tendsto_right_of_continuous
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (φ := fun n : ℕ =&gt; invBump (d := d) n) (μ := volume) (l := atTop) (g := fderiv ℝ h) ?_ hfd x
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  · refine this.congr (fun n =&gt; ?_)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    rw [gap234_moll_fderiv hh hC n x]
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    simp [convolution_def, gap234_eta]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  · show Tendsto (fun n : ℕ =&gt; 1 / ((n : ℝ) + 1)) atTop (𝓝 0)
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    exact tendsto_one_div_add_atTop_nhds_zero_nat
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>/-- The second derivative of a mollification of a bounded `C^1` function with bounded gradient is bounded
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>(`D(η * h) = h * Dη` is Lipschitz because `h` is). -/
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>theorem gap234_moll_second_bound {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {M C : ℝ}
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    (hM : ∀ t, |h t| ≤ M) (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) (n : ℕ) (x : Euc d) :
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    ‖fderiv ℝ (fderiv ℝ (invMoll n h)) x‖ ≤ C * ∫ s, ‖fderiv ℝ (gap234_eta d n) s‖ := by
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have hη := gap234_eta_smooth (d := d) n
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  have hη1 : ContDiff ℝ 1 (gap234_eta d n) := hη.of_le (by norm_num)
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have hc : Continuous h := hh.continuous
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  have hC0 : 0 ≤ C := (norm_nonneg _).trans (hC 0)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  have hfd : Continuous (fderiv ℝ (gap234_eta d n)) := hη1.continuous_fderiv one_ne_zero
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  have hcs : HasCompactSupport (fderiv ℝ (gap234_eta d n)) := (gap234_eta_compact n).fderiv ℝ
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  have hint : Integrable (fun s =&gt; ‖fderiv ℝ (gap234_eta d n) s‖) := gap234_int_norm_fderiv hη1 (gap234_eta_compact n)
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  have hI0 : 0 ≤ ∫ s, ‖fderiv ℝ (gap234_eta d n) s‖ := integral_nonneg fun s =&gt; norm_nonneg _
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  have s1 : ∀ x, HasFDerivAt (invMoll n h) (∫ t, h t • fderiv ℝ (gap234_eta d n) (x - t)) x := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    intro x
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    have := gap234_conv_hasFDerivAt_left (V := ℝ) hη1 (gap234_eta_compact n) hc hM x
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    have e : invMoll n h = fun x =&gt; ∫ t, h t • gap234_eta d n (x - t) :=
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>      funext (gap234_invMoll_eq&#x27; n h)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    rw [e]
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    exact this
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  have hD : ∀ x, fderiv ℝ (invMoll n h) x = ∫ s, h (x - s) • fderiv ℝ (gap234_eta d n) s := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    intro x
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    rw [(s1 x).fderiv]
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    have := integral_sub_left_eq_self (fun s =&gt; h (x - s) • fderiv ℝ (gap234_eta d n) s) volume x
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    simp only [sub_sub_cancel] at this
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    exact this
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have hI : ∀ x, Integrable (fun s =&gt; h (x - s) • fderiv ℝ (gap234_eta d n) s) := fun x =&gt;
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    ((hc.comp (continuous_const.sub continuous_id)).smul hfd).integrable_of_hasCompactSupport hcs.smul_left
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  have hlipf : ∀ a b : Euc d, |h a - h b| ≤ C * ‖a - b‖ := fun a b =&gt; by
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    have := (convex_univ (𝕜 := ℝ) (E := Euc d)).norm_image_sub_le_of_norm_fderiv_le
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      (f := h) (C := C) (fun z _ =&gt; (hh.differentiable one_ne_zero) z) (fun z _ =&gt; hC z)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      (mem_univ b) (mem_univ a)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    rwa [Real.norm_eq_abs] at this
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  have hlip : LipschitzWith (Real.toNNReal (C * ∫ s, ‖fderiv ℝ (gap234_eta d n) s‖))
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      (fderiv ℝ (invMoll n h)) := by
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    refine LipschitzWith.of_dist_le_mul fun a b =&gt; ?_
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    rw [dist_eq_norm, dist_eq_norm, hD a, hD b, ← integral_sub (hI a) (hI b),
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      Real.coe_toNNReal _ (mul_nonneg hC0 hI0)]
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    have hb : Integrable (fun s =&gt; (C * ‖a - b‖) * ‖fderiv ℝ (gap234_eta d n) s‖) := hint.const_mul _
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    refine (norm_integral_le_of_norm_le hb (ae_of_all _ fun s =&gt; ?_)).trans (le_of_eq ?_)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    · rw [← sub_smul, norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>      have := hlipf (a - s) (b - s)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      simpa [sub_sub_sub_cancel_right] using this
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    · rw [integral_const_mul]; ring
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  exact (norm_fderiv_le_of_lipschitz ℝ hlip).trans (by rw [Real.coe_toNNReal _ (mul_nonneg hC0 hI0)])
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-- The mollifications of a bounded `C^1` function with bounded gradient lie in the bounded `C²` class. -/
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>theorem gap234_moll_sm {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {Mh C : ℝ} (hM : ∀ t, |h t| ≤ Mh)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) (n : ℕ) :
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    ∃ M : ℝ, gap234_Sm M (invMoll n h) := by
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  have hM2 := gap234_moll_second_bound hh hM hC n
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  have hMh : 0 ≤ Mh := (abs_nonneg _).trans (hM 0)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  have hC0 : 0 ≤ C := (norm_nonneg _).trans (hC 0)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  refine ⟨max (max (3 * Mh) C) (C * ∫ s, ‖fderiv ℝ (gap234_eta d n) s‖), gap234_sm_of_bounds ?_ (fun y =&gt; ?_) (fun y =&gt; ?_) (fun y =&gt; ?_)⟩
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  · exact (inv_moll_contDiff n hh.continuous).of_le (by norm_num)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  · rw [Real.norm_eq_abs]
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    exact (inv_conv_bound n hh.continuous hM y).trans ((le_max_left _ _).trans (le_max_left _ _))
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  · exact (gap234_moll_fderiv_bound hh hC n y).trans ((le_max_right _ _).trans (le_max_left _ _))
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  · exact (hM2 y).trans (le_max_right _ _)
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>/-! ### Passage to the limit -/
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>theorem gap234_memLp_of_bound {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {u D : Euc d → ℝ}
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    (hu : Continuous u) (hD2 : Integrable (fun x =&gt; D x ^ 2) μ) (hbd : ∀ x, |u x| ≤ D x) :
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    MemLp u 2 μ := by
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  refine (memLp_two_iff_integrable_sq hu.aestronglyMeasurable).2 ?_
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  refine hD2.mono&#x27; (hu.pow 2).aestronglyMeasurable (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  rw [Real.norm_eq_abs, abs_pow, sq_abs]
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  exact sq_le_sq.2 ((hbd x).trans (le_abs_self _))
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>theorem gap234_var_eq {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {u : Euc d → ℝ}
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    (hu : MemLp u 2 μ) :
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    ProbabilityTheory.variance u μ = ∫ x, u x ^ 2 ∂μ - (∫ x, u x ∂μ) ^ 2 := by
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>  rw [ProbabilityTheory.variance_eq_sub hu]
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  rfl
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>/-- Closure of the Poincare inequality under pointwise limits with `L²`-domination. -/
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>theorem gap234_limit {μ : Measure (Euc d)} [IsProbabilityMeasure μ] {c : ℝ} {f : Euc d → ℝ}
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    {u : ℕ → Euc d → ℝ} (hf : ContDiff ℝ 1 f) (hu : ∀ n, ContDiff ℝ 1 (u n)) {D : Euc d → ℝ}
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    (hDc : Continuous D) (hD2 : Integrable (fun x =&gt; D x ^ 2) μ) (hbd : ∀ n x, |u n x| ≤ D x)
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    (hfD : ∀ x, |f x| ≤ D x) (hlim : ∀ x, Tendsto (fun n =&gt; u n x) atTop (𝓝 (f x))) {Cg : ℝ}
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    (hgbd : ∀ n x, ‖gradient (u n) x‖ ≤ Cg)
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    (hglim : ∀ x, Tendsto (fun n =&gt; gradient (u n) x) atTop (𝓝 (gradient f x)))
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    (hQ : ∀ n, c * ProbabilityTheory.variance (u n) μ ≤ ∫ x, ‖gradient (u n) x‖ ^ 2 ∂μ) :
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    c * ProbabilityTheory.variance f μ ≤ ∫ x, ‖gradient f x‖ ^ 2 ∂μ := by
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  have hD0 : ∀ x, 0 ≤ D x := fun x =&gt; (abs_nonneg _).trans (hfD x)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  have hD1 : Integrable D μ := by
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    refine ((integrable_const (1 : ℝ)).add hD2).mono&#x27; hDc.aestronglyMeasurable
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      (ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    rw [Real.norm_eq_abs, abs_of_nonneg (hD0 x)]
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    simp only [Pi.add_apply]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    nlinarith [sq_nonneg (D x - 1)]
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  have hmu : ∀ n, MemLp (u n) 2 μ := fun n =&gt;
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    gap234_memLp_of_bound (hu n).continuous hD2 (hbd n)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  have hmf : MemLp f 2 μ := gap234_memLp_of_bound hf.continuous hD2 hfD
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  have T1 : Tendsto (fun n =&gt; ∫ x, u n x ^ 2 ∂μ) atTop (𝓝 (∫ x, f x ^ 2 ∂μ)) := by
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    refine tendsto_integral_of_dominated_convergence (fun x =&gt; D x ^ 2)
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>      (fun n =&gt; ((hu n).continuous.pow 2).aestronglyMeasurable) hD2 (fun n =&gt; ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>      (ae_of_all _ fun x =&gt; (hlim x).pow 2)
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    rw [Real.norm_eq_abs, abs_pow, sq_abs]
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    exact sq_le_sq.2 ((hbd n x).trans (le_abs_self _))
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  have T2 : Tendsto (fun n =&gt; ∫ x, u n x ∂μ) atTop (𝓝 (∫ x, f x ∂μ)) := by
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>    refine tendsto_integral_of_dominated_convergence D
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>      (fun n =&gt; (hu n).continuous.aestronglyMeasurable) hD1 (fun n =&gt; ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>      (ae_of_all _ hlim)
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>    rw [Real.norm_eq_abs]; exact hbd n x
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>  have T3 : Tendsto (fun n =&gt; ∫ x, ‖gradient (u n) x‖ ^ 2 ∂μ) atTop
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>      (𝓝 (∫ x, ‖gradient f x‖ ^ 2 ∂μ)) := by
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    refine tendsto_integral_of_dominated_convergence (fun _ =&gt; Cg ^ 2)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>      (fun n =&gt; ((gap1_grad_continuous (hu n)).norm.pow 2).aestronglyMeasurable)
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      (integrable_const _) (fun n =&gt; ae_of_all _ fun x =&gt; ?_)
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      (ae_of_all _ fun x =&gt; (hglim x).norm.pow 2)
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    rw [Real.norm_eq_abs, abs_pow, sq_abs]
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    exact pow_le_pow_left₀ (norm_nonneg _) (hgbd n x) 2
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hL : Tendsto (fun n =&gt; c * ProbabilityTheory.variance (u n) μ) atTop
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>      (𝓝 (c * ProbabilityTheory.variance f μ)) := by
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    have : ∀ n, ProbabilityTheory.variance (u n) μ = ∫ x, u n x ^ 2 ∂μ - (∫ x, u n x ∂μ) ^ 2 :=
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>      fun n =&gt; gap234_var_eq (hmu n)
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    simp_rw [this, gap234_var_eq hmf]
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    exact (T1.sub (T2.pow 2)).const_mul c
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  exact le_of_tendsto_of_tendsto&#x27; hL T3 hQ
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>/-! ### The inequality on the bounded `C²` class, with variance -/
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>theorem gap234_smooth_var {q : ℝ} {B : Euc d → Euc d} {ρ : Euc d → ℝ} (hR : GapRef d ρ q B)
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    {c : ℝ}
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    (hc : ∀ {f : Euc d → ℝ} {M : ℝ}, gap234_Sm M f → ∫ x, f x ∂(HRS.Whole.withDensityReal ρ) = 0 →
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>      c * ∫ x, f x ^ 2 ∂(HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>        ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ))
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    {f : Euc d → ℝ} {M : ℝ} (hf : gap234_Sm M f) :
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>    c * ProbabilityTheory.variance f (HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>      ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  have : IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := gap1_isProb hR
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  set m : ℝ := ∫ x, f x ∂(HRS.Whole.withDensityReal ρ) with hm
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hfi : Integrable f (HRS.Whole.withDensityReal ρ) :=
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    (integrable_const M).mono&#x27; hf.1.continuous.aestronglyMeasurable
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>      (ae_of_all _ fun x =&gt; gap234_sm_zero hf x)
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  have hfd : fderiv ℝ (fun x =&gt; f x - m) = fderiv ℝ f := by
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    funext x; exact fderiv_sub_const m
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  have hg : gap234_Sm (M + |m|) (fun x =&gt; f x - m) := by
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    have hM0 := gap234_sm_nonneg hf
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    refine gap234_sm_of_bounds (hf.1.sub contDiff_const) (fun y =&gt; ?_) (fun y =&gt; ?_) (fun y =&gt; ?_)
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    · rw [Real.norm_eq_abs]
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      have := gap234_sm_zero hf y
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>      rw [Real.norm_eq_abs] at this
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>      calc |f y - m| ≤ |f y| + |m| := abs_sub _ _
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>        _ ≤ M + |m| := by linarith
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    · rw [hfd]; have := gap234_sm_one hf y; linarith [abs_nonneg m]
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>    · rw [hfd]; have := gap234_sm_two hf y; linarith [abs_nonneg m]
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  have hcen : ∫ x, (f x - m) ∂(HRS.Whole.withDensityReal ρ) = 0 := by
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    rw [integral_sub hfi (integrable_const m)]
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>    simp [hm]
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  have h1 := hc hg hcen
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  have hgrad : ∀ x, gradient (fun x =&gt; f x - m) x = gradient f x := fun x =&gt; by
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    unfold gradient; rw [hfd]
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  simp_rw [hgrad] at h1
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  have hv : ProbabilityTheory.variance f (HRS.Whole.withDensityReal ρ) =
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>      ∫ x, (f x - m) ^ 2 ∂(HRS.Whole.withDensityReal ρ) :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>    ProbabilityTheory.variance_eq_integral hf.1.continuous.aemeasurable
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  rw [hv]
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  exact h1
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>/-! ### Stage A: bounded `C^1` functions with bounded gradient -/
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>theorem gap234_stageA {q : ℝ} {B : Euc d → Euc d} {ρ : Euc d → ℝ} (hR : GapRef d ρ q B) {c : ℝ}
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    (hc : ∀ {f : Euc d → ℝ} {M : ℝ}, gap234_Sm M f → ∫ x, f x ∂(HRS.Whole.withDensityReal ρ) = 0 →
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>      c * ∫ x, f x ^ 2 ∂(HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>        ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ))
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    {h : Euc d → ℝ} (hh : ContDiff ℝ 1 h) {Mh C : ℝ} (hM : ∀ t, |h t| ≤ Mh)
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    (hC : ∀ y, ‖fderiv ℝ h y‖ ≤ C) :
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>    c * ProbabilityTheory.variance h (HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      ∫ x, ‖gradient h x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  have : IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := gap1_isProb hR
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  have hMh : 0 ≤ Mh := (abs_nonneg _).trans (hM 0)
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  have hsm : ∀ n, ContDiff ℝ 1 (invMoll n h) := fun n =&gt;
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    (inv_moll_contDiff n hh.continuous).of_le (by norm_num)
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>  refine gap234_limit (u := fun n =&gt; invMoll n h) (D := fun _ =&gt; 3 * Mh) (Cg := C) hh hsm
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    continuous_const (integrable_const _) (fun n x =&gt; ?_) (fun x =&gt; ?_) (fun x =&gt; ?_)
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    (fun n x =&gt; ?_) (fun x =&gt; ?_) (fun n =&gt; ?_)
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>  · exact (inv_conv_bound n hh.continuous hM x)
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  · exact (hM x).trans (by linarith)
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  · exact inv_conv_tendsto hh.continuous x
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>  · rw [gap1_norm_grad]; exact gap234_moll_fderiv_bound hh hC n x
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  · have := gap234_moll_fderiv_tendsto hh hC x
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    unfold gradient
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    exact ((InnerProductSpace.toDual ℝ (Euc d)).symm.continuous.tendsto _).comp this
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  · obtain ⟨M, hMsm⟩ := gap234_moll_sm hh hM hC n
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    exact gap234_smooth_var hR hc hMsm
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>/-! ### Stage B: general `C^1` functions with bounded gradient in `L²` -/
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>theorem gap234_sin_sub (z : ℝ) (hz : |z| ≤ 1) : |Real.sin z - z| ≤ |z| ^ 3 := by
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>  have h := Real.sin_bound hz
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  have h1 : |z| ^ 5 ≤ |z| ^ 3 := pow_le_pow_of_le_one (abs_nonneg _) hz (by norm_num)
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  have h2 : |Real.sin z - z| ≤ |Real.sin z - (z - z ^ 3 / 6)| + |z ^ 3 / 6| := by
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    have : Real.sin z - z = (Real.sin z - (z - z ^ 3 / 6)) + (-(z ^ 3 / 6)) := by ring
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>    rw [this]
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    calc _ ≤ |Real.sin z - (z - z ^ 3 / 6)| + |-(z ^ 3 / 6)| := abs_add_le _ _
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>      _ = _ := by rw [abs_neg]
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  have h3 : |z ^ 3 / 6| = |z| ^ 3 / 6 := by rw [abs_div, abs_pow]; norm_num
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  have h0 : 0 ≤ |z| ^ 3 := by positivity
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  linarith
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>theorem gap234_trunc_tendsto (a : ℝ) :
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    Tendsto (fun n : ℕ =&gt; ((n : ℝ) + 1) * Real.sin (a / ((n : ℝ) + 1))) atTop (𝓝 a) := by
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  have hdiff : ∀ᶠ n : ℕ in atTop, |((n : ℝ) + 1) * Real.sin (a / ((n : ℝ) + 1)) - a| ≤
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      |a| ^ 3 / ((n : ℝ) + 1) ^ 2 := by
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    obtain ⟨N, hN⟩ := exists_nat_gt |a|
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    filter_upwards [eventually_ge_atTop N] with n hn
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>    have hpos : (0 : ℝ) &lt; (n : ℝ) + 1 := by positivity
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>    have hle : |a| ≤ (n : ℝ) + 1 := by
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>      have : (N : ℝ) ≤ n := by exact_mod_cast hn
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>      linarith
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    have hz : |a / ((n : ℝ) + 1)| ≤ 1 := by
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>      rw [abs_div, abs_of_pos hpos, div_le_one hpos]; exact hle
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    have h1 := gap234_sin_sub _ hz
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    have e : ((n : ℝ) + 1) * Real.sin (a / ((n : ℝ) + 1)) - a =
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>        ((n : ℝ) + 1) * (Real.sin (a / ((n : ℝ) + 1)) - a / ((n : ℝ) + 1)) := by
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>      field_simp
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    rw [e, abs_mul, abs_of_pos hpos]
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    calc ((n : ℝ) + 1) * |Real.sin (a / ((n : ℝ) + 1)) - a / ((n : ℝ) + 1)|
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>        ≤ ((n : ℝ) + 1) * |a / ((n : ℝ) + 1)| ^ 3 := mul_le_mul_of_nonneg_left h1 hpos.le
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>      _ = |a| ^ 3 / ((n : ℝ) + 1) ^ 2 := by
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>        rw [abs_div, abs_of_pos hpos]; field_simp
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  have hzero : Tendsto (fun n : ℕ =&gt; |a| ^ 3 / ((n : ℝ) + 1) ^ 2) atTop (𝓝 0) := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    refine tendsto_const_nhds.div_atTop ?_
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    exact (tendsto_pow_atTop (by norm_num : 2 ≠ 0)).comp (tendsto_natCast_atTop_atTop.atTop_add tendsto_const_nhds)
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  have : Tendsto (fun n : ℕ =&gt; ((n : ℝ) + 1) * Real.sin (a / ((n : ℝ) + 1)) - a) atTop (𝓝 0) :=
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    squeeze_zero_norm&#x27; (by simpa [Real.norm_eq_abs] using hdiff) hzero
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  simpa using this.add_const a
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>theorem gap234_stageB {q : ℝ} {B : Euc d → Euc d} {ρ : Euc d → ℝ} (hR : GapRef d ρ q B) {c : ℝ}
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>    (hc : ∀ {f : Euc d → ℝ} {M : ℝ}, gap234_Sm M f → ∫ x, f x ∂(HRS.Whole.withDensityReal ρ) = 0 →
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>      c * ∫ x, f x ^ 2 ∂(HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>        ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ))
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    {f : Euc d → ℝ} (hf : ContDiff ℝ 1 f) {Cf : ℝ} (hCf : ∀ x, ‖gradient f x‖ ≤ Cf)
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>    (hmem : MemLp f 2 (HRS.Whole.withDensityReal ρ)) :
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>    c * ProbabilityTheory.variance f (HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>  have : IsProbabilityMeasure (HRS.Whole.withDensityReal ρ) := gap1_isProb hR
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>  set u : ℕ → Euc d → ℝ := fun n x =&gt; ((n : ℝ) + 1) * Real.sin (f x / ((n : ℝ) + 1)) with hu
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  have hpos : ∀ n : ℕ, (0 : ℝ) &lt; (n : ℝ) + 1 := fun n =&gt; by positivity
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>  have hu1 : ∀ n, ContDiff ℝ 1 (u n) := fun n =&gt;
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    contDiff_const.mul (Real.contDiff_sin.comp (hf.div_const _))
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  have hfd : ∀ n x, fderiv ℝ (u n) x = Real.cos (f x / ((n : ℝ) + 1)) • fderiv ℝ f x := by
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>    intro n x
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    have h0 := (hf.differentiable one_ne_zero x).hasFDerivAt.const_mul (((n : ℝ) + 1)⁻¹)
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    have h1 := h0.sin
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    have h2 := h1.const_mul ((n : ℝ) + 1)
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    have e : u n = fun y =&gt; ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * f y) := by
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>      funext y; simp [hu, div_eq_inv_mul]
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    rw [e, h2.fderiv]
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>    have e2 : f x / ((n : ℝ) + 1) = ((n : ℝ) + 1)⁻¹ * f x := by rw [div_eq_inv_mul]
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    rw [e2]
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>    rw [smul_smul, smul_smul]
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    congr 1
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    field_simp [(hpos n).ne&#x27;]
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  have hgr : ∀ n x, gradient (u n) x = Real.cos (f x / ((n : ℝ) + 1)) • gradient f x := by
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    intro n x
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    unfold gradient
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>    rw [hfd, map_smul]
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>  have hbdu : ∀ n x, |u n x| ≤ |f x| := by
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    intro n x
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    simp only [hu]
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    rw [abs_mul, abs_of_pos (hpos n)]
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>    calc ((n : ℝ) + 1) * |Real.sin (f x / ((n : ℝ) + 1))|
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>        ≤ ((n : ℝ) + 1) * |f x / ((n : ℝ) + 1)| :=
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>          mul_le_mul_of_nonneg_left Real.abs_sin_le_abs (hpos n).le
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>      _ = |f x| := by rw [abs_div, abs_of_pos (hpos n)]; field_simp
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>  have hf2 : Integrable (fun x =&gt; |f x| ^ 2) (HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    have := hmem.integrable_sq
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    simpa [sq_abs] using this
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  refine gap234_limit (u := u) (D := fun x =&gt; |f x|) (Cg := Cf) hf hu1 hf.continuous.abs hf2
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>    hbdu (fun x =&gt; le_rfl) (fun x =&gt; gap234_trunc_tendsto (f x)) (fun n x =&gt; ?_) (fun x =&gt; ?_)
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    (fun n =&gt; ?_)
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>  · rw [hgr, norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    calc |Real.cos _| * ‖gradient f x‖ ≤ 1 * ‖gradient f x‖ :=
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>          mul_le_mul_of_nonneg_right (Real.abs_cos_le_one _) (norm_nonneg _)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>      _ ≤ Cf := by rw [one_mul]; exact hCf x
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  · have hz : Tendsto (fun n : ℕ =&gt; f x / ((n : ℝ) + 1)) atTop (𝓝 0) := by
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>      have := (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ)).const_mul (f x)
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>      simpa [div_eq_mul_inv] using this
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    have hcos : Tendsto (fun n : ℕ =&gt; Real.cos (f x / ((n : ℝ) + 1))) atTop (𝓝 1) := by
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>      have := (Real.continuous_cos.tendsto 0).comp hz
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>      rw [Real.cos_zero] at this
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>      exact this
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    simp_rw [hgr]
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    simpa using hcos.smul_const (gradient f x)
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>  · have hb : ∀ t, |u n t| ≤ ((n : ℝ) + 1) := fun t =&gt; by
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>      simp only [hu]
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>      rw [abs_mul, abs_of_pos (hpos n)]
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      calc ((n : ℝ) + 1) * |Real.sin _| ≤ ((n : ℝ) + 1) * 1 :=
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>            mul_le_mul_of_nonneg_left (Real.abs_sin_le_one _) (hpos n).le
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>        _ = _ := mul_one _
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    refine gap234_stageA hR hc (hu1 n) hb (C := Cf) (fun y =&gt; ?_)
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    rw [← gap1_norm_grad, hgr, norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>    calc |Real.cos _| * ‖gradient f y‖ ≤ 1 * ‖gradient f y‖ :=
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>          mul_le_mul_of_nonneg_right (Real.abs_cos_le_one _) (norm_nonneg _)
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>      _ ≤ Cf := by rw [one_mul]; exact hCf y
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>/-- **GAP-4: extension to `C^1`.**  For `GapRef d ρ q B`, `q &gt; 0`, `B ∈ C_b^2` there is `c &gt; 0` such that for all
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>`f ∈ C^1` with bounded gradient and `f ∈ L²(μ)`, `c Var_μ f ≤ ∫ ‖∇f‖² dμ`, `μ = ρ dx`. -/
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>theorem gap_ext {q Mb : ℝ} {B : Euc d → Euc d} {ρ : Euc d → ℝ} (hR : GapRef d ρ q B) (hq : 0 &lt; q)
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    (hB : HasCbBound 2 Mb B) :
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>    ∃ c : ℝ, 0 &lt; c ∧ ∀ f : Euc d → ℝ, ContDiff ℝ 1 f → (∃ Cf, ∀ x, ‖gradient f x‖ ≤ Cf) →
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>      MemLp f 2 (HRS.Whole.withDensityReal ρ) →
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>      c * ProbabilityTheory.variance f (HRS.Whole.withDensityReal ρ) ≤
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>        ∫ x, ‖gradient f x‖ ^ 2 ∂(HRS.Whole.withDensityReal ρ) := by
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>  obtain ⟨c, hc0, hc⟩ := gap_smooth_const hR hq hB
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>  exact ⟨c, hc0, fun f hf ⟨Cf, hCf⟩ hmem =&gt; gap234_stageB hR (fun {f M} hf hcen =&gt; hc hf hcen) hf hCf hmem⟩
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>/-- **`reflection_gap_poincare`** (S4.9): the one-body Poincare inequality for the logarithmic thermal measure and
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>its compact relative perturbations, for `C^1` functions with bounded gradient in `L²(μ)`. -/
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>theorem reflection_gap_poincare_proof : type_of% @HRS.Whole.reflection_gap_poincare := by
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>  intro d hd a β ha hβ ψ ρ hρ
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  obtain ⟨B, hR⟩ := gap_drift hd ha hβ hρ
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  obtain ⟨Mb, hB⟩ := hR.cb 2
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>  obtain ⟨c, hc0, hc⟩ := gap_ext hR (mul_pos ha hβ) hB
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>  exact ⟨c, hc0, hc⟩
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>end HRS.MS.Gap
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>end
+</span></code></pre></main></body></html>

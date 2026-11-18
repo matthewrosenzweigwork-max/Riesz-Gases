@@ -1,0 +1,1 @@
+window.docContents[167].resolve({"/Browse-the-paper-and-supplement/#section-S-S2":{"contents":"Whole-space supplement, lines 260–472.\n\n\n\n","context":"Fluctuations of Riesz gases\u0009Browse the paper and supplement","header":"3.13. S2. Statement of the confined fluctuation results","id":"/Browse-the-paper-and-supplement/#section-S-S2"}});

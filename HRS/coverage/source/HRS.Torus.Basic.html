@@ -1,0 +1,902 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Torus.Basic · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Torus.Basic</code></h1><p><a href="../../lean/HRS/Torus/Basic.lean">Open the unaltered Lean file</a> · 901 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import Mathlib
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># HRS foundations I: the torus, configurations, smooth functions, Fourier modes
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Source: HRS periodic main paper, Section 2.1 &quot;Conventions, centerings, and the
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>linear equation&quot; (source lines 416-528) and the introduction (lines 170-200).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>This file fixes the Lean representation of the basic objects.  Everything here
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>is a genuine definition (no `sorry`).  Lemmas that record facts about these
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>representations are collected at the end and are `sorry`-ed (work package FOUND-01).
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>## Representation decisions (see `docs/PLAN.md` §(b))
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* The torus `𝕋^d = ℝ^d/ℤ^d` is `HRS.Torus d := UnitAddTorus (Fin d)`, i.e.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `Fin d → UnitAddCircle`; its `volume` is the product Haar measure, which has
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  total mass one (the paper&#x27;s &quot;volume one&quot;).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* A configuration `X_N = (x_1,…,x_N)` is `Fin N → Torus d`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* Smoothness, derivatives and `C_b^k` norms of a function `φ : Torus d → ℝ` are
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  defined through its periodic lift `φ ∘ Torus.mk : EuclideanSpace ℝ (Fin d) → ℝ`.
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  This makes `ContDiff`/`iteratedFDeriv` from Mathlib available (Mathlib has no
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  smooth structure on `UnitAddTorus`).  Derivative norms are multilinear operator
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  norms with respect to the Euclidean norm on `ℝ^d`, exactly as in the paper
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  (&quot;derivative norms are multilinear operator norms&quot;, source line 512).
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>* Fourier modes `e^{2πi k·x}` are Mathlib&#x27;s `UnitAddTorus.mFourier k`.  The real
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  orthonormal basis `e_k` of `L²_0(𝕋^d)` used by the paper (source lines 8274-8275)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  is `√2 cos(2π k·x)` for `k` in the lexicographically positive half-lattice and
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  `√2 sin(2π k·x)` for `k` in the negative half.
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>* `⟨k⟩ = (1+4π²|k|²)^{1/2}` (source line 8129) is `Lattice.jp`.
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>-/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>noncomputable section
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>namespace HRS
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>/-- The flat torus `𝕋^d = ℝ^d/ℤ^d` of volume one. -/
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>abbrev Torus (d : ℕ) := UnitAddTorus (Fin d)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>/-- Euclidean `ℝ^d`; used for derivatives, lattice norms, and the covering map. -/
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>abbrev Euc (d : ℕ) := EuclideanSpace ℝ (Fin d)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- A configuration `X_N = (x_1, …, x_N)` of `N` particles on `𝕋^d`. -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>abbrev Config (d N : ℕ) := Fin N → Torus d
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>/-- The lattice `ℤ^d` of Fourier frequencies. -/
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>abbrev Lattice (d : ℕ) := Fin d → ℤ
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-- `ℤ^d ∖ {0}`: frequencies of mean-zero objects. -/
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>abbrev NonzeroLattice (d : ℕ) := {k : Lattice d // k ≠ 0}
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- The Haar measure on `ℝ/ℤ` has total mass one (Mathlib only records
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`IsFiniteMeasure` globally). -/
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>instance : IsProbabilityMeasure (volume : Measure UnitAddCircle) := ⟨by simp⟩
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>example (d : ℕ) : IsProbabilityMeasure (volume : Measure (Torus d)) := inferInstance
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>namespace Torus
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>variable {d : ℕ}
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>/-- The covering map `ℝ^d → 𝕋^d`. -/
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>def mk (x : Euc d) : Torus d := fun i =&gt; ((x i : ℝ) : UnitAddCircle)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>/-- The canonical representative in `[0,1)^d` of a point of the torus. -/
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>def rep (x : Torus d) : Euc d :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  WithLp.toLp 2 fun i =&gt; ((AddCircle.equivIco (1 : ℝ) 0 (x i) : Set.Ico (0 : ℝ) (0 + 1)) : ℝ)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>/-- The periodic lift `φ ∘ mk : ℝ^d → E` of a function on the torus. -/
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>def lift {E : Type*} (φ : Torus d → E) : Euc d → E := φ ∘ mk
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>/-- `C^k` regularity of a function on the torus.  Beware Mathlib&#x27;s order conventions for
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>`ContDiff`: `k = ((⊤ : ℕ∞) : WithTop ℕ∞)` (notation `∞` under `open scoped ContDiff`) is `C^∞`,
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>whereas `k = (⊤ : WithTop ℕ∞)` (notation `ω`) is *real-analytic*.  Use `IsSmooth` for `C^∞`. -/
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>def IsCk {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    (k : WithTop ℕ∞) (φ : Torus d → E) : Prop :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  ContDiff ℝ k (lift φ)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>/-- `C^∞` regularity of a function on the torus through the periodic lift
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>(`ContDiff ℝ ∞ (lift φ)`, not analyticity). -/
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>def IsSmooth {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] (φ : Torus d → E) : Prop :=
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  IsCk ((⊤ : ℕ∞) : WithTop ℕ∞) φ
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>/-- The `C_b^k` norm `∑_{j ≤ k} sup_x ‖D^j φ(x)‖` (source line 510, SUM over orders),
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>with multilinear operator norms of the Euclidean derivatives. -/
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>def cbNorm {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    (k : ℕ) (φ : Torus d → E) : ℝ :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  ∑ j ∈ Finset.range (k + 1), ⨆ x : Euc d, ‖iteratedFDeriv ℝ j (lift φ) x‖
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>/-- Sup norm `‖φ‖_∞`. -/
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>def supNorm {E : Type*} [NormedAddCommGroup E] (φ : Torus d → E) : ℝ :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  ⨆ x : Torus d, ‖φ x‖
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>/-- Hölder seminorm `[φ]_{C^{0,α}}` with respect to the torus distance. -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>def holderSeminorm (α : ℝ) (φ : Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  ⨆ p : {p : Torus d × Torus d // p.1 ≠ p.2}, |φ p.1.1 - φ p.1.2| / ‖p.1.1 - p.1.2‖ ^ α
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>/-- Gradient `∇φ` of a scalar function on the torus, as a vector in `ℝ^d`. -/
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>def grad (φ : Torus d → ℝ) (x : Torus d) : Euc d := gradient (lift φ) (rep x)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- Laplacian `Δφ`. -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>def laplacian (φ : Torus d → ℝ) (x : Torus d) : ℝ :=
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  Laplacian.laplacian (lift φ) (rep x)
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>/-- Divergence `Div v` of a vector field. -/
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>def div (v : Torus d → Euc d) (x : Torus d) : ℝ :=
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  ∑ i, fderiv ℝ (lift v) (rep x) (EuclideanSpace.single i 1) i
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>/-- Partial derivative `∂_j φ`. -/
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>def partialDeriv (j : Fin d) (φ : Torus d → ℝ) (x : Torus d) : ℝ :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  fderiv ℝ (lift φ) (rep x) (EuclideanSpace.single j 1)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-- Translation of a function on the torus: `(translate a φ) x = φ (x - a)`. -/
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>def translate (a : Torus d) (φ : Torus d → ℝ) : Torus d → ℝ := fun x =&gt; φ (x - a)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- Apply a constant real matrix `M` to a vector in `ℝ^d`. -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>def matVec (M : Matrix (Fin d) (Fin d) ℝ) (v : Euc d) : Euc d := Matrix.toEuclideanLin M v
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>/-- `Sym M = (M + Mᵀ)/2`. -/
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>def symPart (M : Matrix (Fin d) (Fin d) ℝ) : Matrix (Fin d) (Fin d) ℝ := (1/2 : ℝ) • (M + M.transpose)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>/-- `Sym M ≤ 0` (negative semidefinite symmetric part). -/
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>def SymNonpos (M : Matrix (Fin d) (Fin d) ℝ) : Prop := (-(symPart M)).PosSemidef
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>end Torus
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>namespace Lattice
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>variable {d : ℕ}
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>/-- `k ∈ ℤ^d` as a vector in `ℝ^d`. -/
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>def toEuc (k : Lattice d) : Euc d := WithLp.toLp 2 fun i =&gt; (k i : ℝ)
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-- Euclidean norm `|k|`. -/
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>def enorm (k : Lattice d) : ℝ := ‖toEuc k‖
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>/-- `⟨k⟩ = (1 + 4π²|k|²)^{1/2}` (source line 8129). -/
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>def jp (k : Lattice d) : ℝ := Real.sqrt (1 + 4 * Real.pi ^ 2 * enorm k ^ 2)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-- The lexicographically positive half of `ℤ^d ∖ {0}`. -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>def IsPosHalf (k : Lattice d) : Prop := 0 &lt; toLex k
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>/-- `k · x` for `k ∈ ℤ^d`, `x ∈ ℝ^d`. -/
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>def dot (k : Lattice d) (x : Euc d) : ℝ := ∑ i, (k i : ℝ) * x i
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>end Lattice
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>namespace Torus
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>variable {d : ℕ}
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>/-- The complex Fourier mode `e_k(x) = e^{2πi k·x}` (Mathlib&#x27;s `UnitAddTorus.mFourier`). -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>def mode (k : Lattice d) (x : Torus d) : ℂ := UnitAddTorus.mFourier k x
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>/-- `cos(2π k·x)`. -/
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>def cosMode (k : Lattice d) (x : Torus d) : ℝ := (mode k x).re
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>/-- `sin(2π k·x)`. -/
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>def sinMode (k : Lattice d) (x : Torus d) : ℝ := (mode k x).im
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>open Classical in
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-- The real orthonormal basis `e_k` of `L²_0(𝕋^d)`, `k ≠ 0` (source lines 8274-8275):
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>`√2 cos(2π k·x)` on the positive half-lattice and `√2 sin(2π k·x)` on the negative half. -/
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>def realMode (k : NonzeroLattice d) (x : Torus d) : ℝ :=
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  if Lattice.IsPosHalf k.1 then Real.sqrt 2 * cosMode k.1 x else Real.sqrt 2 * sinMode k.1 x
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>/-- Complex Fourier coefficient `μ̂(k) = ∫ e^{-2πi k·x} dμ(x)` of a finite measure. -/
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>def measureFourierCoeff (μ : Measure (Torus d)) (k : Lattice d) : ℂ :=
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  ∫ x, mode (-k) x ∂μ
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>/-- Real Fourier coefficient `∫ e_k dμ` of a finite measure against the real basis. -/
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>def measureRealCoeff (μ : Measure (Torus d)) (k : NonzeroLattice d) : ℝ :=
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  ∫ x, realMode k x ∂μ
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>/-- Complex Fourier coefficient `φ̂(k)` of a function (Mathlib&#x27;s `mFourierCoeff`). -/
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>def funFourierCoeff (φ : Torus d → ℂ) (k : Lattice d) : ℂ := UnitAddTorus.mFourierCoeff φ k
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>/-- Real Fourier coefficient `∫ e_k φ dx` of a real function. -/
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>def funRealCoeff (φ : Torus d → ℝ) (k : NonzeroLattice d) : ℝ :=
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  ∫ x, realMode k x * φ x
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>/-- Haar mean `∫ φ dx`. -/
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>def mean (φ : Torus d → ℝ) : ℝ := ∫ x, φ x
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>end Torus
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>/-- The empirical measure `μ_N = N⁻¹ ∑_i δ_{x_i}` (source line 192). -/
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>def empirical {d N : ℕ} (X : Config d N) : Measure (Torus d) :=
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  ((N : ℝ≥0∞)⁻¹) • ∑ i : Fin N, Measure.dirac (X i)
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>/-- Pairing `μ(φ) = ∫ φ dμ`. -/
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>def pair {d : ℕ} (μ : Measure (Torus d)) (φ : Torus d → ℝ) : ℝ := ∫ x, φ x ∂μ
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>/-- The collision set `𝔇_N = {X : x_i = x_j for some i ≠ j}` (source line ~10115). -/
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>def collisionSet (d N : ℕ) : Set (Config d N) := {X | ∃ i j, i ≠ j ∧ X i = X j}
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>/-- `L²(μ)` inner product `⟨f, g⟩_{L²(μ)} = ∫ f g dμ`. -/
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>def l2Inner {d : ℕ} (μ : Measure (Torus d)) (f g : Torus d → ℝ) : ℝ := ∫ x, f x * g x ∂μ
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>/-- Projection modulo constants `P_μ f = f - μ(f)` (source line 936 region). -/
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>def projMean {d : ℕ} (μ : Measure (Torus d)) (f : Torus d → ℝ) : Torus d → ℝ :=
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  fun x =&gt; f x - pair μ f
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>/-- The measure `μ = ρ dx` with density `ρ`. -/
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>def withDensityReal {d : ℕ} (ρ : Torus d → ℝ) : Measure (Torus d) :=
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  volume.withDensity fun x =&gt; ENNReal.ofReal (ρ x)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>/-- A probability density on the torus: nonnegative, measurable, integral one. -/
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>structure IsProbDensity {d : ℕ} (ρ : Torus d → ℝ) : Prop where
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  nonneg : ∀ x, 0 ≤ ρ x
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  measurable : Measurable ρ
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  integral_one : ∫ x, ρ x = 1
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>/-! ### Basic facts about the representation (work package FOUND-01) -/
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>namespace Torus
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>variable {d : ℕ}
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>/-- `mk` is surjective and `rep` is a right inverse. -/
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>theorem mk_rep (x : Torus d) : mk (rep x) = x := by
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  funext i
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  simp [mk, rep, AddCircle.coe_equivIco]
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>/-- The lift is `ℤ^d`-periodic. -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>theorem lift_periodic {E : Type*} (φ : Torus d → E) (x : Euc d) (k : Lattice d) :
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    lift φ (x + Lattice.toEuc k) = lift φ x := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  unfold lift
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  simp only [Function.comp]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  congr 1
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  funext i
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  simp [mk, Lattice.toEuc]
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>/-- The modes are continuous (hence bounded, measurable). -/
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>theorem continuous_mode (k : Lattice d) : Continuous (mode k) := by
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>  exact (UnitAddTorus.mFourier k).continuous
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>theorem mode_mk (k : Lattice d) (x : Euc d) :
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    mode k (mk x) = Complex.exp (((2 * Real.pi * Lattice.dot k x : ℝ) : ℂ) * Complex.I) := by
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  simp only [mode, UnitAddTorus.mFourier, ContinuousMap.coe_mk, mk, fourier_coe_apply,
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    Lattice.dot]
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  rw [← Complex.exp_sum]
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  congr 1
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  push_cast
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  simp only [Finset.mul_sum, Finset.sum_mul, div_one]
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  refine Finset.sum_congr rfl fun i _ =&gt; by ring
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>/-- `cos(2πk·x)` is the real part of the complex mode: pointwise formula via the lift. -/
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>theorem cosMode_mk (k : Lattice d) (x : Euc d) :
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    cosMode k (mk x) = Real.cos (2 * Real.pi * Lattice.dot k x) := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  rw [cosMode, mode_mk, Complex.exp_ofReal_mul_I_re]
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>theorem sinMode_mk (k : Lattice d) (x : Euc d) :
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    sinMode k (mk x) = Real.sin (2 * Real.pi * Lattice.dot k x) := by
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  rw [sinMode, mode_mk, Complex.exp_ofReal_mul_I_im]
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>open scoped ComplexConjugate
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>theorem mode_add (k l : Lattice d) (x : Torus d) : mode (k + l) x = mode k x * mode l x :=
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  UnitAddTorus.mFourier_add
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>theorem mode_neg (k : Lattice d) (x : Torus d) : mode (-k) x = conj (mode k x) :=
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  UnitAddTorus.mFourier_neg
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>theorem mode_zero (x : Torus d) : mode (0 : Lattice d) x = 1 := by
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  simp [mode, UnitAddTorus.mFourier_zero]
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>theorem volume_eq_pi_haar :
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    (volume : Measure (Torus d)) = Measure.pi fun _ =&gt; (AddCircle.haarAddCircle : Measure UnitAddCircle) := by
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  show Measure.pi (fun _ =&gt; (volume : Measure UnitAddCircle)) = _
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  congr 1
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  funext _
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>  rw [AddCircle.volume_eq_smul_haarAddCircle]
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  simp
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>theorem integral_mode (a : Lattice d) : ∫ x, mode a x = if a = 0 then 1 else 0 := by
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>  have h := orthonormal_iff_ite.mp (UnitAddTorus.orthonormal_mFourier (d := Fin d)) 0 a
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>  simp only [ContinuousMap.inner_toLp, ← UnitAddTorus.mFourier_neg, ← UnitAddTorus.mFourier_add] at h
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  have h&#x27; : (∫ x : Torus d, mode a x ∂(Measure.pi fun _ =&gt; (AddCircle.haarAddCircle : Measure UnitAddCircle))) = if a = 0 then 1 else 0 := by
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    simp only [neg_zero, add_zero, @eq_comm _ (0 : Lattice d) a] at h
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>    exact h
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  rw [volume_eq_pi_haar]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  exact h&#x27;
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>theorem integrable_mode (k : Lattice d) : Integrable (mode k) :=
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  (continuous_mode k).integrable_of_hasCompactSupport (HasCompactSupport.of_compactSpace _)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>theorem integral_mode_mul (k l : Lattice d) :
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    ∫ x, mode k x * mode l x = if k + l = 0 then 1 else 0 := by
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  simp_rw [← mode_add]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  exact integral_mode _
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>theorem integrable_mode_mul (k l : Lattice d) : Integrable (fun x =&gt; mode k x * mode l x) :=
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  ((continuous_mode k).mul (continuous_mode l)).integrable_of_hasCompactSupport (HasCompactSupport.of_compactSpace _)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>theorem isPosHalf_neg (k : Lattice d) (hk : k ≠ 0) :
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    Lattice.IsPosHalf (-k) ↔ ¬ Lattice.IsPosHalf k := by
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  unfold Lattice.IsPosHalf
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  have : toLex (-k) = - toLex k := rfl
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  rw [this, neg_pos]
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  have h0 : toLex k ≠ 0 := fun h =&gt; hk (toLex.injective h)
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  constructor
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>  · exact fun h =&gt; not_lt.mpr h.le
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  · exact fun h =&gt; lt_of_le_of_ne (not_lt.mp h) h0
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>open Classical in
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>/-- coefficient of `e_k` in the expansion of `realMode k`. -/
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>def realCoef (k : Lattice d) : ℂ :=
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  if Lattice.IsPosHalf k then ((Real.sqrt 2 / 2 : ℝ) : ℂ)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  else -Complex.I * ((Real.sqrt 2 / 2 : ℝ) : ℂ)
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>theorem realMode_cplx (k : NonzeroLattice d) (x : Torus d) :
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>    (realMode k x : ℂ) = realCoef k.1 * mode k.1 x + conj (realCoef k.1) * mode (-k.1) x := by
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  rw [mode_neg]
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  unfold realMode realCoef
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  by_cases h : Lattice.IsPosHalf k.1
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  · simp only [h, ite_true, cosMode]
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    rw [Complex.ofReal_mul, Complex.re_eq_add_conj]
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    simp only [Complex.conj_ofReal]
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    push_cast
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    ring
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  · simp only [h, ite_false, sinMode]
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    rw [Complex.ofReal_mul, Complex.im_eq_sub_conj]
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>    simp only [map_mul, map_neg, Complex.conj_ofReal, Complex.conj_I]
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    have hI : Complex.I ≠ 0 := Complex.I_ne_zero
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    push_cast
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    field_simp
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    linear_combination (mode k.1 x - conj (mode k.1 x)) * Complex.I_sq
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>theorem integral_comb (a b a&#x27; b&#x27; : ℂ) (k l : Lattice d) :
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>    ∫ x, (a * mode k x + b * mode (-k) x) * (a&#x27; * mode l x + b&#x27; * mode (-l) x) =
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>      a * a&#x27; * (if k + l = 0 then 1 else 0) + a * b&#x27; * (if k = l then 1 else 0)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>        + b * a&#x27; * (if k = l then 1 else 0) + b * b&#x27; * (if k + l = 0 then 1 else 0) := by
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  have e : ∀ x, (a * mode k x + b * mode (-k) x) * (a&#x27; * mode l x + b&#x27; * mode (-l) x) =
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>      a * a&#x27; * (mode k x * mode l x) + a * b&#x27; * (mode k x * mode (-l) x)
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>        + b * a&#x27; * (mode (-k) x * mode l x) + b * b&#x27; * (mode (-k) x * mode (-l) x) := by
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    intro x; ring
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  have hint : ∀ (c : ℂ) (k l : Lattice d), Integrable (fun x =&gt; c * (mode k x * mode l x)) :=
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    fun c k l =&gt; (integrable_mode_mul k l).const_mul c
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>  simp_rw [e]
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  rw [integral_add, integral_add, integral_add, integral_const_mul, integral_const_mul,
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>    integral_const_mul, integral_const_mul, integral_mode_mul, integral_mode_mul,
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>    integral_mode_mul, integral_mode_mul]
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  · have h1 : k + -l = 0 ↔ k = l := add_neg_eq_zero
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    have h2 : -k + l = 0 ↔ k = l := by rw [neg_add_eq_zero, eq_comm]
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>    have h3 : -k + -l = 0 ↔ k + l = 0 := by rw [← neg_add, neg_eq_zero]
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    simp only [h1, h2, h3]
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  all_goals repeat&#x27; (first | exact hint _ _ _ | apply Integrable.add)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>theorem realCoef_pos {k : Lattice d} (h : Lattice.IsPosHalf k) :
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>    realCoef k = ((Real.sqrt 2 / 2 : ℝ) : ℂ) := by
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  simp [realCoef, h]
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>theorem realCoef_neg {k : Lattice d} (h : ¬ Lattice.IsPosHalf k) :
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    realCoef k = -Complex.I * ((Real.sqrt 2 / 2 : ℝ) : ℂ) := by
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>  simp [realCoef, h]
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>theorem sqrt2_half_sq : ((Real.sqrt 2 / 2 : ℝ) : ℂ) * ((Real.sqrt 2 / 2 : ℝ) : ℂ) = 1 / 2 := by
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  rw [← Complex.ofReal_mul]
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  have : Real.sqrt 2 / 2 * (Real.sqrt 2 / 2) = 1 / 2 := by
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    nlinarith [Real.mul_self_sqrt (show (0:ℝ) ≤ 2 by norm_num)]
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  rw [this]; push_cast; ring
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>theorem realCoef_mul_conj (k : Lattice d) : realCoef k * conj (realCoef k) = 1 / 2 := by
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  by_cases h : Lattice.IsPosHalf k
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  · rw [realCoef_pos h, Complex.conj_ofReal, sqrt2_half_sq]
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  · rw [realCoef_neg h]
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    simp only [map_mul, map_neg, Complex.conj_ofReal, Complex.conj_I]
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    have := sqrt2_half_sq
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    linear_combination (-(Complex.I * Complex.I)) * this + (-1/2 : ℂ) * Complex.I_sq
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>theorem realMode_orthonormal_aux (k l : NonzeroLattice d) :
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>    ∫ x, realMode k x * realMode l x = if k = l then 1 else 0 := by
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  have h := integral_comb (realCoef k.1) (conj (realCoef k.1)) (realCoef l.1)
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>    (conj (realCoef l.1)) k.1 l.1
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>  have e : ∀ x, ((realMode k x * realMode l x : ℝ) : ℂ) =
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>      (realCoef k.1 * mode k.1 x + conj (realCoef k.1) * mode (-k.1) x) *
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>        (realCoef l.1 * mode l.1 x + conj (realCoef l.1) * mode (-l.1) x) := by
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    intro x
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    push_cast
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    rw [realMode_cplx, realMode_cplx]
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  apply Complex.ofReal_injective
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>  have hc : ((if k = l then (1:ℝ) else 0 : ℝ) : ℂ) = if k = l then 1 else 0 := by
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    split_ifs &lt;;&gt; simp
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  rw [hc, ← integral_complex_ofReal (f := fun x =&gt; realMode k x * realMode l x)]
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>  simp_rw [e]
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>  rw [h]
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  have hcoe : ((k : Lattice d) = l) ↔ k = l := Subtype.coe_inj
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>  simp only [hcoe]
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  by_cases hkl : k = l
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  · subst hkl
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>    have hk2 : ¬ ((k : Lattice d) + k = 0) := by
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      intro h0
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      apply k.2
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>      funext i
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>      have := congrFun h0 i
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>      simp only [Pi.add_apply, Pi.zero_apply] at this
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>      simp only [Pi.zero_apply]
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>      omega
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    have := realCoef_mul_conj k.1
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    simp only [hk2, ite_false, ite_true, mul_zero, zero_add, add_zero, mul_one]
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    linear_combination 2 * this
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>  · simp only [hkl, ite_false, mul_zero, add_zero]
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    by_cases hs : (k : Lattice d) + l = 0
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    · have hl : (l : Lattice d) = -k := by
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>        rw [eq_neg_iff_add_eq_zero, add_comm]; exact hs
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>      have hneg := isPosHalf_neg k.1 k.2
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      simp only [hs, ite_true, mul_one]
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>      by_cases hp : Lattice.IsPosHalf k.1
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>      · have hq : ¬ Lattice.IsPosHalf l.1 := by rw [hl]; exact fun h&#x27; =&gt; (hneg.mp h&#x27;) hp
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>        rw [realCoef_pos hp, realCoef_neg hq]
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>        simp only [map_mul, map_neg, Complex.conj_ofReal, Complex.conj_I]
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>        ring
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>      · have hq : Lattice.IsPosHalf l.1 := by rw [hl]; exact hneg.mpr hp
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>        rw [realCoef_neg hp, realCoef_pos hq]
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>        simp only [map_mul, map_neg, Complex.conj_ofReal, Complex.conj_I]
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>        ring
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    · simp [hs]
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>/-- The real modes `e_k`, `k ≠ 0`, are orthonormal in `L²(dx)`. -/
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>theorem realMode_orthonormal (k l : NonzeroLattice d) :
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    ∫ x, realMode k x * realMode l x = if k = l then 1 else 0 := by
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  exact realMode_orthonormal_aux k l
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>/-- The real modes have Haar mean zero. -/
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>theorem integral_realMode (k : NonzeroLattice d) : ∫ x, realMode k x = 0 := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  apply Complex.ofReal_injective
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  rw [← integral_complex_ofReal (f := fun x =&gt; realMode k x)]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  simp_rw [realMode_cplx]
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  rw [integral_add, integral_const_mul, integral_const_mul, integral_mode, integral_mode]
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  · have h1 : k.1 ≠ 0 := k.2
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    have h2 : -k.1 ≠ 0 := neg_ne_zero.mpr k.2
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    simp [h1, h2]
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  · exact (integrable_mode _).const_mul _
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>  · exact (integrable_mode _).const_mul _
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>/-- cosine coefficient `∫ cos(2πk·x) φ(x) dx`. -/
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>def cosCoeff (φ : Torus d → ℝ) (k : Lattice d) : ℝ := ∫ x, cosMode k x * φ x
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>/-- sine coefficient `∫ sin(2πk·x) φ(x) dx`. -/
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>def sinCoeff (φ : Torus d → ℝ) (k : Lattice d) : ℝ := ∫ x, sinMode k x * φ x
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>theorem continuous_cosMode (k : Lattice d) : Continuous (cosMode k) :=
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>  Complex.continuous_re.comp (continuous_mode k)
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>theorem continuous_sinMode (k : Lattice d) : Continuous (sinMode k) :=
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  Complex.continuous_im.comp (continuous_mode k)
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>theorem norm_mode (k : Lattice d) (x : Torus d) : ‖mode k x‖ = 1 := by
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>  rw [← mk_rep x, mode_mk, Complex.norm_exp_ofReal_mul_I]
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>theorem norm_cosMode_le (k : Lattice d) (x : Torus d) : ‖cosMode k x‖ ≤ 1 := by
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  rw [← norm_mode k x, Real.norm_eq_abs]
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  exact Complex.abs_re_le_norm _
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>theorem norm_sinMode_le (k : Lattice d) (x : Torus d) : ‖sinMode k x‖ ≤ 1 := by
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>  rw [← norm_mode k x, Real.norm_eq_abs]
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>  exact Complex.abs_im_le_norm _
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>theorem integrable_cosMode_mul (k : Lattice d) {φ : Torus d → ℝ} (hφ : Integrable φ) :
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    Integrable (fun x =&gt; cosMode k x * φ x) :=
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  hφ.bdd_mul (continuous_cosMode k).aestronglyMeasurable
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    (Filter.Eventually.of_forall (norm_cosMode_le k))
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>theorem integrable_sinMode_mul (k : Lattice d) {φ : Torus d → ℝ} (hφ : Integrable φ) :
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    Integrable (fun x =&gt; sinMode k x * φ x) :=
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  hφ.bdd_mul (continuous_sinMode k).aestronglyMeasurable
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    (Filter.Eventually.of_forall (norm_sinMode_le k))
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>theorem cosMode_neg (k : Lattice d) (x : Torus d) : cosMode (-k) x = cosMode k x := by
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>  simp [cosMode, mode_neg]
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>theorem sinMode_neg (k : Lattice d) (x : Torus d) : sinMode (-k) x = - sinMode k x := by
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  simp [sinMode, mode_neg]
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>theorem cosCoeff_neg (φ : Torus d → ℝ) (k : Lattice d) : cosCoeff φ (-k) = cosCoeff φ k := by
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>  simp [cosCoeff, cosMode_neg]
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>theorem sinCoeff_neg (φ : Torus d → ℝ) (k : Lattice d) : sinCoeff φ (-k) = - sinCoeff φ k := by
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  simp [sinCoeff, sinMode_neg, integral_neg]
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>theorem integral_mode_mul_real {φ : Torus d → ℝ} (hφ : Integrable φ) (n : Lattice d) :
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    ∫ x, mode (-n) x * (φ x : ℂ) = ((cosCoeff φ n : ℝ) : ℂ) + ((-sinCoeff φ n : ℝ) : ℂ) * Complex.I := by
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>  have e : ∀ x, mode (-n) x * (φ x : ℂ) =
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>      ((cosMode n x * φ x : ℝ) : ℂ) + ((-(sinMode n x * φ x) : ℝ) : ℂ) * Complex.I := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    intro x
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    apply Complex.ext &lt;;&gt; simp [mode_neg, cosMode, sinMode]
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  simp_rw [e]
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>  rw [integral_add, integral_mul_const, integral_complex_ofReal, integral_complex_ofReal,
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    integral_neg]
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  · rfl
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>  · exact (integrable_cosMode_mul n hφ).ofReal
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>  · exact ((integrable_sinMode_mul n hφ).neg.ofReal).mul_const _
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>theorem norm_sq_coeff {φ : Torus d → ℝ} (hφ : Integrable φ) (n : Lattice d) :
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>    ‖∫ x, mode (-n) x * (φ x : ℂ)‖ ^ 2 = cosCoeff φ n ^ 2 + sinCoeff φ n ^ 2 := by
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  rw [integral_mode_mul_real hφ, Complex.sq_norm, Complex.normSq_add_mul_I]
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>  ring
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>open Classical in
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>theorem funRealCoeff_eq {φ : Torus d → ℝ} (k : NonzeroLattice d) :
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    funRealCoeff φ k =
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>      if Lattice.IsPosHalf k.1 then Real.sqrt 2 * cosCoeff φ k.1 else Real.sqrt 2 * sinCoeff φ k.1 := by
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>  unfold funRealCoeff realMode cosCoeff sinCoeff
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>  by_cases h : Lattice.IsPosHalf k.1
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  · simp only [h, ite_true, mul_assoc]
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>    rw [integral_const_mul]
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  · simp only [h, ite_false, mul_assoc]
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    rw [integral_const_mul]
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>theorem funRealCoeff_sq_add_neg {φ : Torus d → ℝ} (k : NonzeroLattice d) :
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    funRealCoeff φ k ^ 2 + funRealCoeff φ ⟨-k.1, neg_ne_zero.mpr k.2⟩ ^ 2 =
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      2 * (cosCoeff φ k.1 ^ 2 + sinCoeff φ k.1 ^ 2) := by
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>  rw [funRealCoeff_eq, funRealCoeff_eq]
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  have h2 : Real.sqrt 2 ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  have hneg := isPosHalf_neg k.1 k.2
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>  by_cases hp : Lattice.IsPosHalf k.1
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>  · have hq : ¬ Lattice.IsPosHalf (-k.1) := fun h =&gt; (hneg.mp h) hp
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>    simp only [hp, hq, ite_true, ite_false, sinCoeff_neg, mul_pow, h2, neg_sq]
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    ring
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  · have hq : Lattice.IsPosHalf (-k.1) := hneg.mpr hp
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    simp only [hp, hq, ite_true, ite_false, cosCoeff_neg, mul_pow, h2]
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>    ring
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>theorem hasSum_sq_coeff {φ : Torus d → ℝ} (hφ : MemLp φ 2 volume) :
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>    HasSum (fun n : Lattice d =&gt; cosCoeff φ n ^ 2 + sinCoeff φ n ^ 2) (∫ x, φ x ^ 2) := by
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>  have hφ1 : Integrable φ := hφ.integrable one_le_two
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>  have hH : MemLp (fun x =&gt; (φ x : ℂ)) 2
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>      (Measure.pi fun _ : Fin d =&gt; (AddCircle.haarAddCircle : Measure UnitAddCircle)) := by
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    rw [← volume_eq_pi_haar]
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    exact hφ.ofReal
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>  let f := hH.toLp (fun x =&gt; (φ x : ℂ))
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  have h := UnitAddTorus.hasSum_sq_mFourierCoeff (d := Fin d) f
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  have e1 : ∀ n, UnitAddTorus.mFourierCoeff f n = ∫ x, mode (-n) x * (φ x : ℂ) := by
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    intro n
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    have h1 : UnitAddTorus.mFourierCoeff f n = UnitAddTorus.mFourierCoeff (fun x =&gt; (φ x : ℂ)) n := by
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>      unfold UnitAddTorus.mFourierCoeff
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>      refine integral_congr_ae ?_
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>      filter_upwards [hH.coeFn_toLp] with x hx
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>      rw [hx]
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>    rw [h1]
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    unfold UnitAddTorus.mFourierCoeff
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    rw [volume_eq_pi_haar]
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>    rfl
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>  have e2 : ∫ t : Torus d, ‖f t‖ ^ 2 ∂(Measure.pi fun _ : Fin d =&gt;
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      (AddCircle.haarAddCircle : Measure UnitAddCircle)) = ∫ x, φ x ^ 2 := by
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>    have : ∫ t : Torus d, ‖f t‖ ^ 2 ∂(Measure.pi fun _ : Fin d =&gt;
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>        (AddCircle.haarAddCircle : Measure UnitAddCircle)) =
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>        ∫ t : Torus d, ‖(φ t : ℂ)‖ ^ 2 ∂(Measure.pi fun _ : Fin d =&gt;
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>        (AddCircle.haarAddCircle : Measure UnitAddCircle)) := by
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>      refine integral_congr_ae ?_
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>      filter_upwards [hH.coeFn_toLp] with x hx
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>      rw [hx]
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>    rw [this, ← volume_eq_pi_haar]
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>    simp
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  have h&#x27; : HasSum (fun n : Lattice d =&gt; ‖∫ x, mode (-n) x * (φ x : ℂ)‖ ^ 2) (∫ x, φ x ^ 2) := by
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>    convert h using 1
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>    · funext n
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>      rw [e1 n]
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>    · exact e2.symm
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>  convert h&#x27; using 2 with n
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>  rw [norm_sq_coeff hφ1]
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>/-- negation on the nonzero lattice -/
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>def negNZ (d : ℕ) : NonzeroLattice d ≃ NonzeroLattice d :=
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>  Equiv.subtypeEquiv (Equiv.neg (Lattice d)) (fun a =&gt; by simp)
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>theorem parseval_realCoeff_aux (φ : Torus d → ℝ) (hφ : MemLp φ 2 volume) :
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>    ∫ x, φ x ^ 2 = (mean φ) ^ 2 + ∑&#x27; k : NonzeroLattice d, funRealCoeff φ k ^ 2 := by
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>  classical
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>  set T : Lattice d → ℝ := fun n =&gt; cosCoeff φ n ^ 2 + sinCoeff φ n ^ 2 with hTdef
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>  have hT : HasSum T (∫ x, φ x ^ 2) := hasSum_sq_coeff hφ
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>  have hT0 : T 0 = (mean φ) ^ 2 := by
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>    have hc : cosCoeff φ 0 = mean φ := by
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>      simp [cosCoeff, mean, cosMode, mode_zero]
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>    have hs : sinCoeff φ 0 = 0 := by
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>      simp [sinCoeff, sinMode, mode_zero]
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    simp [hTdef, hc, hs]
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>  have hTn : HasSum (fun k : NonzeroLattice d =&gt; T k.1) ((∫ x, φ x ^ 2) - T 0) := by
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>    have h1 := hT.update 0 0
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>    have h2 : HasSum (Function.update T 0 0) ((∫ x, φ x ^ 2) - T 0) := by
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>      convert h1 using 1
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>      ring
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>    rw [← (Subtype.val_injective (p := fun k : Lattice d =&gt; k ≠ 0)).hasSum_iff (f := Function.update T 0 0)] at h2
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>    · convert h2 using 1
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>      funext k
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>      simp [Function.update_of_ne k.2]
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>    · intro x hx
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>      have : x = 0 := by
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>        by_contra hne
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>        exact hx ⟨⟨x, hne⟩, rfl⟩
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>      simp [this]
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>  set S : NonzeroLattice d → ℝ := fun k =&gt; funRealCoeff φ k ^ 2 with hSdef
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>  have hpair : ∀ k, S k + S (negNZ d k) = 2 * T k.1 := by
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>    intro k
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>    exact funRealCoeff_sq_add_neg k
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>  have hTneg : ∀ k, T (negNZ d k).1 = T k.1 := by
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    intro k
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>    simp [hTdef, negNZ, cosCoeff_neg, sinCoeff_neg]
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>  have hS0 : ∀ k, 0 ≤ S k := fun k =&gt; sq_nonneg _
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  have hSsum : Summable S := by
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>    refine Summable.of_nonneg_of_le hS0 (fun k =&gt; ?_) (hTn.summable.mul_left 2)
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    have := hpair k
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>    have := hS0 (negNZ d k)
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>    linarith
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>  have hSneg : Summable (fun k =&gt; S (negNZ d k)) := (negNZ d).summable_iff.mpr hSsum
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>  have hsum2 : ∑&#x27; k, (S k + S (negNZ d k)) = 2 * ∑&#x27; k : NonzeroLattice d, T k.1 := by
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>    simp_rw [hpair]
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>    rw [tsum_mul_left]
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>  rw [hSsum.tsum_add hSneg, Equiv.tsum_eq (negNZ d) S, hTn.tsum_eq] at hsum2
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>  rw [hT0] at hsum2
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>  linarith
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>/-- Parseval for mean-zero `L²` functions in the real basis. -/
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>theorem parseval_realCoeff (φ : Torus d → ℝ) (hφ : MemLp φ 2 volume) :
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>    ∫ x, φ x ^ 2 = (mean φ) ^ 2 + ∑&#x27; k : NonzeroLattice d, funRealCoeff φ k ^ 2 := by
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>  exact parseval_realCoeff_aux φ hφ
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>/-- bound on iterated derivatives of `g ∘ ℓ`. -/
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>theorem norm_iteratedFDeriv_comp_functional (g : ℝ → ℝ) (hg : ContDiff ℝ ⊤ g) (B : ℝ)
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>    (hB : ∀ (i : ℕ) (t : ℝ), ‖iteratedFDeriv ℝ i g t‖ ≤ B) (ℓ : Euc d →L[ℝ] ℝ) (i : ℕ) (x : Euc d) :
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>    ‖iteratedFDeriv ℝ i (g ∘ ℓ) x‖ ≤ B * ‖ℓ‖ ^ i := by
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>  rw [ℓ.iteratedFDeriv_comp_right hg x (le_top)]
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>  refine (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _).trans ?_
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>  simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>  gcongr
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>  exact hB i _
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>theorem norm_iteratedFDeriv_scaled_trig (c : ℝ) (hc : 0 ≤ c) (i : ℕ) (t : ℝ) :
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>    ‖iteratedFDeriv ℝ i (fun s =&gt; c * Real.cos s) t‖ ≤ c ∧
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>    ‖iteratedFDeriv ℝ i (fun s =&gt; c * Real.sin s) t‖ ≤ c := by
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>  have h1 : (fun s =&gt; c * Real.cos s) = c • Real.cos := by funext s; simp
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>  have h2 : (fun s =&gt; c * Real.sin s) = c • Real.sin := by funext s; simp
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>  constructor
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>  · rw [h1, iteratedFDeriv_const_smul_apply Real.contDiff_cos.contDiffAt, norm_smul,
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>      norm_iteratedFDeriv_eq_norm_iteratedDeriv, Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hc]
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>    calc c * |iteratedDeriv i Real.cos t| ≤ c * 1 := by
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>          gcongr; exact Real.abs_iteratedDeriv_cos_le_one i t
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>      _ = c := mul_one c
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>  · rw [h2, iteratedFDeriv_const_smul_apply Real.contDiff_sin.contDiffAt, norm_smul,
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>      norm_iteratedFDeriv_eq_norm_iteratedDeriv, Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hc]
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    calc c * |iteratedDeriv i Real.sin t| ≤ c * 1 := by
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>          gcongr; exact Real.abs_iteratedDeriv_sin_le_one i t
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>      _ = c := mul_one c
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>/-- the linear functional `x ↦ 2π k·x`. -/
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>def freqFunctional (k : Lattice d) : Euc d →L[ℝ] ℝ := (2 * Real.pi) • innerSL ℝ (Lattice.toEuc k)
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>theorem freqFunctional_apply (k : Lattice d) (x : Euc d) :
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>    freqFunctional k x = 2 * Real.pi * Lattice.dot k x := by
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>  simp [freqFunctional, Lattice.dot, Lattice.toEuc, PiLp.inner_apply, mul_comm]
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>theorem norm_freqFunctional_le (k : Lattice d) : ‖freqFunctional k‖ ≤ 2 * Real.pi * Lattice.enorm k := by
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>  refine ContinuousLinearMap.opNorm_le_bound _ (by unfold Lattice.enorm; positivity) fun x =&gt; ?_
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>  rw [freqFunctional]
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>  simp only [smul_apply, innerSL_apply_apply, smul_eq_mul, Real.norm_eq_abs]
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>  rw [abs_mul, abs_of_pos Real.two_pi_pos]
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>  have := abs_real_inner_le_norm (Lattice.toEuc k) x
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>  unfold Lattice.enorm
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>  nlinarith [Real.two_pi_pos]
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>theorem jp_ge_one (k : Lattice d) : 1 ≤ Lattice.jp k := by
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>  unfold Lattice.jp
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>  apply Real.le_sqrt_of_sq_le
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>  nlinarith [sq_nonneg (Lattice.enorm k), sq_nonneg Real.pi]
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>theorem two_pi_enorm_le_jp (k : Lattice d) : 2 * Real.pi * Lattice.enorm k ≤ Lattice.jp k := by
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>  unfold Lattice.jp
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>  apply Real.le_sqrt_of_sq_le
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>  nlinarith [sq_nonneg (Lattice.enorm k)]
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>theorem cbNorm_realMode_le_aux (j : ℕ) (k : NonzeroLattice d) :
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>    cbNorm j (realMode k) ≤ ((j + 1) * Real.sqrt 2) * Lattice.jp k.1 ^ j := by
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>  have hsq : 0 ≤ Real.sqrt 2 := Real.sqrt_nonneg 2
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  have hjp := jp_ge_one k.1
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>  have key : ∀ (i : ℕ), i ≤ j → ∀ (x : Euc d),
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>      ‖iteratedFDeriv ℝ i (lift (realMode k)) x‖ ≤ Real.sqrt 2 * Lattice.jp k.1 ^ j := by
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>    intro i hij x
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>    have hbound : ∀ g : ℝ → ℝ, ContDiff ℝ ⊤ g → (∀ (i : ℕ) (t : ℝ), ‖iteratedFDeriv ℝ i g t‖ ≤ Real.sqrt 2) →
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>        lift (realMode k) = g ∘ freqFunctional k.1 →
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>        ‖iteratedFDeriv ℝ i (lift (realMode k)) x‖ ≤ Real.sqrt 2 * Lattice.jp k.1 ^ j := by
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>      intro g hg hB he
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>      rw [he]
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>      refine (norm_iteratedFDeriv_comp_functional g hg _ hB _ i x).trans ?_
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>      gcongr
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>      calc ‖freqFunctional k.1‖ ^ i ≤ Lattice.jp k.1 ^ i := by
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>            gcongr
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>            exact (norm_freqFunctional_le _).trans (two_pi_enorm_le_jp _)
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>        _ ≤ Lattice.jp k.1 ^ j := pow_le_pow_right₀ hjp hij
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>    by_cases hp : Lattice.IsPosHalf k.1
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>    · refine hbound (fun s =&gt; Real.sqrt 2 * Real.cos s) (contDiff_const.mul Real.contDiff_cos)
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>        (fun i t =&gt; (norm_iteratedFDeriv_scaled_trig _ hsq i t).1) ?_
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>      funext x
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>      simp [lift, realMode, hp, cosMode_mk, freqFunctional_apply]
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>    · refine hbound (fun s =&gt; Real.sqrt 2 * Real.sin s) (contDiff_const.mul Real.contDiff_sin)
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>        (fun i t =&gt; (norm_iteratedFDeriv_scaled_trig _ hsq i t).2) ?_
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>      funext x
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>      simp [lift, realMode, hp, sinMode_mk, freqFunctional_apply]
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>  unfold cbNorm
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>  calc ∑ i ∈ Finset.range (j + 1), ⨆ x : Euc d, ‖iteratedFDeriv ℝ i (lift (realMode k)) x‖
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>      ≤ ∑ i ∈ Finset.range (j + 1), Real.sqrt 2 * Lattice.jp k.1 ^ j := by
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>        apply Finset.sum_le_sum
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>        intro i hi
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>        have hij : i ≤ j := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>        apply Real.iSup_le _ (mul_nonneg hsq (pow_nonneg (by linarith) j))
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>        intro x
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>        exact key i hij x
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>    _ = _ := by simp; ring
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>theorem iteratedFDeriv_lift_periodic {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>    (φ : Torus d → E) (j : ℕ) (x : Euc d) (n : Lattice d) :
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>    iteratedFDeriv ℝ j (lift φ) (x + Lattice.toEuc n) = iteratedFDeriv ℝ j (lift φ) x := by
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>  rw [← iteratedFDeriv_comp_add_right]
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>  congr 2
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>  funext z
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>  exact lift_periodic φ z n
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>theorem bddAbove_norm_iteratedFDeriv_lift (j : ℕ) (φ : Torus d → ℝ) (h : ContDiff ℝ j (lift φ)) :
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>    BddAbove (Set.range fun x : Euc d =&gt; ‖iteratedFDeriv ℝ j (lift φ) x‖) := by
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>  have hc : Continuous fun x : Euc d =&gt; ‖iteratedFDeriv ℝ j (lift φ) x‖ :=
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>    (h.continuous_iteratedFDeriv le_rfl).norm
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>  obtain ⟨M, hM⟩ := (isCompact_closedBall (0 : Euc d) d).exists_bound_of_continuousOn hc.continuousOn
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>  refine ⟨‖M‖, ?_⟩
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>  rintro _ ⟨x, rfl⟩
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>  set m : Lattice d := fun i =&gt; ⌊x i⌋ with hm
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>  set y : Euc d := x + Lattice.toEuc (-m) with hy
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>  have hg : ‖iteratedFDeriv ℝ j (lift φ) x‖ = ‖iteratedFDeriv ℝ j (lift φ) y‖ := by
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>    rw [hy, iteratedFDeriv_lift_periodic]
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>  have hyc : ∀ i, 0 ≤ y i ∧ y i &lt; 1 := by
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>    intro i
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>    have := Int.floor_le (x i)
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>    have h2 := Int.lt_floor_add_one (x i)
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>    simp only [hy, hm, Lattice.toEuc, PiLp.add_apply, Pi.neg_apply, Int.cast_neg]
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>    constructor &lt;;&gt; linarith
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>  have hyb : y ∈ Metric.closedBall (0 : Euc d) d := by
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>    rw [mem_closedBall_zero_iff, EuclideanSpace.norm_eq]
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>    apply Real.sqrt_le_iff.mpr
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>    refine ⟨Nat.cast_nonneg d, ?_⟩
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>    calc ∑ i, ‖y i‖ ^ 2 ≤ ∑ _i : Fin d, (1 : ℝ) := by
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>          apply Finset.sum_le_sum
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>          intro i _
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>          rw [Real.norm_eq_abs, sq_abs]
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>          have := hyc i
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>          nlinarith
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>      _ = d := by simp
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>      _ ≤ (d : ℝ) ^ 2 := by
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>          rcases Nat.eq_zero_or_pos d with h0 | h0
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>          · simp [h0]
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>          · have : (1 : ℝ) ≤ d := by exact_mod_cast h0
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>            nlinarith
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>  show ‖iteratedFDeriv ℝ j (lift φ) x‖ ≤ ‖M‖
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>  rw [hg]
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>  have := hM y hyb
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>  rw [norm_norm] at this
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>  exact this.trans (Real.le_norm_self M)
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>theorem cbNorm_add_le_aux (k : ℕ) (φ ψ : Torus d → ℝ)
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>    (hφ : IsCk k φ) (hψ : IsCk k ψ) :
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>    cbNorm k (φ + ψ) ≤ cbNorm k φ + cbNorm k ψ := by
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>  unfold cbNorm
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>  rw [← Finset.sum_add_distrib]
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>  apply Finset.sum_le_sum
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>  intro j hj
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>  have hjk : j ≤ k := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>  have hφ&#x27; : ContDiff ℝ j (lift φ) := hφ.of_le (by exact_mod_cast hjk)
+</span><span class="line" id="L773"><a class="ln" aria-label="Line 773" href="#L773">773</a>  have hψ&#x27; : ContDiff ℝ j (lift ψ) := hψ.of_le (by exact_mod_cast hjk)
+</span><span class="line" id="L774"><a class="ln" aria-label="Line 774" href="#L774">774</a>  have b1 := bddAbove_norm_iteratedFDeriv_lift j φ hφ&#x27;
+</span><span class="line" id="L775"><a class="ln" aria-label="Line 775" href="#L775">775</a>  have b2 := bddAbove_norm_iteratedFDeriv_lift j ψ hψ&#x27;
+</span><span class="line" id="L776"><a class="ln" aria-label="Line 776" href="#L776">776</a>  apply ciSup_le
+</span><span class="line" id="L777"><a class="ln" aria-label="Line 777" href="#L777">777</a>  intro x
+</span><span class="line" id="L778"><a class="ln" aria-label="Line 778" href="#L778">778</a>  have : lift (φ + ψ) = lift φ + lift ψ := rfl
+</span><span class="line" id="L779"><a class="ln" aria-label="Line 779" href="#L779">779</a>  rw [this, iteratedFDeriv_add_apply (hφ&#x27;.contDiffAt) (hψ&#x27;.contDiffAt)]
+</span><span class="line" id="L780"><a class="ln" aria-label="Line 780" href="#L780">780</a>  refine (norm_add_le _ _).trans (add_le_add ?_ ?_)
+</span><span class="line" id="L781"><a class="ln" aria-label="Line 781" href="#L781">781</a>  · exact le_ciSup b1 x
+</span><span class="line" id="L782"><a class="ln" aria-label="Line 782" href="#L782">782</a>  · exact le_ciSup b2 x
+</span><span class="line" id="L783"><a class="ln" aria-label="Line 783" href="#L783">783</a>
+</span><span class="line" id="L784"><a class="ln" aria-label="Line 784" href="#L784">784</a>
+</span><span class="line" id="L785"><a class="ln" aria-label="Line 785" href="#L785">785</a>/-- The `C^j` norm of a mode is at most `C_j ⟨k⟩^j` (source line 8130). -/
+</span><span class="line" id="L786"><a class="ln" aria-label="Line 786" href="#L786">786</a>theorem cbNorm_realMode_le (j : ℕ) :
+</span><span class="line" id="L787"><a class="ln" aria-label="Line 787" href="#L787">787</a>    ∃ C : ℝ, ∀ k : NonzeroLattice d, cbNorm j (realMode k) ≤ C * Lattice.jp k.1 ^ j := by
+</span><span class="line" id="L788"><a class="ln" aria-label="Line 788" href="#L788">788</a>  exact ⟨(j + 1) * Real.sqrt 2, fun k =&gt; cbNorm_realMode_le_aux j k⟩
+</span><span class="line" id="L789"><a class="ln" aria-label="Line 789" href="#L789">789</a>
+</span><span class="line" id="L790"><a class="ln" aria-label="Line 790" href="#L790">790</a>/-- `cbNorm` is a norm-like functional: triangle inequality. -/
+</span><span class="line" id="L791"><a class="ln" aria-label="Line 791" href="#L791">791</a>theorem cbNorm_add_le (k : ℕ) (φ ψ : Torus d → ℝ)
+</span><span class="line" id="L792"><a class="ln" aria-label="Line 792" href="#L792">792</a>    (hφ : IsCk k φ) (hψ : IsCk k ψ) :
+</span><span class="line" id="L793"><a class="ln" aria-label="Line 793" href="#L793">793</a>    cbNorm k (φ + ψ) ≤ cbNorm k φ + cbNorm k ψ := by
+</span><span class="line" id="L794"><a class="ln" aria-label="Line 794" href="#L794">794</a>  exact cbNorm_add_le_aux k φ ψ hφ hψ
+</span><span class="line" id="L795"><a class="ln" aria-label="Line 795" href="#L795">795</a>
+</span><span class="line" id="L796"><a class="ln" aria-label="Line 796" href="#L796">796</a>end Torus
+</span><span class="line" id="L797"><a class="ln" aria-label="Line 797" href="#L797">797</a>
+</span><span class="line" id="L798"><a class="ln" aria-label="Line 798" href="#L798">798</a>/-- The empirical measure is a probability measure for `N ≥ 1`. -/
+</span><span class="line" id="L799"><a class="ln" aria-label="Line 799" href="#L799">799</a>theorem empirical_isProbabilityMeasure {d N : ℕ} (hN : 0 &lt; N) (X : Config d N) :
+</span><span class="line" id="L800"><a class="ln" aria-label="Line 800" href="#L800">800</a>    IsProbabilityMeasure (empirical X) := by
+</span><span class="line" id="L801"><a class="ln" aria-label="Line 801" href="#L801">801</a>  refine ⟨?_⟩
+</span><span class="line" id="L802"><a class="ln" aria-label="Line 802" href="#L802">802</a>  have hN&#x27; : (N : ℝ≥0∞) ≠ 0 := by exact_mod_cast hN.ne&#x27;
+</span><span class="line" id="L803"><a class="ln" aria-label="Line 803" href="#L803">803</a>  simp [empirical, ENNReal.inv_mul_cancel hN&#x27; (ENNReal.natCast_ne_top N)]
+</span><span class="line" id="L804"><a class="ln" aria-label="Line 804" href="#L804">804</a>
+</span><span class="line" id="L805"><a class="ln" aria-label="Line 805" href="#L805">805</a>/-- `μ_N(φ) = N⁻¹ ∑_i φ(x_i)`. -/
+</span><span class="line" id="L806"><a class="ln" aria-label="Line 806" href="#L806">806</a>theorem pair_empirical {d N : ℕ} (hN : 0 &lt; N) (X : Config d N) (φ : Torus d → ℝ) :
+</span><span class="line" id="L807"><a class="ln" aria-label="Line 807" href="#L807">807</a>    pair (empirical X) φ = (N : ℝ)⁻¹ * ∑ i, φ (X i) := by
+</span><span class="line" id="L808"><a class="ln" aria-label="Line 808" href="#L808">808</a>  unfold pair empirical
+</span><span class="line" id="L809"><a class="ln" aria-label="Line 809" href="#L809">809</a>  rw [integral_smul_measure, integral_finsetSum_measure]
+</span><span class="line" id="L810"><a class="ln" aria-label="Line 810" href="#L810">810</a>  · simp [integral_dirac, ENNReal.toReal_inv]
+</span><span class="line" id="L811"><a class="ln" aria-label="Line 811" href="#L811">811</a>  · intro i _
+</span><span class="line" id="L812"><a class="ln" aria-label="Line 812" href="#L812">812</a>    exact integrable_dirac (by simp)
+</span><span class="line" id="L813"><a class="ln" aria-label="Line 813" href="#L813">813</a>
+</span><span class="line" id="L814"><a class="ln" aria-label="Line 814" href="#L814">814</a>section LatticeSums
+</span><span class="line" id="L815"><a class="ln" aria-label="Line 815" href="#L815">815</a>
+</span><span class="line" id="L816"><a class="ln" aria-label="Line 816" href="#L816">816</a>variable {d : ℕ}
+</span><span class="line" id="L817"><a class="ln" aria-label="Line 817" href="#L817">817</a>
+</span><span class="line" id="L818"><a class="ln" aria-label="Line 818" href="#L818">818</a>/-- The standard lattice `ℤ^d ⊂ ℝ^d` as a `ℤ`-submodule. -/
+</span><span class="line" id="L819"><a class="ln" aria-label="Line 819" href="#L819">819</a>abbrev eucLattice (d : ℕ) : Submodule ℤ (Euc d) :=
+</span><span class="line" id="L820"><a class="ln" aria-label="Line 820" href="#L820">820</a>  Submodule.span ℤ (Set.range (EuclideanSpace.basisFun (Fin d) ℝ).toBasis)
+</span><span class="line" id="L821"><a class="ln" aria-label="Line 821" href="#L821">821</a>
+</span><span class="line" id="L822"><a class="ln" aria-label="Line 822" href="#L822">822</a>theorem Lattice.toEuc_mem (k : Lattice d) : Lattice.toEuc k ∈ eucLattice d := by
+</span><span class="line" id="L823"><a class="ln" aria-label="Line 823" href="#L823">823</a>  have : Lattice.toEuc k = ∑ i, (k i) • (EuclideanSpace.basisFun (Fin d) ℝ).toBasis i := by
+</span><span class="line" id="L824"><a class="ln" aria-label="Line 824" href="#L824">824</a>    ext j
+</span><span class="line" id="L825"><a class="ln" aria-label="Line 825" href="#L825">825</a>    simp [Lattice.toEuc, EuclideanSpace.basisFun_apply, Pi.single_apply, Finset.sum_apply]
+</span><span class="line" id="L826"><a class="ln" aria-label="Line 826" href="#L826">826</a>  rw [this]
+</span><span class="line" id="L827"><a class="ln" aria-label="Line 827" href="#L827">827</a>  exact Submodule.sum_mem _ fun i _ =&gt; Submodule.smul_mem _ _ (Submodule.subset_span ⟨i, rfl⟩)
+</span><span class="line" id="L828"><a class="ln" aria-label="Line 828" href="#L828">828</a>
+</span><span class="line" id="L829"><a class="ln" aria-label="Line 829" href="#L829">829</a>theorem summable_enorm_rpow_aux (r : ℝ) (hr : r &lt; -(d : ℝ)) :
+</span><span class="line" id="L830"><a class="ln" aria-label="Line 830" href="#L830">830</a>    Summable fun k : NonzeroLattice d =&gt; Lattice.enorm k.1 ^ r := by
+</span><span class="line" id="L831"><a class="ln" aria-label="Line 831" href="#L831">831</a>  have hrk : Module.finrank ℤ (eucLattice d) = d := by
+</span><span class="line" id="L832"><a class="ln" aria-label="Line 832" href="#L832">832</a>    rw [ZLattice.rank ℝ (eucLattice d)]
+</span><span class="line" id="L833"><a class="ln" aria-label="Line 833" href="#L833">833</a>    simp
+</span><span class="line" id="L834"><a class="ln" aria-label="Line 834" href="#L834">834</a>  have hs : Summable fun z : eucLattice d =&gt; ‖z‖ ^ r := ZLattice.summable_norm_rpow (eucLattice d) r (by rw [hrk]; exact hr)
+</span><span class="line" id="L835"><a class="ln" aria-label="Line 835" href="#L835">835</a>  let f : NonzeroLattice d → eucLattice d := fun k =&gt; ⟨Lattice.toEuc k.1, Lattice.toEuc_mem k.1⟩
+</span><span class="line" id="L836"><a class="ln" aria-label="Line 836" href="#L836">836</a>  have hf : Function.Injective f := by
+</span><span class="line" id="L837"><a class="ln" aria-label="Line 837" href="#L837">837</a>    intro k l h
+</span><span class="line" id="L838"><a class="ln" aria-label="Line 838" href="#L838">838</a>    apply Subtype.ext
+</span><span class="line" id="L839"><a class="ln" aria-label="Line 839" href="#L839">839</a>    funext i
+</span><span class="line" id="L840"><a class="ln" aria-label="Line 840" href="#L840">840</a>    have := congrArg (fun z : eucLattice d =&gt; (z : Euc d) i) h
+</span><span class="line" id="L841"><a class="ln" aria-label="Line 841" href="#L841">841</a>    simpa [f, Lattice.toEuc] using this
+</span><span class="line" id="L842"><a class="ln" aria-label="Line 842" href="#L842">842</a>  have hs2 : Summable ((fun z : eucLattice d =&gt; ‖z‖ ^ r) ∘ f) := hs.comp_injective hf
+</span><span class="line" id="L843"><a class="ln" aria-label="Line 843" href="#L843">843</a>  refine hs2.congr fun k =&gt; ?_
+</span><span class="line" id="L844"><a class="ln" aria-label="Line 844" href="#L844">844</a>  simp only [Function.comp]
+</span><span class="line" id="L845"><a class="ln" aria-label="Line 845" href="#L845">845</a>  rfl
+</span><span class="line" id="L846"><a class="ln" aria-label="Line 846" href="#L846">846</a>
+</span><span class="line" id="L847"><a class="ln" aria-label="Line 847" href="#L847">847</a>theorem summable_jp_rpow_aux (m : ℝ) (hm : (d : ℝ) &lt; 2 * m) :
+</span><span class="line" id="L848"><a class="ln" aria-label="Line 848" href="#L848">848</a>    Summable fun k : NonzeroLattice d =&gt; Lattice.jp k.1 ^ (-(2 * m)) := by
+</span><span class="line" id="L849"><a class="ln" aria-label="Line 849" href="#L849">849</a>  have hs := summable_enorm_rpow_aux (d := d) (-(2 * m)) (by linarith)
+</span><span class="line" id="L850"><a class="ln" aria-label="Line 850" href="#L850">850</a>  refine Summable.of_nonneg_of_le (fun k =&gt; by unfold Lattice.jp; positivity)
+</span><span class="line" id="L851"><a class="ln" aria-label="Line 851" href="#L851">851</a>    (fun k =&gt; ?_) (hs.mul_left ((2 * Real.pi) ^ (-(2 * m))))
+</span><span class="line" id="L852"><a class="ln" aria-label="Line 852" href="#L852">852</a>  have he : 0 &lt; Lattice.enorm k.1 := by
+</span><span class="line" id="L853"><a class="ln" aria-label="Line 853" href="#L853">853</a>    unfold Lattice.enorm
+</span><span class="line" id="L854"><a class="ln" aria-label="Line 854" href="#L854">854</a>    exact norm_pos_iff.mpr (fun h =&gt; k.2 (by
+</span><span class="line" id="L855"><a class="ln" aria-label="Line 855" href="#L855">855</a>      funext i
+</span><span class="line" id="L856"><a class="ln" aria-label="Line 856" href="#L856">856</a>      have := congrFun (congrArg WithLp.ofLp h) i
+</span><span class="line" id="L857"><a class="ln" aria-label="Line 857" href="#L857">857</a>      simpa [Lattice.toEuc] using this))
+</span><span class="line" id="L858"><a class="ln" aria-label="Line 858" href="#L858">858</a>  have h1 : 2 * Real.pi * Lattice.enorm k.1 ≤ Lattice.jp k.1 := by
+</span><span class="line" id="L859"><a class="ln" aria-label="Line 859" href="#L859">859</a>    unfold Lattice.jp
+</span><span class="line" id="L860"><a class="ln" aria-label="Line 860" href="#L860">860</a>    apply Real.le_sqrt_of_sq_le
+</span><span class="line" id="L861"><a class="ln" aria-label="Line 861" href="#L861">861</a>    nlinarith [sq_nonneg (Lattice.enorm k.1)]
+</span><span class="line" id="L862"><a class="ln" aria-label="Line 862" href="#L862">862</a>  have hm0 : 0 &lt; 2 * m := by
+</span><span class="line" id="L863"><a class="ln" aria-label="Line 863" href="#L863">863</a>    have : (0:ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L864"><a class="ln" aria-label="Line 864" href="#L864">864</a>    linarith
+</span><span class="line" id="L865"><a class="ln" aria-label="Line 865" href="#L865">865</a>  calc Lattice.jp k.1 ^ (-(2 * m)) ≤ (2 * Real.pi * Lattice.enorm k.1) ^ (-(2 * m)) :=
+</span><span class="line" id="L866"><a class="ln" aria-label="Line 866" href="#L866">866</a>        Real.rpow_le_rpow_of_nonpos (by positivity) h1 (by linarith)
+</span><span class="line" id="L867"><a class="ln" aria-label="Line 867" href="#L867">867</a>    _ = _ := Real.mul_rpow (by positivity) he.le
+</span><span class="line" id="L868"><a class="ln" aria-label="Line 868" href="#L868">868</a>
+</span><span class="line" id="L869"><a class="ln" aria-label="Line 869" href="#L869">869</a>end LatticeSums
+</span><span class="line" id="L870"><a class="ln" aria-label="Line 870" href="#L870">870</a>
+</span><span class="line" id="L871"><a class="ln" aria-label="Line 871" href="#L871">871</a>/-- Lattice sums `∑_{k ≠ 0} ⟨k⟩^{-2m}` converge exactly when `2m &gt; d`. -/
+</span><span class="line" id="L872"><a class="ln" aria-label="Line 872" href="#L872">872</a>theorem summable_jp_rpow {d : ℕ} (m : ℝ) (hm : (d : ℝ) &lt; 2 * m) :
+</span><span class="line" id="L873"><a class="ln" aria-label="Line 873" href="#L873">873</a>    Summable fun k : NonzeroLattice d =&gt; Lattice.jp k.1 ^ (-(2 * m)) := by
+</span><span class="line" id="L874"><a class="ln" aria-label="Line 874" href="#L874">874</a>  exact summable_jp_rpow_aux m hm
+</span><span class="line" id="L875"><a class="ln" aria-label="Line 875" href="#L875">875</a>
+</span><span class="line" id="L876"><a class="ln" aria-label="Line 876" href="#L876">876</a>/-- `|k| ≤ ⟨k⟩` and `⟨k⟩ ≤ (1 + 2π)|k|` for `k ≠ 0`. -/
+</span><span class="line" id="L877"><a class="ln" aria-label="Line 877" href="#L877">877</a>theorem enorm_le_jp {d : ℕ} (k : Lattice d) : Lattice.enorm k ≤ Lattice.jp k := by
+</span><span class="line" id="L878"><a class="ln" aria-label="Line 878" href="#L878">878</a>  unfold Lattice.jp
+</span><span class="line" id="L879"><a class="ln" aria-label="Line 879" href="#L879">879</a>  apply Real.le_sqrt_of_sq_le
+</span><span class="line" id="L880"><a class="ln" aria-label="Line 880" href="#L880">880</a>  have h1 : (1 : ℝ) ≤ 4 * Real.pi ^ 2 := by nlinarith [Real.pi_gt_three]
+</span><span class="line" id="L881"><a class="ln" aria-label="Line 881" href="#L881">881</a>  nlinarith [sq_nonneg (Lattice.enorm k)]
+</span><span class="line" id="L882"><a class="ln" aria-label="Line 882" href="#L882">882</a>
+</span><span class="line" id="L883"><a class="ln" aria-label="Line 883" href="#L883">883</a>theorem jp_le_enorm {d : ℕ} (k : NonzeroLattice d) :
+</span><span class="line" id="L884"><a class="ln" aria-label="Line 884" href="#L884">884</a>    Lattice.jp k.1 ≤ (1 + 2 * Real.pi) * Lattice.enorm k.1 := by
+</span><span class="line" id="L885"><a class="ln" aria-label="Line 885" href="#L885">885</a>  have he : 1 ≤ Lattice.enorm k.1 := by
+</span><span class="line" id="L886"><a class="ln" aria-label="Line 886" href="#L886">886</a>    obtain ⟨i, hi⟩ : ∃ i, k.1 i ≠ 0 := by
+</span><span class="line" id="L887"><a class="ln" aria-label="Line 887" href="#L887">887</a>      by_contra h
+</span><span class="line" id="L888"><a class="ln" aria-label="Line 888" href="#L888">888</a>      push Not at h
+</span><span class="line" id="L889"><a class="ln" aria-label="Line 889" href="#L889">889</a>      exact k.2 (funext h)
+</span><span class="line" id="L890"><a class="ln" aria-label="Line 890" href="#L890">890</a>    have h1 : (1 : ℝ) ≤ |(k.1 i : ℝ)| := by
+</span><span class="line" id="L891"><a class="ln" aria-label="Line 891" href="#L891">891</a>      have : (1 : ℤ) ≤ |k.1 i| := Int.one_le_abs hi
+</span><span class="line" id="L892"><a class="ln" aria-label="Line 892" href="#L892">892</a>      exact_mod_cast this
+</span><span class="line" id="L893"><a class="ln" aria-label="Line 893" href="#L893">893</a>    calc (1 : ℝ) ≤ |(k.1 i : ℝ)| := h1
+</span><span class="line" id="L894"><a class="ln" aria-label="Line 894" href="#L894">894</a>      _ = ‖(Lattice.toEuc k.1) i‖ := by simp [Lattice.toEuc]
+</span><span class="line" id="L895"><a class="ln" aria-label="Line 895" href="#L895">895</a>      _ ≤ ‖Lattice.toEuc k.1‖ := PiLp.norm_apply_le _ i
+</span><span class="line" id="L896"><a class="ln" aria-label="Line 896" href="#L896">896</a>  unfold Lattice.jp
+</span><span class="line" id="L897"><a class="ln" aria-label="Line 897" href="#L897">897</a>  apply Real.sqrt_le_iff.mpr
+</span><span class="line" id="L898"><a class="ln" aria-label="Line 898" href="#L898">898</a>  refine ⟨by positivity, ?_⟩
+</span><span class="line" id="L899"><a class="ln" aria-label="Line 899" href="#L899">899</a>  nlinarith [Real.pi_gt_three, mul_pos Real.pi_pos Real.pi_pos]
+</span><span class="line" id="L900"><a class="ln" aria-label="Line 900" href="#L900">900</a>
+</span><span class="line" id="L901"><a class="ln" aria-label="Line 901" href="#L901">901</a>end HRS
+</span></code></pre></main></body></html>

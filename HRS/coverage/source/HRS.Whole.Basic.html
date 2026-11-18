@@ -1,0 +1,927 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Basic · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Basic</code></h1><p><a href="../../lean/HRS/Whole/Basic.lean">Open the unaltered Lean file</a> · 926 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Oscillator
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Energy.Modulated
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Whole-space foundations III: kernel, modulated energy, Gibbs laws, thermal equilibrium,
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>rates, smallness class, admissible decaying densities
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Source: HRS whole-space supplement (S) and, where the supplement refers to it, the periodic
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>main paper (M).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* Normalisation (S lines 217-226, `W:r2:normalization`): `d ≥ 2`; `g(x) = |x|^{-s}` for
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `0 &lt; s &lt; d`, `g(x) = -log|x|` for `s = 0`; &quot;no factor `1/s` and no periodic zero-Fourier-mode
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  convention&quot;; `F_N^g(X_N,μ) = (2N²)⁻¹ ∑_{i≠j} g(x_i-x_j) - μ_N(g*μ) + ½ μ^{⊗2}(g)`,
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `μ_N = N⁻¹ ∑ δ_{x_i}`; &quot;deleted diagonals are always the particle pair diagonal&quot;.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* Section S7 setup (S lines 5268-5300): `S:eq:modulated-energy` (`N⁻² ∑_{i&lt;j}`, the same
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  quantity), `S:eq:modulated-law` `dQ_{N,β}(μ) = e^{-βN F_N}/K_{N,β}(μ) dμ^{⊗N}`,
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `m_N = Q^{(1)} = E[μ_N]`; `S:eq:response` `P_μ f = f - μ(f)`, `K_μ f = P_μ[g*(fμ)]`,
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  `R_{β,μ} = (I+βK_μ)^{-1}` on `L²_0(μ)`.  The normaliser is the main paper&#x27;s
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `H:eq:modulated-gibbs` (M lines 446-452): `K_{N,β₀}(μ) = ∫ e^{-β₀ N F_N} dμ^{⊗N}`.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* Centerings (S lines 211-216): `m_N^t = E μ_N^t`, `η_N^t = √N(μ_N^t - μ^t)`,
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  `ζ_N^t = √N(μ_N^t - m_N^t)`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* Centered pair functional `W:eq:euc-D` (S lines 940-944).
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>* Quadratic confinement `V(x) = a|x|²/2`, `a &gt; 0` (S lines 166, 318); the canonical Gibbs
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  ensemble `P_N ∝ exp[-β(∑_i V(x_i) + N⁻¹ ∑_{i&lt;j} g(x_i-x_j))] dX_N` (S lines 1375-1376;
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  M `H:eq:canonical`, lines 907-912).
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>* Thermal equilibrium: free energy `W:eq:euc-free-energy` (S lines 1352-1356), thermal
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  equation `W:eq:euc-thermal-bounds` first display (S line 1360; M `H:eq:thermal-equation`,
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  lines 915-918).  Existence/uniqueness is `W:prop:euc-thermal` (S3.4, package S-STAT-01).
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>* Rates `W:r2:rate-summary` (S lines 302-309): `δ_N`, `o_N` coincide literally with the main
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  paper&#x27;s (M lines 551, 720-735), so `HRS.deltaN`, `HRS.oN` are reused;
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  `H:eq:whole-general-localization` (S lines 371-374) and
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `H:eq:whole-explicit-localization` (S lines 342-345).
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>* Smallness class `H:eq:whole-smallness` (S lines 318-336) and `m = 24d + 240` (S line 338).
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>* Definition S.A.1 `B:def:decaying-density` (S lines 9809-9842); `m_*` is not defined in the
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  supplement, it is the main paper&#x27;s `B:eq:mstar-def` `m_* = ⌊d/2⌋ + 3` (M line 10158).
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>## Representation decisions
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>* The kernel `rieszKernel d s` is defined pointwise with the exact normalisation; at `x = 0`
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  Lean&#x27;s `0^(-s) = 0` and `-log 0 = 0` are junk values, never load-bearing (the energy deletes
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  the diagonal and integrals are against measures with densities).
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>* Convolutions, energies and the Gibbs normaliser are Bochner integrals (junk `0` when not
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  integrable; integrability is a hypothesis where needed), as on the torus.
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>* `R_{β,μ}` is represented by the response equation `h + βK_μ h = P_μ ψ`, `μ(h) = 0`
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  (`IsResponse`) and `Classical.choose` (`responseInverse`), as on the torus (ISSUES K4).
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>* The thermal equilibrium is a *predicate* (`IsThermalDensity`: probability density solving
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  the thermal equation) and a predicate `IsFreeEnergyMinimizer` (minimiser of
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  `W:eq:euc-free-energy` among finite-free-energy probability densities); `thermalDensity`
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  picks a solution by choice when one exists (`0` otherwise).  Nothing here assumes
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  existence, uniqueness, tails or smoothness: these are the S3.4 targets.
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>* The smallness class is a `Prop`-structure with exactly the source&#x27;s conditions
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  (`ψ ∈ C_c^∞`, `ψ ≠ 0`, `μ_β(ψ) = 0`, the `C_b^{100d+1001}` norm (project SUM convention,
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  `HRS.cbNorm`) plus the `Σ^{102d+1020}` norm of `√ρ_β ψ` at most `ε_*`); `ε = 0` is allowed.
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>* Definition S.A.1 is an inductive type with the two source choices (A)/(B) as constructors
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  carrying exactly the stated parameter constraints; `r_𝔠, p_𝔠, e_N^𝔠, m_𝔠, Γ_𝔠` are functions
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  of it, and the three embedding claims of the last sentence are separate sorried theorems.
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>-/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>noncomputable section
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>open scoped ENNReal NNReal BigOperators ContDiff FourierTransform
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>namespace HRS.Whole
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>variable {d N : ℕ}
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>/-! ### Configurations, empirical measure, pairings -/
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>/-- A configuration `X_N = (x_1,…,x_N)` of `N` particles in `ℝ^d`. -/
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>abbrev EucConfig (d N : ℕ) := Fin N → Euc d
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>/-- The empirical measure `μ_N = N⁻¹ ∑_i δ_{x_i}` (S line 223). -/
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>def empirical (X : EucConfig d N) : Measure (Euc d) :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  ((N : ℝ≥0∞)⁻¹) • ∑ i : Fin N, Measure.dirac (X i)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>/-- `μ(φ) = ∫ φ dμ`. -/
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>def pair (μ : Measure (Euc d)) (φ : Euc d → ℝ) : ℝ := ∫ x, φ x ∂μ
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>/-- `⟨f, g⟩_{L²(μ)}`. -/
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>def l2Inner (μ : Measure (Euc d)) (f g : Euc d → ℝ) : ℝ := ∫ x, f x * g x ∂μ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- `P_μ f = f - μ(f)` (`S:eq:response`, line 5296; S line 221). -/
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>def projMean (μ : Measure (Euc d)) (f : Euc d → ℝ) : Euc d → ℝ := fun x =&gt; f x - pair μ f
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>/-- The measure `ρ dx`. -/
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>def withDensityReal (ρ : Euc d → ℝ) : Measure (Euc d) :=
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  volume.withDensity fun x =&gt; ENNReal.ofReal (ρ x)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>/-- A probability density on `ℝ^d`. -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>structure IsProbDensity (ρ : Euc d → ℝ) : Prop where
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  nonneg : ∀ x, 0 ≤ ρ x
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  measurable : Measurable ρ
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  integral_one : ∫ x, ρ x = 1
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>/-! ### The whole-space Riesz / logarithmic kernel (`W:r2:normalization`, S lines 217-226) -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>/-- `g(x) = |x|^{-s}` for `s ≠ 0`, `g(x) = -log|x|` for `s = 0`: no factor `1/s`, no zero-mode
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>adjustment.  Junk value at `x = 0`. -/
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>def rieszKernel (d : ℕ) (s : ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  if s = 0 then -Real.log ‖x‖ else ‖x‖ ^ (-s)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- The force `∇g` (Mathlib&#x27;s `gradient`; junk at `0`). -/
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>def rieszKernelGrad (d : ℕ) (s : ℝ) (x : Euc d) : Euc d := gradient (rieszKernel d s) x
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>/-- `g * μ (x) = ∫ g(x-y) dμ(y)`. -/
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>def convMeasure (g : Euc d → ℝ) (μ : Measure (Euc d)) (x : Euc d) : ℝ := ∫ y, g (x - y) ∂μ
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>/-- `g * f (x) = ∫ g(x-y) f(y) dy`. -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>def convFun (g f : Euc d → ℝ) (x : Euc d) : ℝ := ∫ y, g (x - y) * f y
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>/-- `∬ g(x-y) dν(x) dν&#x27;(y)`. -/
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>def energyPairing (g : Euc d → ℝ) (ν ν&#x27; : Measure (Euc d)) : ℝ := ∫ x, ∫ y, g (x - y) ∂ν&#x27; ∂ν
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-! ### Modulated energy and modulated Gibbs law -/
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>/-- The modulated energy `F_N^g(X_N, μ) = (2N²)⁻¹ ∑_{i≠j} g(x_i-x_j) - μ_N(g*μ) + ½ μ^{⊗2}(g)`
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>(`W:r2:normalization`, S lines 221-226), with the literal deleted particle diagonal and the
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>factor `½` on the background term. -/
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>def modulatedEnergy (g : Euc d → ℝ) (X : EucConfig d N) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  (1 / (2 * (N : ℝ) ^ 2)) * ∑ i, ∑ j ∈ Finset.univ.erase i, g (X i - X j)
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    - (1 / (N : ℝ)) * ∑ i, convMeasure g μ (X i)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    + (1 / 2) * energyPairing g μ μ
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>/-- `F_N` for the whole-space Riesz/log kernel with parameters `d, s`. -/
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>def rieszModulatedEnergy (d : ℕ) (s : ℝ) (X : EucConfig d N) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  modulatedEnergy (rieszKernel d s) X μ
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>/-- The normaliser `K_{N,β}(μ) = ∫ e^{-βN F_N^g} dμ^{⊗N}` (`S:eq:modulated-law`, S lines
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>5285-5288; M lines 446-452). -/
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>def gibbsNormalizer (g : Euc d → ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) : ℝ :=
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  ∫ X : EucConfig d N, Real.exp (-β * N * modulatedEnergy g X μ) ∂(Measure.pi fun _ =&gt; μ)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>/-- The modulated Gibbs law `Q_{N,β}(μ) = K_{N,β}(μ)⁻¹ e^{-βN F_N^g(X_N,μ)} μ^{⊗N}`
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>(`S:eq:modulated-law`); `Q_{N,0}(μ) = μ^{⊗N}` (S line 395). -/
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>def modulatedGibbs (g : Euc d → ℝ) (N : ℕ) (β : ℝ) (μ : Measure (Euc d)) :
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    Measure (EucConfig d N) :=
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  (ENNReal.ofReal (gibbsNormalizer g N β μ))⁻¹ •
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    (Measure.pi fun _ =&gt; μ).withDensity
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      fun X =&gt; ENNReal.ofReal (Real.exp (-β * N * modulatedEnergy g X μ))
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>/-- The centered pair functional `D_N(h;ν) = N⁻² ∑_{i≠j} h(x_i,x_j) - 2 μ_N(∫ h(·,y) dν(y))
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>+ ∬ h dν^{⊗2}` of `W:eq:euc-D` (S lines 940-944), &quot;with the original deleted particle
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>diagonal&quot;. -/
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>def centeredPairFunctional (h : Euc d → Euc d → ℝ) (X : EucConfig d N) (ν : Measure (Euc d)) :
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    ℝ :=
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  (1 / (N : ℝ) ^ 2) * ∑ i, ∑ j ∈ Finset.univ.erase i, h (X i) (X j)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    - 2 * ((1 / (N : ℝ)) * ∑ i, ∫ y, h (X i) y ∂ν)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    + ∫ x, ∫ y, h x y ∂ν ∂ν
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>/-! ### Canonical Gibbs ensemble with quadratic confinement -/
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>/-- The confinement `V(x) = a|x|²/2` (S lines 166, 318). -/
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>def confinement (a : ℝ) (x : Euc d) : ℝ := a * ‖x‖ ^ 2 / 2
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>/-- `H_N(X_N) = ∑_i V(x_i) + N⁻¹ ∑_{i&lt;j} g(x_i-x_j)` (S lines 1375-1376). -/
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>def canonicalHamiltonian (g V : Euc d → ℝ) (X : EucConfig d N) : ℝ :=
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  ∑ i, V (X i) +
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    (1 / (N : ℝ)) * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), g (X i - X j)
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>/-- `Z_{N,β} = ∫ e^{-β H_N} dX_N` (Lebesgue measure on `(ℝ^d)^N`). -/
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>def canonicalPartition (g V : Euc d → ℝ) (N : ℕ) (β : ℝ) : ℝ :=
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  ∫ X : EucConfig d N, Real.exp (-β * canonicalHamiltonian g V X)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>/-- The canonical Gibbs ensemble `P_{N,β} = Z⁻¹ e^{-β H_N} dX_N`. -/
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>def canonicalGibbs (g V : Euc d → ℝ) (N : ℕ) (β : ℝ) : Measure (EucConfig d N) :=
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  (ENNReal.ofReal (canonicalPartition g V N β))⁻¹ •
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    (volume : Measure (EucConfig d N)).withDensity
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      fun X =&gt; ENNReal.ofReal (Real.exp (-β * canonicalHamiltonian g V X))
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>/-! ### Marginals, centerings, equilibrium operators -/
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>open Classical in
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-- The first marginal `P^{(1)}` (`0` if `N = 0`). -/
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>def firstMarginal (P : Measure (EucConfig d N)) : Measure (Euc d) :=
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  if h : 0 &lt; N then P.map (fun X =&gt; X ⟨0, h⟩) else 0
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>/-- Exchangeability of a law on `(ℝ^d)^N`. -/
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>def IsExchangeable (P : Measure (EucConfig d N)) : Prop :=
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  ∀ σ : Equiv.Perm (Fin N), P.map (fun X =&gt; X ∘ σ) = P
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>/-- The actual first marginal `m_N = E[μ_N]` (S line 211; `S:eq:modulated-law`). -/
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>def meanEmpirical (P : Measure (EucConfig d N)) : Measure (Euc d) := P.bind empirical
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>/-- `μ_N - μ` in `B_m`. -/
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>def flucB (m : ℝ) (X : EucConfig d N) (μ : Measure (Euc d)) : OscDual d m :=
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  OscDual.ofMeasureDiff m (empirical X) μ
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>/-- Mean-field centering `η_N = √N(μ_N - μ)` in `B_m` (S line 212). -/
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>def etaB (m : ℝ) (X : EucConfig d N) (μ : Measure (Euc d)) : OscDual d m :=
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  Real.sqrt N • flucB m X μ
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>/-- Exact centering `ζ_N = √N(μ_N - m_N)` in `B_m`, `m_N = E_P[μ_N]` (S line 213). -/
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>def zetaB (m : ℝ) (P : Measure (EucConfig d N)) (X : EucConfig d N) : OscDual d m :=
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>  Real.sqrt N • OscDual.ofMeasureDiff m (empirical X) (meanEmpirical P)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>/-- `K_μ f = P_μ[g*(fμ)]` (`S:eq:response`, line 5296). -/
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>def Kop (g : Euc d → ℝ) (μ : Measure (Euc d)) (f : Euc d → ℝ) : Euc d → ℝ :=
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  projMean μ fun x =&gt; ∫ y, g (x - y) * f y ∂μ
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>/-- The response equation for `h = R_{β,μ} P_μ ψ = (I+βK_μ)^{-1} P_μ ψ` on `L²_0(μ)`:
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>`h ∈ L²_0(μ)` and `h + βK_μ h = P_μ ψ` (`S:eq:response`). -/
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>def IsResponse (g : Euc d → ℝ) (μ : Measure (Euc d)) (β : ℝ) (ψ h : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  MemL2Zero μ h ∧ ∀ᵐ x ∂μ, h x + β * Kop g μ h x = projMean μ ψ x
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>open Classical in
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>/-- `R_{β,μ} P_μ ψ`: the solution of the response equation (`0` if none exists). -/
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>def responseInverse (g : Euc d → ℝ) (μ : Measure (Euc d)) (β : ℝ) (ψ : Euc d → ℝ) :
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    Euc d → ℝ :=
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  if h : ∃ h, IsResponse g μ β ψ h then h.choose else 0
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>/-- The susceptibility covariance form `C_{β,μ}(φ,ψ) = ⟨P_μ φ, R_{β,μ} P_μ ψ⟩_{L²(μ)}`
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>(S line 174 refers to the main paper&#x27;s `H:eq:susceptibility`). -/
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>def susceptibilityCov (g : Euc d → ℝ) (μ : Measure (Euc d)) (β : ℝ) (φ ψ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  l2Inner μ (projMean μ φ) (responseInverse g μ β ψ)
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>/-! ### Thermal equilibrium (S3.4, `W:prop:euc-thermal`, S lines 1348-1384) -/
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>/-- The mean-field free energy
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>`𝓕(ν) = β⁻¹ ∫ ρ log ρ dx + ∫ V dν + ½ ∬ g(x-y) dν(x) dν(y)`, `ν = ρ dx`
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>(`W:eq:euc-free-energy`, S lines 1352-1356). -/
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>def freeEnergy (g V : Euc d → ℝ) (β : ℝ) (ρ : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>  β⁻¹ * (∫ x, ρ x * Real.log (ρ x)) + (∫ x, V x * ρ x) +
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    (1 / 2) * (∫ x, ∫ y, g (x - y) * ρ x * ρ y)
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>/-- Finiteness of the three terms of the free energy (so that the Bochner integrals in
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>`freeEnergy` are the source&#x27;s integrals). -/
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>def HasFiniteFreeEnergy (g V : Euc d → ℝ) (ρ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>  Integrable (fun x =&gt; ρ x * Real.log (ρ x)) ∧ Integrable (fun x =&gt; V x * ρ x) ∧
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    Integrable (fun p : Euc d × Euc d =&gt; g (p.1 - p.2) * ρ p.1 * ρ p.2)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      ((volume : Measure (Euc d)).prod volume)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>/-- `ρ` is a minimiser of the free energy among probability densities with finite free
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>energy (`W:prop:euc-thermal`: &quot;has a unique minimizer `μ_β`&quot;). -/
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>def IsFreeEnergyMinimizer (g V : Euc d → ℝ) (β : ℝ) (ρ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  IsProbDensity ρ ∧ HasFiniteFreeEnergy g V ρ ∧
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    ∀ ρ&#x27; : Euc d → ℝ, IsProbDensity ρ&#x27; → HasFiniteFreeEnergy g V ρ&#x27; →
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      freeEnergy g V β ρ ≤ freeEnergy g V β ρ&#x27;
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>/-- The thermal equation `ρ_β(x) = Z⁻¹ e^{-β(V(x) + g*μ_β(x))}`, `μ_β = ρ_β dx`
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>(`W:eq:euc-thermal-bounds` first display, S line 1360; M `H:eq:thermal-equation`). -/
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>def IsThermalDensity (g V : Euc d → ℝ) (β : ℝ) (ρ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  IsProbDensity ρ ∧
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    ∀ x, ρ x = Real.exp (-β * (V x + convMeasure g (withDensityReal ρ) x)) /
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      ∫ y, Real.exp (-β * (V y + convMeasure g (withDensityReal ρ) y))
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>/-- &quot;The actual interacting thermal equilibrium measure&quot; of the quadratic confinement
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>`V = a|x|²/2` at inverse temperature `β` (S lines 318-320): the minimiser of the mean-field
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>free energy, which solves the thermal equation for the whole-space kernel
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>(`W:prop:euc-thermal`, S lines 1357-1360).  Both clauses are what the source *proves* about
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>`μ_β`; neither existence nor uniqueness is assumed here. -/
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>def IsThermalEquilibrium (d : ℕ) (s a β : ℝ) (ρ : Euc d → ℝ) : Prop :=
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  IsFreeEnergyMinimizer (rieszKernel d s) (confinement a) β ρ ∧
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>    IsThermalDensity (rieszKernel d s) (confinement a) β ρ
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>open Classical in
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>/-- A thermal equilibrium density chosen by `Classical.choose` when one exists (`0`
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>otherwise).  Existence and uniqueness are the S3.4 target `thermalDensity_spec`, not
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>assumed here. -/
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>def thermalDensity (d : ℕ) (s a β : ℝ) : Euc d → ℝ :=
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  if h : ∃ ρ, IsThermalEquilibrium d s a β ρ then h.choose else 0
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>/-- `μ_β = ρ_β dx`. -/
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>def thermalMeasure (d : ℕ) (s a β : ℝ) : Measure (Euc d) :=
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  withDensityReal (thermalDensity d s a β)
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>/-- The Gaussian comparison density `γ_{βa}(x) = (βa/2π)^{d/2} e^{-βa|x|²/2}`
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>(`W:eq:euc-thermal-bounds`, S lines 1362-1363). -/
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>def gaussianComparison (d : ℕ) (a β : ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  (β * a / (2 * Real.pi)) ^ ((d : ℝ) / 2) * Real.exp (-β * a * ‖x‖ ^ 2 / 2)
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>/-! ### Rates and localisation costs -/
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>/-- `δ_N` and `o_N` of `W:r2:rate-summary` (S lines 302-309) coincide literally with the main
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>paper&#x27;s (M lines 551, 720-735): `δ_N = N⁻¹` (`0 ≤ s &lt; d/2`), `N⁻¹ log(eN)` (`s = d/2`),
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>`N^{1-d/s}` (`d/2 &lt; s &lt; d`); `o_N = C₀ N^{s/d-1} + 1_{s=0} log N/(2dN)`.  They are
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>`HRS.deltaN d s N` and `HRS.oN d s C₀ N`, reused without redefinition. -/
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>theorem deltaN_eq (d : ℕ) (s : ℝ) (N : ℕ) :
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    deltaN d s N =
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      if s &lt; (d : ℝ) / 2 then (N : ℝ)⁻¹
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      else if s = (d : ℝ) / 2 then (N : ℝ)⁻¹ * Real.log (Real.exp 1 * N)
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>      else (N : ℝ) ^ (1 - (d : ℝ) / s) := by
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  rfl
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>/-- The explicit localisation rate `w_N = (N^{-1/d} + √o_N)^{4/(d+4)}` of the concrete
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>quadratic family (`H:eq:whole-explicit-localization`, S lines 342-345). -/
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>def localizationRate (d : ℕ) (s C₀ : ℝ) (N : ℕ) : ℝ :=
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  ((N : ℝ) ^ (-(1 / (d : ℝ))) + Real.sqrt (oN d s C₀ N)) ^ (4 / ((d : ℝ) + 4))
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>/-- The general covariance localisation cost
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>`w_N = inf_{R ≥ 1} { R^{d/2}(N^{-1/d} + √𝔈_N) + (1+M₂) R^{-2} }`
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>(`H:eq:whole-general-localization`, S lines 371-374), with `𝔈_N` the energy error and `M₂`
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>the second-moment bound. -/
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>def generalLocalizationRate (d : ℕ) (energyError M₂ : ℝ) (N : ℕ) : ℝ :=
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  ⨅ R : {R : ℝ // 1 ≤ R},
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    R.1 ^ ((d : ℝ) / 2) * ((N : ℝ) ^ (-(1 / (d : ℝ))) + Real.sqrt energyError) +
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>      (1 + M₂) * R.1 ^ (-(2 : ℝ))
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>/-- The spatial index `m = 24d + 240` of Theorem `H:thm:whole-space` (S line 338). -/
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>def wholeSpaceIndex (d : ℕ) : ℕ := 24 * d + 240
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>/-! ### The smallness class `H:eq:whole-smallness` (S lines 318-336) -/
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>/-- The perturbed initial density `(1 + εψ) ρ_β` (S line 324). -/
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>def perturbedDensity (ρβ : Euc d → ℝ) (ε : ℝ) (ψ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  (1 + ε * ψ x) * ρβ x
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>/-- The nonlinear preparation class of S lines 322-336: `ψ ∈ C_c^∞(ℝ^d)` nonzero with
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>`μ_β(ψ) = 0`, and the smallness
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>`‖εψ‖_{C_b^{100d+1001}} + ‖ε√ρ_β ψ‖_{Σ^{102d+1020}} ≤ ε_*` (`H:eq:whole-smallness`).
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>The `C_b^k` norm is the project&#x27;s SUM convention (`HRS.cbNorm`, M line 510 / S line 295).
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>`ε = 0` is included (S line 335). -/
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>structure IsAdmissiblePerturbation (ρβ : Euc d → ℝ) (εstar ε : ℝ) (ψ : Euc d → ℝ) : Prop where
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  smooth : ContDiff ℝ ∞ ψ
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  compactSupport : HasCompactSupport ψ
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  nonzero : ψ ≠ 0
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  meanZero : ∫ x, ψ x * ρβ x = 0
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>  small : cbNorm (100 * d + 1001) (fun x =&gt; ε * ψ x) +
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    oscNorm (102 * (d : ℝ) + 1020) (fun x =&gt; ε * Real.sqrt (ρβ x) * ψ x) ≤ εstar
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>/-! ### Definition S.A.1: admissible decaying commutator densities
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>(`B:def:decaying-density`, S lines 9809-9842) -/
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>/-- `m_* = ⌊d/2⌋ + 3` (main paper `B:eq:mstar-def`, M line 10158; the supplement uses `m_*`
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>without redefining it). -/
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>def mStar (d : ℕ) : ℕ := d / 2 + 3
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>/-- Definition S.A.1: a choice of commutator regularity and error, `𝔠 = (r_𝔠, p_𝔠, e_N^𝔠)`,
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>is one of two choices.  Standing assumptions of the definition: `0 ≤ s &lt; d - 2` (carried by
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>the theorems that use it).
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>* (A) sharp-rate density: `d &lt; a &lt; min{d+2, 2s+4}`, `r = a/2`, `p = 2d/(a-2)`, `e_N = 0`;
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>* (B) lower-regularity, slower-rate density: `s &gt; (d-4)/3`, `r = (d-s)/2`,
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  `p = 2d/(d-s-2)`, `e_N = (1 + 1_{s=0} log N) N^{-2/((s+1)(s+2))}`. -/
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>inductive DecayingDensity (d : ℕ) (s : ℝ) : Type
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  | sharp (a : ℝ) (ha : (d : ℝ) &lt; a ∧ a &lt; min ((d : ℝ) + 2) (2 * s + 4)) : DecayingDensity d s
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  | lower (hs : ((d : ℝ) - 4) / 3 &lt; s) : DecayingDensity d s
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>namespace DecayingDensity
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>variable {s : ℝ}
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>/-- `r_𝔠`. -/
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>def regularity : DecayingDensity d s → ℝ
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  | sharp a _ =&gt; a / 2
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  | lower _ =&gt; ((d : ℝ) - s) / 2
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>/-- `p_𝔠`. -/
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>def integrability : DecayingDensity d s → ℝ
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  | sharp a _ =&gt; 2 * (d : ℝ) / (a - 2)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  | lower _ =&gt; 2 * (d : ℝ) / ((d : ℝ) - s - 2)
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>/-- `e_N^𝔠`. -/
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>def errorRate : DecayingDensity d s → ℕ → ℝ
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>  | sharp _ _ =&gt; fun _ =&gt; 0
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  | lower _ =&gt; fun N =&gt;
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>      (1 + (if s = 0 then Real.log N else 0)) * (N : ℝ) ^ (-(2 / ((s + 1) * (s + 2))))
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>/-- `m_𝔠 = m_* + ⌊d/p_𝔠⌋ + 1`. -/
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>def sobolevIndex (c : DecayingDensity d s) : ℕ :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  mStar d + ⌊(d : ℝ) / c.integrability⌋₊ + 1
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>/-- `Γ_𝔠 = m_𝔠 + 2 + ⌊d(1/2 - 1/p_𝔠)⌋ + 1` (`B:eq:gamma-density`). -/
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>def gammaIndex (c : DecayingDensity d s) : ℕ :=
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  c.sobolevIndex + 2 + ⌊(d : ℝ) * (1 / 2 - 1 / c.integrability)⌋₊ + 1
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>end DecayingDensity
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>/-- The fractional derivative `|∇|^r v = 𝓕⁻¹[(2π|ξ|)^r 𝓕v]` (Mathlib&#x27;s `𝓕` has the `2π` in
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>the phase), real part taken.  WARNING: junk value `0` if `v ∉ L¹` (and for a non-integrable product); use `IsFracDerivRep`
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>(`HRS/Whole/Adjoint.lean`) in statements. -/
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>def fracGradPow (r : ℝ) (v : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  (𝓕⁻ (fun ξ : Euc d =&gt; ((2 * Real.pi * ‖ξ‖) ^ r : ℝ) * 𝓕 (fun y : Euc d =&gt; (v y : ℂ)) ξ) x).re
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>/-- `‖f‖_{L^p}` of a real function (Bochner form `(∫ |f|^p)^{1/p}`). -/
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>def lpNorm (p : ℝ) (f : Euc d → ℝ) : ℝ := (∫ x, |f x| ^ p) ^ (1 / p)
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>/-- The commutator norm `‖v‖_𝔠 = ‖∇v‖_{L^∞} + ‖ |∇|^{r_𝔠} v ‖_{L^{p_𝔠}}` of a vector field
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>(S lines 9829-9831), with `|∇|^r` applied componentwise.  WARNING: junk value `0` for the `L^p` term when `v ∉ L¹` (Mathlib&#x27;s `𝓕` of a
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>non-integrable function is `0`) and `0` for an unbounded sup: do NOT use in statements; use `HasFracTransportBound`
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>(`HRS/Whole/AppendixBEnergy.lean`) instead. -/
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>def commutatorNorm {s : ℝ} (c : DecayingDensity d s) (v : Euc d → Euc d) : ℝ :=
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  (⨆ x, ‖fderiv ℝ v x‖) +
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    (∫ x, (∑ i, fracGradPow c.regularity (fun y =&gt; v y i) x ^ 2) ^ (c.integrability / 2)) ^
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      (1 / c.integrability)
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>/-- The `W^{m,p}(ℝ^d)` norm `∑_{j ≤ m} ‖D^j f‖_{L^p}` (multilinear operator norms). -/
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>def sobolevWNorm (m : ℕ) (p : ℝ) (f : Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  ∑ j ∈ Finset.range (m + 1), (∫ x, ‖iteratedFDeriv ℝ j f x‖ ^ p) ^ (1 / p)
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>/-! ### Facts (work package SFOUND-01 unless marked) -/
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>section Facts
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>variable {s : ℝ}
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>/-! #### Helper lemmas (not part of the specification) -/
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>theorem modulatedEnergy_perm (g : Euc d → ℝ) (X : EucConfig d N) (μ : Measure (Euc d))
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    (σ : Equiv.Perm (Fin N)) :
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    modulatedEnergy g (X ∘ σ) μ = modulatedEnergy g X μ := by
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  unfold modulatedEnergy
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  have h1 : ∑ i, ∑ j ∈ Finset.univ.erase i, g ((X ∘ σ) i - (X ∘ σ) j) =
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>      ∑ i, ∑ j ∈ Finset.univ.erase i, g (X i - X j) := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    simp_rw [← Finset.filter_ne&#x27;, Finset.sum_filter]
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    let F : Fin N → Fin N → ℝ := fun a b =&gt; if b ≠ a then g (X a - X b) else 0
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>    have : ∀ i j, (if j ≠ i then g ((X ∘ σ) i - (X ∘ σ) j) else 0) = F (σ i) (σ j) := by
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>      intro i j
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>      simp only [F, Function.comp, ne_eq, σ.apply_eq_iff_eq]
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>    simp_rw [this]
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    rw [Equiv.sum_comp σ (fun a =&gt; ∑ j, F a (σ j))]
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>    exact Finset.sum_congr rfl fun a _ =&gt; Equiv.sum_comp σ (fun b =&gt; F a b)
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  have h2 : ∑ i, convMeasure g μ ((X ∘ σ) i) = ∑ i, convMeasure g μ (X i) :=
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>    Equiv.sum_comp σ (fun i =&gt; convMeasure g μ (X i))
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  rw [h1, h2]
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>theorem map_withDensity_of_invariant {α : Type*} [MeasurableSpace α] (ν : Measure α)
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    (T : α ≃ᵐ α) (hν : ν.map T = ν) (f : α → ℝ≥0∞) (hf : ∀ x, f (T x) = f x) :
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    (ν.withDensity f).map T = ν.withDensity f := by
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>  ext A hA
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  rw [Measure.map_apply T.measurable hA, withDensity_apply _ (T.measurable hA),
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>    withDensity_apply _ hA, ← lintegral_indicator (T.measurable hA),
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    ← lintegral_indicator hA]
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  have h1 : ∀ x, (T ⁻¹&#x27; A).indicator f x = A.indicator f (T x) := by
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    intro x
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>    by_cases hx : T x ∈ A
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    · simp [Set.indicator_of_mem, hx, hf]
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>    · simp [Set.indicator_of_notMem, hx]
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>  simp_rw [h1]
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>  conv_rhs =&gt; rw [← hν]
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  exact (T.measurableEmbedding.lintegral_map (A.indicator f)).symm
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>theorem pi_outer_perm_le {E : Type*} [MeasurableSpace E] (μ : Measure E) (σ : Equiv.Perm (Fin N))
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    (A : Set (Fin N → E)) :
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    OuterMeasure.pi (fun _ : Fin N =&gt; μ.toOuterMeasure) ((fun X : Fin N → E =&gt; X ∘ σ) ⁻¹&#x27; A) ≤
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>      OuterMeasure.pi (fun _ : Fin N =&gt; μ.toOuterMeasure) A := by
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>  have h : OuterMeasure.map (fun X : Fin N → E =&gt; X ∘ σ)
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>      (OuterMeasure.pi (fun _ : Fin N =&gt; μ.toOuterMeasure)) ≤
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      OuterMeasure.pi (fun _ : Fin N =&gt; μ.toOuterMeasure) := by
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    rw [OuterMeasure.le_pi]
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    intro t _
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    rw [OuterMeasure.map_apply]
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    have : (fun X : Fin N → E =&gt; X ∘ σ) ⁻¹&#x27; (Set.pi Set.univ t) =
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>        Set.pi Set.univ (fun j =&gt; t (σ.symm j)) := by
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>      ext X
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>      simp only [Set.mem_preimage, Set.mem_pi, Set.mem_univ, forall_true_left, Function.comp]
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>      constructor
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>      · intro hX j; simpa using hX (σ.symm j)
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>      · intro hX i; simpa using hX (σ i)
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>    rw [this]
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>    refine (OuterMeasure.pi_pi_le _ _).trans ?_
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>    exact le_of_eq (Equiv.prod_comp σ.symm (fun i =&gt; μ.toOuterMeasure (t i)))
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  have := h A
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>  rwa [OuterMeasure.map_apply] at this
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>theorem pi_map_perm {E : Type*} [MeasurableSpace E] (μ : Measure E) (σ : Equiv.Perm (Fin N)) :
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    (Measure.pi fun _ : Fin N =&gt; μ).map (fun X : Fin N → E =&gt; X ∘ σ) =
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>      Measure.pi fun _ : Fin N =&gt; μ := by
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>  have hT : ∀ τ : Equiv.Perm (Fin N), Measurable (fun X : Fin N → E =&gt; X ∘ τ) :=
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    fun τ =&gt; measurable_pi_iff.2 fun i =&gt; measurable_pi_apply (τ i)
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  ext A hA
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>  rw [Measure.map_apply (hT σ) hA]
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>  have e : ∀ B : Set (Fin N → E), MeasurableSet B →
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>      Measure.pi (fun _ : Fin N =&gt; μ) B =
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>        OuterMeasure.pi (fun _ : Fin N =&gt; μ.toOuterMeasure) B := by
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>    intro B hB
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    rw [Measure.pi_def, toMeasure_apply _ _ hB]
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>  rw [e _ ((hT σ) hA), e _ hA]
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>  refine le_antisymm (pi_outer_perm_le μ σ A) ?_
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>  have := pi_outer_perm_le μ σ⁻¹ ((fun X : Fin N → E =&gt; X ∘ σ) ⁻¹&#x27; A)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>  convert this using 2
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  ext X
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  simp [Function.comp_def]
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>def permEquiv {E : Type*} [MeasurableSpace E] (σ : Equiv.Perm (Fin N)) :
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    (Fin N → E) ≃ᵐ (Fin N → E) where
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>  toFun X := X ∘ σ
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  invFun X := X ∘ σ.symm
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  left_inv X := by ext i; simp
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  right_inv X := by ext i; simp
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>  measurable_toFun := measurable_pi_iff.2 fun i =&gt; measurable_pi_apply (σ i)
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  measurable_invFun := measurable_pi_iff.2 fun i =&gt; measurable_pi_apply (σ.symm i)
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>theorem measurable_empirical : Measurable (empirical : EucConfig d N → Measure (Euc d)) := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>  refine Measure.measurable_of_measurable_coe _ fun A hA =&gt; ?_
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>  have : ∀ X : EucConfig d N, empirical X A = (N : ℝ≥0∞)⁻¹ * ∑ i, A.indicator 1 (X i) := by
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    intro X
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    simp [empirical, Measure.dirac_apply&#x27; _ hA]
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>  simp_rw [this]
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  refine Measurable.const_mul (Finset.measurable_sum _ fun i _ =&gt; ?_) _
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>  exact (measurable_one.indicator hA).comp (measurable_pi_apply i)
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>theorem meanEmpirical_apply (P : Measure (EucConfig d N)) {A : Set (Euc d)} (hA : MeasurableSet A) :
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    meanEmpirical P A = (N : ℝ≥0∞)⁻¹ * ∑ i : Fin N, P {X | X i ∈ A} := by
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>  unfold meanEmpirical
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  rw [Measure.bind_apply hA measurable_empirical.aemeasurable]
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>  have : ∀ X : EucConfig d N, empirical X A = (N : ℝ≥0∞)⁻¹ * ∑ i, A.indicator 1 (X i) := by
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>    intro X
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>    simp [empirical, Measure.dirac_apply&#x27; _ hA]
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>  simp_rw [this]
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>  have hm : Measurable fun X : EucConfig d N =&gt; ∑ i, A.indicator (1 : Euc d → ℝ≥0∞) (X i) :=
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    Finset.measurable_sum _ fun i _ =&gt; (measurable_one.indicator hA).comp (measurable_pi_apply i)
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>  rw [lintegral_const_mul _ hm]
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>  rw [lintegral_finsetSum Finset.univ (f := fun (i : Fin N) (X : EucConfig d N) =&gt;
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>    A.indicator (1 : Euc d → ℝ≥0∞) (X i))
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>    (fun i _ =&gt; (measurable_one.indicator hA).comp (measurable_pi_apply i))]
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  congr 1
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>  refine Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>  have : ∀ X : EucConfig d N, A.indicator (1 : Euc d → ℝ≥0∞) (X i) = ({X | X i ∈ A}).indicator 1 X := by
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    intro X; by_cases h : X i ∈ A &lt;;&gt; simp [h]
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>  simp_rw [this]
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  rw [lintegral_indicator_one]
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>  exact (measurable_pi_apply i) hA
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>theorem meanEmpirical_isProbabilityMeasure (P : Measure (EucConfig d N)) [IsProbabilityMeasure P]
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>    (hN : 1 ≤ N) : IsProbabilityMeasure (meanEmpirical P) := by
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>  constructor
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>  have := meanEmpirical_apply P (MeasurableSet.univ : MeasurableSet (Set.univ : Set (Euc d)))
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>  rw [this]
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  simp only [Set.mem_univ, Set.setOf_true, Finset.sum_const, Finset.card_univ, Fintype.card_fin,
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    nsmul_eq_mul, measure_univ, mul_one]
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>  exact ENNReal.inv_mul_cancel (by exact_mod_cast (show N ≠ 0 by omega)) (by simp)
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>theorem tendsto_natCast_rpow_zero_iff (e : ℝ) :
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>    Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ e) atTop (𝓝 0) ↔ e &lt; 0 := by
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>  constructor
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>  · intro h
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    by_contra hnot
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>    rw [not_lt] at hnot
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    have h1 : ∀ᶠ N : ℕ in atTop, (1 : ℝ) ≤ (N : ℝ) ^ e := by
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>      filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>      exact Real.one_le_rpow (by exact_mod_cast hN) hnot
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>    have := ge_of_tendsto h h1
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    linarith
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>  · intro he
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    exact (tendsto_rpow_neg_atTop (by linarith : 0 &lt; -e)).comp tendsto_natCast_atTop_atTop |&gt;.congr
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>      (fun N =&gt; by simp)
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>theorem tendsto_sqrt_mul_inv : Tendsto (fun N : ℕ =&gt; Real.sqrt N * (N : ℝ)⁻¹) atTop (𝓝 0) := by
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>  have := (tendsto_natCast_rpow_zero_iff (-(1/2))).2 (by norm_num)
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>  refine this.congr&#x27; ?_
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>  filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>  have hN&#x27; : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>  rw [Real.sqrt_eq_rpow, ← Real.rpow_neg_one, ← Real.rpow_add hN&#x27;]
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>  norm_num
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>theorem tendsto_sqrt_mul_inv_log : Tendsto (fun N : ℕ =&gt; Real.sqrt N * ((N : ℝ)⁻¹ * Real.log (Real.exp 1 * N))) atTop (𝓝 0) := by
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>  have h1 : Tendsto (fun x : ℝ =&gt; Real.log x / x ^ (1/2 : ℝ)) atTop (𝓝 0) :=
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>    (isLittleO_log_rpow_atTop (by norm_num : (0:ℝ) &lt; 1/2)).tendsto_div_nhds_zero
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>  have h2 : Tendsto (fun x : ℝ =&gt; x ^ (-(1/2) : ℝ)) atTop (𝓝 0) :=
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>    tendsto_rpow_neg_atTop (by norm_num)
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>  have h3 := (h1.add h2).comp tendsto_natCast_atTop_atTop
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>  simp only [add_zero] at h3
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  refine h3.congr&#x27; ?_
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>  filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  have hN&#x27; : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>  simp only [Function.comp]
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>  rw [Real.log_mul (Real.exp_pos 1).ne&#x27; hN&#x27;.ne&#x27;, Real.log_exp, Real.sqrt_eq_rpow]
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>  have e1 : (N : ℝ) ^ (-(1/2) : ℝ) = ((N : ℝ) ^ (1/2 : ℝ))⁻¹ := Real.rpow_neg hN&#x27;.le _
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>  have e2 : (N : ℝ) = (N : ℝ) ^ (1/2 : ℝ) * (N : ℝ) ^ (1/2 : ℝ) := by
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>    rw [← Real.rpow_add hN&#x27;]; norm_num
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>  have hp : 0 &lt; (N : ℝ) ^ (1/2 : ℝ) := Real.rpow_pos_of_pos hN&#x27; _
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>  rw [e1]
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>  field_simp
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>  have e3 : ((N : ℝ) ^ (1/2 : ℝ)) ^ 2 = N := by rw [sq, ← e2]
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  rw [e3]; ring
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>theorem cbNorm_const_mul (k : ℕ) (ε : ℝ) (ψ : Euc d → ℝ) (hψ : ContDiff ℝ ∞ ψ) :
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>    cbNorm k (fun x =&gt; ε * ψ x) = |ε| * cbNorm k ψ := by
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>  unfold cbNorm
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>  rw [Finset.mul_sum]
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>  refine Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>  have h1 : ∀ x, iteratedFDeriv ℝ j (fun y =&gt; ε * ψ y) x = ε • iteratedFDeriv ℝ j ψ x := by
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>    intro x
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>    have := iteratedFDeriv_const_smul_apply (𝕜 := ℝ) (a := ε) (f := ψ) (x := x) (i := j)
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>      (hψ.contDiffAt.of_le (by exact_mod_cast le_top))
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>    simpa [Pi.smul_def] using this
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>  simp_rw [h1, norm_smul, Real.norm_eq_abs]
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>  rw [Real.mul_iSup_of_nonneg (abs_nonneg ε)]
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>/-- `g` is even. -/
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>theorem rieszKernel_neg (x : Euc d) : rieszKernel d s (-x) = rieszKernel d s x := by
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>  unfold rieszKernel; simp [norm_neg]
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>/-- `g` is smooth away from the origin. -/
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>theorem rieszKernel_contDiffOn : ContDiffOn ℝ ∞ (rieszKernel d s) {x | x ≠ 0} := by
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>  intro x hx
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>  have hx&#x27; : ‖x‖ ≠ 0 := norm_ne_zero_iff.2 hx
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>  have hn : ContDiffAt ℝ ∞ (fun y : Euc d =&gt; ‖y‖) x := contDiffAt_norm ℝ hx
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>  unfold rieszKernel
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>  by_cases h : s = 0
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>  · simp only [h, if_true]
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>    exact (hn.log hx&#x27;).neg.contDiffWithinAt
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>  · simp only [h, if_false]
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>    exact (hn.rpow_const_of_ne hx&#x27;).contDiffWithinAt
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>/-- `g` is locally integrable for `s &lt; d`. -/
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>theorem rieszKernel_locallyIntegrable (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    LocallyIntegrable (rieszKernel d s) (volume : Measure (Euc d)) := by
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>  have hd : 0 &lt; d := by
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>    have : (0 : ℝ) &lt; d := lt_of_le_of_lt hs0 hsd
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>    exact_mod_cast this
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>  have : Nontrivial (Euc d) := by
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    rw [← Module.finrank_pos_iff (R := ℝ)]; simpa using hd
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>  rw [locallyIntegrable_iff]
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>  intro K hK
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>  obtain ⟨R, hR⟩ := hK.isBounded.subset_ball (0 : Euc d)
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>  refine IntegrableOn.mono_set ?_ hR
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>  let F : ℝ → ℝ := fun r =&gt; if s = 0 then -Real.log r else r ^ (-s)
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>  have hF : rieszKernel d s = fun x =&gt; F ‖x‖ := rfl
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>  rw [hF, integrableOn_fun_norm_addHaar volume]
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>  simp only [finrank_euclideanSpace_fin]
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>  rcases le_or_gt R 0 with hR0 | hR0
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>  · rw [Set.Ioo_eq_empty (by linarith)]; exact integrableOn_empty
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>  by_cases h : s = 0
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>  · simp only [F, h, if_true]
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    have h1 : IntervalIntegrable (fun y : ℝ =&gt; y ^ (d - 1) * -Real.log y) volume 0 R :=
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>      (intervalIntegral.intervalIntegrable_log&#x27;.neg).continuousOn_mul (by fun_prop)
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>    rw [intervalIntegrable_iff_integrableOn_Ioo_of_le hR0.le] at h1
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>    simpa [smul_eq_mul] using h1
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>  · simp only [F, h, if_false]
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>    have h1 : IntervalIntegrable (fun y : ℝ =&gt; y ^ ((d : ℝ) - 1 - s)) volume 0 R :=
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>      intervalIntegral.intervalIntegrable_rpow&#x27; (by linarith)
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>    rw [intervalIntegrable_iff_integrableOn_Ioo_of_le hR0.le] at h1
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>    refine h1.congr_fun (fun y hy =&gt; ?_) measurableSet_Ioo
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>    have hy0 : 0 &lt; y := hy.1
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>    show y ^ ((d : ℝ) - 1 - s) = y ^ (d - 1) • y ^ (-s)
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>    rw [smul_eq_mul, show (d : ℝ) - 1 - s = ((d - 1 : ℕ) : ℝ) + (-s) by
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>      rw [Nat.cast_sub hd]; push_cast; ring, Real.rpow_add hy0, Real.rpow_natCast]
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>/-- `g(x) &gt; 0` for `s &gt; 0`, `x ≠ 0`. -/
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>theorem rieszKernel_pos (hs : 0 &lt; s) (x : Euc d) (hx : x ≠ 0) : 0 &lt; rieszKernel d s x := by
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>  unfold rieszKernel
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>  rw [if_neg hs.ne&#x27;]
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>  exact Real.rpow_pos_of_pos (norm_pos_iff.2 hx) _
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>/-- `S:eq:modulated-energy` (S lines 5279-5283) writes `N⁻² ∑_{i&lt;j}`; it is the same
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>quantity as `(2N²)⁻¹ ∑_{i≠j}` of `W:r2:normalization`. -/
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>theorem modulatedEnergy_eq_sum_lt (g : Euc d → ℝ) (hg : ∀ x, g (-x) = g x) (X : EucConfig d N)
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>    (μ : Measure (Euc d)) :
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>    modulatedEnergy g X μ =
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>      (1 / (N : ℝ) ^ 2) * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), g (X i - X j)
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>        - (1 / (N : ℝ)) * ∑ i, convMeasure g μ (X i) + (1 / 2) * energyPairing g μ μ := by
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>  unfold modulatedEnergy
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>  have h1 : ∀ i : Fin N, ∑ j ∈ Finset.univ.erase i, g (X i - X j) =
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>      ∑ j, (if i &lt; j then g (X i - X j) else 0) + ∑ j, (if j &lt; i then g (X i - X j) else 0) := by
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>    intro i
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>    rw [← Finset.sum_add_distrib, ← Finset.filter_ne&#x27;, Finset.sum_filter]
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>    refine Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>    rcases lt_trichotomy i j with h | h | h
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>    · simp [h, h.ne&#x27;, not_lt_of_gt h]
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>    · simp [h]
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    · simp [h, h.ne, not_lt_of_gt h]
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>  have h2 : ∑ i, ∑ j, (if j &lt; i then g (X i - X j) else 0) =
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>      ∑ i, ∑ j, (if i &lt; j then g (X i - X j) else 0) := by
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>    rw [Finset.sum_comm]
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>    refine Finset.sum_congr rfl fun i _ =&gt; Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>    split_ifs
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>    · rw [← hg (X j - X i), neg_sub]
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>    · rfl
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>  have h3 : ∑ i, ∑ j ∈ Finset.univ.erase i, g (X i - X j) =
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>      2 * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), g (X i - X j) := by
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>    simp_rw [h1, Finset.sum_add_distrib, h2, Finset.sum_filter]
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>    ring
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>  rw [h3]
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>  by_cases hN : (N : ℝ) = 0
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>  · simp [hN]
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>  · field_simp
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>/-- `μ_N(φ) = N⁻¹ ∑_i φ(x_i)`. -/
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>theorem pair_empirical (hN : 0 &lt; N) (X : EucConfig d N) (φ : Euc d → ℝ) :
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>    pair (empirical X) φ = (N : ℝ)⁻¹ * ∑ i, φ (X i) := by
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>  unfold pair empirical
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>  rw [integral_smul_measure, integral_finsetSum_measure]
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>  · simp [integral_dirac, Finset.mul_sum]
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>  · intro i _
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>    exact integrable_dirac (by simp)
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>theorem empirical_isProbabilityMeasure (hN : 0 &lt; N) (X : EucConfig d N) :
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>    IsProbabilityMeasure (empirical X) := by
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>  constructor
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>  simp only [empirical, Measure.smul_apply, Measure.coe_finsetSum, Finset.sum_apply, measure_univ,
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>    Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, mul_one, smul_eq_mul]
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>  exact ENNReal.inv_mul_cancel (by exact_mod_cast hN.ne&#x27;) (by simp)
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>/-- `Q_{N,0}(μ) = μ^{⊗N}` (S line 395). -/
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>theorem modulatedGibbs_zero (g : Euc d → ℝ) (μ : Measure (Euc d)) [IsProbabilityMeasure μ] :
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>    modulatedGibbs g N 0 μ = Measure.pi fun _ : Fin N =&gt; μ := by
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>  unfold modulatedGibbs gibbsNormalizer
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>  simp
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>/-- The modulated Gibbs law is exchangeable. -/
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>theorem modulatedGibbs_isExchangeable (g : Euc d → ℝ) (β : ℝ) (μ : Measure (Euc d))
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>    (hg : ∀ x, g (-x) = g x) : IsExchangeable (modulatedGibbs g N β μ) := by
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  intro σ
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>  unfold modulatedGibbs
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>  have h1 : (fun X : EucConfig d N =&gt; X ∘ σ) = ⇑(permEquiv (E := Euc d) σ) := rfl
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>  have key := map_withDensity_of_invariant (Measure.pi fun _ : Fin N =&gt; μ) (permEquiv σ)
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>    (pi_map_perm μ σ)
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>    (fun X : EucConfig d N =&gt; ENNReal.ofReal (Real.exp (-β * N * modulatedEnergy g X μ)))
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>    (fun X =&gt; by
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>      show ENNReal.ofReal (Real.exp (-β * N * modulatedEnergy g (X ∘ σ) μ)) = _
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>      rw [modulatedEnergy_perm])
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>  rw [h1, Measure.map_smul, key]
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>  exact (permEquiv σ).measurable.aemeasurable
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>/-- For exchangeable laws `m_N` is the first marginal (`S:eq:modulated-law`,
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>`m_N = Q^{(1)} = E[μ_N]`). -/
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>theorem meanEmpirical_eq_firstMarginal (P : Measure (EucConfig d N)) [IsProbabilityMeasure P]
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>    (hP : IsExchangeable P) (hN : 1 ≤ N) : meanEmpirical P = firstMarginal P := by
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>  have hN&#x27; : 0 &lt; N := hN
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>  ext A hA
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>  have hT : ∀ τ : Equiv.Perm (Fin N), Measurable (fun X : EucConfig d N =&gt; X ∘ τ) :=
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>    fun τ =&gt; measurable_pi_iff.2 fun i =&gt; measurable_pi_apply (τ i)
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>  have key : ∀ i : Fin N, P {X | X i ∈ A} = P {X | X ⟨0, hN&#x27;⟩ ∈ A} := by
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>    intro i
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>    have h := hP (Equiv.swap i ⟨0, hN&#x27;⟩)
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>    have hm : MeasurableSet {X : EucConfig d N | X i ∈ A} := measurable_pi_apply i hA
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>    calc P {X | X i ∈ A} = (P.map (fun X : EucConfig d N =&gt; X ∘ (Equiv.swap i ⟨0, hN&#x27;⟩))) {X | X i ∈ A} := by rw [h]
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>      _ = P {X | X ⟨0, hN&#x27;⟩ ∈ A} := by
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>        rw [Measure.map_apply (hT _) hm]
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>        congr 1
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>        ext X
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>        simp
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>  rw [meanEmpirical_apply P hA]
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>  unfold firstMarginal
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>  rw [dif_pos hN&#x27;, Measure.map_apply (measurable_pi_apply (⟨0, hN&#x27;⟩ : Fin N)) hA]
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>  simp_rw [key]
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>  simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>  exact ENNReal.inv_mul_cancel_left (by exact_mod_cast hN&#x27;.ne&#x27;) (by simp)
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>/-- `η_N = ζ_N + √N(m_N - μ)` in `B_m` for `m &gt; d` (M `H:eq:centering-decomposition`, used
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>with whole-space centerings at S lines 211-216). -/
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>theorem eta_eq_zeta_add (m : ℝ) (hm : (d : ℝ) &lt; m) (P : Measure (EucConfig d N))
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>    [IsProbabilityMeasure P] (μ : Measure (Euc d)) [IsProbabilityMeasure μ] (X : EucConfig d N)
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>    (hN : 1 ≤ N) :
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>    etaB m X μ = zetaB m P X + Real.sqrt N • OscDual.ofMeasureDiff m (meanEmpirical P) μ := by
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>  haveI : IsProbabilityMeasure (empirical X) := empirical_isProbabilityMeasure hN X
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>  haveI : IsProbabilityMeasure (meanEmpirical P) := meanEmpirical_isProbabilityMeasure P hN
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>  unfold etaB zetaB flucB
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>  rw [← smul_add]
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>  congr 1
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>  refine OscDual.ext_hermiteCoeff fun α =&gt; ?_
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>  rw [OscDual.hermiteCoeff_add, OscDual.hermiteCoeff_ofMeasureDiff hm,
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>    OscDual.hermiteCoeff_ofMeasureDiff hm, OscDual.hermiteCoeff_ofMeasureDiff hm]
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>  ring
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>/-- `η_N`, `ζ_N` have zero mass in the sense of `OscDual.HasZeroMass` (S lines 217-218), for
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>`m &gt; d`. -/
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>theorem etaB_hasZeroMass (m : ℝ) (hm : (d : ℝ) &lt; m) (hN : 0 &lt; N) (X : EucConfig d N)
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>    (μ : Measure (Euc d)) [IsProbabilityMeasure μ] : OscDual.HasZeroMass (etaB m X μ) := by
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>  haveI : IsProbabilityMeasure (empirical X) := empirical_isProbabilityMeasure hN X
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>  unfold etaB flucB OscDual.HasZeroMass
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>  have h : OscDual.HasMass (OscDual.ofMeasureDiff m (empirical X) μ) 0 :=
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>    OscDual.hasZeroMass_ofMeasureDiff hm (empirical X) μ
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>  have h2 := OscDual.HasMass.smul h (Real.sqrt N)
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>  rw [mul_zero] at h2
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>  exact h2
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>/-- `P_{N,β} = Q_{N,β}(μ_β)` exactly for the thermal equilibrium density (S lines 1375-1378;
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>package S-STAT-01). -/
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>theorem canonicalGibbs_eq_modulatedGibbs (g V : Euc d → ℝ) (β : ℝ) (ρ : Euc d → ℝ)
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>    (hρ : IsThermalDensity g V β ρ) (hg : ∀ x, g (-x) = g x)
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>    (hint : ∀ x, Integrable (fun y =&gt; g (x - y)) (withDensityReal ρ)) :
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>    canonicalGibbs g V N β = modulatedGibbs g N β (withDensityReal ρ) := by
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>  sorry
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>/-- `W:prop:euc-thermal` (S lines 1348-1360), existence/uniqueness part: for `a &gt; 0`,
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>`β &gt; 0`, `0 &lt; s &lt; d`, the free energy has a unique minimiser, it is a (bounded) thermal
+</span><span class="line" id="L773"><a class="ln" aria-label="Line 773" href="#L773">773</a>density, and the thermal equation determines it; hence `thermalDensity` is that minimiser.
+</span><span class="line" id="L774"><a class="ln" aria-label="Line 774" href="#L774">774</a>(Target of package S-STAT-01; recorded here because it is what makes `thermalDensity`
+</span><span class="line" id="L775"><a class="ln" aria-label="Line 775" href="#L775">775</a>meaningful.  `d ≥ 2` is the supplement&#x27;s standing assumption, S line 217.) -/
+</span><span class="line" id="L776"><a class="ln" aria-label="Line 776" href="#L776">776</a>theorem thermalDensity_spec (hd : 2 ≤ d) (hs0 : 0 &lt; s) (hsd : s &lt; d) (a β : ℝ) (ha : 0 &lt; a)
+</span><span class="line" id="L777"><a class="ln" aria-label="Line 777" href="#L777">777</a>    (hβ : 0 &lt; β) :
+</span><span class="line" id="L778"><a class="ln" aria-label="Line 778" href="#L778">778</a>    (∃ ρ : Euc d → ℝ, IsThermalEquilibrium d s a β ρ ∧ ∃ C, ∀ x, ρ x ≤ C) ∧
+</span><span class="line" id="L779"><a class="ln" aria-label="Line 779" href="#L779">779</a>      (∀ ρ ρ&#x27; : Euc d → ℝ, IsFreeEnergyMinimizer (rieszKernel d s) (confinement a) β ρ →
+</span><span class="line" id="L780"><a class="ln" aria-label="Line 780" href="#L780">780</a>        IsFreeEnergyMinimizer (rieszKernel d s) (confinement a) β ρ&#x27; → ρ =ᵐ[volume] ρ&#x27;) ∧
+</span><span class="line" id="L781"><a class="ln" aria-label="Line 781" href="#L781">781</a>      (∀ ρ : Euc d → ℝ, IsFreeEnergyMinimizer (rieszKernel d s) (confinement a) β ρ →
+</span><span class="line" id="L782"><a class="ln" aria-label="Line 782" href="#L782">782</a>        ρ =ᵐ[volume] thermalDensity d s a β) := by
+</span><span class="line" id="L783"><a class="ln" aria-label="Line 783" href="#L783">783</a>  sorry
+</span><span class="line" id="L784"><a class="ln" aria-label="Line 784" href="#L784">784</a>
+</span><span class="line" id="L785"><a class="ln" aria-label="Line 785" href="#L785">785</a>/-- `o_N` and `δ_N` of `W:r2:rate-summary` are the main paper&#x27;s (S lines 302-309 vs
+</span><span class="line" id="L786"><a class="ln" aria-label="Line 786" href="#L786">786</a>M line 551): `o_N = C₀ N^{s/d-1} + 1_{s=0} log N/(2dN)`. -/
+</span><span class="line" id="L787"><a class="ln" aria-label="Line 787" href="#L787">787</a>theorem oN_eq (C₀ : ℝ) : oN d s C₀ N =
+</span><span class="line" id="L788"><a class="ln" aria-label="Line 788" href="#L788">788</a>    C₀ * (N : ℝ) ^ (s / d - 1) + (if s = 0 then Real.log N / (2 * d * N) else 0) := by
+</span><span class="line" id="L789"><a class="ln" aria-label="Line 789" href="#L789">789</a>  rfl
+</span><span class="line" id="L790"><a class="ln" aria-label="Line 790" href="#L790">790</a>
+</span><span class="line" id="L791"><a class="ln" aria-label="Line 791" href="#L791">791</a>/-- &quot;The pressure remainder `√N δ_N` vanishes precisely in `s &lt; 2d/3`&quot; (S lines 311-312),
+</span><span class="line" id="L792"><a class="ln" aria-label="Line 792" href="#L792">792</a>for `0 ≤ s &lt; d`. -/
+</span><span class="line" id="L793"><a class="ln" aria-label="Line 793" href="#L793">793</a>theorem sqrt_mul_deltaN_tendsto_zero_iff (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L794"><a class="ln" aria-label="Line 794" href="#L794">794</a>    Tendsto (fun N : ℕ =&gt; Real.sqrt N * deltaN d s N) atTop (𝓝 0) ↔ s &lt; 2 * (d : ℝ) / 3 := by
+</span><span class="line" id="L795"><a class="ln" aria-label="Line 795" href="#L795">795</a>  have hd&#x27; : (1 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L796"><a class="ln" aria-label="Line 796" href="#L796">796</a>  by_cases h1 : s &lt; (d : ℝ) / 2
+</span><span class="line" id="L797"><a class="ln" aria-label="Line 797" href="#L797">797</a>  · have : s &lt; 2 * (d : ℝ) / 3 := by linarith
+</span><span class="line" id="L798"><a class="ln" aria-label="Line 798" href="#L798">798</a>    simp only [deltaN, h1, if_true]
+</span><span class="line" id="L799"><a class="ln" aria-label="Line 799" href="#L799">799</a>    exact ⟨fun _ =&gt; this, fun _ =&gt; tendsto_sqrt_mul_inv⟩
+</span><span class="line" id="L800"><a class="ln" aria-label="Line 800" href="#L800">800</a>  by_cases h2 : s = (d : ℝ) / 2
+</span><span class="line" id="L801"><a class="ln" aria-label="Line 801" href="#L801">801</a>  · have : s &lt; 2 * (d : ℝ) / 3 := by linarith
+</span><span class="line" id="L802"><a class="ln" aria-label="Line 802" href="#L802">802</a>    simp only [deltaN, h1, h2, lt_self_iff_false, if_false, if_true]
+</span><span class="line" id="L803"><a class="ln" aria-label="Line 803" href="#L803">803</a>    exact ⟨fun _ =&gt; by linarith, fun _ =&gt; tendsto_sqrt_mul_inv_log⟩
+</span><span class="line" id="L804"><a class="ln" aria-label="Line 804" href="#L804">804</a>  · have hs : (d : ℝ) / 2 &lt; s := lt_of_le_of_ne (not_lt.1 h1) (Ne.symm h2)
+</span><span class="line" id="L805"><a class="ln" aria-label="Line 805" href="#L805">805</a>    have hspos : 0 &lt; s := by linarith
+</span><span class="line" id="L806"><a class="ln" aria-label="Line 806" href="#L806">806</a>    have hfun : ∀ N : ℕ, 1 ≤ N → Real.sqrt N * deltaN d s N = (N : ℝ) ^ ((3 : ℝ) / 2 - d / s) := by
+</span><span class="line" id="L807"><a class="ln" aria-label="Line 807" href="#L807">807</a>      intro N hN
+</span><span class="line" id="L808"><a class="ln" aria-label="Line 808" href="#L808">808</a>      have hN&#x27; : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L809"><a class="ln" aria-label="Line 809" href="#L809">809</a>      simp only [deltaN, h1, h2, if_false]
+</span><span class="line" id="L810"><a class="ln" aria-label="Line 810" href="#L810">810</a>      rw [Real.sqrt_eq_rpow, ← Real.rpow_add hN&#x27;]
+</span><span class="line" id="L811"><a class="ln" aria-label="Line 811" href="#L811">811</a>      congr 1; ring
+</span><span class="line" id="L812"><a class="ln" aria-label="Line 812" href="#L812">812</a>    have hiff : ((3 : ℝ) / 2 - d / s &lt; 0) ↔ s &lt; 2 * (d : ℝ) / 3 := by
+</span><span class="line" id="L813"><a class="ln" aria-label="Line 813" href="#L813">813</a>      rw [sub_neg, lt_div_iff₀ hspos]
+</span><span class="line" id="L814"><a class="ln" aria-label="Line 814" href="#L814">814</a>      constructor &lt;;&gt; intro h &lt;;&gt; linarith
+</span><span class="line" id="L815"><a class="ln" aria-label="Line 815" href="#L815">815</a>    rw [← hiff, ← tendsto_natCast_rpow_zero_iff]
+</span><span class="line" id="L816"><a class="ln" aria-label="Line 816" href="#L816">816</a>    refine tendsto_congr&#x27; ?_
+</span><span class="line" id="L817"><a class="ln" aria-label="Line 817" href="#L817">817</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L818"><a class="ln" aria-label="Line 818" href="#L818">818</a>    exact hfun N hN
+</span><span class="line" id="L819"><a class="ln" aria-label="Line 819" href="#L819">819</a>
+</span><span class="line" id="L820"><a class="ln" aria-label="Line 820" href="#L820">820</a>/-- Every fixed `ψ ∈ C_c^∞`, nonzero with `μ_β(ψ) = 0`, enters the smallness class for
+</span><span class="line" id="L821"><a class="ln" aria-label="Line 821" href="#L821">821</a>`|ε|` small (S lines 334-335), provided `√ρ_β ψ ∈ Σ^{102d+1020}`. -/
+</span><span class="line" id="L822"><a class="ln" aria-label="Line 822" href="#L822">822</a>theorem isAdmissiblePerturbation_of_small (ρβ : Euc d → ℝ) (εstar : ℝ) (hε : 0 &lt; εstar)
+</span><span class="line" id="L823"><a class="ln" aria-label="Line 823" href="#L823">823</a>    (ψ : Euc d → ℝ) (hψ : ContDiff ℝ ∞ ψ) (hc : HasCompactSupport ψ) (h0 : ψ ≠ 0)
+</span><span class="line" id="L824"><a class="ln" aria-label="Line 824" href="#L824">824</a>    (hmean : ∫ x, ψ x * ρβ x = 0)
+</span><span class="line" id="L825"><a class="ln" aria-label="Line 825" href="#L825">825</a>    (hosc : MemOsc (102 * (d : ℝ) + 1020) fun x =&gt; Real.sqrt (ρβ x) * ψ x) :
+</span><span class="line" id="L826"><a class="ln" aria-label="Line 826" href="#L826">826</a>    ∃ ε₀ &gt; 0, ∀ ε : ℝ, |ε| ≤ ε₀ → IsAdmissiblePerturbation ρβ εstar ε ψ := by
+</span><span class="line" id="L827"><a class="ln" aria-label="Line 827" href="#L827">827</a>  set A := cbNorm (100 * d + 1001) ψ with hA
+</span><span class="line" id="L828"><a class="ln" aria-label="Line 828" href="#L828">828</a>  set B := oscNorm (102 * (d : ℝ) + 1020) fun x =&gt; Real.sqrt (ρβ x) * ψ x with hB
+</span><span class="line" id="L829"><a class="ln" aria-label="Line 829" href="#L829">829</a>  have hA0 : 0 ≤ A := by
+</span><span class="line" id="L830"><a class="ln" aria-label="Line 830" href="#L830">830</a>    refine Finset.sum_nonneg fun j _ =&gt; Real.iSup_nonneg fun x =&gt; norm_nonneg _
+</span><span class="line" id="L831"><a class="ln" aria-label="Line 831" href="#L831">831</a>  have hB0 : 0 ≤ B := Real.sqrt_nonneg _
+</span><span class="line" id="L832"><a class="ln" aria-label="Line 832" href="#L832">832</a>  refine ⟨εstar / (A + B + 1), div_pos hε (by linarith), fun ε hε&#x27; =&gt; ?_⟩
+</span><span class="line" id="L833"><a class="ln" aria-label="Line 833" href="#L833">833</a>  refine ⟨hψ, hc, h0, hmean, ?_⟩
+</span><span class="line" id="L834"><a class="ln" aria-label="Line 834" href="#L834">834</a>  have e1 : (fun x =&gt; ε * Real.sqrt (ρβ x) * ψ x) = fun x =&gt; ε * (Real.sqrt (ρβ x) * ψ x) := by
+</span><span class="line" id="L835"><a class="ln" aria-label="Line 835" href="#L835">835</a>    funext x; ring
+</span><span class="line" id="L836"><a class="ln" aria-label="Line 836" href="#L836">836</a>  rw [cbNorm_const_mul _ _ _ hψ, e1, oscNorm_const_mul]
+</span><span class="line" id="L837"><a class="ln" aria-label="Line 837" href="#L837">837</a>  have hpos : 0 &lt; A + B + 1 := by linarith
+</span><span class="line" id="L838"><a class="ln" aria-label="Line 838" href="#L838">838</a>  calc |ε| * A + |ε| * B = |ε| * (A + B) := by ring
+</span><span class="line" id="L839"><a class="ln" aria-label="Line 839" href="#L839">839</a>    _ ≤ (εstar / (A + B + 1)) * (A + B) := mul_le_mul_of_nonneg_right hε&#x27; (by linarith)
+</span><span class="line" id="L840"><a class="ln" aria-label="Line 840" href="#L840">840</a>    _ ≤ εstar := by
+</span><span class="line" id="L841"><a class="ln" aria-label="Line 841" href="#L841">841</a>      rw [div_mul_eq_mul_div, div_le_iff₀ hpos]
+</span><span class="line" id="L842"><a class="ln" aria-label="Line 842" href="#L842">842</a>      nlinarith
+</span><span class="line" id="L843"><a class="ln" aria-label="Line 843" href="#L843">843</a>
+</span><span class="line" id="L844"><a class="ln" aria-label="Line 844" href="#L844">844</a>/-- The source&#x27;s statement (S lines 334-335) for the actual thermal density: every fixed
+</span><span class="line" id="L845"><a class="ln" aria-label="Line 845" href="#L845">845</a>nonzero `ψ ∈ C_c^∞` with `μ_β(ψ) = 0` enters the class for `|ε|` small (uses the smoothness
+</span><span class="line" id="L846"><a class="ln" aria-label="Line 846" href="#L846">846</a>and Gaussian bounds of `ρ_β` from `W:prop:euc-thermal`; package S-STAT-01). -/
+</span><span class="line" id="L847"><a class="ln" aria-label="Line 847" href="#L847">847</a>theorem isAdmissiblePerturbation_thermal (hd : 2 ≤ d) (hs0 : 0 &lt; s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L848"><a class="ln" aria-label="Line 848" href="#L848">848</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (εstar : ℝ) (hε : 0 &lt; εstar) (ψ : Euc d → ℝ) (hψ : ContDiff ℝ ∞ ψ)
+</span><span class="line" id="L849"><a class="ln" aria-label="Line 849" href="#L849">849</a>    (hc : HasCompactSupport ψ) (h0 : ψ ≠ 0) (hmean : ∫ x, ψ x * thermalDensity d s a β x = 0) :
+</span><span class="line" id="L850"><a class="ln" aria-label="Line 850" href="#L850">850</a>    ∃ ε₀ &gt; 0, ∀ ε : ℝ, |ε| ≤ ε₀ → IsAdmissiblePerturbation (thermalDensity d s a β) εstar ε ψ := by
+</span><span class="line" id="L851"><a class="ln" aria-label="Line 851" href="#L851">851</a>  sorry
+</span><span class="line" id="L852"><a class="ln" aria-label="Line 852" href="#L852">852</a>
+</span><span class="line" id="L853"><a class="ln" aria-label="Line 853" href="#L853">853</a>namespace DecayingDensity
+</span><span class="line" id="L854"><a class="ln" aria-label="Line 854" href="#L854">854</a>
+</span><span class="line" id="L855"><a class="ln" aria-label="Line 855" href="#L855">855</a>/-- &quot;In both cases `p_𝔠 (s+1) &gt; d`&quot; (S line 9828), under the standing `0 ≤ s &lt; d - 2`. -/
+</span><span class="line" id="L856"><a class="ln" aria-label="Line 856" href="#L856">856</a>theorem integrability_mul_gt (hs0 : 0 ≤ s) (hsd : s &lt; (d : ℝ) - 2) (c : DecayingDensity d s) :
+</span><span class="line" id="L857"><a class="ln" aria-label="Line 857" href="#L857">857</a>    (d : ℝ) &lt; c.integrability * (s + 1) := by
+</span><span class="line" id="L858"><a class="ln" aria-label="Line 858" href="#L858">858</a>  have hd : (2 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L859"><a class="ln" aria-label="Line 859" href="#L859">859</a>  cases c with
+</span><span class="line" id="L860"><a class="ln" aria-label="Line 860" href="#L860">860</a>  | sharp a ha =&gt;
+</span><span class="line" id="L861"><a class="ln" aria-label="Line 861" href="#L861">861</a>    obtain ⟨h1, h2⟩ := ha
+</span><span class="line" id="L862"><a class="ln" aria-label="Line 862" href="#L862">862</a>    have h2a := lt_min_iff.1 h2
+</span><span class="line" id="L863"><a class="ln" aria-label="Line 863" href="#L863">863</a>    have ha2 : 0 &lt; a - 2 := by linarith
+</span><span class="line" id="L864"><a class="ln" aria-label="Line 864" href="#L864">864</a>    simp only [DecayingDensity.integrability]
+</span><span class="line" id="L865"><a class="ln" aria-label="Line 865" href="#L865">865</a>    rw [div_mul_eq_mul_div, lt_div_iff₀ ha2]
+</span><span class="line" id="L866"><a class="ln" aria-label="Line 866" href="#L866">866</a>    nlinarith [h2a.2]
+</span><span class="line" id="L867"><a class="ln" aria-label="Line 867" href="#L867">867</a>  | lower hs =&gt;
+</span><span class="line" id="L868"><a class="ln" aria-label="Line 868" href="#L868">868</a>    have hp : 0 &lt; (d : ℝ) - s - 2 := by linarith
+</span><span class="line" id="L869"><a class="ln" aria-label="Line 869" href="#L869">869</a>    simp only [DecayingDensity.integrability]
+</span><span class="line" id="L870"><a class="ln" aria-label="Line 870" href="#L870">870</a>    rw [div_mul_eq_mul_div, lt_div_iff₀ hp]
+</span><span class="line" id="L871"><a class="ln" aria-label="Line 871" href="#L871">871</a>    nlinarith
+</span><span class="line" id="L872"><a class="ln" aria-label="Line 872" href="#L872">872</a>
+</span><span class="line" id="L873"><a class="ln" aria-label="Line 873" href="#L873">873</a>/-- &quot;This density exists exactly when `s &gt; (d-4)/2`&quot; (S line 9820). -/
+</span><span class="line" id="L874"><a class="ln" aria-label="Line 874" href="#L874">874</a>theorem sharp_exists_iff (hs0 : 0 ≤ s) (hsd : s &lt; (d : ℝ) - 2) :
+</span><span class="line" id="L875"><a class="ln" aria-label="Line 875" href="#L875">875</a>    (∃ a : ℝ, (d : ℝ) &lt; a ∧ a &lt; min ((d : ℝ) + 2) (2 * s + 4)) ↔ ((d : ℝ) - 4) / 2 &lt; s := by
+</span><span class="line" id="L876"><a class="ln" aria-label="Line 876" href="#L876">876</a>  constructor
+</span><span class="line" id="L877"><a class="ln" aria-label="Line 877" href="#L877">877</a>  · rintro ⟨a, h1, h2⟩
+</span><span class="line" id="L878"><a class="ln" aria-label="Line 878" href="#L878">878</a>    have := lt_min_iff.1 h2
+</span><span class="line" id="L879"><a class="ln" aria-label="Line 879" href="#L879">879</a>    linarith [this.2]
+</span><span class="line" id="L880"><a class="ln" aria-label="Line 880" href="#L880">880</a>  · intro h
+</span><span class="line" id="L881"><a class="ln" aria-label="Line 881" href="#L881">881</a>    refine exists_between (lt_min (by linarith) (by linarith))
+</span><span class="line" id="L882"><a class="ln" aria-label="Line 882" href="#L882">882</a>
+</span><span class="line" id="L883"><a class="ln" aria-label="Line 883" href="#L883">883</a>/-- `p_𝔠 &gt; 2` (needed for `Γ_𝔠` to be the source&#x27;s integer). -/
+</span><span class="line" id="L884"><a class="ln" aria-label="Line 884" href="#L884">884</a>theorem two_lt_integrability (hs0 : 0 ≤ s) (hsd : s &lt; (d : ℝ) - 2) (c : DecayingDensity d s) :
+</span><span class="line" id="L885"><a class="ln" aria-label="Line 885" href="#L885">885</a>    2 &lt; c.integrability := by
+</span><span class="line" id="L886"><a class="ln" aria-label="Line 886" href="#L886">886</a>  have hd : (2 : ℝ) &lt; d := by linarith
+</span><span class="line" id="L887"><a class="ln" aria-label="Line 887" href="#L887">887</a>  cases c with
+</span><span class="line" id="L888"><a class="ln" aria-label="Line 888" href="#L888">888</a>  | sharp a ha =&gt;
+</span><span class="line" id="L889"><a class="ln" aria-label="Line 889" href="#L889">889</a>    obtain ⟨h1, h2⟩ := ha
+</span><span class="line" id="L890"><a class="ln" aria-label="Line 890" href="#L890">890</a>    have h2a := lt_min_iff.1 h2
+</span><span class="line" id="L891"><a class="ln" aria-label="Line 891" href="#L891">891</a>    have ha2 : 0 &lt; a - 2 := by linarith
+</span><span class="line" id="L892"><a class="ln" aria-label="Line 892" href="#L892">892</a>    simp only [DecayingDensity.integrability]
+</span><span class="line" id="L893"><a class="ln" aria-label="Line 893" href="#L893">893</a>    rw [lt_div_iff₀ ha2]
+</span><span class="line" id="L894"><a class="ln" aria-label="Line 894" href="#L894">894</a>    linarith [h2a.1]
+</span><span class="line" id="L895"><a class="ln" aria-label="Line 895" href="#L895">895</a>  | lower hs =&gt;
+</span><span class="line" id="L896"><a class="ln" aria-label="Line 896" href="#L896">896</a>    have hp : 0 &lt; (d : ℝ) - s - 2 := by linarith
+</span><span class="line" id="L897"><a class="ln" aria-label="Line 897" href="#L897">897</a>    simp only [DecayingDensity.integrability]
+</span><span class="line" id="L898"><a class="ln" aria-label="Line 898" href="#L898">898</a>    rw [lt_div_iff₀ hp]
+</span><span class="line" id="L899"><a class="ln" aria-label="Line 899" href="#L899">899</a>    linarith
+</span><span class="line" id="L900"><a class="ln" aria-label="Line 900" href="#L900">900</a>
+</span><span class="line" id="L901"><a class="ln" aria-label="Line 901" href="#L901">901</a>/-- Last sentence of Definition S.A.1, claim 1: `W^{m_𝔠,p_𝔠} ↪ C_b^{m_*}` (stated for smooth
+</span><span class="line" id="L902"><a class="ln" aria-label="Line 902" href="#L902">902</a>functions with finite `W^{m_𝔠,p_𝔠}` norm, encoded as integrability of `|D^j f|^{p_𝔠}`, `j ≤ m_𝔠`;
+</span><span class="line" id="L903"><a class="ln" aria-label="Line 903" href="#L903">903</a>without it the Bochner integrals in `sobolevWNorm` take the junk value `0`, e.g. for `f ≡ 1`). -/
+</span><span class="line" id="L904"><a class="ln" aria-label="Line 904" href="#L904">904</a>theorem sobolev_embeds_cb (hs0 : 0 ≤ s) (hsd : s &lt; (d : ℝ) - 2) (c : DecayingDensity d s) :
+</span><span class="line" id="L905"><a class="ln" aria-label="Line 905" href="#L905">905</a>    ∃ C : ℝ, ∀ f : Euc d → ℝ, ContDiff ℝ ∞ f →
+</span><span class="line" id="L906"><a class="ln" aria-label="Line 906" href="#L906">906</a>      (∀ j ≤ c.sobolevIndex, Integrable (fun x =&gt; ‖iteratedFDeriv ℝ j f x‖ ^ c.integrability)) →
+</span><span class="line" id="L907"><a class="ln" aria-label="Line 907" href="#L907">907</a>      cbNorm (mStar d) f ≤ C * sobolevWNorm c.sobolevIndex c.integrability f := by
+</span><span class="line" id="L908"><a class="ln" aria-label="Line 908" href="#L908">908</a>  sorry
+</span><span class="line" id="L909"><a class="ln" aria-label="Line 909" href="#L909">909</a>
+</span><span class="line" id="L910"><a class="ln" aria-label="Line 910" href="#L910">910</a>/- Claim 2 (`‖𝖬^*∇f‖_𝔠 ≤ C ‖f‖_{W^{m_𝔠,p_𝔠}}`) is `HRS.Whole.DecayingDensity.commutatorNorm_le` in
+</span><span class="line" id="L911"><a class="ln" aria-label="Line 911" href="#L911">911</a>`HRS/Whole/AppendixBEnergy.lean` (repair P10, 2026-10-20: it is stated with the distributional transport bound
+</span><span class="line" id="L912"><a class="ln" aria-label="Line 912" href="#L912">912</a>`HasFracTransportBound`, defined there, because the Bochner-integral `commutatorNorm`/`fracGradPow` have the junk value `0` for
+</span><span class="line" id="L913"><a class="ln" aria-label="Line 913" href="#L913">913</a>non-`L¹` input and must not be used in statements). -/
+</span><span class="line" id="L914"><a class="ln" aria-label="Line 914" href="#L914">914</a>
+</span><span class="line" id="L915"><a class="ln" aria-label="Line 915" href="#L915">915</a>/-- Claim 3: `H^{Γ_𝔠} ↪ W^{m_𝔠+2,p_𝔠}`. -/
+</span><span class="line" id="L916"><a class="ln" aria-label="Line 916" href="#L916">916</a>theorem h_embeds_sobolev (hs0 : 0 ≤ s) (hsd : s &lt; (d : ℝ) - 2) (c : DecayingDensity d s) :
+</span><span class="line" id="L917"><a class="ln" aria-label="Line 917" href="#L917">917</a>    ∃ C : ℝ, ∀ f : Euc d → ℝ, ContDiff ℝ ∞ f →
+</span><span class="line" id="L918"><a class="ln" aria-label="Line 918" href="#L918">918</a>      (∀ j ≤ c.gammaIndex, Integrable (fun x =&gt; ‖iteratedFDeriv ℝ j f x‖ ^ (2 : ℝ))) →
+</span><span class="line" id="L919"><a class="ln" aria-label="Line 919" href="#L919">919</a>      sobolevWNorm (c.sobolevIndex + 2) c.integrability f ≤ C * sobolevWNorm c.gammaIndex 2 f := by
+</span><span class="line" id="L920"><a class="ln" aria-label="Line 920" href="#L920">920</a>  sorry
+</span><span class="line" id="L921"><a class="ln" aria-label="Line 921" href="#L921">921</a>
+</span><span class="line" id="L922"><a class="ln" aria-label="Line 922" href="#L922">922</a>end DecayingDensity
+</span><span class="line" id="L923"><a class="ln" aria-label="Line 923" href="#L923">923</a>
+</span><span class="line" id="L924"><a class="ln" aria-label="Line 924" href="#L924">924</a>end Facts
+</span><span class="line" id="L925"><a class="ln" aria-label="Line 925" href="#L925">925</a>
+</span><span class="line" id="L926"><a class="ln" aria-label="Line 926" href="#L926">926</a>end HRS.Whole
+</span></code></pre></main></body></html>

@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.ToolboxRd · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.ToolboxRd</code></h1><p><a href="../../lean/HRS/PDE/ToolboxRd.lean">Open the unaltered Lean file</a> · 96 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.ToolboxRd.Defs
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.ToolboxRd.Fourier
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.PDE.ToolboxRd.Levy
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.PDE.ToolboxRd.Weighted
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.PDE.ToolboxRd.PV
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.PDE.ToolboxRd.Bilinear
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>/-!
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a># Lemma C.3 on `ℝ^d` (`B:lem:quadratic-toolbox`, lines 12253–12268)
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>The `ℝ^d` analogues of the torus theorems `quadratic_toolbox_*` of `HRS/PDE/Toolbox.lean`; definitions
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>are in `HRS/PDE/ToolboxRd/Defs.lean`.  Hypotheses follow the source: real, even symbol `m ≥ 0`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>vanishing at `0`, homogeneous of degree `θ ∈ (0,2)` and smooth away from `0`; `u, v ∈ H¹ ∩ C^{0,1}`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>-/
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>noncomputable section
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open scoped ENNReal NNReal BigOperators ComplexConjugate
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS.PDE.ToolboxRd
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>/-- The symbols `𝔪_q` of `B:eq:Kl-def` on `ℝ^d` belong to the symbol class of Lemma C.3 with
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>`θ = s + 2 - d ∈ (0,2)` (for `d - 2 &lt; s &lt; d` and the standing assumption `0 ≤ s`). -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem symbolK_isHomogSymbol (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs1 : (d : ℝ) - 2 &lt; s)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (hsd : s &lt; d) (q : Euc d) : IsHomogSymbol (thetaOrder d s) (symbolKRd d s q) := by
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  have h : symbolKRd d s q = SymAux.symExt d s q := rfl
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  rw [h]
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  refine ⟨SymAux.symExt_contDiffOn d s q, SymAux.symExt_neg d s q,
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    SymAux.symExt_nonneg hd hs0 hsd q, fun c hc ξ =&gt; SymAux.symExt_smul d s q c hc ξ, ?_⟩
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  simp [SymAux.symExt]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>/-- Lemma C.3(i) on `ℝ^d` (line 12256): `B` is symmetric, positive semidefinite, and
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>`B(u,u) ≤ C ‖u‖²_{H^{θ/2}}` (all forms finite for `u, v ∈ H^{θ/2}`). -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>theorem quadratic_toolbox_basic (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2) (m : Euc d → ℝ)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    (hm : IsHomogSymbol θ m) :
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    ∃ C : ℝ, ∀ u v : Euc d → ℝ, MemSobolev (θ / 2) u → MemSobolev (θ / 2) v →
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      Integrable (fun ξ =&gt; m ξ * ‖fourierL2 u ξ‖ ^ 2) ∧ Integrable (fun ξ =&gt; m ξ * ‖fourierL2 v ξ‖ ^ 2) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      Integrable (fun ξ =&gt; ((m ξ : ℝ) : ℂ) * (fourierL2 u ξ * conj (fourierL2 v ξ))) ∧
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      symbolForm m u v = symbolForm m v u ∧ 0 ≤ symbolForm m u u ∧
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      symbolForm m u u ≤ C * sobolevNormSq (θ / 2) u :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  FourierAux.form_basic hθ0 hm
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- Lemma C.3(ii) on `ℝ^d` (lines 12257–12261): the Lévy kernel `𝔨` exists (`IsLevyKernel`). -/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem quadratic_toolbox_kernel (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (m : Euc d → ℝ) (hm : IsHomogSymbol θ m) : ∃ 𝔨 : Euc d → ℝ, IsLevyKernel θ m 𝔨 := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  obtain ⟨𝔨, hev, hsm, hb, hs⟩ := LevyAux.levy_core hd hθ0 hθ2 hm
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hmeas : Measurable 𝔨 := WeightAux.measurable_of_smooth hsm
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  exact ⟨𝔨, ⟨hev, hsm, hb, hs, PVAux.pv_core hd hθ0 hθ2 hm 𝔨 hev hmeas hb hs,
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    BilinAux.bilinear_core hd hθ0 hθ2 hm 𝔨 hev hmeas hb hs⟩⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- Lemma C.3(iii) on `ℝ^d` (lines 12262–12264), weighted symmetrization: for `0 ≤ a ∈ C^{1,1}_b`
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>with `m = √a` Lipschitz and `w ∈ H¹ ∩ C^{0,1}`,
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>`B(aw,w) = B(mw,mw) + E`, `E = -½ ∬ 𝔨(z) w(x) w(x-z) (δ_z m(x))² dz dx`, and
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>`|E| ≤ C (‖∇m‖²_∞ + ‖m‖²_∞) ‖w‖²_{L²}` with `C` depending on the kernel only. -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>theorem quadratic_toolbox_weighted (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (m𝔪 : Euc d → ℝ) (hm𝔪 : IsHomogSymbol θ m𝔪) (𝔨 : Euc d → ℝ) (h𝔨 : IsLevyKernel θ m𝔪 𝔨) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ∃ C : ℝ, ∀ (L La Lm Lw : ℝ) (a w : Euc d → ℝ), (∀ x, 0 ≤ a x) → IsC11 L a →
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      IsLipschitz La a → IsLipschitz Lm (fun x =&gt; Real.sqrt (a x)) →
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      IsLipschitz Lw w → MemSobolev 1 w →
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      let m := fun x =&gt; Real.sqrt (a x)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      let E := symbolForm m𝔪 (fun x =&gt; a x * w x) w -
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        symbolForm m𝔪 (fun x =&gt; m x * w x) (fun x =&gt; m x * w x)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      Integrable (fun p : Euc d × Euc d =&gt; 𝔨 p.2 * w p.1 * w (p.1 - p.2) * (m p.1 - m (p.1 - p.2)) ^ 2) ∧
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      E = -(1 / 2) * ∫ p : Euc d × Euc d, 𝔨 p.2 * w p.1 * w (p.1 - p.2) * (m p.1 - m (p.1 - p.2)) ^ 2 ∧
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      |E| ≤ C * (Lm ^ 2 + (⨆ x, |m x|) ^ 2) * l2NormSq w := by
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  exact WeightAux.weighted_core hd θ hθ0 hθ2 m𝔪 𝔨 h𝔨
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    (fun w _ hw h2 =&gt; FourierAux.bdd_of_lipschitz_memLp hw h2)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    (fun _ _ _ hb hbb hh =&gt; FourierAux.memSobolev_one_mul hb hbb hh)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>/-- Lemma C.3(iv) on `ℝ^d` (line 12265), weighted comparison: if moreover `a ≥ λ₀ &gt; 0`, then
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>`B(w,w) ≤ λ₀⁻¹ B(mw,mw) + C(1+λ₀⁻¹)(‖√a‖²_{C^{0,1}} + ‖√(a/λ₀-1)‖²_{C^{0,1}} + 1) ‖w‖²_{L²}`. -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>theorem quadratic_toolbox_compare (hd : 1 ≤ d) (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (m𝔪 : Euc d → ℝ) (hm𝔪 : IsHomogSymbol θ m𝔪) :
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    ∃ C : ℝ, ∀ (L lam0 Lm Lm&#x27; Lw : ℝ) (a w : Euc d → ℝ), 0 &lt; lam0 → (∀ x, lam0 ≤ a x) → IsC11 L a →
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      IsLipschitz Lm (fun x =&gt; Real.sqrt (a x)) →
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      IsLipschitz Lm&#x27; (fun x =&gt; Real.sqrt (a x / lam0 - 1)) → IsLipschitz Lw w → MemSobolev 1 w →
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      let m := fun x =&gt; Real.sqrt (a x)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      symbolForm m𝔪 w w ≤ lam0⁻¹ * symbolForm m𝔪 (fun x =&gt; m x * w x) (fun x =&gt; m x * w x) +
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        C * (1 + lam0⁻¹) * (c01Norm m ^ 2 +
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>          c01Norm (fun x =&gt; Real.sqrt (a x / lam0 - 1)) ^ 2 + 1) * l2NormSq w := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  obtain ⟨𝔨, h𝔨⟩ := quadratic_toolbox_kernel hd θ hθ0 hθ2 m𝔪 hm𝔪
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  exact WeightAux.compare_core hd θ hθ0 hθ2 m𝔪 hm𝔪 𝔨 h𝔨
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (fun w _ hw h2 =&gt; FourierAux.bdd_of_lipschitz_memLp hw h2)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (fun _ _ _ hb hbb hh =&gt; FourierAux.memSobolev_one_mul hb hbb hh)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>/-- Lemma C.3(v) on `ℝ^d` (line 12266), Cauchy–Schwarz for the form. -/
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>theorem quadratic_toolbox_cauchySchwarz (θ : ℝ) (hθ0 : 0 &lt; θ) (hθ2 : θ &lt; 2) (m : Euc d → ℝ)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (hm : IsHomogSymbol θ m) (u v : Euc d → ℝ) (hu : MemSobolev (θ / 2) u)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (hv : MemSobolev (θ / 2) v) :
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    |symbolForm m u v| ≤ Real.sqrt (symbolForm m u u) * Real.sqrt (symbolForm m v v) :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  FourierAux.form_cauchySchwarz hθ0 hm hu hv
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>end HRS.PDE.ToolboxRd
+</span></code></pre></main></body></html>

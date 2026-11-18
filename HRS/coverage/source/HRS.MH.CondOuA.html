@@ -1,0 +1,225 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MH.CondOuA · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MH.CondOuA</code></h1><p><a href="../../lean/HRS/MH/CondOuA.lean">Open the unaltered Lean file</a> · 224 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MH.CondOuSpec
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># `HRS.MH.CondOu.conditioned_ou_prob`: proof (packet (a))
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Route: generalise `HRS.StaticLimitsAux.prob_cos` from `k = e_j` to an arbitrary nonzero lattice vector `k`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>The shift by `t = mk(e_j / (2 k_j))` (any `j` with `k_j ≠ 0`) flips the sign of `cos(2π k·x)`; the sum-level set
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`{Σ_i cos(2π k·x_i) = 0}` is null by Fubini, using that every level set `{cos(2π k·x) = c}` is Haar-null
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>(Fubini in the coordinate `j`, then the one-dimensional fact that `t ↦ e^{2πi n t} w` has `Re = c` on a null set).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>namespace HRS.MH.CondOuP
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open HRS HRS.Main HRS.StaticLimitsAux
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>/-- Finitely many unit complex numbers `z` with `(z w).re = c`, for a unit `w`. -/
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>theorem unit_re_set_finite (c : ℝ) (w : ℂ) (hw : ‖w‖ = 1) :
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    {z : ℂ | (z * w).re = c ∧ ‖z‖ = 1}.Finite := by
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  have hw0 : w ≠ 0 := by
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>    intro h; rw [h, norm_zero] at hw; exact zero_ne_one hw
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have hB : {v : ℂ | v.re = c ∧ ‖v‖ = 1}.Finite := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    refine (Set.toFinite {(⟨c, Real.sqrt (1 - c^2)⟩ : ℂ), ⟨c, -Real.sqrt (1 - c^2)⟩}).subset ?_
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    rintro v ⟨h1, h2⟩
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    have h3 : v.im ^ 2 = 1 - c ^ 2 := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>      have := Complex.sq_norm v
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      rw [h2, Complex.normSq_apply, h1] at this
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      nlinarith
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    have h4 : 0 ≤ 1 - c ^ 2 := by rw [← h3]; positivity
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    have h5 : v.im = Real.sqrt (1 - c^2) ∨ v.im = -Real.sqrt (1 - c^2) := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      have : v.im ^ 2 = (Real.sqrt (1 - c^2)) ^ 2 := by rw [Real.sq_sqrt h4, h3]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      exact sq_eq_sq_iff_eq_or_eq_neg.mp this
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    rcases h5 with h | h
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    · left; exact Complex.ext h1 h
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    · right; exact Complex.ext h1 h
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  refine (hB.image (fun v : ℂ =&gt; v * w⁻¹)).subset ?_
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  rintro z ⟨h1, h2⟩
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  refine ⟨z * w, ⟨h1, ?_⟩, mul_inv_cancel_right₀ hw0 z⟩
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  rw [norm_mul, h2, hw, mul_one]
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- Level sets of `t ↦ Re(e_1(t) w)` are null on the circle, for a unit `w`. -/
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>theorem circle_mul_re_null (w : ℂ) (hw : ‖w‖ = 1) (c : ℝ) :
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (volume : Measure UnitAddCircle) {u : UnitAddCircle | (fourier (1:ℤ) u * w).re = c} = 0 := by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  apply circle_finite_null
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hinj : Function.Injective (fun t : UnitAddCircle =&gt; fourier (1:ℤ) t) := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    intro a b h
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    simp only [fourier_one] at h
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    exact AddCircle.injective_toCircle one_ne_zero (Subtype.ext h)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  refine ((unit_re_set_finite c w hw).preimage hinj.injOn).subset fun u hu =&gt; ⟨hu, ?_⟩
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  exact Circle.norm_coe _
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>/-- The same for `t ↦ Re(e_n(t) w)`, `n ≠ 0`, by the measure-preserving map `t ↦ n • t`. -/
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>theorem circle_mul_re_null_zsmul (n : ℤ) (hn : n ≠ 0) (w : ℂ) (hw : ‖w‖ = 1) (c : ℝ) :
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (volume : Measure UnitAddCircle) {t : UnitAddCircle | (fourier n t * w).re = c} = 0 := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hset : {t : UnitAddCircle | (fourier n t * w).re = c} =
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      (fun t : UnitAddCircle =&gt; n • t) ⁻¹&#x27; {u : UnitAddCircle | (fourier (1:ℤ) u * w).re = c} := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    ext t
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    simp only [Set.mem_setOf_eq, Set.mem_preimage]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    rw [fourier_apply, fourier_apply, one_smul]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hs : MeasurableSet {u : UnitAddCircle | (fourier (1:ℤ) u * w).re = c} :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (isClosed_eq (Complex.continuous_re.comp ((fourier (1:ℤ)).continuous.mul continuous_const))
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      continuous_const).measurableSet
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have hpm := MeasureTheory.Measure.measurePreserving_zsmul (volume : Measure UnitAddCircle) hn
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hmp := hpm.measure_preimage hs.nullMeasurableSet
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  rw [hset, hmp]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  exact circle_mul_re_null w hw c
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- Every level set of `cos(2π k·x)` on the torus is Haar-null, for `k ≠ 0`. -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>theorem torus_cos_level_null (m : ℕ) (k : Lattice (m+1)) (hk : k ≠ 0) (c : ℝ) :
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (volume : Measure (Torus (m+1))) {x | Torus.cosMode k x = c} = 0 := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  obtain ⟨j, hj⟩ : ∃ j, k j ≠ 0 := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    by_contra h
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    push_neg at h
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    exact hk (funext h)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have mp := measurePreserving_piFinSuccAbove (fun _ : Fin (m+1) =&gt; (volume : Measure UnitAddCircle)) j
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  set W : (Fin m → UnitAddCircle) → ℂ :=
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    fun y =&gt; ∏ i : Fin m, fourier (k (j.succAbove i)) (y i) with hW
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  set S : Set (UnitAddCircle × (Fin m → UnitAddCircle)) :=
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    {p | (fourier (k j) p.1 * W p.2).re = c} with hS
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hmeas : MeasurableSet S := by
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    have hc : Continuous (fun p : UnitAddCircle × (Fin m → UnitAddCircle) =&gt;
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        (fourier (k j) p.1 * W p.2).re) := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      rw [hW]
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      fun_prop
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    exact (isClosed_eq hc continuous_const).measurableSet
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hpre : {x : Torus (m+1) | Torus.cosMode k x = c} =
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (m+1) =&gt; UnitAddCircle) j) ⁻¹&#x27; S := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    ext x
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have hmode : Torus.mode k x = fourier (k j) (x j) *
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        ∏ i : Fin m, fourier (k (j.succAbove i)) (x (j.succAbove i)) := by
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      simp only [Torus.mode, UnitAddTorus.mFourier, ContinuousMap.coe_mk]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      exact Fin.prod_univ_succAbove (fun i =&gt; fourier (k i) (x i)) j
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    simp only [Set.mem_setOf_eq, Set.mem_preimage, hS, hW, MeasurableEquiv.piFinSuccAbove_apply,
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      Torus.cosMode, hmode]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    exact Iff.rfl
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  have hfib : ∀ y : Fin m → UnitAddCircle,
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      (volume : Measure UnitAddCircle) ((fun a =&gt; (a, y)) ⁻¹&#x27; S) = 0 := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    intro y
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have hw : ‖W y‖ = 1 := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      rw [hW]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      simp only
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      rw [norm_prod]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      exact Finset.prod_eq_one fun i _ =&gt; Circle.norm_coe _
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    have e1 : (fun a =&gt; (a, y)) ⁻¹&#x27; S = {a : UnitAddCircle | (fourier (k j) a * W y).re = c} := rfl
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    rw [e1]
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    exact circle_mul_re_null_zsmul (k j) hj (W y) hw c
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  rw [hpre]
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  show (Measure.pi fun _ : Fin (m+1) =&gt; (volume : Measure UnitAddCircle)) _ = 0
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  rw [mp.measure_preimage_equiv, Measure.prod_apply_symm hmeas]
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  simp [hfib]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>/-- The sum-level set `{Σ_i cos(2π k·x_i) = 0}` is null in `N = n+1` particles. -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>theorem null_cos_sum_gen (n : ℕ) {m : ℕ} (k : Lattice (m+1)) (hk : k ≠ 0) :
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    (volume : Measure (Config (m+1) (n+1)))
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      {X | ∑ i, Torus.cosMode k (X i) = 0} = 0 := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  have mp := measurePreserving_piFinSuccAbove (fun _ : Fin (n+1) =&gt; (volume : Measure (Torus (m+1)))) 0
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  set S&#x27; : Set (Torus (m+1) × (Fin n → Torus (m+1))) :=
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    {p | Torus.cosMode k p.1 + ∑ i, Torus.cosMode k (p.2 i) = 0} with hS&#x27;
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  have hmeas : MeasurableSet S&#x27; := by
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    have hc : Continuous (Torus.cosMode k) := Complex.continuous_re.comp (Torus.continuous_mode _)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    refine measurableSet_eq_fun ?_ measurable_const
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    exact (hc.measurable.comp measurable_fst).add
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      (Finset.measurable_sum _ fun i _ =&gt; hc.measurable.comp ((measurable_pi_apply i).comp measurable_snd))
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  have hpre : {X : Config (m+1) (n+1) | ∑ i, Torus.cosMode k (X i) = 0}
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      = (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n+1) =&gt; Torus (m+1)) 0) ⁻¹&#x27; S&#x27; := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    ext X
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    simp only [Set.mem_setOf_eq, Set.mem_preimage, hS&#x27;, MeasurableEquiv.piFinSuccAbove_apply,
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      Fin.sum_univ_succ]
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    rfl
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  rw [hpre]
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  show (Measure.pi fun _ : Fin (n+1) =&gt; (volume : Measure (Torus (m+1)))) _ = 0
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  rw [mp.measure_preimage_equiv, Measure.prod_apply_symm hmeas]
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  have hfib : ∀ y : Fin n → Torus (m+1),
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (volume : Measure (Torus (m+1))) ((fun x =&gt; (x, y)) ⁻¹&#x27; S&#x27;) = 0 := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    intro y
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    set c := ∑ i, Torus.cosMode k (y i) with hc
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    have e1 : (fun x =&gt; (x, y)) ⁻¹&#x27; S&#x27; = {x : Torus (m+1) | Torus.cosMode k x = -c} := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      ext x
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      simp only [hS&#x27;, Set.mem_preimage, Set.mem_setOf_eq]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      constructor &lt;;&gt; intro h &lt;;&gt; linarith
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    rw [e1]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    exact torus_cos_level_null m k hk (-c)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  simp [hfib]
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- A nonzero lattice vector has a coordinate `j` with `k j ≠ 0`. -/
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>theorem exists_coord_ne_zero {d : ℕ} (k : Lattice d) (hk : k ≠ 0) : ∃ j, k j ≠ 0 := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  by_contra h
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  push_neg at h
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  exact hk (funext h)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>/-- The shift `t = mk(e_j / (2 k_j))` flips the sign of `cos(2π k·x)`. -/
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>theorem cos_shift {d : ℕ} (k : Lattice d) (j : Fin d) (hj : k j ≠ 0) (x : Torus d) :
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    Torus.cosMode k (Torus.mk (EuclideanSpace.single j (1 / (2 * (k j : ℝ)))) + x) =
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      - Torus.cosMode k x := by
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have hj&#x27; : (k j : ℝ) ≠ 0 := by exact_mod_cast hj
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  conv_lhs =&gt; rw [← Torus.mk_rep x, ← Torus.mk_add, Torus.cosMode_mk]
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  conv_rhs =&gt; rw [← Torus.mk_rep x, Torus.cosMode_mk]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [Torus.dot_add]
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have : Lattice.dot k (EuclideanSpace.single j (1 / (2 * (k j : ℝ)))) = 1/2 := by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    simp only [Lattice.dot, EuclideanSpace.single_apply, mul_ite, mul_zero, Finset.sum_ite_eq&#x27;,
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      Finset.mem_univ, if_true]
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    field_simp
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  rw [this, mul_add, show 2 * Real.pi * (1/2 : ℝ) = Real.pi by ring, add_comm Real.pi,
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    Real.cos_add_pi]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>/-- `∫ cos(2π k·x) dx = 0` for `k ≠ 0`. -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>theorem integral_cos_mode_zero {d : ℕ} (k : Lattice d) (hk : k ≠ 0) :
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    ∫ x : Torus d, Torus.cosMode k x = 0 := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  obtain ⟨j, hj⟩ := exists_coord_ne_zero k hk
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  have h1 : ∫ x : Torus d, Torus.cosMode k
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      (Torus.mk (EuclideanSpace.single j (1 / (2 * (k j : ℝ)))) + x) =
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      ∫ x : Torus d, Torus.cosMode k x :=
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    integral_add_left_eq_self (μ := (volume : Measure (Torus d))) _ _
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  simp only [cos_shift k j hj, integral_neg] at h1
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  linarith
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>theorem conditioned_ou_prob_proof : type_of% @HRS.MH.CondOu.conditioned_ou_prob := by
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  intro d hd s hs0 hsd β hβ k hk N hN
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  obtain ⟨m, rfl⟩ : ∃ m, d = m + 1 := ⟨d - 1, by omega⟩
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  obtain ⟨n, rfl⟩ : ∃ n, N = n + 1 := ⟨N - 1, by omega⟩
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  haveI := gibbs_prob (N := n+1) hd hs0 hsd 0 β hβ.le
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  set P := canonicalGibbs (periodicRiesz (m+1) s) (fun _ =&gt; (0:ℝ)) (n+1) β with hP
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  obtain ⟨j, hj⟩ := exists_coord_ne_zero k hk
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  set t : Torus (m+1) := Torus.mk (EuclideanSpace.single j (1 / (2 * (k j : ℝ)))) with ht
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hNpos : (0 : ℝ) &lt; ((n+1 : ℕ) : ℝ) := by positivity
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  set Z : Config (m+1) (n+1) → ℝ := fun X =&gt; Real.sqrt ((n+1 : ℕ) : ℝ) * ((1 / ((n+1 : ℕ) : ℝ)) *
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        ∑ i, Real.sqrt 2 * Torus.cosMode k (X i)) with hZ
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have hc : Continuous (Torus.cosMode k) := Complex.continuous_re.comp (Torus.continuous_mode _)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hZm : Measurable Z := by
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    refine measurable_const.mul (measurable_const.mul (Finset.measurable_sum _ fun i _ =&gt; ?_))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    exact measurable_const.mul (hc.measurable.comp (measurable_pi_apply i))
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  have hneg : ∀ X, Z (shiftEquiv t X) = -Z X := by
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    intro X
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    simp only [hZ, shiftEquiv_apply, ht, cos_shift k j hj, mul_neg, Finset.sum_neg_distrib]
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hnull : P {X | Z X = 0} = 0 := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    refine gibbs_ac _ _ _ ?_
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    refine measure_mono_null ?_ (null_cos_sum_gen n k hk)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    intro X hX
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    simp only [Set.mem_setOf_eq, hZ] at hX ⊢
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    have h1 : Real.sqrt ((n+1 : ℕ) : ℝ) ≠ 0 := (Real.sqrt_pos.2 hNpos).ne&#x27;
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    have h2 : (1 / ((n+1 : ℕ) : ℝ)) ≠ 0 := by positivity
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    rcases mul_eq_zero.1 hX with h | h
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    · exact absurd h h1
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    rcases mul_eq_zero.1 h with h | h
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    · exact absurd h h2
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    rw [← Finset.mul_sum] at h
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    rcases mul_eq_zero.1 h with h | h
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    · exact absurd h (by positivity)
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    · exact h
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  have hp0 : ∫ x, PDE.cosTest k x ∂(volume : Measure (Torus (m+1))) = 0 := by
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    simp only [PDE.cosTest, integral_const_mul, integral_cos_mode_zero k hk, mul_zero]
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  have hset : {X : Config (m+1) (n+1) | 0 &lt; linCoord (volume : Measure (Torus (m+1))) (PDE.cosTest k) X}
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>      = {X | 0 &lt; Z X} := by
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    ext X
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    simp only [Set.mem_setOf_eq, linCoord, pair, hp0, sub_zero]
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    exact Iff.rfl
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  rw [hset]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>  exact prob_half P _ (gibbs_inv _ _ _ _) Z hZm hneg hnull
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>end HRS.MH.CondOuP
+</span></code></pre></main></body></html>

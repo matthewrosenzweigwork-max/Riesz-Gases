@@ -1,0 +1,773 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.ProductTransfer · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.ProductTransfer</code></h1><p><a href="../../lean/HRS/Equilibrium/ProductTransfer.lean">Open the unaltered Lean file</a> · 772 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.ProductTransfer — Lemma 4.4 (`M:R:lem:product-transfer`)
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>`product_moment_transfer_proof` restates `HRS.product_moment_transfer` verbatim (the statement lives
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>in `PoleCavity.lean`, whose inputs, Proposition 5.5 and the exchangeability of the cavity, are
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>downstream of that file).  Proof route (TeX lines 4201-4208): Hölder interpolation
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`J_{pb} ≤ J_b^{2-p} J_{2b}^{p-1}` (log-convexity of `b ↦ log K_{N,b}`), the two-sided pressure bound
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>of Proposition 5.5 (`perturbed_pressure`), `Q_{n,b}` versus the cavity (bounded one-body tilt) and the
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>pole tilt (Jensen and the one-particle density bound of Lemma 4.1).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.Energy.PressureProof
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.Equilibrium.MarginalPole
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory ProbabilityTheory Filter Topology
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>set_option linter.style.longLine false
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>namespace ProdTransfer
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open HRS.External HRS.PoleCavityAux HRS.MarginalAux
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>/-! ### Constant shifts do not change a tilted law -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>theorem tiltMeasure_add_const {α : Type*} [MeasurableSpace α] (P : Measure α) [IsProbabilityMeasure P]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (w : α → ℝ) (hw : Measurable w) (k : ℝ) :
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    tiltMeasure P (fun a =&gt; w a + k) = tiltMeasure P w := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  rw [Glue.tiltMeasure_eq_tilted_of_measurable P (fun a =&gt; w a + k) (hw.add_const k),
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    Glue.tiltMeasure_eq_tilted_of_measurable P _ hw]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  exact Calib.tilted_add_const P w k
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>theorem pairSum_add_const (g : Torus d → ℝ) (c : ℝ) {n : ℕ} (Y : Config d n) :
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    pairSum (fun z =&gt; g z + c) Y = pairSum g Y +
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      c * ∑ i : Fin n, ((Finset.univ.filter (fun j : Fin n =&gt; i &lt; j)).card : ℝ) := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  unfold pairSum
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  simp only [Finset.sum_add_distrib, Finset.sum_const, nsmul_eq_mul, Finset.mul_sum]
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  congr 1
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  refine Finset.sum_congr rfl fun i _ =&gt; by ring
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem critCavity_eq (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (c β : ℝ) {ρ : Torus d → ℝ}
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (hρ : SmoothPosDensity ρ) (N : ℕ) :
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    critCavity d s c β ρ N =
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1) (β / N) β := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hμ := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  obtain ⟨B, Cc, hB, hK⟩ := kerData_periodicRiesz hd hs0 hsd hρ
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  unfold critCavity cavityLaw
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hg := hK.meas
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hconv : ∀ y, convMeasure (gPlus d s c) (withDensityReal ρ) y =
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      convMeasure (periodicRiesz d s) (withDensityReal ρ) y + c := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    intro y
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    unfold convMeasure gPlus
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    rw [integral_add (hK.int y) (integrable_const _)]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    simp
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  rw [← tiltMeasure_add_const _ _ (measurable_cavityW hg (withDensityReal ρ) (N - 1) (β / N) β)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (-(β / N) * (c * ∑ i : Fin (N - 1), ((Finset.univ.filter (fun j : Fin (N - 1) =&gt; i &lt; j)).card : ℝ))
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      + β * ((N - 1 : ℕ) * c))]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  congr 1
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  funext Y
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have : pairSum (gPlus d s c) Y = pairSum (fun z =&gt; periodicRiesz d s z + c) Y := rfl
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  rw [this, pairSum_add_const]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  simp only [hconv, Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin,
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    nsmul_eq_mul]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  ring
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-! ### Hölder step -/
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>theorem holder3 {α : Type*} [MeasurableSpace α] (ν : Measure α) (Yf w : α → ℝ≥0∞)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    (hY : Measurable Yf) (hw : Measurable w) (q : ℝ) (hq : 2 ≤ q) :
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    ∫⁻ a, Yf a ^ 2 * w a ∂ν ≤ (∫⁻ a, Yf a ^ (2 * q) ∂ν) ^ (1 / q) *
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>      (∫⁻ a, w a ∂ν) ^ ((q - 2) / q) * (∫⁻ a, w a ^ 2 ∂ν) ^ (1 / q) := by
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hq0 : 0 &lt; q := by linarith
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hpt : ∀ a, Yf a ^ 2 * w a = (Yf a ^ (2 * q)) ^ (1 / q) * w a ^ ((q - 2) / q) *
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      (w a ^ 2) ^ (1 / q) := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    intro a
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    have h1 : (Yf a ^ (2 * q)) ^ (1 / q) = Yf a ^ 2 := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      rw [← ENNReal.rpow_mul]
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      have : 2 * q * (1 / q) = ((2 : ℕ) : ℝ) := by field_simp; norm_num
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      rw [this, ENNReal.rpow_natCast]
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    have h2 : (w a ^ 2) ^ (1 / q) = w a ^ (2 / q) := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      congr 1; push_cast; ring
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    rw [h1, h2, mul_assoc, ← ENNReal.rpow_add_of_nonneg _ _ (by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      apply div_nonneg &lt;;&gt; linarith) (by positivity)]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have : (q - 2) / q + 2 / q = 1 := by field_simp; ring
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    rw [this, ENNReal.rpow_one]
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have key := ENNReal.lintegral_prod_norm_pow_le (μ := ν) (Finset.univ : Finset (Fin 3))
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (f := ![fun a =&gt; Yf a ^ (2 * q), w, fun a =&gt; w a ^ 2])
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (p := ![1 / q, (q - 2) / q, 1 / q]) (by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      intro i _
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      fin_cases i
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      · exact (hY.pow_const _).aemeasurable
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      · exact hw.aemeasurable
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      · exact (hw.pow_const _).aemeasurable) (by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      simp [Fin.sum_univ_three]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      field_simp; ring) (by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      intro i _
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      fin_cases i
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      · simp; positivity
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      · simp; apply div_nonneg &lt;;&gt; linarith
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      · simp; positivity)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  simp only [Fin.prod_univ_three] at key
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  simp at key
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  calc ∫⁻ a, Yf a ^ 2 * w a ∂ν = ∫⁻ a, (Yf a ^ (2 * q)) ^ (1 / q) * w a ^ ((q - 2) / q) *
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>      (w a ^ 2) ^ (1 / q) ∂ν := lintegral_congr hpt
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    _ ≤ _ := by simpa only [one_div] using key
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>theorem AL {α : Type*} [MeasurableSpace α] (ν : Measure α) (φ : α → ℝ) (hφ : Measurable φ)
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    (A : ℝ) (hZlo : ENNReal.ofReal (Real.exp (-A)) ≤ ∫⁻ a, ENNReal.ofReal (Real.exp (φ a)) ∂ν)
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    (hZhi : ∫⁻ a, ENNReal.ofReal (Real.exp (φ a)) ∂ν ≤ ENNReal.ofReal (Real.exp A))
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    (hZ2 : ∫⁻ a, ENNReal.ofReal (Real.exp (2 * φ a)) ∂ν ≤ ENNReal.ofReal (Real.exp A))
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    (q : ℝ) (hq : 2 ≤ q) (Y : α → ℝ) (hY : Measurable Y) :
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    eLpNorm Y 2 ((∫⁻ a, ENNReal.ofReal (Real.exp (φ a)) ∂ν)⁻¹ •
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        ν.withDensity fun a =&gt; ENNReal.ofReal (Real.exp (φ a))) ≤
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      ENNReal.ofReal (Real.exp (3 * A / (2 * q))) * eLpNorm Y (ENNReal.ofReal (2 * q)) ν := by
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hq0 : 0 &lt; q := by linarith
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  set w : α → ℝ≥0∞ := fun a =&gt; ENNReal.ofReal (Real.exp (φ a)) with hw
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hwm : Measurable w := ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hφ)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  set Z : ℝ≥0∞ := ∫⁻ a, w a ∂ν with hZ
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hZ0 : Z ≠ 0 := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    intro h; rw [h] at hZlo
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    exact absurd (le_antisymm hZlo bot_le ▸ (ENNReal.ofReal_pos.2 (Real.exp_pos _))) (lt_irrefl _)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hZt : Z ≠ ∞ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hZhi
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hYm : Measurable fun a =&gt; ‖Y a‖ₑ := hY.enorm
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have h1 : ∫⁻ a, ‖Y a‖ₑ ^ (2 : ℝ≥0∞).toReal ∂((Z)⁻¹ • ν.withDensity w) =
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>      Z⁻¹ * ∫⁻ a, ‖Y a‖ₑ ^ 2 * w a ∂ν := by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    rw [lintegral_smul_measure, lintegral_withDensity_eq_lintegral_mul _ hwm
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      ((hYm.pow_const _))]
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    simp [mul_comm]
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  have hw2 : ∀ a, w a ^ 2 = ENNReal.ofReal (Real.exp (2 * φ a)) := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    intro a
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    simp only [hw]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    rw [← ENNReal.ofReal_pow (Real.exp_pos _).le, ← Real.exp_nat_mul]
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    norm_num
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hH := holder3 ν (fun a =&gt; ‖Y a‖ₑ) w hYm hwm q hq
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  simp_rw [hw2] at hH
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  set M := ∫⁻ a, ‖Y a‖ₑ ^ (2 * q) ∂ν with hM
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  set Z2 := ∫⁻ a, ENNReal.ofReal (Real.exp (2 * φ a)) ∂ν with hZ2def
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have hcancel : Z⁻¹ * Z ^ ((q - 2) / q) = (Z⁻¹) ^ (2 / q) := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    have : Z⁻¹ = Z ^ (-1 : ℝ) := (ENNReal.rpow_neg_one Z).symm
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    rw [this, ← ENNReal.rpow_add _ _ hZ0 hZt, ← ENNReal.rpow_mul]
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    congr 1
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    field_simp; ring
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hZinv : Z⁻¹ ≤ ENNReal.ofReal (Real.exp A) := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    calc Z⁻¹ ≤ (ENNReal.ofReal (Real.exp (-A)))⁻¹ := ENNReal.inv_le_inv.2 hZlo
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      _ = ENNReal.ofReal (Real.exp A) := by
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        rw [← ENNReal.ofReal_inv_of_pos (Real.exp_pos _), ← Real.exp_neg]; simp
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have h2 : Z⁻¹ * ∫⁻ a, ‖Y a‖ₑ ^ 2 * w a ∂ν ≤
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      ENNReal.ofReal (Real.exp (3 * A / q)) * M ^ (1 / q) := by
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    calc Z⁻¹ * ∫⁻ a, ‖Y a‖ₑ ^ 2 * w a ∂ν ≤ Z⁻¹ * (M ^ (1 / q) * Z ^ ((q - 2) / q) * Z2 ^ (1 / q)) :=
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>          mul_le_mul&#x27; le_rfl hH
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>      _ = (Z⁻¹ * Z ^ ((q - 2) / q)) * M ^ (1 / q) * Z2 ^ (1 / q) := by ring
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      _ = (Z⁻¹) ^ (2 / q) * Z2 ^ (1 / q) * M ^ (1 / q) := by rw [hcancel]; ring
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>      _ ≤ (ENNReal.ofReal (Real.exp A)) ^ (2 / q) * (ENNReal.ofReal (Real.exp A)) ^ (1 / q) *
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>            M ^ (1 / q) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>          gcongr
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      _ = ENNReal.ofReal (Real.exp (3 * A / q)) * M ^ (1 / q) := by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>          congr 1
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>          rw [← ENNReal.rpow_add_of_nonneg _ _ (by positivity) (by positivity),
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>            ENNReal.ofReal_rpow_of_pos (Real.exp_pos _), ← Real.exp_mul]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>          congr 2
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>          field_simp; ring
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hY.aestronglyMeasurable, h1]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hMe : M ^ (1 / q) = (eLpNorm Y (ENNReal.ofReal (2 * q)) ν) ^ 2 := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp; positivity) ENNReal.ofReal_ne_top
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      hY.aestronglyMeasurable,
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      ENNReal.toReal_ofReal (by positivity), ← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    congr 1
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    push_cast
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    field_simp
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have h3 : (Z⁻¹ * ∫⁻ a, ‖Y a‖ₑ ^ 2 * w a ∂ν) ^ (1 / (2 : ℝ≥0∞).toReal) ≤
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>      (ENNReal.ofReal (Real.exp (3 * A / q)) * (eLpNorm Y (ENNReal.ofReal (2 * q)) ν) ^ 2) ^
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>        (1 / (2 : ℝ≥0∞).toReal) := by
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    refine ENNReal.rpow_le_rpow ?_ (by positivity)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    rw [← hMe]; exact h2
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  refine h3.trans ?_
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have h2t : (2 : ℝ≥0∞).toReal = 2 := by simp
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  rw [h2t, ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), ENNReal.ofReal_rpow_of_pos (Real.exp_pos _),
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    ← Real.exp_mul]
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  refine mul_le_mul&#x27; (le_of_eq ?_) (le_of_eq ?_)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  · congr 2; field_simp
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  · rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]; norm_num
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>/-! ### Comparison of tilted laws -/
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>theorem tilt_le_bdd {α : Type*} [MeasurableSpace α] (P : Measure α) (w w&#x27; : α → ℝ)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    (hw : Measurable w) (hw&#x27; : Measurable w&#x27;) (U : ℝ) (hU : ∀ a, |w a - w&#x27; a| ≤ U)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (hZ0 : ∫⁻ a, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P ≠ 0)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (hZt : ∫⁻ a, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P ≠ ∞) :
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    tiltMeasure P w ≤ ENNReal.ofReal (Real.exp (2 * U)) • tiltMeasure P w&#x27; := by
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  set Z&#x27; := ∫⁻ a, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P with hZ&#x27;
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  set Z := ∫⁻ a, ENNReal.ofReal (Real.exp (w a)) ∂P with hZ
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hpt1 : ∀ a, ENNReal.ofReal (Real.exp (w a)) ≤
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      ENNReal.ofReal (Real.exp U) * ENNReal.ofReal (Real.exp (w&#x27; a)) := by
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    intro a
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    rw [← ENNReal.ofReal_mul (Real.exp_pos _).le]
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    rw [← Real.exp_add]
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    refine Real.exp_le_exp.2 ?_
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    have := (abs_le.1 (hU a)).2; linarith
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have hpt2 : ∀ a, ENNReal.ofReal (Real.exp (-U)) * ENNReal.ofReal (Real.exp (w&#x27; a)) ≤
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      ENNReal.ofReal (Real.exp (w a)) := by
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    intro a
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    rw [← ENNReal.ofReal_mul (Real.exp_pos _).le]
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    rw [← Real.exp_add]
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    refine Real.exp_le_exp.2 ?_
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    have := (abs_le.1 (hU a)).1; linarith
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  have hZlo : ENNReal.ofReal (Real.exp (-U)) * Z&#x27; ≤ Z := by
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    rw [hZ&#x27;, ← lintegral_const_mul (f := fun a =&gt; ENNReal.ofReal (Real.exp (w&#x27; a))) _
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>      (ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hw&#x27;))]
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    exact lintegral_mono hpt2
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>  have hZinv : Z⁻¹ ≤ ENNReal.ofReal (Real.exp U) * Z&#x27;⁻¹ := by
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    calc Z⁻¹ ≤ (ENNReal.ofReal (Real.exp (-U)) * Z&#x27;)⁻¹ := ENNReal.inv_le_inv.2 hZlo
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      _ = ENNReal.ofReal (Real.exp U) * Z&#x27;⁻¹ := by
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>        rw [ENNReal.mul_inv (Or.inr hZt) (Or.inr hZ0)]
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        rw [← ENNReal.ofReal_inv_of_pos (Real.exp_pos _), ← Real.exp_neg]; simp
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>  refine Measure.le_iff.2 fun A hA =&gt; ?_
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  simp only [tiltMeasure, Measure.smul_apply, withDensity_apply _ hA, smul_eq_mul]
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have hint : ∫⁻ a in A, ENNReal.ofReal (Real.exp (w a)) ∂P ≤
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      ENNReal.ofReal (Real.exp U) * ∫⁻ a in A, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P := by
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    rw [← lintegral_const_mul (f := fun a =&gt; ENNReal.ofReal (Real.exp (w&#x27; a))) _
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      (ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hw&#x27;))]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    exact setLIntegral_mono&#x27; hA fun a _ =&gt; hpt1 a
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  calc Z⁻¹ * ∫⁻ a in A, ENNReal.ofReal (Real.exp (w a)) ∂P
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      ≤ (ENNReal.ofReal (Real.exp U) * Z&#x27;⁻¹) *
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>          (ENNReal.ofReal (Real.exp U) * ∫⁻ a in A, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P) :=
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>        mul_le_mul&#x27; hZinv hint
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    _ = ENNReal.ofReal (Real.exp (2 * U)) * (Z&#x27;⁻¹ * ∫⁻ a in A, ENNReal.ofReal (Real.exp (w&#x27; a)) ∂P) := by
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>        have : ENNReal.ofReal (Real.exp U) * ENNReal.ofReal (Real.exp U) =
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>            ENNReal.ofReal (Real.exp (2 * U)) := by
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>          rw [← ENNReal.ofReal_mul (Real.exp_pos _).le, ← Real.exp_add]; congr 2; ring
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        rw [← this]; ring
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>theorem tilt_le_of_nonpos {α : Type*} [MeasurableSpace α] (P : Measure α) (v : α → ℝ)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    (hv : Measurable v) (hv0 : ∀ a, v a ≤ 0) (A : ℝ)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    (hZ : ENNReal.ofReal (Real.exp (-A)) ≤ ∫⁻ a, ENNReal.ofReal (Real.exp (v a)) ∂P) :
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    tiltMeasure P v ≤ ENNReal.ofReal (Real.exp A) • P := by
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  refine Measure.le_iff.2 fun S hS =&gt; ?_
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  simp only [tiltMeasure, Measure.smul_apply, withDensity_apply _ hS, smul_eq_mul]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  have hinv : (∫⁻ a, ENNReal.ofReal (Real.exp (v a)) ∂P)⁻¹ ≤ ENNReal.ofReal (Real.exp A) := by
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    calc _ ≤ (ENNReal.ofReal (Real.exp (-A)))⁻¹ := ENNReal.inv_le_inv.2 hZ
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>      _ = ENNReal.ofReal (Real.exp A) := by
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>        rw [← ENNReal.ofReal_inv_of_pos (Real.exp_pos _), ← Real.exp_neg]; simp
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  have : ∫⁻ a in S, ENNReal.ofReal (Real.exp (v a)) ∂P ≤ P S := by
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    calc _ ≤ ∫⁻ a in S, 1 ∂P := lintegral_mono fun a =&gt; by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>          simpa using Real.exp_le_one_iff.2 (hv0 a)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      _ = P S := by simp
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  exact mul_le_mul&#x27; hinv this
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>/-! ### Pressure bounds (Proposition 5.5 at `θ = 0`) -/
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>theorem rowOK_kernel (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {ρ : Torus d → ℝ}
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    RowOK (withDensityReal ρ) (fun x y =&gt; periodicRiesz d s (x - y)) := by
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  obtain ⟨B, hB⟩ := periodicRiesz_ge (d := d) hd hs0 hsd
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  obtain ⟨Λ, hΛ0, hΛ⟩ := exists_density_bound hρ
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  have hw : ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + (B + 1) :=
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>    fun z _ =&gt; by linarith [hB z]
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  exact (rowOK_g_h (by omega) s hs0 hsd (B + 1) hw 0 hΛ0.le hΛ (h := fun _ _ =&gt; 0)
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    measurable_const (fun x y =&gt; by simp)).1
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>theorem measurable_energy (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {ρ : Torus d → ℝ}
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    (hρ : SmoothPosDensity ρ) {N : ℕ} :
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    Measurable (fun X : Config d N =&gt;
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>      modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)) := by
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  haveI := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>  exact measurable_modulatedEnergy (rowOK_kernel hd hs0 hsd hρ)
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>/-- The normaliser `∫⁻ e^{-b N F_N}` at `N ≥ 2` is `e^{± C N δ_N}`, uniformly for `b ∈ [β/2, 2β]`. -/
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>theorem pressure_N2 (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ b ∈ Set.Icc (β / 2) (2 * β),
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      ENNReal.ofReal (Real.exp (-(C * N * deltaN d s N))) ≤
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>          ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (-b * N *
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>            modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)))
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) ∧
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>        ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (-b * N *
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>            modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)))
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) ≤
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>          ENNReal.ofReal (Real.exp (C * N * deltaN d s N)) := by
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  obtain ⟨B, hB⟩ := periodicRiesz_ge (d := d) hd hs0 hsd
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  have hw : ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + (B + 1) :=
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    fun z _ =&gt; by linarith [hB z]
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>  obtain ⟨x0, -, hx0⟩ := isCompact_univ.exists_isMinOn Set.univ_nonempty
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>    (continuous_of_smoothPos hρ).continuousOn
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  have hc₀ : 0 &lt; ρ x0 := hρ.pos x0
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>  have hlow : ∀ x, ρ x0 ≤ ρ x := fun x =&gt; isMinOn_iff.1 hx0 x (Set.mem_univ x)
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  obtain ⟨θ₀, θ₁, C, hθ₀, hθ₁, H⟩ := perturbed_pressure (by omega) s hs0 hsd (B + 1) hw (β / 2)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    (2 * β) (by positivity) (ρ x0) hc₀ (fun k =&gt; Torus.cbNorm k ρ) 0
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  refine ⟨C, fun N hN b hb =&gt; ?_⟩
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  have := (H ρ hρ.density hρ.smooth hlow (fun k =&gt; le_rfl) (fun _ _ =&gt; 0) measurable_const
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    (fun _ _ =&gt; rfl) (fun x y =&gt; by simp) N hN b hb).1 0 (by simp [hθ₀.le])
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  simpa [modulatedEnergyKernel] using this
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>/-- For `N = 1` the energy is bounded, so the normaliser is `e^{O(1)}`. -/
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>theorem pressure_N1 (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ b ∈ Set.Icc (β / 2) (2 * β),
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>      ENNReal.ofReal (Real.exp (-C)) ≤
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>          ∫⁻ X : Config d 1, ENNReal.ofReal (Real.exp (-b * (1 : ℕ) *
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>            modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)))
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) ∧
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>        ∫⁻ X : Config d 1, ENNReal.ofReal (Real.exp (-b * (1 : ℕ) *
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>            modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)))
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) ≤
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>          ENNReal.ofReal (Real.exp C) := by
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  haveI := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  obtain ⟨B, Cc, hB, hK⟩ := kerData_periodicRiesz hd hs0 hsd hρ
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have hCc := hK.Cc_nonneg
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have hE : ∀ X : Config d 1, |modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)| ≤
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>      3 * Cc := by
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    intro X
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    unfold modulatedEnergyKernel modulatedEnergy
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>    have h0 : Finset.univ.erase (0 : Fin 1) = ∅ := by
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>      ext j; simp [Subsingleton.elim j 0]
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    have hsum : ∀ i : Fin 1, Finset.univ.erase i = ∅ := fun i =&gt; by
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>      rw [Subsingleton.elim i 0]; exact h0
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>    simp only [hsum, Finset.sum_empty, mul_zero, zero_sub, Nat.cast_one, div_one, one_div, inv_one,
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>      one_mul, Finset.univ_unique, Finset.sum_singleton, Finset.erase_singleton]
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    have h1 : |∫ y, periodicRiesz d s (X default - y) ∂(withDensityReal ρ)| ≤ Cc := hK.conv _
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    have h2 : |∫ x, ∫ y, periodicRiesz d s (x - y) ∂(withDensityReal ρ) ∂(withDensityReal ρ)| ≤ Cc := by
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>      have := norm_integral_le_of_norm_le_const (μ := withDensityReal ρ)
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>        (f := fun x =&gt; ∫ y, periodicRiesz d s (x - y) ∂(withDensityReal ρ)) (C := Cc)
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>        (Filter.Eventually.of_forall fun x =&gt; by rw [Real.norm_eq_abs]; exact hK.conv x)
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>      simpa using this
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    rw [abs_le] at h1 h2 ⊢
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    constructor &lt;;&gt; linarith [h1.1, h1.2, h2.1, h2.2]
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  refine ⟨6 * β * Cc, by positivity, fun b hb =&gt; ?_⟩
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have hb0 : 0 ≤ b := by linarith [hb.1]
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  have hbd : ∀ X : Config d 1, |-b * ((1 : ℕ) : ℝ) *
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>      modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)| ≤ 6 * β * Cc := by
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>    intro X
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    have := hE X
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    calc |-b * ((1 : ℕ) : ℝ) * modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)|
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>        = b * |modulatedEnergyKernel (periodicRiesz d s) X (withDensityReal ρ)| := by
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>          simp [abs_mul, abs_of_nonneg hb0]
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>      _ ≤ (2 * β) * (3 * Cc) := mul_le_mul hb.2 this (abs_nonneg _) (by positivity)
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>      _ = 6 * β * Cc := by ring
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>  constructor
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  · calc ENNReal.ofReal (Real.exp (-(6 * β * Cc)))
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>        = ∫⁻ _ : Config d 1, ENNReal.ofReal (Real.exp (-(6 * β * Cc)))
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) := by simp
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>      _ ≤ _ := lintegral_mono fun X =&gt; ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>          (Real.exp_le_exp.2 (by linarith [abs_le.1 (hbd X)]))
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  · calc _ ≤ ∫⁻ _ : Config d 1, ENNReal.ofReal (Real.exp (6 * β * Cc))
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>            ∂(Measure.pi fun _ =&gt; withDensityReal ρ) :=
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>          lintegral_mono fun X =&gt; ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>            (Real.exp_le_exp.2 (by linarith [abs_le.1 (hbd X)]))
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>      _ = _ := by simp
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>/-- The normaliser `J_{N,b} = ∫⁻ e^{-b N F_N} dμ^{⊗N}`. -/
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>def Jint (d : ℕ) (s : ℝ) (N : ℕ) (b : ℝ) (μ : Measure (Torus d)) : ℝ≥0∞ :=
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (-b * N *
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    modulatedEnergyKernel (periodicRiesz d s) X μ)) ∂(Measure.pi fun _ =&gt; μ)
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>theorem pressure_all (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 1 ≤ N → ∀ b ∈ Set.Icc (β / 2) (2 * β),
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>      ENNReal.ofReal (Real.exp (-(C * N * deltaN d s N))) ≤ Jint d s N b (withDensityReal ρ) ∧
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>        Jint d s N b (withDensityReal ρ) ≤ ENNReal.ofReal (Real.exp (C * N * deltaN d s N)) := by
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>  obtain ⟨C2, h2⟩ := pressure_N2 hd hs0 hsd β hβ hρ
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>  obtain ⟨C1, hC1, h1⟩ := pressure_N1 hd hs0 hsd β hβ hρ
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>  refine ⟨max (max C2 0) C1, (le_max_left _ _).trans&#x27; (le_max_right _ _), fun N hN b hb =&gt; ?_⟩
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>  have hNd := one_le_mul_deltaN (d := d) hs0 N hN
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  have hCnn : 0 ≤ max (max C2 0) C1 := (le_max_right C2 0).trans ((le_max_left _ _))
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  have hCNd : max (max C2 0) C1 * N * deltaN d s N = max (max C2 0) C1 * ((N : ℝ) * deltaN d s N) := by ring
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>  rcases Nat.lt_or_ge N 2 with h | h
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>  · have hN1 : N = 1 := by omega
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    subst hN1
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>    obtain ⟨hl, hu⟩ := h1 b hb
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>    have hCle : C1 ≤ max (max C2 0) C1 * (((1 : ℕ) : ℝ) * deltaN d s 1) :=
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>      (le_max_right _ _).trans (by nlinarith [le_max_right (max C2 0) C1])
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>    unfold Jint
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>    refine ⟨hl.trans&#x27; (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 ?_)),
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>      hu.trans (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 ?_))⟩
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    · rw [hCNd]; linarith
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    · rw [hCNd]; linarith
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  · obtain ⟨hl, hu⟩ := h2 N h b hb
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>    have hC2le : C2 ≤ max (max C2 0) C1 := (le_max_left _ _).trans (le_max_left _ _)
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>    have hmono : C2 * N * deltaN d s N ≤ max (max C2 0) C1 * N * deltaN d s N := by
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      have : 0 ≤ (N : ℝ) * deltaN d s N := by linarith
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>      nlinarith
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>    unfold Jint
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>    exact ⟨hl.trans&#x27; (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 (by linarith))),
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>      hu.trans (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 hmono))⟩
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>theorem eLp_gibbs_le (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) {C : ℝ}
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>    (hC : ∀ N : ℕ, 1 ≤ N → ∀ b ∈ Set.Icc (β / 2) (2 * β),
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>      ENNReal.ofReal (Real.exp (-(C * N * deltaN d s N))) ≤ Jint d s N b (withDensityReal ρ) ∧
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>        Jint d s N b (withDensityReal ρ) ≤ ENNReal.ofReal (Real.exp (C * N * deltaN d s N)))
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    (N : ℕ) (hN : 1 ≤ N) (b : ℝ) (hb : b ∈ Set.Icc (β / 2) β) (q : ℝ) (hq : 2 ≤ q)
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    (Y : Config d N → ℝ) (hY : Measurable Y) :
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    eLpNorm Y 2 (modulatedGibbs (periodicRiesz d s) N b (withDensityReal ρ)) ≤
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>      ENNReal.ofReal (Real.exp (3 * (C * N * deltaN d s N) / (2 * q))) *
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>        eLpNorm Y (ENNReal.ofReal (2 * q)) (Measure.pi fun _ : Fin N =&gt; withDensityReal ρ) := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  haveI := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  set μ := withDensityReal ρ with hμ
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  set E : Config d N → ℝ := fun X =&gt; modulatedEnergyKernel (periodicRiesz d s) X μ with hE
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  have hEm : Measurable E := measurable_energy hd hs0 hsd hρ
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  have hφ : Measurable fun X : Config d N =&gt; -b * N * E X := measurable_const.mul hEm
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  have hb1 : b ∈ Set.Icc (β / 2) (2 * β) := ⟨hb.1, by linarith [hb.2]⟩
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  have hb2 : 2 * b ∈ Set.Icc (β / 2) (2 * β) := ⟨by linarith [hb.1], by linarith [hb.2]⟩
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  obtain ⟨hlo, hhi⟩ := hC N hN b hb1
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  obtain ⟨-, hhi2⟩ := hC N hN (2 * b) hb2
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>  have hZ2 : ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (2 * (-b * N * E X)))
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>      ∂(Measure.pi fun _ =&gt; μ) ≤ ENNReal.ofReal (Real.exp (C * N * deltaN d s N)) := by
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    refine le_trans (le_of_eq ?_) hhi2
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>    unfold Jint
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    refine lintegral_congr fun X =&gt; ?_
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>    have : 2 * (-b * N * E X) = -(2 * b) * N *
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>        modulatedEnergyKernel (periodicRiesz d s) X μ := by simp only [hE]; ring
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>    rw [this]
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  have hfin : ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (-b * N * E X))
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>      ∂(Measure.pi fun _ =&gt; μ) ≠ ∞ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hhi
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>  have hint : Integrable (fun X : Config d N =&gt; Real.exp (-b * N * E X)) (Measure.pi fun _ =&gt; μ) :=
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    ⟨(Real.measurable_exp.comp hφ).aestronglyMeasurable,
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>      (hasFiniteIntegral_iff_ofReal (Filter.Eventually.of_forall fun X =&gt; (Real.exp_pos _).le)).2
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>        (lt_top_iff_ne_top.2 hfin)⟩
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>  have hmod : modulatedGibbs (periodicRiesz d s) N b μ =
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>      (∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (-b * N * E X)) ∂(Measure.pi fun _ =&gt; μ))⁻¹ •
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>        (Measure.pi fun _ : Fin N =&gt; μ).withDensity fun X =&gt;
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>          ENNReal.ofReal (Real.exp (-b * N * E X)) := by
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>    unfold modulatedGibbs gibbsNormalizer
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>    rw [ofReal_integral_eq_lintegral_ofReal hint (Filter.Eventually.of_forall fun X =&gt; (Real.exp_pos _).le)]
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  rw [hmod]
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  exact AL (Measure.pi fun _ : Fin N =&gt; μ) (fun X =&gt; -b * N * E X) hφ (C * N * deltaN d s N)
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    hlo hhi hZ2 q hq Y hY
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>/-! ### Pole law versus Gibbs law -/
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>theorem measure_smul_le&#x27; {α : Type*} [MeasurableSpace α] {μ ν : Measure α} (c : ℝ≥0∞) (h : μ ≤ ν) :
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    c • μ ≤ c • ν :=
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>  Measure.le_iff&#x27;.2 fun S =&gt; by
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    simp only [Measure.smul_apply, smul_eq_mul]
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    exact mul_le_mul&#x27; le_rfl (h S)
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>theorem coord_mean_le (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (c β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    ∃ A : ℝ, 0 ≤ A ∧ ∀ N : ℕ, 2 ≤ N → ∀ x : Torus d, ∀ i : Fin (N - 1),
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>      Integrable (fun Y : Config d (N - 1) =&gt; gPlus d s c (x - Y i)) (critCavity d s c β ρ N) ∧
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>        ∫ Y, gPlus d s c (x - Y i) ∂(critCavity d s c β ρ N) ≤ A := by
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>  have hμ := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  obtain ⟨C1, hC1, hmarg⟩ := cavity_marginal_le hd hs0 hsd hβ hρ
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  obtain ⟨B, Cc, hB0, hK⟩ := kerData_periodicRiesz hd hs0 hsd hρ
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  refine ⟨max 0 (C1 * (Cc + c)), le_max_left _ _, fun N hN x i =&gt; ?_⟩
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>  rw [critCavity_eq hd hs0 hsd c β hρ N]
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>  have hint0 : Integrable (fun y =&gt; gPlus d s c (x - y)) (withDensityReal ρ) :=
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>    (hK.int x).add (integrable_const c)
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>  have hint : Integrable (fun y =&gt; gPlus d s c (x - y))
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>      ((cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1) (β / N) β).map
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>        (fun Y : Config d (N - 1) =&gt; Y i)) :=
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    (hint0.smul_measure (c := ENNReal.ofReal C1) ENNReal.ofReal_ne_top).mono_measure (hmarg N hN i)
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  refine ⟨(integrable_map_measure hint.1 (measurable_pi_apply i).aemeasurable).1 hint, ?_⟩
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>  calc ∫ Y, gPlus d s c (x - Y i) ∂(cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1)
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>          (β / N) β)
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>      = ∫ y, gPlus d s c (x - y) ∂((cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1)
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>          (β / N) β).map (fun Y : Config d (N - 1) =&gt; Y i)) :=
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>        (integral_map (φ := fun Y : Config d (N - 1) =&gt; Y i)
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>          (μ := cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1) (β / N) β)
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>          (f := fun y =&gt; gPlus d s c (x - y)) (measurable_pi_apply i).aemeasurable hint.1).symm
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>    _ ≤ ∫ y, gPlus d s c (x - y) ∂(ENNReal.ofReal C1 • withDensityReal ρ) :=
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>        integral_mono_measure (hmarg N hN i) (Filter.Eventually.of_forall fun y =&gt; hc _)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>          (hint0.smul_measure ENNReal.ofReal_ne_top)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    _ = C1 * (convMeasure (periodicRiesz d s) (withDensityReal ρ) x + c) := by
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>        rw [integral_smul_measure, ENNReal.toReal_ofReal hC1.le, smul_eq_mul]
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        congr 1
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>        unfold gPlus convMeasure
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>        rw [integral_add (hK.int x) (integrable_const _)]
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>        simp
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>    _ ≤ max 0 (C1 * (Cc + c)) := le_max_of_le_right
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>        (mul_le_mul_of_nonneg_left (by linarith [(abs_le.1 (hK.conv x)).2]) hC1.le)
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>theorem pole_normalizer_lb (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (c β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>    ∃ A : ℝ, 0 ≤ A ∧ ∀ N : ℕ, 2 ≤ N → ∀ x : Torus d, ∀ t ∈ Set.Icc (0 : ℝ) 1,
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>      ENNReal.ofReal (Real.exp (-A)) ≤ ∫⁻ Y : Config d (N - 1),
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>        ENNReal.ofReal (Real.exp (-(t * (β / N)) * ∑ i, gPlus d s c (x - Y i)))
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>          ∂(critCavity d s c β ρ N) := by
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>  obtain ⟨A0, hA0, hA⟩ := coord_mean_le hd hs0 hsd c β hβ hρ hc
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  have hgp : Measurable (gPlus d s c) := measurable_gPlus hd hs0 hsd c
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>  refine ⟨β * A0, by positivity, fun N hN x t ht =&gt; ?_⟩
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  have hlam : 0 ≤ β / N := by positivity
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>  have hP : IsProbabilityMeasure (critCavity d s c β ρ N) := by
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>    rw [critCavity_eq hd hs0 hsd c β hρ N]
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    exact cavity_isProb hd hs0 hsd β hρ _ _ hlam
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>  set P := critCavity d s c β ρ N with hPdef
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>  set u : Config d (N - 1) → ℝ := fun Y =&gt; ∑ i, gPlus d s c (x - Y i) with hu
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  have hui : Integrable u P := integrable_finset_sum _ fun i _ =&gt; (hA N hN x i).1
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>  have hum : Measurable u :=
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>    Finset.measurable_sum _ fun i _ =&gt; hgp.comp (measurable_const.sub (measurable_pi_apply i))
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>  have hu0 : ∀ Y, 0 ≤ u Y := fun Y =&gt; Finset.sum_nonneg fun i _ =&gt; hc _
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>  have hmean : ∫ Y, u Y ∂P ≤ ((N - 1 : ℕ) : ℝ) * A0 := by
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    simp only [hu]
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    rw [integral_finset_sum _ (fun i _ =&gt; (hA N hN x i).1)]
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    calc _ ≤ ∑ _i : Fin (N - 1), A0 := Finset.sum_le_sum fun i _ =&gt; (hA N hN x i).2
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>      _ = _ := by simp
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  have htl : 0 ≤ t * (β / N) := mul_nonneg ht.1 hlam
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>  set f : Config d (N - 1) → ℝ := fun Y =&gt; -(t * (β / N)) * u Y with hf
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  have hfi : Integrable f P := hui.const_mul _
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>  have hfm : Measurable f := hum.const_mul _
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>  have hf0 : ∀ Y, f Y ≤ 0 := fun Y =&gt; by
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    simp only [hf]; nlinarith [hu0 Y]
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>  have hexpint : Integrable (fun Y =&gt; Real.exp (f Y)) P :=
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    Integrable.of_bound (C := 1) (Real.measurable_exp.comp hfm).aestronglyMeasurable
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      (Filter.Eventually.of_forall fun Y =&gt; by
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>        rw [Real.norm_eq_abs, abs_of_pos (Real.exp_pos _)]
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>        exact Real.exp_le_one_iff.2 (hf0 Y))
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  have hjensen : Real.exp (∫ Y, f Y ∂P) ≤ ∫ Y, Real.exp (f Y) ∂P :=
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>    convexOn_exp.map_integral_le Real.continuous_exp.continuousOn isClosed_univ
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>      (Filter.Eventually.of_forall fun _ =&gt; Set.mem_univ _) hfi hexpint
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>  have hlb : -(β * A0) ≤ ∫ Y, f Y ∂P := by
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    simp only [hf]
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>    rw [integral_const_mul]
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    have h1 : t * (β / N) * ∫ Y, u Y ∂P ≤ β * A0 := by
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>      have hint0 : 0 ≤ ∫ Y, u Y ∂P := integral_nonneg hu0
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>      have h2 : t * (β / N) ≤ β / N := by
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>        have : t ≤ 1 := ht.2
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>        nlinarith [div_nonneg hβ.le hN0.le]
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>      have h3 : β / N * ((N - 1 : ℕ) : ℝ) ≤ β := by
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>        rw [Nat.cast_sub (by omega : 1 ≤ N), Nat.cast_one]
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>        have : β / N * ((N : ℝ) - 1) = β - β / N := by field_simp
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>        rw [this]; linarith [div_nonneg hβ.le hN0.le]
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>      calc t * (β / N) * ∫ Y, u Y ∂P ≤ (β / N) * ∫ Y, u Y ∂P :=
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>            mul_le_mul_of_nonneg_right h2 hint0
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>        _ ≤ (β / N) * (((N - 1 : ℕ) : ℝ) * A0) := mul_le_mul_of_nonneg_left hmean (div_nonneg hβ.le hN0.le)
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>        _ = (β / N * ((N - 1 : ℕ) : ℝ)) * A0 := by ring
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>        _ ≤ β * A0 := mul_le_mul_of_nonneg_right h3 hA0
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    linarith
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  rw [← ofReal_integral_eq_lintegral_ofReal hexpint
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    (Filter.Eventually.of_forall fun Y =&gt; (Real.exp_pos _).le)]
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>  exact ENNReal.ofReal_le_ofReal ((Real.exp_le_exp.2 hlb).trans hjensen)
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>theorem cavity_le_gibbs (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) :
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    ∃ D : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>      cavityLaw (periodicRiesz d s) (withDensityReal ρ) (N - 1) (β / N) β ≤
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>        ENNReal.ofReal D • modulatedGibbs (periodicRiesz d s) (N - 1)
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>          (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ) := by
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>  have hμ := isProbabilityMeasure_mu hρ
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>  obtain ⟨B, Cc, hB0, hK⟩ := kerData_periodicRiesz hd hs0 hsd hρ
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>  have hCc := hK.Cc_nonneg
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>  refine ⟨Real.exp (2 * (β * Cc)), fun N hN =&gt; ?_⟩
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>  have hn : 0 &lt; N - 1 := by omega
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>  have hn0 : (0 : ℝ) &lt; ((N - 1 : ℕ) : ℝ) := by exact_mod_cast hn
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>  have hbpos : 0 &lt; ((N - 1 : ℕ) : ℝ) * β / N := by positivity
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  have hlam : 0 ≤ β / N := by positivity
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>  rw [modulatedGibbs_eq_cavity hd hs0 hsd hbpos hρ (N - 1) hn]
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  have hdiv : ((N - 1 : ℕ) : ℝ) * β / N / ((N - 1 : ℕ) : ℝ) = β / N := by
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>    field_simp
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>  rw [hdiv]
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>  have hdiff : β - ((N - 1 : ℕ) : ℝ) * β / N = β / N := by
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>    rw [Nat.cast_sub (by omega : 1 ≤ N), Nat.cast_one]; field_simp; ring
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>  have hg := hK.meas
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>  obtain ⟨W, hW⟩ := cavity_weight_le hd hs0 hsd (((N - 1 : ℕ) : ℝ) * β / N) hρ (N - 1) (β / N) hlam
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>  have hz := tilt_normalizer_ne (Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ) _
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    (measurable_cavityW hg (withDensityReal ρ) (N - 1) (β / N) (((N - 1 : ℕ) : ℝ) * β / N)) W hW
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>  unfold cavityLaw
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  refine tilt_le_bdd _ _ _ (measurable_cavityW hg (withDensityReal ρ) (N - 1) (β / N) β)
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    (measurable_cavityW hg (withDensityReal ρ) (N - 1) (β / N) _) (β * Cc) ?_ hz.1 hz.2
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>  intro Y
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>  have : -(β / N) * pairSum (periodicRiesz d s) Y +
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>        β * ∑ i, convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i) -
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>      (-(β / N) * pairSum (periodicRiesz d s) Y +
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>        ((N - 1 : ℕ) : ℝ) * β / N * ∑ i, convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i)) =
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>      (β / N) * ∑ i, convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i) := by
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>    rw [← hdiff]; ring
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>  rw [this, abs_mul, abs_of_nonneg hlam]
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>  have h4 : |∑ i, convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i)| ≤
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>      ((N - 1 : ℕ) : ℝ) * Cc := by
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    calc _ ≤ ∑ i, |convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i)| :=
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>          Finset.abs_sum_le_sum_abs _ _
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>      _ ≤ ∑ _i : Fin (N - 1), Cc := Finset.sum_le_sum fun i _ =&gt; hK.conv _
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>      _ = _ := by simp
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>  calc β / N * |∑ i, convMeasure (periodicRiesz d s) (withDensityReal ρ) (Y i)|
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>      ≤ β / N * (((N - 1 : ℕ) : ℝ) * Cc) := mul_le_mul_of_nonneg_left h4 hlam
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>    _ = (β * Cc) * (((N - 1 : ℕ) : ℝ) / N) := by field_simp
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>    _ ≤ (β * Cc) * 1 := by
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>        rw [div_le_one hN0]
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>        have : ((N - 1 : ℕ) : ℝ) ≤ N := by exact_mod_cast Nat.sub_le N 1
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>        exact this
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>    _ = β * Cc := mul_one _
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>theorem pole_le_gibbs (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>    {ρ : Torus d → ℝ} (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>    (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>    ∃ D : ℝ, 0 ≤ D ∧ ∀ N : ℕ, 2 ≤ N → ∀ x : Torus d, ∀ t ∈ Set.Icc (0 : ℝ) 1,
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>      critPole d s c β ρ N x t ≤ ENNReal.ofReal D • modulatedGibbs (periodicRiesz d s) (N - 1)
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>          (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ) := by
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>  obtain ⟨A, hA0, hA⟩ := pole_normalizer_lb hd hs0 hsd c β hβ hρ hc
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>  obtain ⟨D1, hD1⟩ := cavity_le_gibbs hd hs0 hsd β hβ hρ
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>  have hgp : Measurable (gPlus d s c) := measurable_gPlus hd hs0 hsd c
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>  refine ⟨Real.exp A * |D1|, by positivity, fun N hN x t ht =&gt; ?_⟩
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>  have hlam : 0 ≤ β / N := by positivity
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>  have hP : IsProbabilityMeasure (critCavity d s c β ρ N) := by
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>    rw [critCavity_eq hd hs0 hsd c β hρ N]
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>    exact cavity_isProb hd hs0 hsd β hρ _ _ hlam
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>  have h1 : critPole d s c β ρ N x t ≤
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>      ENNReal.ofReal (Real.exp A) • critCavity d s c β ρ N := by
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>    have := tilt_le_of_nonpos (critCavity d s c β ρ N)
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>      (fun Y : Config d (N - 1) =&gt; -(t * (β / N)) * ∑ i, gPlus d s c (x - Y i))
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>      ((Finset.measurable_sum _ fun i _ =&gt;
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>        hgp.comp (measurable_const.sub (measurable_pi_apply i))).const_mul _)
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>      (fun Y =&gt; by
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>        have h0 : 0 ≤ ∑ i, gPlus d s c (x - Y i) := Finset.sum_nonneg fun i _ =&gt; hc _
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>        have : 0 ≤ t * (β / N) := mul_nonneg ht.1 hlam
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>        nlinarith) A (hA N hN x t ht)
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    exact this
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>  have h2 : critCavity d s c β ρ N ≤ ENNReal.ofReal D1 • modulatedGibbs (periodicRiesz d s) (N - 1)
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>      (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ) := by
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>    rw [critCavity_eq hd hs0 hsd c β hρ N]; exact hD1 N hN
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>  have h3 : ENNReal.ofReal D1 ≤ ENNReal.ofReal |D1| := ENNReal.ofReal_le_ofReal (le_abs_self _)
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>  calc critPole d s c β ρ N x t ≤ ENNReal.ofReal (Real.exp A) • critCavity d s c β ρ N := h1
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>    _ ≤ ENNReal.ofReal (Real.exp A) • (ENNReal.ofReal D1 • modulatedGibbs (periodicRiesz d s) (N - 1)
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>        (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ)) := measure_smul_le&#x27; _ h2
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>    _ = ENNReal.ofReal (Real.exp A * D1) • modulatedGibbs (periodicRiesz d s) (N - 1)
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>        (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ) := by
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>        rw [smul_smul, ← ENNReal.ofReal_mul (Real.exp_pos _).le]
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>    _ ≤ _ := by
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>        refine Measure.le_iff&#x27;.2 fun S =&gt; ?_
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>        simp only [Measure.smul_apply, smul_eq_mul]
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>        refine mul_le_mul&#x27; ?_ le_rfl
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>        exact ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left (le_abs_self _) (Real.exp_pos _).le)
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>/-! ### Assembly -/
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>theorem N_mul_deltaN_crit (hcrit : s = (d : ℝ) / 2) {N : ℕ} (hN : 1 ≤ N) :
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>    (N : ℝ) * deltaN d s N = 1 + Real.log N := by
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>  have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>  unfold deltaN
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>  rw [if_neg (by rw [hcrit]; exact lt_irrefl _), if_pos hcrit, ← mul_assoc, mul_inv_cancel₀ hN0.ne&#x27;,
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>    one_mul, Real.log_mul (Real.exp_pos _).ne&#x27; hN0.ne&#x27;, Real.log_exp]
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>theorem growth_bound {C ε : ℝ} (hC : 0 ≤ C) (hε : 0 &lt; ε) {q : ℝ} (hq : 0 &lt; q)
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    (hqe : 3 * C / (2 * q) ≤ ε) {N&#x27; N : ℕ} (h1 : 1 ≤ N&#x27;) (h2 : N&#x27; ≤ N) :
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>    Real.exp (3 * (C * (1 + Real.log N&#x27;)) / (2 * q)) ≤ Real.exp ε * (N : ℝ) ^ ε := by
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>  have hN&#x27;0 : (0 : ℝ) &lt; N&#x27; := by exact_mod_cast h1
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>  have hN1 : (1 : ℝ) ≤ N := by exact_mod_cast h1.trans h2
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>  set κ : ℝ := 3 * C / (2 * q) with hκ
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  have hκ0 : 0 ≤ κ := by positivity
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>  have e1 : 3 * (C * (1 + Real.log N&#x27;)) / (2 * q) = κ + Real.log N&#x27; * κ := by
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>    simp only [hκ]; field_simp
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>  rw [e1, Real.exp_add, ← Real.rpow_def_of_pos hN&#x27;0]
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>  refine mul_le_mul (Real.exp_le_exp.2 hqe) ?_ (by positivity) (Real.exp_pos _).le
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>  calc (N&#x27; : ℝ) ^ κ ≤ (N : ℝ) ^ κ :=
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>        Real.rpow_le_rpow hN&#x27;0.le (by exact_mod_cast h2) hκ0
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>    _ ≤ (N : ℝ) ^ ε := Real.rpow_le_rpow_of_exponent_le hN1 hqe
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>end ProdTransfer
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>open ProdTransfer in
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>/-- Lemma 4.4 `M:R:lem:product-transfer` with a real exponent `ε &gt; 0` (the intended statement). -/
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>theorem product_moment_transfer_real {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2)
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>    (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>    (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>    ∀ ε : ℝ, 0 &lt; ε → ∃ q : ℕ, 2 ≤ q ∧ ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>      (∀ Y : Config d N → ℝ, Measurable Y →
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>        eLpNorm Y 2 (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ)) ≤
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>          ENNReal.ofReal (C * (N : ℝ) ^ ε) *
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>            eLpNorm Y ((2 * q : ℕ) : ℝ≥0∞) (Measure.pi fun _ : Fin N =&gt; withDensityReal ρ)) ∧
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>      (∀ x : Torus d, ∀ t ∈ Set.Icc (0 : ℝ) 1, ∀ Y : Config d (N - 1) → ℝ, Measurable Y →
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>        eLpNorm Y 2 (critPole d s c β ρ N x t) ≤
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>          ENNReal.ofReal (C * (N : ℝ) ^ ε) *
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>            eLpNorm Y ((2 * q : ℕ) : ℝ≥0∞)
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>              (Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ)) := by
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>  intro ε hε
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>  obtain ⟨hs0, hsd⟩ := PoleCavityAux.hs_aux hd hcrit
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  obtain ⟨C, hCnn, hC⟩ := pressure_all hd hs0 hsd β hβ hρ
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>  obtain ⟨D, hD0, hD⟩ := pole_le_gibbs hd hs0 hsd β hβ hρ c hc
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>  obtain ⟨q, hq2, hqe⟩ : ∃ q : ℕ, 2 ≤ q ∧ 3 * C / (2 * (q : ℝ)) ≤ ε := by
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>    refine ⟨max 2 ⌈3 * C / (2 * ε)⌉₊, le_max_left _ _, ?_⟩
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>    have hqpos : (0 : ℝ) &lt; ((max 2 ⌈3 * C / (2 * ε)⌉₊ : ℕ) : ℝ) := by
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>      have : (2 : ℝ) ≤ ((max 2 ⌈3 * C / (2 * ε)⌉₊ : ℕ) : ℝ) := by exact_mod_cast le_max_left _ _
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>      linarith
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>    rw [div_le_iff₀ (by positivity)]
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>    have h1 : 3 * C / (2 * ε) ≤ ((max 2 ⌈3 * C / (2 * ε)⌉₊ : ℕ) : ℝ) :=
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>      (Nat.le_ceil _).trans (by exact_mod_cast le_max_right _ _)
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>    rw [div_le_iff₀ (by positivity)] at h1
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>    linarith
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>  have hq0 : (0 : ℝ) &lt; q := by exact_mod_cast (by omega : 0 &lt; q)
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>  have hq2R : (2 : ℝ) ≤ q := by exact_mod_cast hq2
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>  have hexp : ((2 * q : ℕ) : ℝ≥0∞) = ENNReal.ofReal (2 * (q : ℝ)) := by
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>    rw [show (2 * (q : ℝ)) = ((2 * q : ℕ) : ℝ) by push_cast; ring, ENNReal.ofReal_natCast]
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>  refine ⟨q, hq2, Real.exp ε * (1 + D), fun N hN =&gt; ⟨?_, ?_⟩⟩
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  · intro Y hY
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>    rw [hexp]
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>    have hb : β ∈ Set.Icc (β / 2) β := ⟨by linarith, le_rfl⟩
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>    refine (eLp_gibbs_le hd hs0 hsd β hβ hρ hC N (by omega) β hb (q : ℝ) hq2R Y hY).trans ?_
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>    refine mul_le_mul&#x27; (ENNReal.ofReal_le_ofReal ?_) le_rfl
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>    have e : C * N * deltaN d s N = C * (1 + Real.log N) := by
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>      rw [mul_assoc, N_mul_deltaN_crit hcrit (by omega)]
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>    rw [e]
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>    refine (growth_bound hCnn hε hq0 hqe (le_refl _ |&gt;.trans&#x27; (by omega) : 1 ≤ N) le_rfl).trans ?_
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>    exact mul_le_mul_of_nonneg_right (by nlinarith [Real.exp_pos ε]) (by positivity)
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>  · intro x t ht Y hY
+</span><span class="line" id="L709"><a class="ln" aria-label="Line 709" href="#L709">709</a>    rw [hexp]
+</span><span class="line" id="L710"><a class="ln" aria-label="Line 710" href="#L710">710</a>    have hN0 : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L711"><a class="ln" aria-label="Line 711" href="#L711">711</a>    have hN1 : 1 ≤ N - 1 := by omega
+</span><span class="line" id="L712"><a class="ln" aria-label="Line 712" href="#L712">712</a>    have hb : ((N - 1 : ℕ) : ℝ) * β / N ∈ Set.Icc (β / 2) β := by
+</span><span class="line" id="L713"><a class="ln" aria-label="Line 713" href="#L713">713</a>      have h1 : ((N - 1 : ℕ) : ℝ) = N - 1 := by rw [Nat.cast_sub (by omega), Nat.cast_one]
+</span><span class="line" id="L714"><a class="ln" aria-label="Line 714" href="#L714">714</a>      have h2 : (2 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L715"><a class="ln" aria-label="Line 715" href="#L715">715</a>      constructor
+</span><span class="line" id="L716"><a class="ln" aria-label="Line 716" href="#L716">716</a>      · rw [h1, le_div_iff₀ hN0]; nlinarith
+</span><span class="line" id="L717"><a class="ln" aria-label="Line 717" href="#L717">717</a>      · rw [h1, div_le_iff₀ hN0]; nlinarith
+</span><span class="line" id="L718"><a class="ln" aria-label="Line 718" href="#L718">718</a>    have hpole := eLpNorm_mono_measure Y (p := 2) (hD N hN x t ht)
+</span><span class="line" id="L719"><a class="ln" aria-label="Line 719" href="#L719">719</a>    rw [eLpNorm_smul_measure_of_ne_top (by norm_num) Y _ hY.aestronglyMeasurable] at hpole
+</span><span class="line" id="L720"><a class="ln" aria-label="Line 720" href="#L720">720</a>    have hg := eLp_gibbs_le hd hs0 hsd β hβ hρ hC (N - 1) hN1 _ hb (q : ℝ) hq2R Y hY
+</span><span class="line" id="L721"><a class="ln" aria-label="Line 721" href="#L721">721</a>    refine hpole.trans ?_
+</span><span class="line" id="L722"><a class="ln" aria-label="Line 722" href="#L722">722</a>    have hsq : ENNReal.ofReal D ^ (1 / (2 : ℝ≥0∞)).toReal ≤ ENNReal.ofReal (1 + D) := by
+</span><span class="line" id="L723"><a class="ln" aria-label="Line 723" href="#L723">723</a>      have : (1 / (2 : ℝ≥0∞)).toReal = 1 / 2 := by simp
+</span><span class="line" id="L724"><a class="ln" aria-label="Line 724" href="#L724">724</a>      rw [this, ENNReal.ofReal_rpow_of_nonneg hD0 (by norm_num)]
+</span><span class="line" id="L725"><a class="ln" aria-label="Line 725" href="#L725">725</a>      refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L726"><a class="ln" aria-label="Line 726" href="#L726">726</a>      rw [← Real.sqrt_eq_rpow]
+</span><span class="line" id="L727"><a class="ln" aria-label="Line 727" href="#L727">727</a>      nlinarith [Real.sq_sqrt hD0, Real.sqrt_nonneg D]
+</span><span class="line" id="L728"><a class="ln" aria-label="Line 728" href="#L728">728</a>    have hfac : Real.exp (3 * (C * ((N - 1 : ℕ) : ℝ) * deltaN d s (N - 1)) / (2 * (q : ℝ))) ≤
+</span><span class="line" id="L729"><a class="ln" aria-label="Line 729" href="#L729">729</a>        Real.exp ε * (N : ℝ) ^ ε := by
+</span><span class="line" id="L730"><a class="ln" aria-label="Line 730" href="#L730">730</a>      have e : C * ((N - 1 : ℕ) : ℝ) * deltaN d s (N - 1) = C * (1 + Real.log ((N - 1 : ℕ) : ℝ)) := by
+</span><span class="line" id="L731"><a class="ln" aria-label="Line 731" href="#L731">731</a>        rw [mul_assoc, N_mul_deltaN_crit hcrit hN1]
+</span><span class="line" id="L732"><a class="ln" aria-label="Line 732" href="#L732">732</a>      rw [e]
+</span><span class="line" id="L733"><a class="ln" aria-label="Line 733" href="#L733">733</a>      exact growth_bound hCnn hε hq0 hqe hN1 (Nat.sub_le N 1)
+</span><span class="line" id="L734"><a class="ln" aria-label="Line 734" href="#L734">734</a>    calc ENNReal.ofReal D ^ (1 / (2 : ℝ≥0∞)).toReal • eLpNorm Y 2
+</span><span class="line" id="L735"><a class="ln" aria-label="Line 735" href="#L735">735</a>          (modulatedGibbs (periodicRiesz d s) (N - 1) (((N - 1 : ℕ) : ℝ) * β / N) (withDensityReal ρ))
+</span><span class="line" id="L736"><a class="ln" aria-label="Line 736" href="#L736">736</a>        ≤ ENNReal.ofReal (1 + D) * (ENNReal.ofReal (Real.exp ε * (N : ℝ) ^ ε) *
+</span><span class="line" id="L737"><a class="ln" aria-label="Line 737" href="#L737">737</a>            eLpNorm Y (ENNReal.ofReal (2 * (q : ℝ)))
+</span><span class="line" id="L738"><a class="ln" aria-label="Line 738" href="#L738">738</a>              (Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ)) := by
+</span><span class="line" id="L739"><a class="ln" aria-label="Line 739" href="#L739">739</a>          rw [smul_eq_mul]
+</span><span class="line" id="L740"><a class="ln" aria-label="Line 740" href="#L740">740</a>          exact mul_le_mul&#x27; hsq (hg.trans (mul_le_mul&#x27; (ENNReal.ofReal_le_ofReal hfac) le_rfl))
+</span><span class="line" id="L741"><a class="ln" aria-label="Line 741" href="#L741">741</a>      _ = ENNReal.ofReal (Real.exp ε * (1 + D) * (N : ℝ) ^ ε) *
+</span><span class="line" id="L742"><a class="ln" aria-label="Line 742" href="#L742">742</a>            eLpNorm Y (ENNReal.ofReal (2 * (q : ℝ)))
+</span><span class="line" id="L743"><a class="ln" aria-label="Line 743" href="#L743">743</a>              (Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ) := by
+</span><span class="line" id="L744"><a class="ln" aria-label="Line 744" href="#L744">744</a>          rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L745"><a class="ln" aria-label="Line 745" href="#L745">745</a>          congr 2; ring
+</span><span class="line" id="L746"><a class="ln" aria-label="Line 746" href="#L746">746</a>
+</span><span class="line" id="L747"><a class="ln" aria-label="Line 747" href="#L747">747</a>/-- Lemma 4.4 `M:R:lem:product-transfer` (restatement of `HRS.product_moment_transfer`, proved here
+</span><span class="line" id="L748"><a class="ln" aria-label="Line 748" href="#L748">748</a>because Proposition 5.5 and the cavity marginal bounds are downstream of `PoleCavity.lean`).
+</span><span class="line" id="L749"><a class="ln" aria-label="Line 749" href="#L749">749</a>In the statement of `HRS.product_moment_transfer` the exponent `ε` in `N ^ ε` is elaborated as a
+</span><span class="line" id="L750"><a class="ln" aria-label="Line 750" href="#L750">750</a>natural number (`Monoid.npow`), which makes it weaker than the source; the real-exponent form
+</span><span class="line" id="L751"><a class="ln" aria-label="Line 751" href="#L751">751</a>is `product_moment_transfer_real`, from which this follows. -/
+</span><span class="line" id="L752"><a class="ln" aria-label="Line 752" href="#L752">752</a>theorem product_moment_transfer_proof {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2)
+</span><span class="line" id="L753"><a class="ln" aria-label="Line 753" href="#L753">753</a>    (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L754"><a class="ln" aria-label="Line 754" href="#L754">754</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L755"><a class="ln" aria-label="Line 755" href="#L755">755</a>    (hc : ∀ z, 0 ≤ periodicRiesz d s z + c) :
+</span><span class="line" id="L756"><a class="ln" aria-label="Line 756" href="#L756">756</a>    ∀ ε : ℝ, 0 &lt; ε → ∃ q : ℕ, 2 ≤ q ∧ ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L757"><a class="ln" aria-label="Line 757" href="#L757">757</a>      (∀ Y : Config d N → ℝ, Measurable Y →
+</span><span class="line" id="L758"><a class="ln" aria-label="Line 758" href="#L758">758</a>        eLpNorm Y 2 (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ)) ≤
+</span><span class="line" id="L759"><a class="ln" aria-label="Line 759" href="#L759">759</a>          ENNReal.ofReal (C * (N : ℝ) ^ ε) *
+</span><span class="line" id="L760"><a class="ln" aria-label="Line 760" href="#L760">760</a>            eLpNorm Y ((2 * q : ℕ) : ℝ≥0∞) (Measure.pi fun _ : Fin N =&gt; withDensityReal ρ)) ∧
+</span><span class="line" id="L761"><a class="ln" aria-label="Line 761" href="#L761">761</a>      (∀ x : Torus d, ∀ t ∈ Set.Icc (0 : ℝ) 1, ∀ Y : Config d (N - 1) → ℝ, Measurable Y →
+</span><span class="line" id="L762"><a class="ln" aria-label="Line 762" href="#L762">762</a>        eLpNorm Y 2 (critPole d s c β ρ N x t) ≤
+</span><span class="line" id="L763"><a class="ln" aria-label="Line 763" href="#L763">763</a>          ENNReal.ofReal (C * (N : ℝ) ^ ε) *
+</span><span class="line" id="L764"><a class="ln" aria-label="Line 764" href="#L764">764</a>            eLpNorm Y ((2 * q : ℕ) : ℝ≥0∞)
+</span><span class="line" id="L765"><a class="ln" aria-label="Line 765" href="#L765">765</a>              (Measure.pi fun _ : Fin (N - 1) =&gt; withDensityReal ρ)) := by
+</span><span class="line" id="L766"><a class="ln" aria-label="Line 766" href="#L766">766</a>  exact product_moment_transfer_real hd hcrit β hβ ρ hρ c hc
+</span><span class="line" id="L767"><a class="ln" aria-label="Line 767" href="#L767">767</a>
+</span><span class="line" id="L768"><a class="ln" aria-label="Line 768" href="#L768">768</a>example := (@product_moment_transfer_proof : type_of% @product_moment_transfer)
+</span><span class="line" id="L769"><a class="ln" aria-label="Line 769" href="#L769">769</a>
+</span><span class="line" id="L770"><a class="ln" aria-label="Line 770" href="#L770">770</a>end HRS
+</span><span class="line" id="L771"><a class="ln" aria-label="Line 771" href="#L771">771</a>
+</span><span class="line" id="L772"><a class="ln" aria-label="Line 772" href="#L772">772</a>end
+</span></code></pre></main></body></html>

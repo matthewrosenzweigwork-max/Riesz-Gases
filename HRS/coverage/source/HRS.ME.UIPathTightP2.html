@@ -1,0 +1,151 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.UIPathTightP2 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.UIPathTightP2</code></h1><p><a href="../../lean/HRS/ME/UIPathTightP2.lean">Open the unaltered Lean file</a> · 150 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.UIPath
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.ME.RetPathLaw
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.ME.RetGlueB
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.MD.EQFrozen29Rest
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MD.EQLawPath
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Sections.AdjKGlue
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>/-!
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a># Packet P2 of `HRS.ui_path_tight`: stationary identification of the windows
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Statement copied verbatim from `HRS/ME/UIPathTightSpec.lean` (the spec file is unfinished
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>and is not imported here).
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open scoped ENNReal NNReal
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>noncomputable section
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.ME.UIPathTight
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS HRS.LZ HRS.Uniform HRS.Main
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d : ℕ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>theorem p_up2_sum_pair_identity {N : ℕ} (H : Fin N → Fin N → ℝ) (hH : ∀ i j, H i j = H j i) :
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    ∑ i, ∑ j, H i j =
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>      2 * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), H i j + ∑ i, H i i := by
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  simp only [Finset.sum_filter]
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  have hpt : ∀ i j, H i j = (if i &lt; j then H i j else 0) + (if j &lt; i then H i j else 0) +
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      (if i = j then H i j else 0) := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    intro i j
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    rcases lt_trichotomy i j with h | rfl | h
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    · rw [if_pos h, if_neg (not_lt.2 h.le), if_neg h.ne]; ring
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    · simp
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    · rw [if_neg (not_lt.2 h.le), if_pos h, if_neg h.ne&#x27;]; ring
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have hB : ∑ i, ∑ j, (if j &lt; i then H i j else 0) = ∑ i, ∑ j, (if i &lt; j then H i j else 0) := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    rw [Finset.sum_comm]
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    refine Finset.sum_congr rfl fun j _ =&gt; Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    rw [hH]
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have hD : ∑ i, ∑ j, (if i = j then H i j else 0) = ∑ i, H i i := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    refine Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    simp
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hsplit : ∑ i, ∑ j, H i j = (∑ i, ∑ j, (if i &lt; j then H i j else 0)) +
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      (∑ i, ∑ j, (if j &lt; i then H i j else 0)) + ∑ i, ∑ j, (if i = j then H i j else 0) := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    have hrow : ∀ i, ∑ j, H i j = (∑ j, (if i &lt; j then H i j else 0)) +
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>        (∑ j, (if j &lt; i then H i j else 0)) + ∑ j, (if i = j then H i j else 0) := fun i =&gt; by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      rw [← Finset.sum_add_distrib, ← Finset.sum_add_distrib]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>      exact Finset.sum_congr rfl fun j _ =&gt; hpt i j
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    simp only [hrow, Finset.sum_add_distrib]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  rw [hsplit, hB, hD]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  ring
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>theorem p_up2_pairSum_perm {N : ℕ} (H : Fin N → Fin N → ℝ) (hH : ∀ i j, H i j = H j i)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (σ : Equiv.Perm (Fin N)) :
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), H (σ i) (σ j) =
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), H i j := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have h1 := p_up2_sum_pair_identity (fun i j =&gt; H (σ i) (σ j)) (fun i j =&gt; hH _ _)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have h2 := p_up2_sum_pair_identity H hH
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hF : ∑ i, ∑ j, H (σ i) (σ j) = ∑ i, ∑ j, H i j := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    calc ∑ i, ∑ j, H (σ i) (σ j) = ∑ i, ∑ j, H (σ i) j :=
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>          Finset.sum_congr rfl fun i _ =&gt; Equiv.sum_comp σ (H (σ i))
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      _ = ∑ i, ∑ j, H i j := Equiv.sum_comp σ (fun i =&gt; ∑ j, H i j)
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hD : ∑ i, H (σ i) (σ i) = ∑ i, H i i := Equiv.sum_comp σ (fun i =&gt; H i i)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  linarith
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>theorem p_up2_canonicalHamiltonian_comp_perm {d N : ℕ} (g V : Torus d → ℝ) (hg : ∀ x, g (-x) = g x)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    (X : Config d N) (σ : Equiv.Perm (Fin N)) :
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    HRS.canonicalHamiltonian g V (X ∘ σ) = HRS.canonicalHamiltonian g V X := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  unfold HRS.canonicalHamiltonian
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hH : ∀ i j : Fin N, g (X i - X j) = g (X j - X i) := fun i j =&gt; by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    rw [← hg (X i - X j), neg_sub]
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hp := p_up2_pairSum_perm (fun i j =&gt; g (X i - X j)) hH σ
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hv : ∑ i, V ((X ∘ σ) i) = ∑ i, V (X i) := Equiv.sum_comp σ (fun i =&gt; V (X i))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hp&#x27; : ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), g ((X ∘ σ) i - (X ∘ σ) j) =
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j), g (X i - X j) := hp
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  rw [hv, hp&#x27;]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>theorem p_up2_canonicalGibbs_isExchangeable {d N : ℕ} (g V : Torus d → ℝ) (hg : ∀ x, g (-x) = g x)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (β : ℝ) : HRS.IsExchangeable (HRS.canonicalGibbs g V N β) := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  intro σ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hmeas : AEMeasurable (fun X : Config d N =&gt; X ∘ σ)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      ((volume : Measure (Config d N)).withDensity fun X =&gt;
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        ENNReal.ofReal (Real.exp (-β * HRS.canonicalHamiltonian g V X))) :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    (HRS.permMeasEquiv σ).measurable.aemeasurable
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hvol : (volume : Measure (Config d N)) =
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      Measure.pi fun _ : Fin N =&gt; (volume : Measure (Torus d)) := rfl
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  unfold HRS.canonicalGibbs
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  rw [Measure.map_smul _ hmeas]
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  congr 1
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  rw [hvol]
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  refine HRS.map_withDensity_perm _ σ _ fun X =&gt; ?_
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  simp only [p_up2_canonicalHamiltonian_comp_perm g V hg X σ]
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-- Pointwise identity: for any law `P` on configurations whose mean empirical measure is `μ`,
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>`η_N(X; μ) = ζ_N(X; P)`. -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>theorem p_up2_etaE_eq_zetaE {N : ℕ} (m : ℝ) (P : Measure (Config d N)) (μ : Measure (Torus d))
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (hμ : HRS.meanEmpirical P = μ) (X : Config d N) :
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    HRS.etaE m X μ = HRS.zetaE m P X := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  unfold HRS.etaE HRS.flucE HRS.zetaE
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  rw [hμ]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>/-- **P2** (stationary identification; scope note 1.1 step 1).  Along a stationary Gibbs flow on the
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>horizon `u + T` the window centred at the FIXED Gibbs first marginal `μ_N^*` is, pointwise in `ω`, the window
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>`windowZeta` centred at the actual mean empirical measure (both centres are `μ_N^*`, since
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>`P.map (X (u+t)) = G_N` for `0 ≤ t ≤ T` and `G_N` is exchangeable).  Route:
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>`md_stat_gibbs_flow_stationary_proof`, `canonicalGibbs_isExchangeable`, `meanEmpirical_eq_firstMarginal`,
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>then `dite` congruence on the equal functions of `t ∈ [0,T]`. -/
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>theorem windowGibbs_eq_windowZeta (hd : 2 ≤ d) {s β : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (hβ : 0 &lt; β)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    (V : Torus d → ℝ) (hV : Torus.IsSmooth V) {m : ℝ} (hm : (d : ℝ) &lt; 2 * m) (T u : ℝ) (hu : 0 ≤ u)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    {N : ℕ} (hN : 2 ≤ N)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (hX : IsStationaryGibbsFlow P s hs0 hsd V β hβ (u + T) X₀ W X) :
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    windowGibbs m T u (firstMarginal (canonicalGibbs (periodicRiesz d s) V N β)) X =
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      Main.windowZeta m T u P X := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  haveI hG : IsProbabilityMeasure (canonicalGibbs (periodicRiesz d s) V N β) :=
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    HRS.MD.EQLawFlow.eqlaw_gibbs_prob hd hs0 hsd hV hβ hN1
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  have hExch : HRS.IsExchangeable (canonicalGibbs (periodicRiesz d s) V N β) :=
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    p_up2_canonicalGibbs_isExchangeable (periodicRiesz d s) V (fun x =&gt; periodicRiesz_neg x) β
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hmean : HRS.meanEmpirical (canonicalGibbs (periodicRiesz d s) V N β) =
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      firstMarginal (canonicalGibbs (periodicRiesz d s) V N β) :=
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    HRS.meanEmpirical_eq_firstMarginal _ hExch hN1
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hstat := HRS.MD.Stat.md_stat_gibbs_flow_stationary_proof hd hs0 hsd V hV β hβ (u + T) hN
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    P X₀ W X hX
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hpt : ∀ t : Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      P.map (X (Real.toNNReal (u + t))) = canonicalGibbs (periodicRiesz d s) V N β := by
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    intro t
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    apply hstat
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    rw [Real.coe_toNNReal _ (by linarith [t.2.1])]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    linarith [t.2.2]
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hfun : ∀ ω : Ω,
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      (fun t : Set.Icc (0 : ℝ) T =&gt;
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>        HRS.etaE m (X (Real.toNNReal (u + t)) ω) (firstMarginal (canonicalGibbs (periodicRiesz d s) V N β))) =
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      (fun t : Set.Icc (0 : ℝ) T =&gt;
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        HRS.zetaE m (P.map (X (Real.toNNReal (u + t)))) (X (Real.toNNReal (u + t)) ω)) := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    intro ω
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    funext t
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    have hμ : HRS.meanEmpirical (P.map (X (Real.toNNReal (u + t)))) =
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>        firstMarginal (canonicalGibbs (periodicRiesz d s) V N β) := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>      rw [hpt t]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      exact hmean
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    exact (p_up2_etaE_eq_zetaE m (P.map (X (Real.toNNReal (u + t))))
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      (firstMarginal (canonicalGibbs (periodicRiesz d s) V N β)) hμ (X (Real.toNNReal (u + t)) ω))
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  funext ω
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  unfold HRS.windowGibbs HRS.Main.windowZeta
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  rw [hfun ω]
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>end HRS.ME.UIPathTight
+</span></code></pre></main></body></html>

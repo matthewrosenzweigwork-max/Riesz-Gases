@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.B3T · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.B3T</code></h1><p><a href="../../lean/HRS/MC/B3T.lean">Open the unaltered Lean file</a> · 256 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Stochastic.SelectedLawFKE
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Packet B3T: Proposition B.3 at intermediate times
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>The distributional forward Kolmogorov identity of `HRS.selected_law_fke_FKE` (proved there only at
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>the horizon `T`) is extended to every time `t ∈ [0, T)`:
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`∫ Φ t dP^t − ∫ Φ 0 dP^0 = ∫_0^t ∫ (generator + interaction) dP^r dr`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>The generator `fkeGenerator D T Φ` contains the time derivative `∂_r Φ` (as
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`derivWithin (configLift Φ · Y) (Icc 0 T)`), exactly as in `selected_law_fke_FKE`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>The proof re-runs that argument with the Itô evaluation time `t` in place of `T`:
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`ito_formula_additive` (horizon `T`) already concludes at every time `≤ T`, so only the terminal
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>evaluation, the martingale time and the time-integration domain change.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>noncomputable section
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.MC.B3T
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d N : ℕ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- Proposition B.3 at an intermediate time `t ∈ [0, T)`: the distributional forward Kolmogorov
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>identity on `[0, t]`, with the terminal term `Φ t` no longer zero. -/
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem selected_law_fke_all_times {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    [IsProbabilityMeasure P] {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    {D : DynData d} (hN : 2 ≤ N) (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (Φ : ℝ → Config d N → ℝ) (hΦ : IsFKETest T Φ)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (t : ℝ) (ht0 : 0 ≤ t) (htT : t &lt; T) :
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    ∫ x, Φ t x ∂(selectedLaw P X t) - ∫ x, Φ 0 x ∂(selectedLaw P X 0)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      = ∫ r in (0:ℝ)..t, ∫ x, (fkeGenerator D T Φ r x + fkeInteraction D Φ r x)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>          ∂(selectedLaw P X r) := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  have hT0 : 0 ≤ T := hT.le
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have htT&#x27; : t ≤ T := htT.le
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have hsd : D.s &lt; d := D.hsd
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hC := selectedFlow_toContact hX
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  obtain ⟨K, hK, hdisj, hsupp⟩ := hΦ.space_support
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hΦc := hΦ.c12
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  obtain ⟨C0, hC0⟩ := bounded_of_periodic (T := T) (fun s Y =&gt; configLift Φ s Y) hΦc.cont
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (fun s Y v hv =&gt; configLift_add_lattice Φ s hv Y)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  obtain ⟨Cf, hCf⟩ := fkeIto_bound hT0 D hN0 hV Φ hΦc hK hdisj hsupp
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  obtain ⟨C1, hC1⟩ := bounded_of_periodic (T := T) (fun s Y =&gt; fderiv ℝ (configLift Φ s) Y)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    hΦc.cont_fderiv (fun s Y v hv =&gt; fderiv_configLift_add_lattice Φ s hv Y)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  -- almost sure lift facts
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hlift := hC.ae_lift_eq hF
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hI0 : ∀ᵐ ω ∂P, IntegrableOn (fun s : ℝ =&gt; driftProc D X (Real.toNNReal s) ω) (Set.Icc 0 T) :=
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    hC.ae_integrableOn_drift hT0 le_rfl
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hint : ∀ᵐ ω ∂P, ∀ τ : ℝ≥0, (τ : ℝ) ≤ T →
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      intPart D X τ ω = ∫ s in Set.Icc (0 : ℝ) (τ : ℝ), driftProc D X (Real.toNNReal s) ω := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    filter_upwards [hI0] with ω hω τ hτ
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    exact intPart_eq_integral ω τ (hω.mono_set (Set.Icc_subset_Icc le_rfl hτ))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hlift&#x27; : ∀ᵐ ω ∂P, ∀ τ : ℝ≥0, (τ : ℝ) ≤ T →
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      X τ ω = fun i =&gt; Torus.mk (liftProcM D W&#x27; X τ ω i) := by
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    filter_upwards [hlift, hint] with ω h1 h2 τ hτ
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    rw [h1 τ hτ]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    funext i
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    simp only [liftProcM, liftProc, h2 τ hτ]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hZint : ∀ᵐ ω ∂P, ∀ τ : ℝ≥0, (τ : ℝ) ≤ T →
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      liftProcM D W&#x27; X τ ω = liftProcM D W&#x27; X 0 ω
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        + (∫ s in Set.Icc (0 : ℝ) τ, driftProc D X (Real.toNNReal s) ω)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        + ∑ k, (W&#x27; τ ω k - W&#x27; 0 ω k) • liftedNoise D k := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    filter_upwards [hint] with ω hω τ hτ
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    rw [liftProcM_zero ω]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    simp only [liftProcM]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    rw [hω τ hτ]
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hX₀ : ∀ s : ℝ, Measurable[ℱ s] (liftProcM D W&#x27; X 0) := by
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    intro s
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    have e : liftProcM D W&#x27; X 0 = fun ω =&gt; fun i =&gt; Torus.rep (X 0 ω i) :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      funext fun ω =&gt; liftProcM_zero ω
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    rw [e]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    have hg : Measurable (fun x : Config d N =&gt; fun i =&gt; Torus.rep (x i)) :=
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      measurable_pi_iff.2 fun i =&gt; (measurable_torusRep d).comp (measurable_pi_apply i)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    exact hg.comp (hF.measurable_init s)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  -- Itô&#x27;s formula for `configLift Φ` along the lift (horizon `T`; valid at every time `≤ T`)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hito := ito_formula_additive (P := P) (ℱ := ℱ) hF.brownian (T := T) hT0 (configLift Φ) hΦc
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    (liftedNoise D) (liftProcM D W&#x27; X) (measurable_liftProcM hV hF) hX₀ (driftProc D X)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    (isProgressive_driftProc hV hF) hI0 hZint
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hτ : ((Real.toNNReal t : ℝ≥0) : ℝ) = t := Real.coe_toNNReal t ht0
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hτT : ((Real.toNNReal t : ℝ≥0) : ℝ) ≤ T := by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    rw [hτ]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    exact htT&#x27;
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  -- pathwise identity at the Itô time `t`
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hcore : ∀ᵐ ω ∂P, Φ t (X (Real.toNNReal t) ω) - Φ 0 (X 0 ω)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      = (∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        + localItoIntegral P ℱ W&#x27; (itoIntegrand T Set.univ (configLift Φ)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>            (ofNNRealTime (liftProcM D W&#x27; X)) (fun _ _ =&gt; liftedNoise D)) t ω := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    filter_upwards [hito, hlift&#x27;] with ω hωito hω
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    have h := hωito.2 (Real.toNNReal t) hτT
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    rw [hτ] at h
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hL : configLift Φ t (liftProcM D W&#x27; X (Real.toNNReal t) ω)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        = Φ t (X (Real.toNNReal t) ω) := by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      show Φ t (fun i =&gt; Torus.mk (liftProcM D W&#x27; X (Real.toNNReal t) ω i)) = _
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      rw [← hω (Real.toNNReal t) hτT]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have hcol0 : configLift Φ 0 (liftProcM D W&#x27; X 0 ω) = Φ 0 (X 0 ω) := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      have h0 := hω 0 (by simpa using hT0)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      show Φ 0 (fun i =&gt; Torus.mk (liftProcM D W&#x27; X 0 ω i)) = Φ 0 (X 0 ω)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      rw [h0]
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have hint2 : ∫ s in Set.Icc (0:ℝ) t, itoDrift T (configLift Φ)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        (ofNNRealTime (liftProcM D W&#x27; X)) (ofNNRealTime (driftProc D X))
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>        (fun _ _ =&gt; liftedNoise D) s ω = ∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      refine setIntegral_congr_fun measurableSet_Icc fun s hs =&gt; ?_
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      have hsT : s ∈ Set.Icc (0:ℝ) T := ⟨hs.1, hs.2.trans htT&#x27;⟩
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      have hsτ : ((Real.toNNReal s : ℝ≥0) : ℝ) ≤ T := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        rw [Real.coe_toNNReal _ hs.1]
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>        exact hsT.2
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      have hx := hω _ hsτ
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      rw [itoDrift_eq_fkeIto D T Φ (liftProcM D W&#x27; X) X ω s hx]
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      unfold fkeSample
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      rw [clampTI_of_mem hsT]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      have hmk : ∀ i, Torus.mk (repC (X (Real.toNNReal s) ω) i)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>          = Torus.mk (liftProcM D W&#x27; X (Real.toNNReal s) ω i) := by
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        intro i
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>        show Torus.mk (Torus.rep (X (Real.toNNReal s) ω i)) = _
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        rw [Torus.mk_rep]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>        exact congrFun hx i
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      exact (fkeIto_eq_of_mk D T Φ s hmk).symm
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    rw [hL, hcol0, hint2] at h
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    linarith
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  -- the reference integrand and the martingale term
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hΨprog := isProgressive_fkeRef hF.progressive hT0 D Φ hΦc
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hΨL2 : IsProgressiveL2 P ℱ (fun s ω k =&gt; fkeRef D T Φ X s ω k) :=
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    IsProgressiveL2.of_bounded P hΨprog (max C1 0 * ∑ j : Fin N × Fin d, ‖liftedNoise D j‖)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      (fun s ω k =&gt; fkeRef_bound hT0 D Φ hC1 s ω k)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  obtain ⟨N0, hN0m, hN0P, hN0⟩ := exists_null_of_ae (P := P)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (p := fun ω =&gt; ∀ τ : ℝ≥0, (τ : ℝ) ≤ T → X τ ω = fun i =&gt; Torus.mk (liftProcM D W&#x27; X τ ω i)) hlift&#x27;
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hMart : ∀ᵐ ω ∂P, localItoIntegral P ℱ W&#x27; (itoIntegrand T Set.univ (configLift Φ)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          (ofNNRealTime (liftProcM D W&#x27; X)) (fun _ _ =&gt; liftedNoise D)) t ω
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        = itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t ω := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    have hcongr := localItoIntegral_congr_null hF.brownian hΨL2.locL2 hN0m hN0P
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      (Ψ := itoIntegrand T Set.univ (configLift Φ) (ofNNRealTime (liftProcM D W&#x27; X))
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        (fun _ _ =&gt; liftedNoise D))
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (fun s ω hω =&gt; by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>        funext k
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>        exact itoIntegrand_eq_fkeRef D Φ W&#x27; X ω (hN0 ω hω) s k)
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      (fun s hs ω =&gt; by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>        have hn : s ∉ Set.Icc (0:ℝ) T := fun h =&gt; absurd h.1 (not_le.2 hs)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>        funext k
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>        simp [itoIntegrand, hn])
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      (fun s hs ω =&gt; by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        have hn : s ∉ Set.Icc (0:ℝ) T := fun h =&gt; absurd h.1 (not_le.2 hs)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        funext k
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>        simp [fkeRef, hn])
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    have hloc := localItoIntegral_eq_itoIntegral hF.brownian hΨL2
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    filter_upwards [hcongr, hloc] with ω h1 h2
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    rw [h1 t, h2 t]
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hMLp : MemLp (itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t) 2 P :=
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    memLp_two_itoIntegral hF.brownian hΨL2 t
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hMint : ∫ ω, itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t ω ∂P = 0 :=
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    integral_itoIntegral hF.brownian hΨL2 t
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  have hsum : ∀ᵐ ω ∂P, Φ t (X (Real.toNNReal t) ω) - Φ 0 (X 0 ω)
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>      = (∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        + itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t ω := by
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    filter_upwards [hcore, hMart] with ω h1 h2
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    rw [h2] at h1
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    exact h1
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  -- integrability
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  haveI : IsFiniteMeasure (volume.restrict (Set.Icc (0:ℝ) t)) :=
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    ⟨by rw [Measure.restrict_apply_univ]; exact measure_Icc_lt_top⟩
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have hprodm : Measurable (fun p : ℝ × Ω =&gt; fkeSample D T Φ X p.1 p.2) :=
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    measurable_fkeIto_sample hF.progressive hT0 D hV Φ hΦc
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hprodint : Integrable (fun p : ℝ × Ω =&gt; fkeSample D T Φ X p.1 p.2)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      ((volume.restrict (Set.Icc (0:ℝ) t)).prod P) :=
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    Integrable.of_bound hprodm.aestronglyMeasurable Cf
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>      (ae_of_all _ fun p =&gt; hCf _ (clampTI_mem hT0 p.1) (repC (X (Real.toNNReal p.1) p.2)))
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have hIint : Integrable (fun ω =&gt; ∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω) P :=
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    hprodint.integral_prod_right
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have hm0 : Measurable (fun x : Config d N =&gt; Φ 0 x) := by
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    have e : (fun x : Config d N =&gt; Φ 0 x) = fun x =&gt; configLift Φ 0 (repC x) := by
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>      funext x
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      show Φ 0 x = Φ 0 (fun i =&gt; Torus.mk (repC x i))
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      rw [mk_repC]
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    have hcont0 : Continuous (configLift Φ 0) :=
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      hΦc.cont.comp_continuous (continuous_const.prodMk continuous_id)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>        (fun Y =&gt; ⟨⟨le_refl (0:ℝ), hT0⟩, Set.mem_univ Y⟩)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    rw [e]
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    exact hcont0.measurable.comp measurable_repC
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hmt : Measurable (fun x : Config d N =&gt; Φ t x) := by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have e : (fun x : Config d N =&gt; Φ t x) = fun x =&gt; configLift Φ t (repC x) := by
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      funext x
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      show Φ t x = Φ t (fun i =&gt; Torus.mk (repC x i))
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      rw [mk_repC]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    have hcont : Continuous (configLift Φ t) :=
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      hΦc.cont.comp_continuous (continuous_const.prodMk continuous_id)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>        (fun Y =&gt; ⟨⟨ht0, htT&#x27;⟩, Set.mem_univ Y⟩)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    rw [e]
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    exact hcont.measurable.comp measurable_repC
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hΦ0int : Integrable (fun ω =&gt; Φ 0 (X 0 ω)) P := by
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    have hb : ∀ x : Config d N, ‖Φ 0 x‖ ≤ C0 := fun x =&gt; by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      have e : Φ 0 x = configLift Φ 0 (repC x) := by
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        show Φ 0 x = Φ 0 (fun i =&gt; Torus.mk (repC x i))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        rw [mk_repC]
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      rw [e]
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>      exact hC0 0 ⟨le_refl (0:ℝ), hT0⟩ (repC x)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    exact Integrable.of_bound ((hm0.comp (hC.adapted 0)).aestronglyMeasurable) C0
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      (ae_of_all _ fun ω =&gt; hb _)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  have hΦtint : Integrable (fun ω =&gt; Φ t (X (Real.toNNReal t) ω)) P := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    have hb : ∀ x : Config d N, ‖Φ t x‖ ≤ C0 := fun x =&gt; by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      have e : Φ t x = configLift Φ t (repC x) := by
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>        show Φ t x = Φ t (fun i =&gt; Torus.mk (repC x i))
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>        rw [mk_repC]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      rw [e]
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      exact hC0 t ⟨ht0, htT&#x27;⟩ (repC x)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    exact Integrable.of_bound ((hmt.comp (hC.adapted (Real.toNNReal t))).aestronglyMeasurable) C0
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      (ae_of_all _ fun ω =&gt; hb _)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  have hMi : Integrable (fun ω =&gt; itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t ω) P :=
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    hMLp.integrable one_le_two
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  -- Fubini and the identification with the selected law on `[0, t]`
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  have hIeq : ∫ ω, (∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω) ∂P
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      = ∫ r in Set.Icc (0:ℝ) t, ∫ x, (fkeGenerator D T Φ r x + fkeInteraction D Φ r x)
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>          ∂(selectedLaw P X r) := by
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    have hswap := integral_integral_swap (μ := volume.restrict (Set.Icc (0:ℝ) t)) (ν := P)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>      (f := fun s ω =&gt; fkeSample D T Φ X s ω) hprodint
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    rw [← hswap]
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    refine setIntegral_congr_fun measurableSet_Icc fun r hr =&gt; ?_
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    have hrT : r ∈ Set.Icc (0:ℝ) T := ⟨hr.1, hr.2.trans htT&#x27;⟩
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    have hg : Measurable (fun x : Config d N =&gt; fkeIto D T Φ (clampTI T r) (repC x)) :=
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      (measurable_fkeIto_lift hT0 D hV Φ hΦc).comp (measurable_const.prodMk measurable_repC)
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    have e : ∀ x : Config d N, fkeGenerator D T Φ r x + fkeInteraction D Φ r x
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        = fkeIto D T Φ (clampTI T r) (repC x) := by
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      intro x
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      rw [clampTI_of_mem hrT]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>      exact fkeGI_eq_fkeIto D hsd T Φ r x
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    simp only [e]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    exact (integral_selectedLaw_eq hC r hg).symm
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  have hLHSt : ∫ x, Φ t x ∂(selectedLaw P X t) = ∫ ω, Φ t (X (Real.toNNReal t) ω) ∂P :=
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    integral_selectedLaw_eq hC t hmt
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  have hLHS : ∫ x, Φ 0 x ∂(selectedLaw P X 0) = ∫ ω, Φ 0 (X 0 ω) ∂P := by
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    rw [integral_selectedLaw_eq hC 0 hm0, Real.toNNReal_zero]
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  have hdiff : ∫ ω, (Φ t (X (Real.toNNReal t) ω) - Φ 0 (X 0 ω)) ∂P
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      = ∫ ω, ((∫ s in Set.Icc (0:ℝ) t, fkeSample D T Φ X s ω)
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>        + itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D T Φ X s ω k) t ω) ∂P :=
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    integral_congr_ae hsum
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>  rw [integral_sub hΦtint hΦ0int, integral_add hIint hMi, hMint, add_zero] at hdiff
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  rw [hLHSt, hLHS, intervalIntegral.integral_of_le ht0, ← integral_Icc_eq_integral_Ioc, ← hIeq]
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  exact hdiff
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>/-- Proposition B.3 at every time of `[0, T)`, in pointwise form. -/
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>theorem selected_law_fke_all_times_Ico {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω}
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    [IsProbabilityMeasure P] {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    {D : DynData d} (hN : 2 ≤ N) (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    (Φ : ℝ → Config d N → ℝ) (hΦ : IsFKETest T Φ) :
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    ∀ t ∈ Set.Ico (0:ℝ) T,
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      ∫ x, Φ t x ∂(selectedLaw P X t) - ∫ x, Φ 0 x ∂(selectedLaw P X 0)
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>        = ∫ r in (0:ℝ)..t, ∫ x, (fkeGenerator D T Φ r x + fkeInteraction D Φ r x)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>            ∂(selectedLaw P X r) :=
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  fun t ht =&gt; selected_law_fke_all_times hN hV hT hX hF Φ hΦ t ht.1 ht.2
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>end HRS.MC.B3T
+</span></code></pre></main></body></html>

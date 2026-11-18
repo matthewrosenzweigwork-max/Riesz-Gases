@@ -1,0 +1,709 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Kernel.GradSmooth · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Kernel.GradSmooth</code></h1><p><a href="../../lean/HRS/Kernel/GradSmooth.lean">Open the unaltered Lean file</a> · 708 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Kernel.GradBasic
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Smoothness of the periodic Riesz kernel off the origin, and its gradient
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Auxiliary file of `HRS/Kernel/GradConv.lean`.  `g ∘ mk` is `C^∞` off the lattice (image-sum
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>formula `decomp1` of `Riesz.lean`, re-centred at an arbitrary point), and `∇g = periodicRieszGrad`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>is its classical gradient there (differentiation under the subordination integral).
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>noncomputable section
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open scoped ENNReal NNReal BigOperators Real
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS.KernelGrad
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open HRS.KernelAux
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>local notation &quot;∞&#x27;&quot; =&gt; ((⊤ : ℕ∞) : WithTop ℕ∞)
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>variable {d : ℕ}
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>/-- the quadratic `π²|x - c|²` centred at an arbitrary `c` -/
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>def qc (c x : Euc d) : ℝ := π ^ 2 * ‖x - c‖ ^ 2
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem contDiff_qc (c : Euc d) : ContDiff ℝ ∞&#x27; (qc c) := by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  unfold qc
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  exact contDiff_const.mul ((contDiff_norm_sq ℝ).comp (contDiff_id.sub contDiff_const))
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>theorem norm_iteratedFDeriv_qc_le (c : Euc d) (n : ℕ) (x : Euc d) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    ‖iteratedFDeriv ℝ n (qc c) x‖ ≤ π ^ 2 * 2 ^ n * (1 + ‖x - c‖) ^ 2 := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  set B : Euc d →L[ℝ] Euc d →L[ℝ] ℝ := (π ^ 2) • (innerSL ℝ : Euc d →L[ℝ] Euc d →L[ℝ] ℝ) with hB
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have hq : qc c = fun y =&gt; B (y - c) (y - c) := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    funext y
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    simp only [qc, B, ContinuousLinearMap.smul_apply, smul_eq_mul]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    rw [innerSL_apply_apply, real_inner_self_eq_norm_sq]
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  have hf : ContDiff ℝ ∞&#x27; (fun y : Euc d =&gt; y - c) := contDiff_id.sub contDiff_const
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  rw [hq]
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have h1 := B.norm_iteratedFDeriv_le_of_bilinear hf hf x (n := n) (by exact_mod_cast le_top)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have hBn : ‖B‖ ≤ π ^ 2 := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    refine ContinuousLinearMap.opNorm_le_bound _ (by positivity) fun u =&gt; ?_
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    refine ContinuousLinearMap.opNorm_le_bound _ (by positivity) fun v =&gt; ?_
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    rw [hB]
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    simp only [ContinuousLinearMap.smul_apply, smul_eq_mul, norm_mul, Real.norm_eq_abs]
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    rw [innerSL_apply_apply, abs_of_nonneg (by positivity : (0:ℝ) ≤ π^2), mul_assoc]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    gcongr
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    exact abs_real_inner_le_norm u v
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  set R := 1 + ‖x - c‖ with hR
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hR0 : 0 ≤ R := by positivity
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hsum : ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) *
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        ‖iteratedFDeriv ℝ i (fun y : Euc d =&gt; y - c) x‖ *
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        ‖iteratedFDeriv ℝ (n - i) (fun y : Euc d =&gt; y - c) x‖ ≤ 2 ^ n * R ^ 2 := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    calc _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * (R * R) := by
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>          refine Finset.sum_le_sum fun i _ =&gt; ?_
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>          rw [mul_assoc]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>          gcongr
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>          · exact norm_iteratedFDeriv_sub_const_le _ _ _
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>          · exact norm_iteratedFDeriv_sub_const_le _ _ _
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      _ = 2 ^ n * R ^ 2 := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>          rw [← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>          push_cast; ring
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  calc _ ≤ ‖B‖ * ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) *
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        ‖iteratedFDeriv ℝ i (fun y : Euc d =&gt; y - c) x‖ *
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        ‖iteratedFDeriv ℝ (n - i) (fun y : Euc d =&gt; y - c) x‖ := h1
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    _ ≤ π ^ 2 * (2 ^ n * R ^ 2) := by gcongr
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    _ = _ := by ring
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>theorem image_comp_bound_c {s : ℝ} (hs : 0 ≤ s) (n : ℕ) :
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    ∃ K : ℝ, 0 ≤ K ∧ ∀ c : Euc d, 1 ≤ ‖c‖ → ∀ x : Euc d, ‖x‖ ≤ 1/4 → ∀ j ≤ n,
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      ‖iteratedFDeriv ℝ j (fun y =&gt; Wt s (qc c y)) x‖ ≤
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>        K * (‖c‖ ^ (2 * n) * Real.exp (-2 * ‖c‖ ^ 2)) := by
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  choose B hB0 hB using Wt_deriv_bound s hs
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  set BS := ∑ i ∈ Finset.range (n + 1), B i with hBS
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hBS0 : 0 ≤ BS := Finset.sum_nonneg fun i _ =&gt; hB0 i
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hπ : (9:ℝ) ≤ π ^ 2 := by nlinarith [Real.pi_gt_three]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  refine ⟨(n.factorial : ℝ) * BS * (18 * π ^ 2) ^ n, by positivity, fun c hc x hx j hj =&gt; ?_⟩
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  set e := ‖c‖ with he
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have he1 : 1 ≤ e := hc
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  set w := qc c x with hw
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  set R := 1 + ‖x - c‖ with hR
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hdist1 : e - 1/4 ≤ ‖x - c‖ := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have := norm_sub_norm_le c x
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rw [norm_sub_rev] at this
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    linarith
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hdist2 : ‖x - c‖ ≤ e + 1/4 := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    have := norm_sub_le x c
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    linarith
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hw4 : 4 * e ^ 2 ≤ w := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    have h1 : 3/4 * e ≤ ‖x - c‖ := by linarith
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have h2 : (3/4 * e) ^ 2 ≤ ‖x - c‖ ^ 2 := by gcongr
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    simp only [hw, qc]
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    nlinarith
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hw1 : 1 ≤ w := by nlinarith
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  have hR1 : 1 ≤ R := by simp only [hR]; linarith [norm_nonneg (x - c)]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  have hR3 : R ≤ 3 * e := by simp only [hR]; linarith
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hC : ∀ i, i ≤ j → ‖iteratedFDeriv ℝ i (Wt s) (qc c x)‖ ≤ BS * Real.exp (-w / 2) := by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    intro i hi
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    refine (hB i w hw1).trans ?_
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    gcongr
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    exact Finset.single_le_sum (f := B) (fun k _ =&gt; hB0 k) (Finset.mem_range.mpr (by omega))
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hD : ∀ i, 1 ≤ i → i ≤ j → ‖iteratedFDeriv ℝ i (qc c) x‖ ≤ (2 * π ^ 2 * R ^ 2) ^ i := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    intro i hi _
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have h1 : 1 ≤ π ^ 2 * R ^ 2 := by nlinarith
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    have h2 : π ^ 2 * 2 ^ i * R ^ 2 ≤ (2 * π ^ 2 * R ^ 2) ^ i := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      rw [show 2 * π ^ 2 * R ^ 2 = 2 * (π ^ 2 * R ^ 2) by ring, mul_pow]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      calc π ^ 2 * 2 ^ i * R ^ 2 = 2 ^ i * (π ^ 2 * R ^ 2) := by ring
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        _ ≤ 2 ^ i * (π ^ 2 * R ^ 2) ^ i := by gcongr; exact le_self_pow₀ h1 (by omega)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    exact (norm_iteratedFDeriv_qc_le c i x).trans h2
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hFB := norm_iteratedFDeriv_comp_le (contDiff_Wt s hs) (contDiff_qc c) (n := j)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    (by exact_mod_cast le_top) x hC hD
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  refine (le_of_eq_of_le rfl hFB).trans ?_
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hexp : Real.exp (-w / 2) ≤ Real.exp (-2 * e ^ 2) := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    rw [Real.exp_le_exp]; linarith
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hpow : (2 * π ^ 2 * R ^ 2) ^ j ≤ (18 * π ^ 2) ^ n * e ^ (2 * n) := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    have hb : 1 ≤ 18 * π ^ 2 * e ^ 2 := by nlinarith
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    have hR9 : R ^ 2 ≤ 9 * e ^ 2 := by nlinarith
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have hbase : 2 * π ^ 2 * R ^ 2 ≤ 18 * π ^ 2 * e ^ 2 := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      calc 2 * π ^ 2 * R ^ 2 ≤ 2 * π ^ 2 * (9 * e ^ 2) := by gcongr
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        _ = 18 * π ^ 2 * e ^ 2 := by ring
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    calc (2 * π ^ 2 * R ^ 2) ^ j ≤ (18 * π ^ 2 * e ^ 2) ^ j :=
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          pow_le_pow_left₀ (by positivity) hbase j
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      _ ≤ (18 * π ^ 2 * e ^ 2) ^ n := pow_le_pow_right₀ hb hj
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      _ = (18 * π ^ 2) ^ n * e ^ (2 * n) := by rw [mul_pow, pow_mul]
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hfact : (j.factorial : ℝ) ≤ n.factorial := by exact_mod_cast Nat.factorial_le hj
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  calc (j.factorial : ℝ) * (BS * Real.exp (-w / 2)) * (2 * π ^ 2 * R ^ 2) ^ j
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      ≤ (n.factorial : ℝ) * (BS * Real.exp (-2 * e ^ 2)) * ((18 * π ^ 2) ^ n * e ^ (2 * n)) := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>        gcongr
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    _ = _ := by ring
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>theorem image_term_bound_c {s : ℝ} (hs : 0 ≤ s) (n : ℕ) :
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    ∃ K : ℝ, 0 ≤ K ∧ ∀ c : Euc d, 1 ≤ ‖c‖ → ∀ x : Euc d,
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ‖iteratedFDeriv ℝ n (fun y =&gt; chi d y * Wt s (qc c y)) x‖ ≤
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        K * (‖c‖ ^ (2 * n) * Real.exp (-2 * ‖c‖ ^ 2)) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  obtain ⟨K, hK0, hK⟩ := image_comp_bound_c (d := d) hs n
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  choose M hM0 hM using fun i =&gt; chi_deriv_bound (d := d) i
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  set MS := ∑ i ∈ Finset.range (n + 1), M i with hMS
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  have hMS0 : 0 ≤ MS := Finset.sum_nonneg fun i _ =&gt; hM0 i
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  refine ⟨2 ^ n * MS * K, by positivity, fun c hc x =&gt; ?_⟩
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  set E := ‖c‖ ^ (2 * n) * Real.exp (-2 * ‖c‖ ^ 2) with hE
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hE0 : 0 ≤ E := by
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    have : 0 ≤ ‖c‖ := norm_nonneg _
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    positivity
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  by_cases hx : 1/8 &lt; ‖x‖
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  · rw [iteratedFDeriv_chi_mul_eq_zero _ hx, norm_zero]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    positivity
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  · push Not at hx
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    have hx4 : ‖x‖ ≤ 1/4 := by linarith
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    have hG : ContDiff ℝ ∞&#x27; (fun y =&gt; Wt s (qc c y)) := (contDiff_Wt s hs).comp (contDiff_qc c)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    refine (norm_iteratedFDeriv_mul_le contDiff_chi hG x (n := n) (by exact_mod_cast le_top)).trans ?_
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    calc ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * ‖iteratedFDeriv ℝ i (chi d) x‖ *
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>          ‖iteratedFDeriv ℝ (n - i) (fun y =&gt; Wt s (qc c y)) x‖
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * MS * (K * E) := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>          refine Finset.sum_le_sum fun i hi =&gt; ?_
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>          have hin : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          gcongr
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>          · exact (hM i x).trans (Finset.single_le_sum (f := M) (fun k _ =&gt; hM0 k) hi)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          · exact hK c hc x hx4 (n - i) (Nat.sub_le n i)
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      _ = 2 ^ n * MS * K * E := by
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          rw [← Finset.sum_mul, ← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose]
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>          push_cast; ring
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>theorem wsq_eq_norm (y : Euc d) (m : Lattice d) :
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    wsq (fun i =&gt; y i) m = ‖y - Lattice.toEuc m‖ ^ 2 := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  have h := wsq_eq_qm y m
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  unfold qm at h
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hπ : (0:ℝ) &lt; π ^ 2 := by positivity
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  exact (mul_left_cancel₀ hπ.ne&#x27; h)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>theorem finite_ball_lattice (y0 : Euc d) :
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    {m : Lattice d | ‖Lattice.toEuc m - y0‖ &lt; 1}.Finite := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  set N : Lattice d := fun _ =&gt; ⌈‖y0‖ + 1⌉ with hN
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  refine (Set.finite_Icc (-N) N).subset fun m hm =&gt; ?_
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  simp only [Set.mem_setOf_eq] at hm
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  have hb : ∀ i, |((m i : ℤ) : ℝ)| ≤ ‖y0‖ + 1 := by
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    intro i
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    have h1 := abs_coord_le_enorm m i
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    have h2 : Lattice.enorm m = ‖Lattice.toEuc m‖ := rfl
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    have h3 : ‖Lattice.toEuc m‖ ≤ ‖Lattice.toEuc m - y0‖ + ‖y0‖ := norm_le_norm_sub_add _ _
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    linarith
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hb&#x27; : ∀ i, |m i| ≤ N i := by
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    intro i
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    have h1 : |((m i : ℤ) : ℝ)| ≤ (⌈‖y0‖ + 1⌉ : ℝ) := (hb i).trans (Int.le_ceil _)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have h2 : |m i| ≤ ⌈‖y0‖ + 1⌉ := by exact_mod_cast h1
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    simpa [hN] using h2
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  constructor
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  · intro i; have := hb&#x27; i; simp only [Pi.neg_apply]; linarith [neg_abs_le (m i)]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  · intro i; exact (le_abs_self _).trans (hb&#x27; i)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>theorem summable_shifted_gauss (y0 : Euc d) (n : ℕ) :
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    Summable fun m : Lattice d =&gt;
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      ‖Lattice.toEuc m - y0‖ ^ (2 * n) * Real.exp (-2 * ‖Lattice.toEuc m - y0‖ ^ 2) := by
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  obtain ⟨M, hM0, hM⟩ := enorm_pow_gauss_bound (2 * n)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  refine Summable.of_nonneg_of_le (fun m =&gt; by positivity) (fun m =&gt; ?_)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    ((summable_gauss_lattice d (1/8) (by norm_num)).mul_left (M * Real.exp (‖y0‖ ^ 2 / 4)))
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  set e := ‖Lattice.toEuc m - y0‖ with he
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  have he0 : 0 ≤ e := norm_nonneg _
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  have h1 := hM e he0
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have h2 : Real.exp (-2 * e ^ 2) ≤ Real.exp (-e ^ 2 / 2) := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    rw [Real.exp_le_exp]; nlinarith [sq_nonneg e]
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  have h3 : ‖Lattice.toEuc m‖ ^ 2 ≤ 2 * e ^ 2 + 2 * ‖y0‖ ^ 2 := by
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    have h4 : ‖Lattice.toEuc m‖ ≤ e + ‖y0‖ := by rw [he]; exact norm_le_norm_sub_add _ _
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    have h5 := pow_le_pow_left₀ (norm_nonneg _) h4 2
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    nlinarith [sq_nonneg (e - ‖y0‖)]
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>  have h5 : Real.exp (-(1/4) * e ^ 2) ≤ Real.exp (‖y0‖ ^ 2 / 4) * Real.exp (-(1/8) * Lattice.enorm m ^ 2) := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    rw [← Real.exp_add, Real.exp_le_exp]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    have : Lattice.enorm m = ‖Lattice.toEuc m‖ := rfl
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    rw [this]
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    nlinarith
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  calc e ^ (2 * n) * Real.exp (-2 * e ^ 2) ≤ e ^ (2 * n) * Real.exp (-e ^ 2 / 2) := by gcongr
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>    _ ≤ M * Real.exp (-(1/4) * e ^ 2) := h1
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    _ ≤ M * (Real.exp (‖y0‖ ^ 2 / 4) * Real.exp (-(1/8) * Lattice.enorm m ^ 2)) := by gcongr
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    _ = _ := by ring
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>/-- the sum over the lattice of `W_s(π²|y-m|²)`, the singular part of the kernel -/
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>def Ssum (d : ℕ) (s : ℝ) (y : Euc d) : ℝ := ∑&#x27; m : Lattice d, Wfun s (π ^ 2 * wsq (fun i =&gt; y i) m)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>theorem Wfun_wsq_eq (s : ℝ) (y : Euc d) (m : Lattice d) :
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    Wfun s (π ^ 2 * wsq (fun i =&gt; y i) m) = Wfun s (qc (Lattice.toEuc m) y) := by
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>  rw [wsq_eq_norm]; rfl
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>theorem contDiffAt_Ssum {s : ℝ} (hs : 0 ≤ s) {y0 : Euc d}
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    (hy0 : ∀ m : Lattice d, 0 &lt; wsq (fun i =&gt; y0 i) m) :
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    ContDiffAt ℝ ∞&#x27; (Ssum d s) y0 := by
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  set F := (finite_ball_lattice y0).toFinset with hF
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  have hmemF : ∀ m, m ∈ F ↔ ‖Lattice.toEuc m - y0‖ &lt; 1 := by
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    intro m; simp [hF]
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  set T : Euc d → ℝ := fun z =&gt; ∑&#x27; m : Lattice d,
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (if m ∈ F then 0 else chi d z * Wt s (qc (Lattice.toEuc m - y0) z)) with hT
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  have hTsm : ContDiff ℝ ∞&#x27; T := by
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    choose K hK0 hK using fun n =&gt; image_term_bound_c (d := d) hs n
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>    set v : ℕ → Lattice d → ℝ := fun n m =&gt;
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      K n * (‖Lattice.toEuc m - y0‖ ^ (2 * n) * Real.exp (-2 * ‖Lattice.toEuc m - y0‖ ^ 2)) with hv
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    refine contDiff_tsum (v := v) (fun m =&gt; ?_) (fun n _ =&gt; ?_) (fun n m x _ =&gt; ?_)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    · by_cases hm : m ∈ F
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      · simp only [hm, if_true]; exact contDiff_const
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      · simp only [hm, if_false]
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        exact contDiff_chi.mul ((contDiff_Wt s hs).comp (contDiff_qc _))
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    · exact (summable_shifted_gauss y0 n).mul_left (K n)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    · by_cases hm : m ∈ F
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      · simp only [hm, if_true]
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        rw [iteratedFDeriv_fun_zero]
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>        simp only [Pi.zero_apply, norm_zero, hv]
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        have := hK0 n
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        positivity
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      · simp only [hm, if_false]
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        refine hK n _ ?_ x
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        by_contra h
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>        exact hm ((hmemF m).2 (not_le.mp h))
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hfin : ContDiffAt ℝ ∞&#x27; (fun y : Euc d =&gt; ∑ m ∈ F, Wfun s (qc (Lattice.toEuc m) y)) y0 := by
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    refine ContDiffAt.sum fun m _ =&gt; ?_
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    have hpos : 0 &lt; qc (Lattice.toEuc m) y0 := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      have := hy0 m
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>      rw [wsq_eq_norm] at this
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>      unfold qc
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>      exact mul_pos (by positivity) this
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    exact ((contDiffOn_Wfun s hs).contDiffAt (Ioi_mem_nhds hpos)).comp y0 (contDiff_qc _).contDiffAt
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  have hall : ContDiffAt ℝ ∞&#x27; (fun y : Euc d =&gt; (∑ m ∈ F, Wfun s (qc (Lattice.toEuc m) y)) + T (y - y0)) y0 :=
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    hfin.add ((hTsm.contDiffAt).comp y0 (contDiff_id.sub contDiff_const).contDiffAt)
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  refine hall.congr_of_eventuallyEq ?_
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  filter_upwards [Metric.ball_mem_nhds y0 (by norm_num : (0:ℝ) &lt; 1/16)] with y hy
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  have hy&#x27; : ‖y - y0‖ &lt; 1/16 := by simpa [dist_eq_norm] using hy
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  unfold Ssum
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  have hsum := summable_Wfun_wsq hs (fun i =&gt; y i)
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  set a : Lattice d → ℝ := fun m =&gt; Wfun s (qc (Lattice.toEuc m) y) with ha
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  have haeq : (fun m =&gt; Wfun s (π ^ 2 * wsq (fun i =&gt; y i) m)) = a := by
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>    funext m; exact Wfun_wsq_eq s y m
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  rw [haeq] at hsum ⊢
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  set b : Lattice d → ℝ := fun m =&gt; if m ∈ F then 0 else a m with hb
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  set e : Lattice d → ℝ := fun m =&gt; if m ∈ F then a m else 0 with he
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  have hba : ∀ m, a m = e m + b m := by
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    intro m; by_cases hm : m ∈ F &lt;;&gt; simp [hb, he, hm]
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>  have hTb : T (y - y0) = ∑&#x27; m, b m := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    refine tsum_congr fun m =&gt; ?_
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    by_cases hm : m ∈ F
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    · simp [hb, hm]
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    · simp only [hb, hm, if_false]
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      have hm1 : 1 ≤ ‖Lattice.toEuc m - y0‖ := not_lt.mp (fun h =&gt; hm ((hmemF m).2 h))
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>      have hch : chi d (y - y0) = 1 := chi_one (by linarith)
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      rw [hch, one_mul]
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      have hq : qc (Lattice.toEuc m - y0) (y - y0) = qc (Lattice.toEuc m) y := by
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>        unfold qc; congr 2; abel
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>      rw [hq]
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>      simp only [ha]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      have : 1 / 2 &lt; qc (Lattice.toEuc m) y := by
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>        have h1 : 15/16 ≤ ‖y - Lattice.toEuc m‖ := by
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>          have h2 : ‖Lattice.toEuc m - y0‖ ≤ ‖Lattice.toEuc m - y‖ + ‖y - y0‖ := by
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>            have := norm_add_le (Lattice.toEuc m - y) (y - y0)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>            rwa [sub_add_sub_cancel] at this
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>          rw [norm_sub_rev y (Lattice.toEuc m)]
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>          linarith
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>        unfold qc
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>        have h3 : (15/16 : ℝ) ^ 2 ≤ ‖y - Lattice.toEuc m‖ ^ 2 := by gcongr
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>        nlinarith [Real.pi_gt_three]
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>      exact ((Wt_eventuallyEq this).self_of_nhds)
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  have hE : HasSum e (∑ m ∈ F, a m) := by
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    have h0 : HasSum e (∑ m ∈ F, e m) :=
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>      hasSum_sum_of_ne_finset_zero (s := F) (f := e) (fun m hm =&gt; by simp [he, hm])
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>    rwa [Finset.sum_congr rfl (fun m hm =&gt; by simp [he, hm] : ∀ m ∈ F, e m = a m)] at h0
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  have hb&#x27; : HasSum b (∑&#x27; m, a m - ∑ m ∈ F, a m) := by
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>    have := hsum.hasSum.sub hE
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>    convert this using 1
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    funext m; rw [hba m]; ring
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>  rw [hTb, hb&#x27;.tsum_eq]
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  simp only [ha]
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  ring
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>theorem mk_toEuc (m : Lattice d) : Torus.mk (Lattice.toEuc m) = 0 := by
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  funext i
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>  simp only [Torus.mk, Lattice.toEuc, Pi.zero_apply]
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>  exact (AddCircle.coe_eq_zero_iff (1:ℝ)).2 ⟨m i, by simp⟩
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>theorem wsq_pos_of_mk_ne_zero {y : Euc d} (hy : Torus.mk y ≠ 0) (m : Lattice d) :
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>    0 &lt; wsq (fun i =&gt; y i) m := by
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>  rw [wsq_eq_norm]
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>  have : y - Lattice.toEuc m ≠ 0 := by
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>    intro h
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    apply hy
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>    have : y = Lattice.toEuc m := sub_eq_zero.mp h
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    rw [this, mk_toEuc]
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  have := norm_pos_iff.mpr this
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  positivity
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>theorem isOpen_mk_ne_zero : IsOpen {y : Euc d | Torus.mk y ≠ 0} :=
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  isOpen_compl_singleton.preimage isOpenQuotientMap_mk.continuous
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>theorem contDiffAt_periodicRiesz {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {y0 : Euc d}
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    (hy0 : Torus.mk y0 ≠ 0) :
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    ContDiffAt ℝ ∞&#x27; (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y)) y0 := by
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>  have hS := contDiffAt_Ssum (s := s) hs0 (wsq_pos_of_mk_ne_zero hy0)
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  have hF2 := (contDiff_F2 (d := d) hsd).contDiffAt (x := y0)
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>  have hall : ContDiffAt ℝ ∞&#x27; (fun y : Euc d =&gt;
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>      subA d s * (π ^ ((d:ℝ)/2) * Ssum d s y - 1 / (((d:ℝ) - s)/2)) +
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>        ∑&#x27; k : Lattice d, coefF2 d s k * Torus.cosMode k (Torus.mk y)) y0 :=
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>    (((hS.const_smul (π ^ ((d:ℝ)/2))).sub contDiffAt_const).const_smul (subA d s)).add hF2
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  refine hall.congr_of_eventuallyEq ?_
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  filter_upwards [isOpen_mk_ne_zero.mem_nhds hy0] with y hy
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  exact decomp1 hd hs0 hsd y (wsq_pos_of_mk_ne_zero hy)
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>theorem contDiffOn_periodicRiesz {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    ContDiffOn ℝ ∞&#x27; (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y)) {y : Euc d | Torus.mk y ≠ 0} :=
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  fun y hy =&gt; (contDiffAt_periodicRiesz hd hs0 hsd hy).contDiffWithinAt
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>/-! ### Gradient of the subordination integrand, uniformly away from the origin -/
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>theorem norm_le_card_of_box {x : Euc d} (hx : ∀ i, |x i| ≤ 1/2) : ‖x‖ ≤ d := by
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  have h := norm_toLp_le_sum (d := d) (WithLp.ofLp x)
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>  rw [WithLp.toLp_ofLp] at h
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>  refine h.trans ?_
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  calc ∑ j, |(WithLp.ofLp x) j| ≤ ∑ _j : Fin d, (1 : ℝ) := Finset.sum_le_sum fun j _ =&gt; by
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>        have := hx j; linarith
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>    _ = d := by simp
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>theorem psiG_bound_unif (j : Fin d) {r : ℝ} (hr : 0 &lt; r) :
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    ∃ M : ℝ, 0 ≤ M ∧ ∀ x : Euc d, (∀ i, |x i| ≤ 1/2) → r ≤ ‖x‖ → ∀ u : ℝ, 0 &lt; u →
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>      |psiG j (Torus.mk x) u| ≤ M * Real.exp (-u) := by
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  obtain ⟨K, hK0, hK⟩ := psiG_small_bound (d := d) j
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>  obtain ⟨M1, hM10, hM1⟩ := psiG_large_bound (d := d) j
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>  set c0 := min (π ^ 2 * r ^ 2) (π ^ 2 / 8) with hc0
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>  have hc0p : 0 &lt; c0 := lt_min (by positivity) (by positivity)
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>  set R : ℝ := (d : ℝ) with hR
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>  have hR0 : 0 ≤ R := by positivity
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>  set M0 := π ^ d * (2 * π ^ 2) * (R + K) * (((d + 1).factorial : ℝ) / c0 ^ (d + 1)) with hM0
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  have hM00 : 0 ≤ M0 := by positivity
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>  refine ⟨M0 * Real.exp 1 + M1, by positivity, fun x hx hrx u hu =&gt; ?_⟩
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>  have hxR : ‖x‖ ≤ R := norm_le_card_of_box hx
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>  rcases le_total u 1 with h1 | h1
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>  · refine (hK x hx u hu h1).trans ?_
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    set w := 1 / u with hw
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    have hw0 : 0 &lt; w := by positivity
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    have hsq : Real.sqrt (π / u) ≤ π * w := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      have h2 : 1 ≤ π / u := by rw [le_div_iff₀ hu]; linarith [Real.pi_gt_three]
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      have h3 : Real.sqrt (π / u) ≤ π / u := Real.sqrt_le_iff.mpr ⟨by linarith, by nlinarith⟩
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>      calc Real.sqrt (π / u) ≤ π / u := h3
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>        _ = π * w := by rw [hw]; ring
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>    have he1 : Real.exp (-(π ^ 2 * ‖x‖ ^ 2 / u)) ≤ Real.exp (-(c0 * w)) := by
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>      rw [Real.exp_le_exp, hw]
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      have : c0 ≤ π ^ 2 * ‖x‖ ^ 2 := (min_le_left _ _).trans (by gcongr)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>      have : c0 * (1 / u) ≤ π ^ 2 * ‖x‖ ^ 2 * (1 / u) := by gcongr
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>      have e : π ^ 2 * ‖x‖ ^ 2 / u = π ^ 2 * ‖x‖ ^ 2 * (1 / u) := by ring
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>      linarith
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>    have he2 : Real.exp (-(π ^ 2 / (8 * u))) ≤ Real.exp (-(c0 * w)) := by
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>      rw [Real.exp_le_exp, hw]
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      have : c0 ≤ π ^ 2 / 8 := min_le_right _ _
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>      have : c0 * (1 / u) ≤ π ^ 2 / 8 * (1 / u) := by gcongr
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>      have e : π ^ 2 / (8 * u) = π ^ 2 / 8 * (1 / u) := by field_simp
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      linarith
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>    have hpe := pow_exp_bound c0 hc0p (d + 1) w hw0.le
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    have hfin : Real.sqrt (π / u) ^ d * (2 * π ^ 2 / u) *
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>        (‖x‖ * Real.exp (-(π ^ 2 * ‖x‖ ^ 2 / u)) + K * Real.exp (-(π ^ 2 / (8 * u)))) ≤ M0 := by
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>      have hxe : ‖x‖ * Real.exp (-(π ^ 2 * ‖x‖ ^ 2 / u)) ≤ R * Real.exp (-(c0 * w)) :=
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>        mul_le_mul hxR he1 (Real.exp_pos _).le hR0
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>      calc Real.sqrt (π / u) ^ d * (2 * π ^ 2 / u) *
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>            (‖x‖ * Real.exp (-(π ^ 2 * ‖x‖ ^ 2 / u)) + K * Real.exp (-(π ^ 2 / (8 * u))))
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>          ≤ (π * w) ^ d * (2 * π ^ 2 * w) * (R * Real.exp (-(c0 * w)) + K * Real.exp (-(c0 * w))) := by
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>            have e : 2 * π ^ 2 / u = 2 * π ^ 2 * w := by rw [hw]; ring
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>            rw [e]
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>            have hK&#x27; : K * Real.exp (-(π ^ 2 / (8 * u))) ≤ K * Real.exp (-(c0 * w)) := by gcongr
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>            have hs&#x27; : Real.sqrt (π / u) ^ d ≤ (π * w) ^ d := by gcongr
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>            gcongr
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>        _ = π ^ d * (2 * π ^ 2) * (R + K) * (w ^ (d + 1) * Real.exp (-(c0 * w))) := by ring
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>        _ ≤ M0 := by rw [hM0]; gcongr
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    have : 1 ≤ Real.exp 1 * Real.exp (-u) := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>      rw [← Real.exp_add]; apply Real.one_le_exp; linarith
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    nlinarith [Real.exp_pos (-u), Real.exp_pos 1]
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  · refine (hM1 _ u h1).trans ?_
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>    have : 0 ≤ M0 * Real.exp 1 * Real.exp (-u) := by positivity
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>    nlinarith [Real.exp_pos (-u)]
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>/-- the gradient (a continuous linear functional) of `y ↦ Ψ(t, mk y)` -/
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>def psiGrad (y : Euc d) (t : ℝ) : Euc d →L[ℝ] ℝ :=
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  ∑ j, psiG j (Torus.mk y) t • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>theorem psiGrad_apply (y : Euc d) (t : ℝ) (v : Euc d) :
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    psiGrad y t v = ∑ j, psiG j (Torus.mk y) t * v j := by
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>  simp [psiGrad, ContinuousLinearMap.sum_apply]
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>theorem summable_psiG_term (j : Fin d) {t : ℝ} (ht : 0 &lt; t) (x : Torus d) :
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    Summable fun k : Lattice d =&gt;
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>      -(Real.exp (-t * Lattice.enorm k ^ 2) * (2 * π * ((k j : ℤ) : ℝ)) * Torus.sinMode k x) := by
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>  refine Summable.of_norm_bounded ((summable_pow_gauss_lattice d ht 1).mul_left (2 * π)) fun k =&gt; ?_
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>  rw [norm_neg, Real.norm_eq_abs, abs_mul, abs_mul, abs_mul, abs_of_pos (Real.exp_pos _),
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    abs_of_pos (by positivity : (0:ℝ) &lt; 2 * π)]
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  have h1 := abs_coord_le_enorm k j
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  have hk0 : 0 ≤ Lattice.enorm k := norm_nonneg _
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  have h2 : |Torus.sinMode k x| ≤ 1 := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    rw [Torus.sinMode]; exact (Complex.abs_im_le_norm _).trans (by rw [Torus.norm_mode])
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  calc Real.exp (-t * Lattice.enorm k ^ 2) * (2 * π * |((k j : ℤ) : ℝ)|) * |Torus.sinMode k x|
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>      ≤ Real.exp (-t * Lattice.enorm k ^ 2) * (2 * π * Lattice.enorm k) * 1 := by gcongr
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    _ = _ := by ring
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>theorem hasFDerivAt_psiFn {t : ℝ} (ht : 0 &lt; t) (y : Euc d) :
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    HasFDerivAt (fun y : Euc d =&gt; psiFn (Torus.mk y) t) (psiGrad y t) y := by
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  set f : Lattice d → Euc d → ℝ := fun k y =&gt;
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    if k = 0 then 0 else Real.exp (-t * Lattice.enorm k ^ 2) * Real.cos (Torus.freqFunctional k y) with hf
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>  set f&#x27; : Lattice d → Euc d → (Euc d →L[ℝ] ℝ) := fun k y =&gt;
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    if k = 0 then 0 else (-(Real.exp (-t * Lattice.enorm k ^ 2) * Real.sin (Torus.freqFunctional k y))) •
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>      Torus.freqFunctional k with hf&#x27;
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>  have hfeq : (fun y : Euc d =&gt; psiFn (Torus.mk y) t) = fun y =&gt; ∑&#x27; k, f k y := by
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>    funext y
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    unfold psiFn
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    refine tsum_congr fun k =&gt; ?_
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    by_cases hk : k = 0
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    · simp [hf, hk]
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>    · simp only [hf, hk, if_false, Torus.cosMode_mk, Torus.freqFunctional_apply]
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  have hder : ∀ k y, HasFDerivAt (f k) (f&#x27; k y) y := by
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>    intro k y
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>    by_cases hk : k = 0
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    · simp only [hf, hf&#x27;, hk, if_true]; exact hasFDerivAt_const _ _
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    · simp only [hf, hf&#x27;, hk, if_false]
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>      have h1 := (Real.hasDerivAt_cos (Torus.freqFunctional k y)).comp_hasFDerivAt y
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>        (Torus.freqFunctional k).hasFDerivAt
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>      have h2 := h1.const_mul (Real.exp (-t * Lattice.enorm k ^ 2))
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>      have h3 : HasFDerivAt (fun y =&gt; Real.exp (-t * Lattice.enorm k ^ 2) *
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>          Real.cos (Torus.freqFunctional k y))
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>          (Real.exp (-t * Lattice.enorm k ^ 2) • (-Real.sin (Torus.freqFunctional k y) • Torus.freqFunctional k)) y := h2
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>      convert h3 using 1
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>      simp only [smul_smul, mul_neg]
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  have hbd : ∀ k y, ‖f&#x27; k y‖ ≤ 2 * π * (Lattice.enorm k ^ 1 * Real.exp (-t * Lattice.enorm k ^ 2)) := by
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    intro k y
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    by_cases hk : k = 0
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>    · subst hk
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>      simp only [hf&#x27;, if_true, norm_zero]
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>      have : 0 ≤ Lattice.enorm (0 : Lattice d) := norm_nonneg _
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>      exact mul_nonneg (by positivity) (mul_nonneg (pow_nonneg this _) (Real.exp_pos _).le)
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    · simp only [hf&#x27;, hk, if_false]
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>      rw [norm_smul, norm_neg, Real.norm_eq_abs, abs_mul, abs_of_pos (Real.exp_pos _)]
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>      have h1 := Real.abs_sin_le_one (Torus.freqFunctional k y)
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>      have h2 := Torus.norm_freqFunctional_le k
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>      have hk0 : 0 ≤ Lattice.enorm k := norm_nonneg _
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      calc Real.exp (-t * Lattice.enorm k ^ 2) * |Real.sin (Torus.freqFunctional k y)| *
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>            ‖Torus.freqFunctional k‖
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>          ≤ Real.exp (-t * Lattice.enorm k ^ 2) * 1 * (2 * π * Lattice.enorm k) := by gcongr
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>        _ = _ := by ring
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>  have hf0 : Summable fun k =&gt; f k y := by
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    refine (psi_summable (Torus.mk y) ht).congr fun k =&gt; ?_
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>    by_cases hk : k = 0
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    · simp [hf, hk]
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>    · simp only [hf, hk, if_false, Torus.cosMode_mk, Torus.freqFunctional_apply]
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  have hH := hasFDerivAt_tsum ((summable_pow_gauss_lattice d ht 1).mul_left (2 * π)) hder hbd hf0 y
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  rw [hfeq]
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  convert hH using 1
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>  -- identify the derivative
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  have hsumm : Summable fun k =&gt; f&#x27; k y :=
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>    Summable.of_norm_bounded ((summable_pow_gauss_lattice d ht 1).mul_left (2 * π)) (hbd · y)
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>  ext v
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>  rw [psiGrad_apply]
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>  have hv : (∑&#x27; k, f&#x27; k y) v = ∑&#x27; k, f&#x27; k y v := by
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    have := (ContinuousLinearMap.apply ℝ ℝ v).map_tsum hsumm
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    simpa using this
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>  rw [hv]
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  have hpsi : ∀ j, psiG j (Torus.mk y) t * v j =
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      ∑&#x27; k, -(Real.exp (-t * Lattice.enorm k ^ 2) * (2 * π * ((k j : ℤ) : ℝ)) * Torus.sinMode k (Torus.mk y)) * v j := by
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>    intro j
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    unfold psiG
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    rw [tsum_mul_right]
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>  simp_rw [hpsi]
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  rw [← Summable.tsum_finsetSum (fun j _ =&gt; (summable_psiG_term j ht (Torus.mk y)).mul_right (v j))]
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>  refine tsum_congr fun k =&gt; ?_
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>  by_cases hk : k = 0
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>  · simp [hf&#x27;, hk]
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>  · simp only [hf&#x27;, hk, if_false, ContinuousLinearMap.smul_apply, smul_eq_mul, Torus.freqFunctional_apply,
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      Torus.sinMode_mk, Lattice.dot, Finset.mul_sum]
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    exact Finset.sum_congr rfl fun i _ =&gt; by ring
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>theorem exists_lattice_of_mk_eq {x y : Euc d} (h : Torus.mk x = Torus.mk y) :
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>    ∃ m : Lattice d, x = y + Lattice.toEuc m := by
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>  have : ∀ i, ∃ n : ℤ, (n : ℝ) = x i - y i := by
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    intro i
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    have hi := congrFun h i
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>    simp only [Torus.mk] at hi
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    have : ((x i - y i : ℝ) : UnitAddCircle) = 0 := by
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>      rw [AddCircle.coe_sub, hi, sub_self]
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    obtain ⟨n, hn⟩ := (AddCircle.coe_eq_zero_iff (1:ℝ)).mp this
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    exact ⟨n, by simpa using hn⟩
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>  choose m hm using this
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  refine ⟨m, ?_⟩
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  ext i
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>  simp [Lattice.toEuc, hm]
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>theorem norm_sub_toEuc_ge_of_box {x : Euc d} (hx : ∀ i, |x i| ≤ 1/2) (m : Lattice d) :
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>    ‖x‖ ≤ ‖x - Lattice.toEuc m‖ := by
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  rw [EuclideanSpace.norm_eq, EuclideanSpace.norm_eq]
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>  refine Real.sqrt_le_sqrt (Finset.sum_le_sum fun i _ =&gt; ?_)
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>  simp only [Real.norm_eq_abs, sq_abs, Lattice.toEuc]
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>  have := abs_sq_le_sub_sq (x i) (hx i) (m i)
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>  simp only [PiLp.sub_apply]
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>  nlinarith [sq_abs (x i)]
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>/-- uniform bound for the gradient of the subordination integrand near a point of the box
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>(not the origin). -/
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>theorem psiG_bound_near (j : Fin d) {x0 : Euc d} (hx0 : ∀ i, |x0 i| ≤ 1/2) (hx0n : x0 ≠ 0) :
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>    ∃ M : ℝ, 0 ≤ M ∧ ∀ y : Euc d, ‖y - x0‖ &lt; ‖x0‖ / 2 → ∀ u : ℝ, 0 &lt; u →
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>      |psiG j (Torus.mk y) u| ≤ M * Real.exp (-u) := by
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>  have hρ : 0 &lt; ‖x0‖ := norm_pos_iff.mpr hx0n
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  obtain ⟨M, hM0, hM⟩ := psiG_bound_unif (d := d) j (r := ‖x0‖ / 2) (by positivity)
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  refine ⟨M, hM0, fun y hy u hu =&gt; ?_⟩
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>  obtain ⟨x, hxm, hxb⟩ := exists_mk_box (Torus.mk y)
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  obtain ⟨m, hm⟩ := exists_lattice_of_mk_eq hxm
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>  have hneg : Lattice.toEuc (-m) = -Lattice.toEuc m := by ext i; simp [Lattice.toEuc]
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>  have h1 : ‖x0‖ ≤ ‖x0 + Lattice.toEuc m‖ := by
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    have := norm_sub_toEuc_ge_of_box hx0 (-m)
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>    rwa [hneg, sub_neg_eq_add] at this
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>  have h3 : ‖x0 + Lattice.toEuc m‖ ≤ ‖x0 - y‖ + ‖y + Lattice.toEuc m‖ := by
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    have := norm_add_le (x0 - y) (y + Lattice.toEuc m)
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>    rwa [show x0 - y + (y + Lattice.toEuc m) = x0 + Lattice.toEuc m by abel] at this
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>  have h4 : ‖x0 - y‖ = ‖y - x0‖ := norm_sub_rev _ _
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>  have hr : ‖x0‖ / 2 ≤ ‖x‖ := by rw [hm]; linarith
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>  have := hM x hxb hr u hu
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>  rwa [hxm] at this
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>theorem norm_psiGrad_le (y : Euc d) (t : ℝ) : ‖psiGrad y t‖ ≤ ∑ j, |psiG j (Torus.mk y) t| := by
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>  refine ContinuousLinearMap.opNorm_le_bound _ (Finset.sum_nonneg fun j _ =&gt; abs_nonneg _) fun v =&gt; ?_
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>  rw [psiGrad_apply, Real.norm_eq_abs, Finset.sum_mul]
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>  refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ =&gt; ?_)
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>  rw [abs_mul]
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>  gcongr
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>  have := PiLp.norm_apply_le v j
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  rwa [Real.norm_eq_abs] at this
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>theorem mk_ne_zero_ne_zero {x : Euc d} (h : Torus.mk x ≠ 0) : x ≠ 0 := by
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>  intro hx
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>  apply h
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>  rw [hx]
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>  funext i
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>  simp [Torus.mk]
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>theorem hasFDerivAt_intPsi {s : ℝ} (hsd : s &lt; d) {x0 : Euc d} (hx0 : ∀ i, |x0 i| ≤ 1/2)
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>    (hx0n : Torus.mk x0 ≠ 0) :
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    HasFDerivAt (fun y : Euc d =&gt; ∫ t in Ioi (0:ℝ), t ^ (((d:ℝ) - s)/2 - 1) * psiFn (Torus.mk y) t)
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>      (∑ j, (∫ t in Ioi (0:ℝ), t ^ (((d:ℝ) - s)/2 - 1) * psiG j (Torus.mk x0) t) •
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>        (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)) x0 := by
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>  set a : ℝ := ((d:ℝ) - s) / 2 with ha_def
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>  have ha : 0 &lt; a := by rw [ha_def]; linarith
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>  have hx0z : x0 ≠ 0 := mk_ne_zero_ne_zero hx0n
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>  have hρ : 0 &lt; ‖x0‖ := norm_pos_iff.mpr hx0z
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>  choose M hM0 hM using fun j : Fin d =&gt; psiG_bound_near j hx0 hx0z
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>  set C : ℝ := ∑ j, M j with hC
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>  have hC0 : 0 ≤ C := Finset.sum_nonneg fun j _ =&gt; hM0 j
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>  have hbdint : Integrable (fun t : ℝ =&gt; C * (Real.exp (-t) * t ^ (a - 1))) (volume.restrict (Ioi (0:ℝ))) :=
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    (Real.GammaIntegral_convergent ha).const_mul C
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>  have hcontF : ∀ y : Euc d, ContinuousOn (fun t : ℝ =&gt; t ^ (a - 1) * psiFn (Torus.mk y) t) (Ioi 0) :=
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>    fun y =&gt; ContinuousOn.mul (continuousOn_id.rpow_const fun t ht =&gt; Or.inl (ne_of_gt ht))
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>      (psi_continuousOn _)
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>  have hcontF&#x27; : ContinuousOn (fun t : ℝ =&gt; t ^ (a - 1) • psiGrad x0 t) (Ioi 0) := by
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>    have : (fun t : ℝ =&gt; t ^ (a - 1) • psiGrad x0 t) =
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>        fun t =&gt; ∑ j, (t ^ (a - 1) * psiG j (Torus.mk x0) t) • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ) := by
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>      funext t
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>      simp only [psiGrad, Finset.smul_sum, smul_smul, smul_eq_mul]
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>    rw [this]
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>    refine continuousOn_finset_sum _ fun j _ =&gt; ?_
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>    exact (ContinuousOn.mul (continuousOn_id.rpow_const fun t ht =&gt; Or.inl (ne_of_gt ht))
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>      (psiG_continuousOn j _)).smul continuousOn_const
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>  have key := hasFDerivAt_integral_of_dominated_of_fderiv_le
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>    (μ := volume.restrict (Ioi (0:ℝ)))
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>    (F := fun (y : Euc d) (t : ℝ) =&gt; t ^ (a - 1) * psiFn (Torus.mk y) t)
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>    (F&#x27; := fun (y : Euc d) (t : ℝ) =&gt; t ^ (a - 1) • psiGrad y t)
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>    (x₀ := x0) (s := Metric.ball x0 (‖x0‖ / 2))
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>    (bound := fun t =&gt; C * (Real.exp (-t) * t ^ (a - 1)))
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>    (Metric.ball_mem_nhds _ (by positivity))
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>    (Filter.Eventually.of_forall fun y =&gt; (hcontF y).aestronglyMeasurable measurableSet_Ioi)
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    (integrableOn_psi hsd (Torus.mk x0) hx0n)
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>    (hcontF&#x27;.aestronglyMeasurable measurableSet_Ioi)
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>    ?_ hbdint ?_
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  · convert key using 1
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>    -- identify the derivative
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>    have hint : ∀ j, Integrable (fun t : ℝ =&gt; t ^ (a - 1) * psiG j (Torus.mk x0) t)
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>        (volume.restrict (Ioi (0:ℝ))) := by
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>      intro j
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>      refine Integrable.mono&#x27; ((Real.GammaIntegral_convergent ha).const_mul (M j)) ?_ ?_
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>      · exact (ContinuousOn.mul (continuousOn_id.rpow_const fun t ht =&gt; Or.inl (ne_of_gt ht))
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>          (psiG_continuousOn j _)).aestronglyMeasurable measurableSet_Ioi
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>      · refine (ae_restrict_iff&#x27; measurableSet_Ioi).mpr (Filter.Eventually.of_forall fun t ht =&gt; ?_)
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>        have ht&#x27; : 0 &lt; t := ht
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>        rw [Real.norm_eq_abs, abs_mul, abs_of_pos (Real.rpow_pos_of_pos ht&#x27; _)]
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>        have h1 := hM j x0 (by simpa using hρ) t ht&#x27;
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>        calc t ^ (a - 1) * |psiG j (Torus.mk x0) t| ≤ t ^ (a - 1) * (M j * Real.exp (-t)) := by gcongr
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>          _ = _ := by ring
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>    have : (fun t : ℝ =&gt; t ^ (a - 1) • psiGrad x0 t) =
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>        fun t =&gt; ∑ j, (t ^ (a - 1) * psiG j (Torus.mk x0) t) • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ) := by
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>      funext t
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>      simp only [psiGrad, Finset.smul_sum, smul_smul, smul_eq_mul]
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>    rw [this, integral_finset_sum _ fun j _ =&gt; (hint j).smul_const _]
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>    refine Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>    rw [integral_smul_const]
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>  · refine (ae_restrict_iff&#x27; measurableSet_Ioi).mpr (Filter.Eventually.of_forall fun t ht y hy =&gt; ?_)
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>    have ht&#x27; : 0 &lt; t := ht
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>    have hy&#x27; : ‖y - x0‖ &lt; ‖x0‖ / 2 := by simpa [dist_eq_norm] using hy
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (Real.rpow_pos_of_pos ht&#x27; _)]
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>    calc t ^ (a - 1) * ‖psiGrad y t‖ ≤ t ^ (a - 1) * ∑ j, |psiG j (Torus.mk y) t| := by
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>          gcongr; exact norm_psiGrad_le y t
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>      _ ≤ t ^ (a - 1) * ∑ j, (M j * Real.exp (-t)) := by
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>          gcongr with j _
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>          exact hM j y hy&#x27; t ht&#x27;
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>      _ = _ := by rw [← Finset.sum_mul]; ring
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>  · refine (ae_restrict_iff&#x27; measurableSet_Ioi).mpr (Filter.Eventually.of_forall fun t ht y _ =&gt; ?_)
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>    have ht&#x27; : 0 &lt; t := ht
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>    exact (hasFDerivAt_psiFn ht&#x27; y).const_mul (t ^ (a - 1)) |&gt;.congr_fderiv (by simp [smul_eq_mul])
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>theorem hasFDerivAt_periodicRiesz_box {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {x0 : Euc d}
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>    (hx0 : ∀ i, |x0 i| ≤ 1/2) (hx0n : Torus.mk x0 ≠ 0) :
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>    HasFDerivAt (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y))
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>      (∑ j, gradComp s j (Torus.mk x0) • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)) x0 := by
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>  have h := (hasFDerivAt_intPsi (s := s) hsd hx0 hx0n).const_mul (subA d s)
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>  have heq : (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y)) =ᶠ[𝓝 x0]
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>      fun y =&gt; subA d s * ∫ t in Ioi (0:ℝ), t ^ (((d:ℝ) - s) / 2 - 1) * psiFn (Torus.mk y) t := by
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    filter_upwards [isOpen_mk_ne_zero.mem_nhds hx0n] with y hy
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>    exact periodicRiesz_eq_integral hd hs0 hsd (Torus.mk y) hy
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>  refine (h.congr_of_eventuallyEq heq).congr_fderiv ?_
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>  rw [Finset.smul_sum]
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>  refine Finset.sum_congr rfl fun j _ =&gt; ?_
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  rw [smul_smul, gradComp]
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>theorem hasFDerivAt_periodicRiesz {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {y0 : Euc d}
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>    (hy0 : Torus.mk y0 ≠ 0) :
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    HasFDerivAt (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y))
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>      (∑ j, (periodicRieszGrad d s (Torus.mk y0)) j • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)) y0 := by
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>  obtain ⟨x0, hxm, hxb⟩ := exists_mk_box (Torus.mk y0)
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>  obtain ⟨m, hm⟩ := exists_lattice_of_mk_eq hxm
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>  have hx0n : Torus.mk x0 ≠ 0 := by rw [hxm]; exact hy0
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>  have hx0z : x0 ≠ 0 := mk_ne_zero_ne_zero hx0n
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>  have h := hasFDerivAt_periodicRiesz_box hd hs0 hsd hxb hx0n
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>  have h2 : HasFDerivAt (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk (y + Lattice.toEuc m)))
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>      (∑ j, gradComp s j (Torus.mk x0) • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)) y0 := by
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>    have hadd : HasFDerivAt (fun y : Euc d =&gt; y + Lattice.toEuc m) (ContinuousLinearMap.id ℝ (Euc d)) y0 :=
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>      (hasFDerivAt_id y0).add_const _
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>    have hm&#x27; : y0 + Lattice.toEuc m = x0 := hm.symm
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>    have h&#x27; : HasFDerivAt (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y))
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>        (∑ j, gradComp s j (Torus.mk x0) • (EuclideanSpace.proj j : Euc d →L[ℝ] ℝ)) (y0 + Lattice.toEuc m) := by
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>      rw [hm&#x27;]; exact h
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>    exact (h&#x27;.comp y0 hadd).congr_fderiv (ContinuousLinearMap.comp_id _)
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>  have hfun : (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk (y + Lattice.toEuc m))) =
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>      fun y =&gt; periodicRiesz d s (Torus.mk y) := by
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>    funext y
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>    rw [mk_add, mk_toEuc, add_zero]
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>  rw [hfun] at h2
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>  have hgrad := periodicRieszGrad_eq hsd x0 hxb hx0z
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>  rw [hxm] at hgrad hx0n
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>  rw [hxm] at h2
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>  convert h2 using 2
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  rw [hgrad]
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>theorem periodicRieszGrad_hasGradientAt {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>    {x : Torus d} (hx : x ≠ 0) (y₀ : Euc d) (hy₀ : Torus.mk y₀ = x) :
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>    HasGradientAt (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y)) (periodicRieszGrad d s x) y₀ := by
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>  subst hy₀
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>  have h := hasFDerivAt_periodicRiesz hd hs0 hsd hx
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>  rw [hasGradientAt_iff_hasFDerivAt]
+</span><span class="line" id="L689"><a class="ln" aria-label="Line 689" href="#L689">689</a>  convert h using 1
+</span><span class="line" id="L690"><a class="ln" aria-label="Line 690" href="#L690">690</a>  ext v
+</span><span class="line" id="L691"><a class="ln" aria-label="Line 691" href="#L691">691</a>  simp [PiLp.inner_apply, mul_comm]
+</span><span class="line" id="L692"><a class="ln" aria-label="Line 692" href="#L692">692</a>
+</span><span class="line" id="L693"><a class="ln" aria-label="Line 693" href="#L693">693</a>theorem lift_periodicRieszGrad_eq_gradient {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L694"><a class="ln" aria-label="Line 694" href="#L694">694</a>    {y : Euc d} (hy : Torus.mk y ≠ 0) :
+</span><span class="line" id="L695"><a class="ln" aria-label="Line 695" href="#L695">695</a>    Torus.lift (periodicRieszGrad d s) y =
+</span><span class="line" id="L696"><a class="ln" aria-label="Line 696" href="#L696">696</a>      (InnerProductSpace.toDual ℝ (Euc d)).symm (fderiv ℝ (fun y : Euc d =&gt; periodicRiesz d s (Torus.mk y)) y) := by
+</span><span class="line" id="L697"><a class="ln" aria-label="Line 697" href="#L697">697</a>  have h := (periodicRieszGrad_hasGradientAt hd hs0 hsd hy y rfl).gradient
+</span><span class="line" id="L698"><a class="ln" aria-label="Line 698" href="#L698">698</a>  unfold gradient at h
+</span><span class="line" id="L699"><a class="ln" aria-label="Line 699" href="#L699">699</a>  exact h.symm
+</span><span class="line" id="L700"><a class="ln" aria-label="Line 700" href="#L700">700</a>
+</span><span class="line" id="L701"><a class="ln" aria-label="Line 701" href="#L701">701</a>theorem periodicRieszGrad_smoothOffZero&#x27; {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L702"><a class="ln" aria-label="Line 702" href="#L702">702</a>    ContDiffOn ℝ ∞&#x27; (Torus.lift (periodicRieszGrad d s)) {x : Euc d | Torus.mk x ≠ 0} := by
+</span><span class="line" id="L703"><a class="ln" aria-label="Line 703" href="#L703">703</a>  have hU := isOpen_mk_ne_zero (d := d)
+</span><span class="line" id="L704"><a class="ln" aria-label="Line 704" href="#L704">704</a>  have h1 := (contDiffOn_periodicRiesz hd hs0 hsd (s := s)).fderiv_of_isOpen hU (m := ∞&#x27;) (by simp)
+</span><span class="line" id="L705"><a class="ln" aria-label="Line 705" href="#L705">705</a>  have h2 := ((InnerProductSpace.toDual ℝ (Euc d)).symm.contDiff (n := ∞&#x27;)).comp_contDiffOn h1
+</span><span class="line" id="L706"><a class="ln" aria-label="Line 706" href="#L706">706</a>  exact h2.congr fun y hy =&gt; lift_periodicRieszGrad_eq_gradient hd hs0 hsd hy
+</span><span class="line" id="L707"><a class="ln" aria-label="Line 707" href="#L707">707</a>
+</span><span class="line" id="L708"><a class="ln" aria-label="Line 708" href="#L708">708</a>end HRS.KernelGrad
+</span></code></pre></main></body></html>

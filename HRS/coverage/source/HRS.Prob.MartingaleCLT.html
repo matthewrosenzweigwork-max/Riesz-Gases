@@ -1,0 +1,174 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Prob.MartingaleCLT · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Prob.MartingaleCLT</code></h1><p><a href="../../lean/HRS/Prob/MartingaleCLT.lean">Open the unaltered Lean file</a> · 173 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Prob.MartingaleLindeberg
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Lemma A.21 (package CLT-01)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>`HRS.multivariate_martingale_clt` and `HRS.multivariate_martingale_clt_dc2`
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>(Lemma A.21 `M:B:lem:lindeberg`, source lines 10545-10551) assembled from
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`lindeberg_partition_bound`, `martingale_lindeberg_tendsto` and `gaussian_lindeberg_tendsto` in
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`HRS/Prob/MartingaleLindeberg.lean` (they live here because that file imports `CLT.lean`).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Route: mollify `h` by `gaussSmooth h (ε² I)` (Lipschitz Hessian, uniform cost `½ H ε² p`),
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>apply the partition bound, let `n → ∞`, then `ε → 0`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>-/
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>noncomputable section
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>variable {Ω : Type*} {mΩ : MeasurableSpace Ω} (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>section Multivariate
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>variable {p : ℕ}
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>local notation &quot;ℝ^&quot; p =&gt; EuclideanSpace ℝ (Fin p)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open LindebergAux
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>/-- Lemma A.21 `M:B:lem:lindeberg` (lines 10545-10551), bound `B:eq:lindeberg-bound`: for
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>deterministic integrable symmetric nonnegative `sb : [0,t] → ℝ^{p×p}` and
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>`G ∼ N(0, ∫_0^t sb)`, for every `h ∈ C²(ℝ^p)` with bounded second derivatives,
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>`|E h(M_t) - E h(G)| ≤ ½ sup_x ‖∇²h(x)‖_op E ∫_0^t ‖Σ_σ - sb_σ‖_{S_1} dσ`. -/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>theorem multivariate_martingale_clt (ℱ : Filtration ℝ mΩ) (t : ℝ) (ht : 0 ≤ t)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    (M : ℝ → Ω → (ℝ^p)) (Sg : ℝ → Ω → Matrix (Fin p) (Fin p) ℝ)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (hM : IsVectorMartingaleWithCovariation P ℱ t M Sg)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    (sb : ℝ → Matrix (Fin p) (Fin p) ℝ) (hsbmeas : Measurable sb)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    (hsbint : IntegrableOn (fun σ =&gt; s1Norm (sb σ)) (Set.Icc 0 t))
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hsbpsd : ∀ σ ∈ Set.Icc 0 t, (sb σ).PosSemidef)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (h : (ℝ^p) → ℝ) (hh : ContDiff ℝ 2 h)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hbdd : BddAbove (Set.range fun x =&gt; ‖iteratedFDeriv ℝ 2 h x‖)) :
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    |∫ ω, h (M t ω) ∂P -
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>        ∫ x, h x ∂(ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun i j =&gt; ∫ σ in Set.Icc 0 t, sb σ i j))| ≤
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      (1 / 2) * (⨆ x, ‖iteratedFDeriv ℝ 2 h x‖) *
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>        ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  classical
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hcov : (Matrix.of fun i j =&gt; ∫ σ in Set.Icc 0 t, sb σ i j) = covBlock sb 0 t := rfl
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  rw [hcov]
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  set H := ⨆ x, ‖iteratedFDeriv ℝ 2 h x‖ with hHdef
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hH : ∀ x, ‖iteratedFDeriv ℝ 2 h x‖ ≤ H := fun x =&gt; le_ciSup hbdd x
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hH0 : 0 ≤ H := (norm_nonneg _).trans (hH 0)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hent := sb_entry_integrableOn hsbmeas hsbint hsbpsd
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hGpsd : (covBlock sb 0 t).PosSemidef := covBlock_psd hsbpsd hent le_rfl le_rfl
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  set γ := ProbabilityTheory.multivariateGaussian (0 : ℝ^p) (covBlock sb 0 t) with hγ
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  set J := ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P with hJ
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hJ0 : 0 ≤ J := integral_nonneg fun ω =&gt;
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    setIntegral_nonneg measurableSet_Icc fun σ _ =&gt; traceNormMatrix_nonneg _
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hmt : MemLp (M t) 2 P := hM.sq_int t ⟨ht, le_rfl⟩
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hγm : MemLp (id : (ℝ^p) → (ℝ^p)) 2 γ := ProbabilityTheory.IsGaussian.memLp_two_id
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have key : ∀ ε : ℝ, 0 &lt; ε →
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      |∫ ω, h (M t ω) ∂P - ∫ x, h x ∂γ| ≤ (1 / 2) * H * J + H * (ε ^ 2 * p) := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    intro ε hε
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    set Qe : Matrix (Fin p) (Fin p) ℝ := ε ^ 2 • (1 : Matrix (Fin p) (Fin p) ℝ) with hQe
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    have hQpd : Qe.PosDef := Matrix.PosDef.one.smul (by positivity)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    obtain ⟨happ, L, hL⟩ := gaussSmooth_approx Qe hQpd h hh H hH
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    have hQtr : Qe.trace = ε ^ 2 * p := by simp [hQe, Matrix.trace_smul]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    obtain ⟨he2, heH, -⟩ := gaussSmooth_hessian Qe hQpd.posSemidef h hh H hH
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    have hL&#x27; : ∀ x y, ‖iteratedFDeriv ℝ 2 (gaussSmooth h Qe) x -
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>        iteratedFDeriv ℝ 2 (gaussSmooth h Qe) y‖ ≤ max L 0 * ‖x - y‖ := fun x y =&gt;
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      (hL x y).trans (mul_le_mul_of_nonneg_right (le_max_left _ _) (norm_nonneg _))
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    set δ := (1 / 2) * H * (ε ^ 2 * p) with hδdef
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have hδ : ∀ x, |gaussSmooth h Qe x - h x| ≤ δ := fun x =&gt; by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      have := happ x
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      rwa [hQtr] at this
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have iP1 : Integrable (fun ω =&gt; h (M t ω)) P := integrable_comp_memLp P hh hH hmt
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    have iP2 : Integrable (fun ω =&gt; gaussSmooth h Qe (M t ω)) P :=
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      integrable_comp_memLp P he2 heH hmt
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    have iG1 : Integrable h γ := integrable_comp_memLp γ hh hH hγm
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have iG2 : Integrable (gaussSmooth h Qe) γ := integrable_comp_memLp γ he2 heH hγm
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    have d1 : |∫ ω, h (M t ω) ∂P - ∫ ω, gaussSmooth h Qe (M t ω) ∂P| ≤ δ := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      rw [← integral_sub iP1 iP2, ← Real.norm_eq_abs]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      have := norm_integral_le_of_norm_le (μ := P) (integrable_const δ)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        (f := fun ω =&gt; h (M t ω) - gaussSmooth h Qe (M t ω))
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        (ae_of_all _ fun ω =&gt; by rw [Real.norm_eq_abs, abs_sub_comm]; exact hδ _)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      simpa using this
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    have d2 : |∫ x, h x ∂γ - ∫ x, gaussSmooth h Qe x ∂γ| ≤ δ := by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      rw [← integral_sub iG1 iG2, ← Real.norm_eq_abs]
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      have := norm_integral_le_of_norm_le (μ := γ) (integrable_const δ)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        (f := fun x =&gt; h x - gaussSmooth h Qe x)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        (ae_of_all _ fun x =&gt; by rw [Real.norm_eq_abs, abs_sub_comm]; exact hδ _)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      simpa using this
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have hL0 : 0 ≤ max L 0 := le_max_right _ _
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    have hS := martingale_lindeberg_tendsto P ℱ t ht M Sg hM H (max L 0) hH0 hL0
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    have hG := gaussian_lindeberg_tendsto t ht sb hsbmeas hsbint hsbpsd H (max L 0) hH0 hL0
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hlim : Tendsto (fun n : ℕ =&gt; (1 / 2) * H * J + 2 * δ +
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        ((∑ k ∈ Finset.range n, ∫ ω, taylorRem H (max L 0)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>            (M (unifPart t n (k + 1)) ω - M (unifPart t n k) ω) ∂P) +
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>         ∑ k ∈ Finset.range n, ∫ y, taylorRem H (max L 0) y ∂(ProbabilityTheory.multivariateGaussian 0
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>          (covBlock sb (unifPart t n k) (unifPart t n (k + 1)))))) atTop
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>        (𝓝 ((1 / 2) * H * J + 2 * δ + (0 + 0))) :=
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      tendsto_const_nhds.add (hS.add hG)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    have hfin : |∫ ω, h (M t ω) ∂P - ∫ x, h x ∂γ| ≤ (1 / 2) * H * J + 2 * δ + (0 + 0) := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      refine ge_of_tendsto hlim ?_
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      filter_upwards [eventually_ge_atTop 1] with n hn
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      have hb := lindeberg_partition_bound P ℱ t ht M Sg hM sb hsbmeas hsbint hsbpsd
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        (gaussSmooth h Qe) he2 H (max L 0) heH hL&#x27; n hn
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      rw [Finset.sum_add_distrib] at hb
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      have e : ∫ ω, h (M t ω) ∂P - ∫ x, h x ∂γ =
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>          (∫ ω, gaussSmooth h Qe (M t ω) ∂P - ∫ x, gaussSmooth h Qe x ∂γ) +
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>            (∫ ω, h (M t ω) ∂P - ∫ ω, gaussSmooth h Qe (M t ω) ∂P) -
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>            (∫ x, h x ∂γ - ∫ x, gaussSmooth h Qe x ∂γ) := by ring
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      rw [e]
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      have a1 := abs_le.1 hb
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      have a2 := abs_le.1 d1
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      have a3 := abs_le.1 d2
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      rw [abs_le]
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      constructor &lt;;&gt; linarith [a1.1, a1.2, a2.1, a2.2, a3.1, a3.2]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have : 2 * δ = H * (ε ^ 2 * p) := by rw [hδdef]; ring
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    linarith
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  refine le_of_forall_pos_le_add fun η hη =&gt; ?_
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hpos : 0 &lt; H * p + 1 := by positivity
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  set ε := Real.sqrt (η / (H * p + 1)) with hεdef
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  have hε : 0 &lt; ε := Real.sqrt_pos.2 (by positivity)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hε2 : ε ^ 2 = η / (H * p + 1) := Real.sq_sqrt (by positivity)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have := key ε hε
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have h3 : H * (ε ^ 2 * p) ≤ η := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    rw [hε2]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    have : H * (η / (H * p + 1) * p) = η * (H * p) / (H * p + 1) := by field_simp
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    rw [this, div_le_iff₀ hpos]
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    nlinarith [mul_nonneg hH0 (Nat.cast_nonneg p : (0 : ℝ) ≤ p)]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hpos&#x27; : (1 / 2) * H * J ≥ 0 := by positivity
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  linarith
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>/-- Lemma A.21, consequence: `d_{C²}(Law M_t, Law G) ≤ ½ E ∫_0^t ‖Σ - sb‖_{S_1}`. -/
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>theorem multivariate_martingale_clt_dc2 (ℱ : Filtration ℝ mΩ) (t : ℝ) (ht : 0 ≤ t)
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    (M : ℝ → Ω → (ℝ^p)) (Sg : ℝ → Ω → Matrix (Fin p) (Fin p) ℝ)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    (hM : IsVectorMartingaleWithCovariation P ℱ t M Sg)
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    (sb : ℝ → Matrix (Fin p) (Fin p) ℝ) (hsbmeas : Measurable sb)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    (hsbint : IntegrableOn (fun σ =&gt; s1Norm (sb σ)) (Set.Icc 0 t))
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    (hsbpsd : ∀ σ ∈ Set.Icc 0 t, (sb σ).PosSemidef) :
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    smoothDist 2 (law P (M t)) (ProbabilityTheory.multivariateGaussian 0 (Matrix.of fun i j =&gt; ∫ σ in Set.Icc 0 t, sb σ i j)) ≤
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      (1 / 2) * ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P := by
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  classical
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have hmt : AEMeasurable (M t) P := (hM.sq_int t ⟨ht, le_rfl⟩).aestronglyMeasurable.aemeasurable
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have hJ0 : 0 ≤ ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P :=
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    integral_nonneg fun ω =&gt; setIntegral_nonneg measurableSet_Icc fun σ _ =&gt; traceNormMatrix_nonneg _
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  refine Real.iSup_le (fun Φ =&gt; ?_) (by positivity)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  obtain ⟨hΦ, hbd, hnorm⟩ := Φ.2
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have h2 := hbd 2 le_rfl
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have hle : (⨆ x, ‖iteratedFDeriv ℝ 2 Φ.1 x‖) ≤ 1 := by
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    refine le_trans ?_ hnorm
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    unfold cbNorm
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    simp only [Finset.sum_range_succ, Finset.range_zero, Finset.sum_empty, zero_add]
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    have a0 : 0 ≤ ⨆ z, ‖iteratedFDeriv ℝ 0 Φ.1 z‖ := Real.iSup_nonneg fun _ =&gt; norm_nonneg _
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have a1 : 0 ≤ ⨆ z, ‖iteratedFDeriv ℝ 1 Φ.1 z‖ := Real.iSup_nonneg fun _ =&gt; norm_nonneg _
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    linarith
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have hmain := multivariate_martingale_clt P ℱ t ht M Sg hM sb hsbmeas hsbint hsbpsd Φ.1 hΦ h2
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have hH0 : 0 ≤ ⨆ x, ‖iteratedFDeriv ℝ 2 Φ.1 x‖ := Real.iSup_nonneg fun _ =&gt; norm_nonneg _
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  have e : ∫ z, Φ.1 z ∂(law P (M t)) = ∫ ω, Φ.1 (M t ω) ∂P :=
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    integral_map hmt hΦ.continuous.aestronglyMeasurable
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [e]
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  refine hmain.trans ?_
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have : (⨆ x, ‖iteratedFDeriv ℝ 2 Φ.1 x‖) * ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P ≤
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      1 * ∫ ω, (∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω - sb σ)) ∂P :=
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    mul_le_mul_of_nonneg_right hle hJ0
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  nlinarith
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>end Multivariate
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>end HRS
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>end
+</span></code></pre></main></body></html>

@@ -1,0 +1,296 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.InitAssemble · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.InitAssemble</code></h1><p><a href="../../lean/HRS/MP/InitAssemble.lean">Open the unaltered Lean file</a> · 295 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MP.InitModulus
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.KolmChentsov
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Packet MPIASM: Lemma S.A.23 (torus), assembly
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>The frozen statement `HRS.Whole.AppendixALemmas.path_initial_modulus_torus` is proved as
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`path_initial_modulus_torus_proof` (namespace `HRS.MP.InitAsm`):
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* the two moment conjuncts are `HRS.MP.InitMod.path_initial_modulus_torus_moments`;
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* the two tightness conjuncts come from `HRS.MP.KC.kolmogorov_modulus_tightness_proof` with
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `E = NegSobolev d q_T`, `p = 2`, `β = 1`, applied to the clamped processes `t ↦ Z (clamp t)`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  (so that the measurability hypothesis `hZmeas`, which is required for all `t`, is available from the
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  propagator membership on `[0,T]`), and transferred back to `Z` by `mia_cvt_transfer`.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>The measurability facts are `mia_emp_measurable` and `mia_gauss_measurable`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>-/
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>noncomputable section
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS HRS.PDE HRS.Main HRS.Whole.AppendixA HRS.Whole.AppendixALemmas
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open scoped ENNReal NNReal BigOperators ContDiff ComplexConjugate
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>namespace HRS.MP.InitAsm
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>variable {d : ℕ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>/-- `d / 2 &lt; q_T`. -/
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>theorem mia_q_gt : (d : ℝ) / 2 &lt; ((qT d : ℕ) : ℝ) := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  obtain ⟨-, h⟩ := HRS.MP.InitMod.mim_gamma_bounds (d := d)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  linarith
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>/-- Measurability of the pairing `F ↦ F(ψ)` on `H^{-q}` for a test function in `H^{q}`. -/
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>theorem mia_eval_meas {q : ℝ} {ψ : Torus d → ℝ} (h : HRS.MemSobolev q ψ) :
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    Measurable fun F : NegSobolev d q =&gt; NegSobolev.eval F ψ := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have : (fun F : NegSobolev d q =&gt; NegSobolev.eval F ψ) =
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      fun F =&gt; inner ℝ F (HRS.Uniform.Q54.lpOf q h) := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    funext F; exact HRS.Uniform.Q54.eval_eq_inner q F h
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  rw [this]
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  exact (continuous_id.inner continuous_const).measurable
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>/-- The set of `a` where the weighted coefficient sequence is in `ℓ²` is measurable. -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem mia_memℓp_meas {α : Type*} [MeasurableSpace α] {q : ℝ} (c : NonzeroLattice d → α → ℝ)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (hc : ∀ k, Measurable (c k)) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    MeasurableSet {a : α | Memℓp (fun k : NonzeroLattice d =&gt; Lattice.jp k.1 ^ (-q) * c k a) 2} := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have key : ∀ a : α, Memℓp (fun k : NonzeroLattice d =&gt; Lattice.jp k.1 ^ (-q) * c k a) 2 ↔
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      ∃ M : ℕ, ∀ u : Finset (NonzeroLattice d),
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>        ∑ k ∈ u, (Lattice.jp k.1 ^ (-q) * c k a) ^ 2 ≤ (M : ℝ) := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    intro a
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    have hn : ∀ k : NonzeroLattice d,
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        ‖Lattice.jp k.1 ^ (-q) * c k a‖ ^ ((2 : ℝ≥0∞).toReal) =
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>          (Lattice.jp k.1 ^ (-q) * c k a) ^ 2 := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      intro k
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      rw [ENNReal.toReal_ofNat, Real.rpow_two, Real.norm_eq_abs, sq_abs]
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    rw [memℓp_gen_iff (by norm_num)]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    simp only [hn]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    constructor
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    · intro hs
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      refine ⟨⌈∑&#x27; k, (Lattice.jp k.1 ^ (-q) * c k a) ^ 2⌉₊, fun u =&gt; ?_⟩
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      exact (Summable.sum_le_tsum u (fun k _ =&gt; sq_nonneg _) hs).trans (Nat.le_ceil _)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    · rintro ⟨M, hM⟩
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      exact summable_of_sum_le (fun k =&gt; sq_nonneg _) hM
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hset : {a : α | Memℓp (fun k : NonzeroLattice d =&gt; Lattice.jp k.1 ^ (-q) * c k a) 2} =
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      ⋃ M : ℕ, ⋂ u : Finset (NonzeroLattice d),
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        {a : α | ∑ k ∈ u, (Lattice.jp k.1 ^ (-q) * c k a) ^ 2 ≤ (M : ℝ)} := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ext a
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    simp only [Set.mem_setOf_eq, Set.mem_iUnion, Set.mem_iInter]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    exact key a
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  rw [hset]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  refine MeasurableSet.iUnion fun M =&gt; MeasurableSet.iInter fun u =&gt; ?_
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  exact measurableSet_le
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (Finset.measurable_sum u fun k _ =&gt; (measurable_const.mul (hc k)).pow_const 2) measurable_const
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>open Classical in
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>/-- Coordinates of `ofSeq`: the weighted entry, or `0` when the weighted sequence is not in `ℓ²`. -/
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>theorem mia_coord_ofSeq (m : ℝ) (c : NonzeroLattice d → ℝ) (k : NonzeroLattice d) :
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    NegSobolev.coord (NegSobolev.ofSeq m c) k =
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      if Memℓp (fun j : NonzeroLattice d =&gt; Lattice.jp j.1 ^ (-m) * c j) 2 then
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        Lattice.jp k.1 ^ (-m) * c k else 0 := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  by_cases h : Memℓp (fun j : NonzeroLattice d =&gt; Lattice.jp j.1 ^ (-m) * c j) 2
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  · rw [if_pos h, NegSobolev.ofSeq_of_mem c h]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    rfl
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  · rw [if_neg h]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    simp [NegSobolev.ofSeq, NegSobolev.coord, h] &lt;;&gt; rfl
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>/-- Measurability of the transported field `F ↦ V^{t,0}F` at the index `q` (for test functions
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>`U^{0,t}e_k` in `H^{q}`). -/
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>theorem mia_transport_meas {q : ℝ} (D : DynData d) (ρ : ℝ → Torus d → ℝ) (t : ℝ)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    (hU : ∀ k : NonzeroLattice d, HRS.MemSobolev q (propagator D ρ 0 t (Torus.realMode k))) :
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    Measurable fun F : NegSobolev d q =&gt; transportField D ρ t q F := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  classical
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hc : ∀ k : NonzeroLattice d, Measurable fun F : NegSobolev d q =&gt;
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode k)) :=
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    fun k =&gt; mia_eval_meas (hU k)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>  refine HRS.Uniform.Q54c.measurable_of_coord fun k =&gt; ?_
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hcoord : (fun F : NegSobolev d q =&gt; NegSobolev.coord (transportField D ρ t q F) k) =
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      fun F =&gt; if Memℓp (fun j : NonzeroLattice d =&gt; Lattice.jp j.1 ^ (-q) *
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode j))) 2 then
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        Lattice.jp k.1 ^ (-q) * NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode k)) else 0 := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    funext F
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    unfold transportField
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    exact mia_coord_ofSeq q (fun j =&gt; NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode j))) k
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  rw [hcoord]
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  exact Measurable.ite
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    (mia_memℓp_meas (fun j (F : NegSobolev d q) =&gt; NegSobolev.eval F (propagator D ρ 0 t (Torus.realMode j))) hc)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    (measurable_const.mul (hc k)) measurable_const
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>/-- Measurability of the embedding `H^{γ} ↪ H^{q}` (as a map of the source element). -/
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>theorem mia_embed_meas {γ q : ℝ} : Measurable fun F : NegSobolev d γ =&gt; NegSobolev.embed q F := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  classical
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  have hc : ∀ k : NonzeroLattice d, Measurable fun F : NegSobolev d γ =&gt; NegSobolev.fourierCoeff F k :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    fun k =&gt; (HRS.FieldSingAux.coordCLM γ k).continuous.measurable
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  refine HRS.Uniform.Q54c.measurable_of_coord fun k =&gt; ?_
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hcoord : (fun F : NegSobolev d γ =&gt; NegSobolev.coord (NegSobolev.embed q F) k) =
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      fun F =&gt; if Memℓp (fun j : NonzeroLattice d =&gt; Lattice.jp j.1 ^ (-q) *
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>          NegSobolev.fourierCoeff F j) 2 then
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        Lattice.jp k.1 ^ (-q) * NegSobolev.fourierCoeff F k else 0 := by
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    funext F
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    unfold NegSobolev.embed
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    exact mia_coord_ofSeq q (fun j =&gt; NegSobolev.fourierCoeff F j) k
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  rw [hcoord]
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  exact Measurable.ite
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (mia_memℓp_meas (fun j (F : NegSobolev d γ) =&gt; NegSobolev.fourierCoeff F j) hc)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (measurable_const.mul (hc k)) measurable_const
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>/-- Measurability of `ζ ↦ 𝓘_{N,emp}^t` (`transportedEmpT`) for `N ≥ 1` and any time `t` at which the
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>coordinate test functions `U^{0,t}e_k` lie in `H^{q_T}`; the only input on the probability space is the
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>measurability of the initial configuration `X₀`. -/
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>theorem mia_emp_measurable (S : Main.MainData d) (R : ∀ N, Main.Realization d N) (N : ℕ) (t : ℝ)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (hX0 : Measurable (R N).X₀)
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (hU : ∀ k : NonzeroLattice d,
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      HRS.MemSobolev ((qT d : ℕ) : ℝ) (propagator (S.dyn N) (S.ρ N) 0 t (Torus.realMode k))) :
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    Measurable (fun ζ =&gt; transportedEmpT S R (qT d) N t ζ) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  unfold transportedEmpT
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  refine (measurable_const_smul (S.AN N)).comp
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    ((mia_transport_meas (S.dyn N) (S.ρ N) t hU).comp ?_)
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  exact (measurable_const_smul (S.κ N)).comp
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    ((HRS.GF.gf_measurable_ofMeasureDiff_proof (N := N) ((qT d : ℕ) : ℝ) mia_q_gt S.μ0).comp hX0)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>/-- Measurability of `ζ ↦ 𝓘_N^t` (`transportedGaussT`) for `N ≥ 1` and any time `t` at which the
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>coordinate test functions `U^{0,t}e_k` lie in `H^{q_T}`; the only input on the probability space is the
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>measurability of the initial field `ηF N`. -/
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>theorem mia_gauss_measurable (S : Main.MainData d) (R : ∀ N, Main.Realization d N)
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    (ηF : ∀ N, (R N).Ω → NegSobolev d (Main.gammaIdx d : ℝ)) (N : ℕ) (t : ℝ)
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    (hη : Measurable (ηF N))
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (hU : ∀ k : NonzeroLattice d,
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      HRS.MemSobolev ((qT d : ℕ) : ℝ) (propagator (S.dyn N) (S.ρ N) 0 t (Torus.realMode k))) :
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    Measurable (fun ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N t ζ) := by
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  unfold transportedGaussT
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  exact (measurable_const_smul (S.AN N)).comp
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    ((mia_transport_meas (S.dyn N) (S.ρ N) t hU).comp ((mia_embed_meas).comp hη))
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>/-- The clamp of a time to `[0, T]`. -/
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>def mia_clamp (T t : ℝ) : ℝ := max 0 (min t T)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>theorem mia_clamp_mem {T : ℝ} (hT : 0 &lt; T) (t : ℝ) : mia_clamp T t ∈ Set.Icc (0 : ℝ) T :=
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  ⟨le_max_left _ _, max_le hT.le (min_le_right _ _)⟩
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>theorem mia_clamp_eq {T t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) : mia_clamp T t = t := by
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  unfold mia_clamp
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  rw [min_eq_left ht.2, max_eq_right ht.1]
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-- Transfer of `ContVersionTight` across processes that agree on `[0,T]`. -/
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>theorem mia_cvt_transfer {E : Type*} [NormedAddCommGroup E] [MeasurableSpace E] [BorelSpace E]
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    {T : ℝ} {Ω : ℕ → Type*} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    (Z Z&#x27; Zc : ∀ N, ℝ → Ω N → E)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    (hZ : ∀ N t ζ, t ∈ Set.Icc (0 : ℝ) T → Z&#x27; N t ζ = Z N t ζ)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    (h : ContVersionTight T P Z&#x27; Zc) : ContVersionTight T P Z Zc := by
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  unfold ContVersionTight at h ⊢
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  obtain ⟨c1, c2, c3, c4, c5⟩ := h
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  refine ⟨fun N hN t ht =&gt; ?_, c2, c3, c4, fun htight =&gt; c5 fun t ht =&gt; ?_⟩
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  · filter_upwards [c1 N hN t ht] with ζ hζ
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    exact hζ.trans (hZ N t ζ ht)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  · have hset : {μ : Measure E | ∃ N : ℕ, 1 ≤ N ∧ μ = (P N).map (Z&#x27; N t)} =
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>        {μ : Measure E | ∃ N : ℕ, 1 ≤ N ∧ μ = (P N).map (Z N t)} := by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      have hf : ∀ N, Z&#x27; N t = Z N t := fun N =&gt; funext fun ζ =&gt; hZ N t ζ ht
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>      simp only [hf]
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    rw [hset]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    exact htight t ht
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>open HRS.A34 in
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>/-- The field membership of the propagator of a smooth test at the level `q_T`, from the adjoint data at
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>that level (as in `HRS.MP.FidiAssembly.fa_memq`). -/
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>theorem mia_memq {s : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) {Rg : PDE.Regime}
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    {MB Λ VB ν₀ T : ℝ} (D : DynData d) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    (hA : PDE.AdjointData s (gammaIdx d + 2) Rg MB Λ VB D ν₀ T ρ) {t : ℝ}
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (ht : t ∈ Set.Icc (0 : ℝ) T) {φ : Torus d → ℝ} (hφ : Torus.IsSmooth φ) :
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    HRS.MemSobolev ((gammaIdx d + 2 : ℕ) : ℝ) (propagator D ρ 0 t φ) := by
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  have hJ : PDE.mStar d ≤ gammaIdx d + 2 := by unfold gammaIdx; omega
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  have hφc : Continuous φ := HRS.A33.a33_cont hφ
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have hφm : HRS.MemSobolev ((gammaIdx d + 2 : ℕ) : ℝ) φ := HRS.A33.a33_memSob _ hφ
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  rcases ht.1.eq_or_lt with h0 | hpos
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  · subst h0
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    rw [a34_prop_zero hd (gammaIdx d + 2) hJ Rg s MB Λ VB ν₀ T D ρ hA hφc hφm]
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    exact hφm
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  · obtain ⟨K, K₂, -, -, hu⟩ := a34_unif hd s hs0 hsd (gammaIdx d + 2) hJ Rg MB Λ VB ν₀ T
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    obtain ⟨-, hr⟩ := hu D ρ hA ⟨hpos, ht.2⟩ hφc hφm
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    obtain ⟨h1, -, -⟩ := hr 0 ⟨le_rfl, hpos.le⟩
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    exact (h1 (gammaIdx d + 2) (by unfold gammaIdx; omega) le_rfl).1
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>/-- Lemma S.A.23, torus part (frozen statement `HRS.Whole.AppendixALemmas.path_initial_modulus_torus`,
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>copied verbatim). -/
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>theorem path_initial_modulus_torus_proof (s : ℝ) (Rg : PDE.Regime)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    (ν₀ MB Λ T VB Cin C₀ Cc νbar : ℝ) :
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    ∃ C : ℝ, ∀ (S : Main.MainData d), S.s = s → S.T = T → (∀ N, S.invβ N ≤ νbar) →
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>      ∀ (R : ∀ N, Main.Realization d N) (𝔈 : ℕ → ℝ),
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>        Main.TorusStanding S R Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) C₀ Cc 𝔈 →
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>        ∀ (m₀ : ℕ) (ε : ℕ → ℝ) (Ψ : ℕ → Set (Torus d → ℝ)), Main.InitialFluctuation S R m₀ Cin ε Ψ →
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>        ∀ (εf : ℕ → ℝ) (ηF : ∀ N, (R N).Ω → NegSobolev d (Main.gammaIdx d : ℝ))
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>          (νin : Measure (NegSobolev d (Main.gammaIdx d : ℝ))),
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>          Main.InitialFluctuationField S R (Main.gammaIdx d) Cin εf ηF νin →
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>        (∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>          ∫⁻ ζ, ‖transportedEmpT S R (qT d) N t ζ - transportedEmpT S R (qT d) N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P +
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>            ∫⁻ ζ, ‖transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N t ζ -
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>              transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N s&#x27; ζ‖ₑ ^ 2 ∂(R N).P ≤
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>          ENNReal.ofReal (C * |t - s&#x27;| ^ 2)) ∧
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        (∀ L : Main.LimitCoeffs d,
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>          Main.CoeffConvergence S L Rg ν₀ MB Λ VB (Main.gammaIdx d + 2) (Main.gammaIdx d) →
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>          ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>            ∫⁻ F, ‖L.A • Main.transportField (L.dyn S) L.ρ t ((qT d : ℕ) : ℝ)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>                (NegSobolev.embed ((qT d : ℕ) : ℝ) F) -
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>              L.A • Main.transportField (L.dyn S) L.ρ s&#x27; ((qT d : ℕ) : ℝ)
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>                (NegSobolev.embed ((qT d : ℕ) : ℝ) F)‖ₑ ^ 2 ∂νin ≤
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>            ENNReal.ofReal (C * |t - s&#x27;| ^ 2)) ∧
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>        (∃ Zc, ContVersionTight (E := NegSobolev d ((qT d : ℕ) : ℝ)) T (fun N =&gt; (R N).P)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>          (fun N t ζ =&gt; transportedEmpT S R (qT d) N t ζ) Zc) ∧
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        (∃ Zc, ContVersionTight (E := NegSobolev d ((qT d : ℕ) : ℝ)) T (fun N =&gt; (R N).P)
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>          (fun N t ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N t ζ) Zc) := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  obtain ⟨C, hC⟩ := HRS.MP.InitMod.path_initial_modulus_torus_moments (d := d) s Rg ν₀ MB Λ T VB Cin
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    C₀ Cc νbar
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  refine ⟨C, fun S hs hT hν R 𝔈 hS m₀ ε Ψ hinit εf ηF νin hfield =&gt; ?_⟩
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>  obtain ⟨h1, h2⟩ := hC S hs hT hν R 𝔈 hS m₀ ε Ψ hinit εf ηF νin hfield
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  have hTpos : 0 &lt; T := hT ▸ S.hT
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  have hd : 1 ≤ d := S.hd
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>  have hX0 : ∀ N : ℕ, 1 ≤ N → Measurable (R N).X₀ := fun N hN =&gt; (hS.flow N hN).init_meas
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  have hU : ∀ N : ℕ, 1 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) T, ∀ k : NonzeroLattice d,
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      HRS.MemSobolev ((qT d : ℕ) : ℝ) (propagator (S.dyn N) (S.ρ N) 0 t (Torus.realMode k)) := by
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    intro N hN t ht k
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    have hA : PDE.AdjointData s (gammaIdx d + 2) Rg MB Λ VB (S.dyn N) ν₀ T (S.ρ N) := by
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      have h := HRS.Main.A9.a9_adjointData (show PDE.mStar d ≤ gammaIdx d + 2 by unfold gammaIdx; omega)
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        hS hN
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      rw [hs, hT] at h
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      exact h
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    exact mia_memq hd (hs ▸ S.hs0) (hs ▸ S.hsd) (S.dyn N) (S.ρ N) hA ht
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      (HRS.StaticLimitAux.isSmooth_realMode&#x27; k)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  have hZE : ∀ N : ℕ, 1 ≤ N → ∀ t : ℝ,
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>      Measurable (fun ζ =&gt; transportedEmpT S R (qT d) N (mia_clamp T t) ζ) :=
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    fun N hN t =&gt; mia_emp_measurable S R N (mia_clamp T t) (hX0 N hN) (hU N hN _ (mia_clamp_mem hTpos t))
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hZG : ∀ N : ℕ, 1 ≤ N → ∀ t : ℝ,
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      Measurable (fun ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N (mia_clamp T t) ζ) :=
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    fun N hN t =&gt; mia_gauss_measurable S R ηF N (mia_clamp T t) (hfield.ηF_meas N)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      (hU N hN _ (mia_clamp_mem hTpos t))
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  have hmE : ∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>      ∫⁻ ζ, ‖transportedEmpT S R (qT d) N (mia_clamp T t) ζ -
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>          transportedEmpT S R (qT d) N (mia_clamp T s&#x27;) ζ‖ₑ ^ (2 : ℝ) ∂(R N).P ≤
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>        ENNReal.ofReal (C * |t - s&#x27;| ^ (1 + (1 : ℝ))) := by
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    intro N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    rw [mia_clamp_eq ht, mia_clamp_eq hs&#x27;]
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    have h := h1 N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>    rw [show |t - s&#x27;| ^ (1 + (1 : ℝ)) = |t - s&#x27;| ^ 2 by
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>      rw [show (1 : ℝ) + 1 = 2 by norm_num, Real.rpow_two]]
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    simp only [ENNReal.rpow_two]
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    exact le_trans le_self_add h
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  have hmG : ∀ N : ℕ, 1 ≤ N → ∀ s&#x27; ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>      ∫⁻ ζ, ‖transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N (mia_clamp T t) ζ -
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>          transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N (mia_clamp T s&#x27;) ζ‖ₑ ^ (2 : ℝ) ∂(R N).P ≤
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>        ENNReal.ofReal (C * |t - s&#x27;| ^ (1 + (1 : ℝ))) := by
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>    intro N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    rw [mia_clamp_eq ht, mia_clamp_eq hs&#x27;]
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    have h := h1 N hN s&#x27; hs&#x27; t ht
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    rw [show |t - s&#x27;| ^ (1 + (1 : ℝ)) = |t - s&#x27;| ^ 2 by
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>      rw [show (1 : ℝ) + 1 = 2 by norm_num, Real.rpow_two]]
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    simp only [ENNReal.rpow_two]
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    exact le_trans le_add_self h
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  obtain ⟨Zc1, hZc1⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof (E := NegSobolev d ((qT d : ℕ) : ℝ))
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    (Ω := fun N =&gt; (R N).Ω) T hTpos (fun N =&gt; (R N).P)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    (fun N t ζ =&gt; transportedEmpT S R (qT d) N (mia_clamp T t) ζ) hZE 2 1 C (by norm_num) (by norm_num) hmE
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>  obtain ⟨Zc2, hZc2⟩ := HRS.MP.KC.kolmogorov_modulus_tightness_proof (E := NegSobolev d ((qT d : ℕ) : ℝ))
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>    (Ω := fun N =&gt; (R N).Ω) T hTpos (fun N =&gt; (R N).P)
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>    (fun N t ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N (mia_clamp T t) ζ) hZG 2 1 C
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>    (by norm_num) (by norm_num) hmG
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  exact ⟨h1, h2,
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>    ⟨Zc1, mia_cvt_transfer (fun N =&gt; (R N).P) (fun N t ζ =&gt; transportedEmpT S R (qT d) N t ζ)
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      (fun N t ζ =&gt; transportedEmpT S R (qT d) N (mia_clamp T t) ζ) Zc1
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>      (fun N t ζ ht =&gt; by simp only [mia_clamp_eq ht]) hZc1⟩,
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    ⟨Zc2, mia_cvt_transfer (fun N =&gt; (R N).P)
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>      (fun N t ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N t ζ)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>      (fun N t ζ =&gt; transportedGaussT S R (qT d) (Main.gammaIdx d) ηF N (mia_clamp T t) ζ) Zc2
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      (fun N t ζ ht =&gt; by simp only [mia_clamp_eq ht]) hZc2⟩⟩
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>example :=(@path_initial_modulus_torus_proof :
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>  type_of% @HRS.Whole.AppendixALemmas.path_initial_modulus_torus)
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>end HRS.MP.InitAsm
+</span></code></pre></main></body></html>

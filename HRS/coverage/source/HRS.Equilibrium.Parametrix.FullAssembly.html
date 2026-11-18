@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.Parametrix.FullAssembly · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.Parametrix.FullAssembly</code></h1><p><a href="../../lean/HRS/Equilibrium/Parametrix/FullAssembly.lean">Open the unaltered Lean file</a> · 82 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Equilibrium.Parametrix.Assembly
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Equilibrium.Parametrix.PXFIDAuxQ
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Equilibrium.Parametrix.PXFIDTAuxE
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Proposition 4.13 with all clauses (packet PX-FID)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`pair_poisson_full_proof` is the frozen spec `HRS.pair_poisson_full`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* The conclusions of `pair_poisson` are those of `pair_poisson_proof` (same `Ψ`).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* The distributional clause (`IsWeakPairPoisson`) is proved for **every** pair corrector, by
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `HRS.Parx.PXFID.weak_of_corrector` (`PXFIDAuxQ.lean`): off the diagonal the equation holds
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  pointwise, and the integrations by parts have no diagonal flux (`PXFIDAuxG.lean`).
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* The tangential clause (`PsiSize` of `tanIter es (Ψ f)`, `|es| ≤ 4`) is proved by `PXFIDTAuxA-E`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  (packet PX-FID-T) for `Ψ f = ψ^loc + Ψ_{R_L}` with the Sobolev level `a = ⌊d/2⌋ + 7` of the pair
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  inverse (`C^6` output needs `d + 12 &lt; 2a`, input `C^{2a}`), the gap lemma at `J = 2a - 1`
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  (`R_L ∈ C^{J+1} = C^{2a}` with one more conormal derivative, `σ_L = -J-3`), and the closure of the
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  conormal classes under `∂_X` (a tangential derivative costs one conormal derivative).  The index is
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  `K = parxK d J + 1 = 10⌊d/2⌋ + 2d + 81 ≤ 7d + 81 ≤ 8d + 80`.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>-/
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>noncomputable section
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>namespace HRS
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>section Critical
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>theorem pair_poisson_full_proof (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (β : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (V : Torus d → ℝ) (hV : Torus.IsSmooth V) (ρ : Torus d → ℝ)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (hρ : IsThermalDensity (periodicRiesz d s) V β ρ) (hρs : SmoothPosDensity ρ) :
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    ∃ (Ψ : (Torus d → ℝ) → Torus d → Torus d → ℝ) (C : ℝ),
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      (∀ (f f&#x27; : Torus d → ℝ) (a b : ℝ), Torus.IsSmooth f → Torus.IsSmooth f&#x27; →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        Ψ (a • f + b • f&#x27;) = a • Ψ f + b • Ψ f&#x27;) ∧
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∀ f : Torus d → ℝ, Torus.IsSmooth f →
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        IsPairCorrector d s V β ρ f (C * posSeminorm (8 * d + 80) f) (Ψ f) ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        (∃ M : ℝ, ∀ x, |aCoef d s ρ f x| ≤ M) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        eLpNorm (aCoef d s ρ f) 2 (withDensityReal ρ) ≤
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>          ENNReal.ofReal (C * posSeminorm (8 * d + 80) f) ∧
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>        (∀ es : List (Euc d), es.length ≤ 4 →
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>          PsiSize s (C * posSeminorm (8 * d + 80) f * (es.map fun e =&gt; ‖e‖).prod)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>            (tanIter es (Ψ f))) ∧
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>        IsWeakPairPoisson d s β ρ f (Ψ f) := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have H : Parx.PXFID.FidHyp d s V β ρ := ⟨hd, hcrit, hβ, hV, hρ, hρs⟩
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have H&#x27; : Parx.ParxHyp d s V β ρ := ⟨hd, hcrit, hβ, hV, hρ, hρs⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  -- Sobolev level `a = ⌊d/2⌋ + 7` and `J = 2a - 1`
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨q, hq⟩ : ∃ q : ℕ, q = ⌊(d : ℝ) / 2⌋₊ := ⟨_, rfl⟩
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hq1 : 2 * q ≤ d := by
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have h : (q : ℝ) ≤ (d : ℝ) / 2 := by rw [hq]; exact Nat.floor_le (by positivity)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    have : (2 * q : ℝ) ≤ d := by linarith
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    exact_mod_cast this
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hq2 : (d : ℝ) / 2 &lt; (q : ℝ) + 1 := by rw [hq]; exact Nat.lt_floor_add_one _
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hpm : PDE.PX7.px7_m d = q + 5 := by rw [hq]; rfl
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  set J : ℕ := 2 * q + 13 with hJ
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hspec : Parx.PairInverseSpec H&#x27; J :=
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    PDE.PX7.px7_spec H&#x27;.two_le s H&#x27;.s_nonneg H&#x27;.s_lt β H&#x27;.beta_pos V H&#x27;.V_smooth ρ H&#x27;.thermal
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      H&#x27;.rho_smooth.smooth H&#x27;.rho_smooth.pos J (by rw [hpm]; omega)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have h6 : ∃ C6 : ℝ, 0 ≤ C6 ∧ ∀ R : Torus d → Torus d → ℝ, PDE.IsCk2 (J + 1) R →
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      PDE.IsCk2 6 (PDE.pairInverse H&#x27;.dyn ρ R) ∧
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      PDE.cbNorm2 6 (PDE.pairInverse H&#x27;.dyn ρ R) ≤ C6 * PDE.cbNorm2 (J + 1) R := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    obtain ⟨Cinv, hC0, hC⟩ := PDE.PX7.pxfidt_inv_Cn_spec (d := d) (by omega) s H&#x27;.s_nonneg H&#x27;.s_lt β
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      H&#x27;.beta_pos V H&#x27;.V_smooth ρ H&#x27;.thermal H&#x27;.rho_smooth.smooth H&#x27;.rho_smooth.pos (q + 7)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      (by rw [hpm]; omega) 6 (by push_cast; linarith)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    refine ⟨Cinv, hC0, fun R hR =&gt; ?_⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    have e : q + 7 + (q + 7) = J + 1 := by rw [hJ]; omega
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    rw [e] at hC
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    exact hC R hR
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  obtain ⟨Ψ, C, hlin, hf⟩ := Parx.PXFIDT.fidt_gen H&#x27; J hspec h6 (by rw [hJ]; omega) (8 * d + 80)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (by unfold Parx.parxK; rw [hJ]; omega)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  refine ⟨Ψ, C, hlin, fun f hfs =&gt; ⟨(hf f hfs).1, (hf f hfs).2.1, (hf f hfs).2.2.1,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (hf f hfs).2.2.2, Parx.PXFID.weak_of_corrector H (hf f hfs).1⟩⟩
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>example := (@pair_poisson_full_proof : type_of% @HRS.pair_poisson_full)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>end Critical
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>end HRS
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>end
+</span></code></pre></main></body></html>

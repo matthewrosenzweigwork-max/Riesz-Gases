@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Energy.KIDFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Energy.KIDFinal</code></h1><p><a href="../../lean/HRS/Energy/KIDFinal.lean">Open the unaltered Lean file</a> · 123 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Energy.KIDAux9
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Energy.Coercivity
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># KID final: proof of Proposition 3.38 `HRS.comparison_kernel_identity`
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>-/
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>noncomputable section
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open HRS HRS.PDE HRS.Uniform.Q54c
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>namespace HRS.KID
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>variable {d N : ℕ}
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>section Main
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>variable {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ} {D : DynData d}
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  {T Λ : ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem MFctx.integrable_energy (c : MFctx D T Λ ρ) (hN : 2 ≤ N)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (hsol : IsStrongSolution P D T X₀ W X)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    {h : Torus d → ℝ} (hsm : Torus.IsSmooth h) (hev : ∀ x, h (-x) = h x) {r : ℝ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (hr : r ∈ Set.Icc 0 T) :
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    Integrable (fun ω =&gt; modulatedEnergyKernel h (X (Real.toNNReal r) ω) (withDensityReal (ρ r))) P := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  obtain ⟨C, hC⟩ := c.energy_bound hsm hev hN0
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hm := (c.measurable_energy hsm hev hN0 hr).comp (hsol.adapted (Real.toNNReal r))
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  refine Integrable.of_bound (C := C) (by simpa only [Function.comp_def] using hm.aestronglyMeasurable)
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    (Filter.Eventually.of_forall fun ω =&gt; ?_)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  simpa [Real.norm_eq_abs] using hC r hr _
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>theorem MFctx.kid_main (c : MFctx D T Λ ρ) (hN : 2 ≤ N) {t : ℝ} (ht0 : 0 &lt; t) (htT : t ≤ T)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    (hsol : IsStrongSolution P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    {h : Torus d → ℝ} (hsm : Torus.IsSmooth h) (hev : ∀ x, h (-x) = h x)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    (hmicro : Integrable (fun p : ℝ × Ω =&gt; microTerm D h (ρ p.1) (X (Real.toNNReal p.1) p.2))
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      ((volume.restrict (Set.Icc 0 t)).prod P)) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    ∫ ω, modulatedEnergyKernel h (X (Real.toNNReal t) ω) (withDensityReal (ρ t)) ∂P -
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>        ∫ ω, modulatedEnergyKernel h (X 0 ω) (withDensityReal (ρ 0)) ∂P =
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>      ∫ r in Set.Icc 0 t,
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>        ((1 / 2) * ∫ ω, commQuantityWith (Torus.grad h) (meanFieldDrift D (ρ r))
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>            (X (Real.toNNReal r) ω) (withDensityReal (ρ r)) ∂P +
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>          ∫ ω, microTerm D h (ρ r) (X (Real.toNNReal r) ω) ∂P +
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>          D.invβ * ∫ ω, offDiagDiffPairing (Torus.laplacian h) (X (Real.toNNReal r) ω)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>            (withDensityReal (ρ r)) ∂P) := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨hΨpp, hΨf, hpath⟩ := kid_pathwise c hN ht0 htT hsol hF hsm hev
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hJ := c.integrable_Jc hN ht0 htT hsol hF hsm hev hmicro
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hEt := c.integrable_energy hN hsol hsm hev (r := t) ⟨ht0.le, htT⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hE0 : Integrable (fun ω =&gt; modulatedEnergyKernel h (X 0 ω) (withDensityReal (ρ 0))) P := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    have := c.integrable_energy hN hsol hsm hev (r := 0) ⟨le_rfl, c.hT⟩
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    simpa using this
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hI1 := (memLp_two_itoIntegral hF.brownian hΨpp t).integrable one_le_two
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hI2 := (memLp_two_itoIntegral hF.brownian hΨf t).integrable one_le_two
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hz1 := integral_itoIntegral hF.brownian hΨpp t
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hz2 := integral_itoIntegral hF.brownian hΨf t
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  have hJint : Integrable (fun ω =&gt; ∫ r in Set.Icc 0 t, Jc D h ρ T X r ω ∂volume) P :=
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    hJ.integral_prod_right
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hcongr : ∀ ω, (∫ r in Set.Icc (0 : ℝ) t, Jfull D h ρ X r ω) =
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      ∫ r in Set.Icc 0 t, Jc D h ρ T X r ω := fun ω =&gt;
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    setIntegral_congr_fun measurableSet_Icc fun r hr =&gt;
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      (Jc_eq (T := T) ⟨hr.1, hr.2.trans htT⟩ ω).symm
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hA : ∫ ω, (modulatedEnergyKernel h (X (Real.toNNReal t) ω) (withDensityReal (ρ t)) -
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      modulatedEnergyKernel h (X 0 ω) (withDensityReal (ρ 0))) ∂P =
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      ∫ ω, ((∫ r in Set.Icc 0 t, Jc D h ρ T X r ω ∂volume) +
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        itoIntegral P ℱ W&#x27; (fun s ω k =&gt; fkeRef D t (Φpp h) X s ω k) t ω -
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>        itoIntegral P ℱ W&#x27; (empiricalNoiseIntegrand D t (fK h ρ) X) t ω) ∂P := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    refine integral_congr_ae ?_
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    filter_upwards [hpath] with ω hω
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    rw [hω, hcongr]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have e1 := integral_sub (hJint.add hI1) hI2
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have e2 := integral_add hJint hI1
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  simp only [Pi.add_apply] at e1 e2
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  rw [← integral_sub hEt hE0, hA, e1, e2, hz1, hz2]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  simp only [add_zero, sub_zero]
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hswap := integral_integral_swap (μ := volume.restrict (Set.Icc (0 : ℝ) t)) (ν := P)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (f := fun r ω =&gt; Jc D h ρ T X r ω) hJ
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  rw [← hswap]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  refine setIntegral_congr_ae measurableSet_Icc ?_
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have h1 : ∀ᵐ r ∂(volume.restrict (Set.Icc (0 : ℝ) t)),
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      Integrable (fun ω =&gt; microTerm D h (ρ r) (X (Real.toNNReal r) ω)) P :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    hmicro.prod_right_ae
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  filter_upwards [(ae_restrict_iff&#x27; measurableSet_Icc).1 h1] with r hr1 hr
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  exact c.per_r hN htT hsol hF hsm hev hr (hr1 hr)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>end Main
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>theorem comparison_kernel_identity_proof (hd : 1 ≤ d) (D : DynData d) (N : ℕ) (hN : 2 ≤ N)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (hV : Torus.IsCk 2 D.V)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (h : Torus d → ℝ) (hsm : Torus.IsSmooth h) (hev : ∀ x, h (-x) = h x)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (T : ℝ) (hT : 0 ≤ T) (ρ : ℝ → Torus d → ℝ) (Λ : ℝ)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (hmf : IsMeanFieldSolution D T ρ) (hreg : IsRegularMF 3 Λ T ρ)
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (hW : IsVectorBrownian P W)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (hind : ProbabilityTheory.IndepFun X₀ (fun ω =&gt; fun t : ℝ≥0 =&gt; W t ω) P)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    (hsol : IsStrongSolution P D T X₀ W X)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    (hfilt : ∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ), IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (t : ℝ) (ht : t ∈ Set.Icc 0 T)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    (hmicro : Integrable (fun p : ℝ × Ω =&gt; microTerm D h (ρ p.1) (X (Real.toNNReal p.1) p.2))
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      ((volume.restrict (Set.Icc 0 t)).prod P)) :
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    ∫ ω, modulatedEnergyKernel h (X (Real.toNNReal t) ω) (withDensityReal (ρ t)) ∂P -
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        ∫ ω, modulatedEnergyKernel h (X 0 ω) (withDensityReal (ρ 0)) ∂P =
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      ∫ r in Set.Icc 0 t,
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>        ((1 / 2) * ∫ ω, commQuantityWith (Torus.grad h) (meanFieldDrift D (ρ r))
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>            (X (Real.toNNReal r) ω) (withDensityReal (ρ r)) ∂P +
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>          ∫ ω, microTerm D h (ρ r) (X (Real.toNNReal r) ω) ∂P +
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>          D.invβ * ∫ ω, offDiagDiffPairing (Torus.laplacian h) (X (Real.toNNReal r) ω)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>            (withDensityReal (ρ r)) ∂P) := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  obtain ⟨ℱ, W&#x27;, hF⟩ := hfilt
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have c : HRS.KID.MFctx D T Λ ρ := ⟨hd, hT, hV, hmf, hreg⟩
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  rcases ht.1.eq_or_lt with h0 | h0
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  · subst h0
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    simp
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  · exact c.kid_main hN h0 ht.2 hsol hF hsm hev hmicro
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>end HRS.KID
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>example := (@HRS.KID.comparison_kernel_identity_proof : type_of% @HRS.comparison_kernel_identity)
+</span></code></pre></main></body></html>

@@ -1,0 +1,228 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.PathTightCrit · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.PathTightCrit</code></h1><p><a href="../../lean/HRS/MP/PathTightCrit.lean">Open the unaltered Lean file</a> · 227 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.AppendixALemmas
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># S.A.21 `path_tightness_criterion`: proof
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Proof of `HRS.Whole.AppendixALemmas.path_tightness_criterion` (S L10697-10730).  The compact
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>set is `K = {z : ∀ l, (modulus ≤ 1/(l+1) at scale δ_l) ∧ (∀ t ∈ F_l, z t ∈ K_{l,t})}`; compactness by
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Arzelà-Ascoli.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>-/
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open scoped ENNReal NNReal
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>namespace HRS.MP.PathTight
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open HRS.Whole.AppendixALemmas
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>section Compactness
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>variable {E : Type*} [NormedAddCommGroup E] (T : ℝ)
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>/-- The candidate compact set. -/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>def ptc_K (δ : ℕ → ℝ) (F : ℕ → Finset (Set.Icc (0 : ℝ) T)) (Kt : ℕ → Set.Icc (0 : ℝ) T → Set E) :
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    Set C(Set.Icc (0 : ℝ) T, E) :=
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  {z | ∀ l : ℕ, (∀ s t : Set.Icc (0 : ℝ) T, |(t : ℝ) - s| ≤ δ l →
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>      dist (z t) (z s) ≤ 1 / ((l : ℝ) + 1)) ∧ ∀ t ∈ F l, z t ∈ Kt l t}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem ptc_K_isClosed (δ : ℕ → ℝ) (F : ℕ → Finset (Set.Icc (0 : ℝ) T))
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (Kt : ℕ → Set.Icc (0 : ℝ) T → Set E) (hKt : ∀ l t, IsClosed (Kt l t)) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    IsClosed (ptc_K T δ F Kt) := by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  have hev : ∀ x : Set.Icc (0 : ℝ) T, Continuous fun z : C(Set.Icc (0 : ℝ) T, E) =&gt; z x :=
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    fun x =&gt; continuous_eval_const x
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  simp only [ptc_K, Set.ofPred_forall, Set.ofPred_and]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  refine isClosed_iInter fun l =&gt; IsClosed.inter (isClosed_iInter fun s =&gt; isClosed_iInter fun t =&gt; ?_)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    (isClosed_iInter fun t =&gt; isClosed_iInter fun ht =&gt; ?_)
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  · by_cases hp : |(t : ℝ) - s| ≤ δ l
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    · have := isClosed_le ((hev t).dist (hev s)) (continuous_const (y := 1 / ((l : ℝ) + 1)))
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      simpa [hp] using this
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    · simp [hp]
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  · exact (hKt l t).preimage (hev t)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>theorem ptc_K_isCompact [CompleteSpace E] (δ : ℕ → ℝ) (hδ : ∀ l, 0 &lt; δ l)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (F : ℕ → Finset (Set.Icc (0 : ℝ) T))
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    (hcov : ∀ l, ∀ t : Set.Icc (0 : ℝ) T, ∃ t&#x27; ∈ F l, |(t : ℝ) - t&#x27;| ≤ δ l)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    (Kt : ℕ → Set.Icc (0 : ℝ) T → Set E) (hKt : ∀ l t, IsCompact (Kt l t)) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    IsCompact (ptc_K T δ F Kt) := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  set K := ptc_K T δ F Kt with hK
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hclosed : IsClosed K := ptc_K_isClosed T δ F Kt fun l t =&gt; (hKt l t).isClosed
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  -- range set
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  set S : Set E := {y | ∃ z ∈ K, ∃ t : Set.Icc (0 : ℝ) T, y = z t} with hS
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hSbdd : TotallyBounded S := by
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    rw [Metric.totallyBounded_iff]
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    intro ε hε
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    obtain ⟨l, hl⟩ := exists_nat_one_div_lt (half_pos hε)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    have hQ : IsCompact (⋃ t ∈ F l, Kt l t) := (F l).isCompact_biUnion fun t _ =&gt; hKt l t
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    obtain ⟨c, hcQ, hcfin, hcov&#x27;⟩ := hQ.finite_cover_balls (half_pos hε)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    refine ⟨c, hcfin, ?_⟩
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    rintro y ⟨z, hz, t, rfl⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    obtain ⟨t&#x27;, ht&#x27;, hdt⟩ := hcov l t
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    have h1 : dist (z t) (z t&#x27;) ≤ 1 / ((l : ℝ) + 1) := (hz l).1 t&#x27; t hdt
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have h2 : z t&#x27; ∈ ⋃ t ∈ F l, Kt l t := Set.mem_biUnion ht&#x27; ((hz l).2 t&#x27; ht&#x27;)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    obtain ⟨y&#x27;, hy&#x27;, hy&#x27;b⟩ := Set.mem_iUnion₂.1 (hcov&#x27; h2)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    refine Set.mem_iUnion₂.2 ⟨y&#x27;, hy&#x27;, ?_⟩
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    rw [Metric.mem_ball] at hy&#x27;b ⊢
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    calc dist (z t) y&#x27; ≤ dist (z t) (z t&#x27;) + dist (z t&#x27;) y&#x27; := dist_triangle _ _ _
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      _ &lt; ε / 2 + ε / 2 := add_lt_add_of_le_of_lt (h1.trans hl.le) hy&#x27;b
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      _ = ε := add_halves ε
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hScpt : IsCompact (closure S) :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    (isCompact_iff_totallyBounded_isComplete.2 ⟨hSbdd.closure, isClosed_closure.isComplete⟩)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  -- Arzelà-Ascoli through `C(I,E) ≃ I →ᵇ E`
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  let e := ContinuousMap.equivBoundedOfCompact (Set.Icc (0 : ℝ) T) E
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have he : Topology.IsEmbedding e :=
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (ContinuousMap.isUniformEmbedding_equivBoundedOfCompact (Set.Icc (0 : ℝ) T) E).isEmbedding
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hecl : Topology.IsClosedEmbedding e :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    ⟨he, by simp [Set.range_eq_univ.2 e.surjective]⟩
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hA : IsCompact (closure (e &#x27;&#x27; K)) := by
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    refine BoundedContinuousFunction.arzela_ascoli (closure S) hScpt _ ?_ ?_
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    · rintro f x ⟨z, hz, rfl⟩
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      exact subset_closure ⟨z, hz, x, rfl⟩
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    · intro x0
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      rw [Metric.equicontinuousAt_iff]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      intro ε hε
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      obtain ⟨l, hl⟩ := exists_nat_one_div_lt hε
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      refine ⟨δ l, hδ l, fun x hx f =&gt; ?_⟩
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      obtain ⟨f, z, hz, rfl⟩ := f
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      have hx&#x27; : |(x : ℝ) - x0| ≤ δ l := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>        rw [← Real.dist_eq]; exact hx.le
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      have := (hz l).1 x0 x hx&#x27;
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      rw [dist_comm]
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      exact lt_of_le_of_lt this hl
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  rw [he.isCompact_iff]
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  rw [(hecl.isClosedMap K hclosed).closure_eq] at hA
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  exact hA
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>end Compactness
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>/-- Finite `δ`-nets in `[0,T]` made of points of a dense subset `D`. -/
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>theorem ptc_cover (T : ℝ) (D : Set ℝ) (hDT : D ⊆ Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (hD : Set.Icc (0 : ℝ) T ⊆ closure D) (δ : ℝ) (hδ : 0 &lt; δ) :
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    ∃ F : Finset (Set.Icc (0 : ℝ) T), (∀ t ∈ F, (t : ℝ) ∈ D) ∧
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      ∀ t : Set.Icc (0 : ℝ) T, ∃ t&#x27; ∈ F, |(t : ℝ) - t&#x27;| ≤ δ := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  classical
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  obtain ⟨F0, hF0⟩ := (isCompact_univ (X := Set.Icc (0 : ℝ) T)).elim_finite_subcover
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    (ι := {d : Set.Icc (0 : ℝ) T // (d : ℝ) ∈ D})
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    (fun d =&gt; Metric.ball (d : Set.Icc (0 : ℝ) T) δ) (fun _ =&gt; Metric.isOpen_ball) (by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      intro x _
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      obtain ⟨b, hb, hxb⟩ := Metric.mem_closure_iff.1 (hD x.2) δ hδ
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      refine Set.mem_iUnion.2 ⟨⟨⟨b, hDT hb⟩, hb⟩, ?_⟩
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      rw [Metric.mem_ball]
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      simpa [Subtype.dist_eq] using hxb)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  refine ⟨F0.image Subtype.val, ?_, ?_⟩
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  · intro t ht
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    obtain ⟨d, _, rfl⟩ := Finset.mem_image.1 ht
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    exact d.2
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  · intro t
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    obtain ⟨d, hd, hdt⟩ := Set.mem_iUnion₂.1 (hF0 (Set.mem_univ t))
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    refine ⟨d.1, Finset.mem_image.2 ⟨d, hd, rfl⟩, ?_⟩
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    rw [Metric.mem_ball, Subtype.dist_eq, Real.dist_eq] at hdt
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    exact hdt.le
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>/-- Lemma S.A.21, statement copied verbatim from `HRS.Whole.AppendixALemmas.path_tightness_criterion`. -/
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>theorem path_tightness_criterion_proof {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    [CompleteSpace E] [TopologicalSpace.SeparableSpace E] [MeasurableSpace E] [BorelSpace E]
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    (T : ℝ) (hT : 0 &lt; T) {Ω : ℕ → Type*} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    [∀ N, IsProbabilityMeasure (P N)] (Z : ∀ N, ℝ → Ω N → E)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    (hZmeas : ∀ N : ℕ, 1 ≤ N → ∀ t, Measurable (Z N t))
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    (hcont : ∀ N : ℕ, 1 ≤ N → ∀ᵐ ζ ∂(P N), Continuous fun t : Set.Icc (0 : ℝ) T =&gt; Z N t ζ)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    (hpath : ∀ N : ℕ, 1 ≤ N → Measurable fun ζ =&gt; contPathOf T (fun t =&gt; Z N t ζ))
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (D : Set ℝ) (hDT : D ⊆ Set.Icc (0 : ℝ) T) (hD : Set.Icc (0 : ℝ) T ⊆ closure D)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (htight : ∀ t ∈ D, IsTightMeasureSet {μ | ∃ N : ℕ, 1 ≤ N ∧ μ = (P N).map (Z N t)})
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    (hmod : ∀ ε : ℝ, 0 &lt; ε → Tendsto (fun δ : ℝ =&gt;
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      ⨆ N : ℕ, ⨆ (_ : 1 ≤ N), P N {ζ | ENNReal.ofReal ε &lt; omegaE (fun t =&gt; Z N t ζ) T δ})
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      (𝓝[&gt;] 0) (𝓝 0)) :
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    IsTightMeasureSet {μ | ∃ N : ℕ, 1 ≤ N ∧
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      μ = (P N).map (fun ζ =&gt; contPathOf T (fun t =&gt; Z N t ζ))} := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  classical
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  rw [isTightMeasureSet_iff_exists_isCompact_measure_compl_le]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  intro ε hε
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  obtain ⟨ε&#x27;, hε&#x27;pos, hsum⟩ := ENNReal.exists_pos_sum_of_countable
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    (ENNReal.half_pos hε.ne&#x27;).ne&#x27; ℕ
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have hε&#x27;ne : ∀ l, (ε&#x27; l : ℝ≥0∞) ≠ 0 := fun l =&gt; by exact_mod_cast (hε&#x27;pos l).ne&#x27;
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  -- step 1: scales `δ l`
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hδ : ∀ l : ℕ, ∃ δ : ℝ, 0 &lt; δ ∧ ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      P N {ζ | ENNReal.ofReal (1 / ((l : ℝ) + 1)) &lt; omegaE (fun t =&gt; Z N t ζ) T δ} ≤ ε&#x27; l := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    intro l
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have h := hmod (1 / ((l : ℝ) + 1)) (by positivity)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    have hlt := h.eventually (Iio_mem_nhds (pos_iff_ne_zero.2 (hε&#x27;ne l)))
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    obtain ⟨u, hu, hsub⟩ := mem_nhdsGT_iff_exists_Ioo_subset.1 hlt
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    have hu&#x27; : (0 : ℝ) &lt; u := hu
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    refine ⟨u / 2, half_pos hu&#x27;, fun N hN =&gt; ?_⟩
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have h2 := hsub ⟨half_pos hu&#x27;, half_lt_self hu&#x27;⟩
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    exact (le_iSup₂ (f := fun (N : ℕ) (_ : 1 ≤ N) =&gt;
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      P N {ζ | ENNReal.ofReal (1 / ((l : ℝ) + 1)) &lt; omegaE (fun t =&gt; Z N t ζ) T (u / 2)})
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      N hN).trans (le_of_lt h2)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  choose δ hδpos hδbd using hδ
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  -- step 2: nets
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have hF : ∀ l : ℕ, ∃ F : Finset (Set.Icc (0 : ℝ) T), (∀ t ∈ F, (t : ℝ) ∈ D) ∧
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      ∀ t : Set.Icc (0 : ℝ) T, ∃ t&#x27; ∈ F, |(t : ℝ) - t&#x27;| ≤ δ l :=
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    fun l =&gt; ptc_cover T D hDT hD (δ l) (hδpos l)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  choose F hFD hFcov using hF
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  -- step 3: compacts in `E`
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hKt : ∀ (l : ℕ) (t : Set.Icc (0 : ℝ) T), ∃ K : Set E, IsCompact K ∧
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      ((t : ℝ) ∈ D → ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>        P N {ζ | Z N t ζ ∉ K} ≤ (ε&#x27; l : ℝ≥0∞) / ((F l).card : ℝ≥0∞)) := by
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    intro l t
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    by_cases ht : (t : ℝ) ∈ D
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    · obtain ⟨K, hK, hKb⟩ := (isTightMeasureSet_iff_exists_isCompact_measure_compl_le.1
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>        (htight t ht)) ((ε&#x27; l : ℝ≥0∞) / ((F l).card : ℝ≥0∞))
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>        (ENNReal.div_pos (hε&#x27;ne l) (ENNReal.natCast_ne_top _))
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>      refine ⟨K, hK, fun _ N hN =&gt; ?_⟩
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      have h := hKb _ ⟨N, hN, rfl⟩
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      rwa [Measure.map_apply (hZmeas N hN t) hK.isClosed.measurableSet.compl] at h
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    · exact ⟨∅, isCompact_empty, fun h =&gt; absurd h ht⟩
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  choose Kt hKtc hKtb using hKt
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>  refine ⟨ptc_K T δ F Kt, ptc_K_isCompact T δ hδpos F hFcov Kt hKtc, ?_⟩
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  rintro μ ⟨N, hN, rfl⟩
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  have hKcl : IsClosed (ptc_K T δ F Kt) := ptc_K_isClosed T δ F Kt fun l t =&gt; (hKtc l t).isClosed
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  rw [Measure.map_apply (hpath N hN) hKcl.measurableSet.compl]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  -- step 6: union bound
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hsub : (fun ζ =&gt; contPathOf T (fun t =&gt; Z N t ζ)) ⁻¹&#x27; (ptc_K T δ F Kt)ᶜ ⊆
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      {ζ | ¬ Continuous fun t : Set.Icc (0 : ℝ) T =&gt; Z N t ζ} ∪
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>        ⋃ l : ℕ, ({ζ | ENNReal.ofReal (1 / ((l : ℝ) + 1)) &lt; omegaE (fun t =&gt; Z N t ζ) T (δ l)} ∪
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>          ⋃ t ∈ F l, {ζ | Z N t ζ ∉ Kt l t}) := by
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    intro ζ hζ
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    by_contra hnot
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    simp only [Set.mem_union, Set.mem_iUnion, Set.mem_ofPred_eq, not_or, not_exists, not_lt,
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      not_not] at hnot
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    obtain ⟨hc, hl⟩ := hnot
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    apply hζ
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    have hpe : ∀ t : Set.Icc (0 : ℝ) T, contPathOf T (fun t =&gt; Z N t ζ) t = Z N t ζ := by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      intro t
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      simp [contPathOf, hc]
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    intro l
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    simp only [hpe]
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    refine ⟨fun s t hst =&gt; ?_, fun t ht =&gt; hl l |&gt;.2 t ht⟩
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    have hle : ‖Z N t ζ - Z N s ζ‖ₑ ≤ omegaE (fun t =&gt; Z N t ζ) T (δ l) :=
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      le_iSup₂_of_le (s : ℝ) s.2 (le_iSup₂_of_le (t : ℝ) t.2 (le_iSup_of_le hst le_rfl))
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    have h1 := hle.trans (hl l).1
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    have hr : (0 : ℝ) ≤ 1 / ((l : ℝ) + 1) := by positivity
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    rw [← ofReal_norm] at h1
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    rw [dist_eq_norm]
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    exact (ENNReal.ofReal_le_ofReal_iff hr).1 h1
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>  have hnull : P N {ζ | ¬ Continuous fun t : Set.Icc (0 : ℝ) T =&gt; Z N t ζ} = 0 :=
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    ae_iff.1 (hcont N hN)
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  have hcard : ∀ l : ℕ, ∑ t ∈ F l, (ε&#x27; l : ℝ≥0∞) / ((F l).card : ℝ≥0∞) ≤ ε&#x27; l := by
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    intro l
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    rw [Finset.sum_const, nsmul_eq_mul]
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    exact ENNReal.mul_div_le
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  calc P N ((fun ζ =&gt; contPathOf T (fun t =&gt; Z N t ζ)) ⁻¹&#x27; (ptc_K T δ F Kt)ᶜ)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      ≤ P N ({ζ | ¬ Continuous fun t : Set.Icc (0 : ℝ) T =&gt; Z N t ζ} ∪
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>        ⋃ l : ℕ, ({ζ | ENNReal.ofReal (1 / ((l : ℝ) + 1)) &lt; omegaE (fun t =&gt; Z N t ζ) T (δ l)} ∪
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>          ⋃ t ∈ F l, {ζ | Z N t ζ ∉ Kt l t})) := measure_mono hsub
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    _ ≤ 0 + ∑&#x27; l : ℕ, ((ε&#x27; l : ℝ≥0∞) + ε&#x27; l) := by
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>        refine (measure_union_le _ _).trans (add_le_add hnull.le ?_)
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        refine (measure_iUnion_le _).trans (ENNReal.tsum_le_tsum fun l =&gt; ?_)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>        refine (measure_union_le _ _).trans (add_le_add (hδbd l N hN) ?_)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>        refine (measure_biUnion_finset_le _ _).trans ?_
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>        refine (Finset.sum_le_sum fun t ht =&gt; hKtb l t (hFD l t ht) N hN).trans (hcard l)
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    _ = ∑&#x27; l : ℕ, (ε&#x27; l : ℝ≥0∞) + ∑&#x27; l : ℕ, (ε&#x27; l : ℝ≥0∞) := by
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>        rw [zero_add, ENNReal.tsum_add]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    _ ≤ ε / 2 + ε / 2 := add_le_add hsum.le hsum.le
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    _ = ε := ENNReal.add_halves ε
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>end HRS.MP.PathTight
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>example := (@HRS.MP.PathTight.path_tightness_criterion_proof : type_of% @HRS.Whole.AppendixALemmas.path_tightness_criterion)
+</span></code></pre></main></body></html>

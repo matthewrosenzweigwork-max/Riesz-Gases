@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Uniform.Q45Cov · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Uniform.Q45Cov</code></h1><p><a href="../../lean/HRS/Uniform/Q45Cov.lean">Open the unaltered Lean file</a> · 100 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Uniform.Q45Sub4
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Lemma 3.20 `covariance_measure` (packet Q45), proved in the relocated form
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>`HRS/Uniform/Spec.lean` cannot import this file (the helper files `HRS/Uniform/Q45*.lean` import `Spec`), so the
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>statement is repeated verbatim as `covariance_measure_proof` and identified with the frozen statement by
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`example := (@covariance_measure_proof : type_of% @covariance_measure)`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Route: Jordan decomposition `D = D⁺ - D⁻` of the trace density (`Q45Jor*`), Gaussian martingales with covariance densities
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>`1_I D^±` (`Q45Gauss`), the stochastic convolution with a measurable version from Lemma 3.17 (`Q45Max`), the path tensors
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>`E[Z ⊗ Z]` in `𝒴 ⊗̂_π 𝒴` and their covariance formula (`Q45Cov*`, `Q45Ten*`), uniqueness through the separation of
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>points by terminal observations (`Q45Sep*`), assembly of the vector measure (`Q45Fam*`, `Q45VM`), and the reduction to the
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>separable closed span of the range of `j` (`Q45Trans*`, `Q45Sub*`).
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>noncomputable section
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>namespace Uniform
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- Lemma 3.20, proved. -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem covariance_measure_proof (T K : ℝ) (hT : 0 ≤ T) :
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    ∃ C : ℝ, 0 ≤ C ∧
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>      ∀ (H E : Type) [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>        [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>        [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E]
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>        (S : EvolData H E) (_ : S.MaxHyp T K),
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      ∃ J : (ℝ → H →L[ℝ] H →L[ℝ] ℝ) → VectorMeasure ℝ (ProjTensor2 (PathSp T E)),
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>        (∀ D, IsTraceDensityL1 T D →
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>          (∀ I, MeasurableSet I → J D I = J D (I ∩ Set.Icc 0 T)) ∧
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>          (∀ I, MeasurableSet I → ∀ Ψ : PathSp T E →L[ℝ] PathSp T E →L[ℝ] ℝ,
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>            tensorPairing Ψ (J D I) = tensorPairing Ψ.flip (J D I)) ∧
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>          (J D).variation (Set.Icc 0 T) ≤
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>            ENNReal.ofReal C * ∫⁻ r in Set.Icc (0 : ℝ) T, ENNReal.ofReal (traceNormForm (D r)) ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>          (∀ (t₁ t₂ : Set.Icc (0 : ℝ) T) (ℓ₁ ℓ₂ : E →L[ℝ] ℝ) (I : Set ℝ), MeasurableSet I →
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>            tensorPairing (obsForm t₁ t₂ ℓ₁ ℓ₂) (J D I) =
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>              ∫ r in I ∩ Set.Icc 0 (min (t₁ : ℝ) t₂),
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>                D r (pullbackVec S t₁ r ℓ₁) (pullbackVec S t₂ r ℓ₂)) ∧
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>          ContinuousOn (fun t =&gt; J D (Set.Icc 0 t)) (Set.Icc 0 T)) ∧
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>        (∀ D D&#x27;, IsTraceDensityL1 T D → IsTraceDensityL1 T D&#x27; → ∀ a b : ℝ, ∀ I, MeasurableSet I →
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>          J (fun r =&gt; a • D r + b • D&#x27; r) I = a • J D I + b • J D&#x27; I) := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  rcases hT.eq_or_lt with h0 | hpos
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  · -- `T = 0`: the zero measure
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    subst h0
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    refine ⟨0, le_rfl, ?_⟩
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    intro H E _ _ _ _ _ _ _ _ _ S hS
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    refine ⟨fun _ =&gt; 0, fun D hD =&gt; ⟨?_, ?_, ?_, ?_, ?_⟩, ?_⟩
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    · intro I hI; rfl
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    · intro I hI Ψ; simp [HRS.Uniform.Q45.tensorPairing_eq]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    · simp [VectorMeasure.variation_zero]
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    · intro t₁ t₂ ℓ₁ ℓ₂ I hI
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      have hmin : (min (t₁ : ℝ) t₂) ≤ 0 := (min_le_left _ _).trans t₁.2.2
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      have hz : volume (I ∩ Set.Icc (0 : ℝ) (min (t₁ : ℝ) t₂)) = 0 := by
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        refine measure_mono_null Set.inter_subset_right ?_
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>        rw [Real.volume_Icc, sub_zero, ENNReal.ofReal_eq_zero]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        exact hmin
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>      rw [setIntegral_measure_zero _ hz]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      simp [HRS.Uniform.Q45.tensorPairing_eq]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    · exact continuousOn_const
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    · intro D D&#x27; hD hD&#x27; a b I hI; simp
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  · obtain ⟨C, hC0, hC⟩ := HRS.Uniform.Q45.cov_transport T K hpos
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    refine ⟨C, hC0, ?_⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    intro H E _ _ _ _ _ _ _ _ _ S hS
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    obtain ⟨hev, h | h⟩ := hS
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    · -- two levels: pass to the closed span of the range of `j`
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      haveI : CompleteSpace (HRS.Uniform.Q45.E0 S) := (HRS.Uniform.Q45.E0_closed S).completeSpace_coe
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      haveI : SecondCountableTopology (HRS.Uniform.Q45.E0 S) := by
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>        have hsep : TopologicalSpace.IsSeparable (HRS.Uniform.Q45.E0 S : Set E) := by
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>          have := (TopologicalSpace.isSeparable_range S.j.continuous).closure
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>          simpa [HRS.Uniform.Q45.E0, Submodule.topologicalClosure_coe, LinearMap.coe_range] using this
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        haveI := hsep.separableSpace
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        exact UniformSpace.secondCountable_of_separable _
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      letI : MeasurableSpace (HRS.Uniform.Q45.E0 S) := borel _
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      haveI : BorelSpace (HRS.Uniform.Q45.E0 S) := ⟨rfl⟩
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      refine hC H E (HRS.Uniform.Q45.E0 S) S (HRS.Uniform.Q45.subData S)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        (HRS.Uniform.Q45.subData_maxHyp_twoLevel hpos hev h) (HRS.Uniform.Q45.E0 S).subtypeₗᵢ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        (fun x =&gt; rfl) (fun r t hr hrt htT y =&gt; ?_)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      exact HRS.Uniform.Q45.VE0_coe hev hr hrt htT y
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    · -- one dissipative level: `j` is onto, so `E` itself is separable
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      haveI : SecondCountableTopology E := by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        have hsep : TopologicalSpace.IsSeparable (Set.univ : Set E) := by
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>          have := TopologicalSpace.isSeparable_range S.j.continuous
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>          have hr : Set.range S.j = Set.univ := Set.range_eq_univ.2 h.2.1
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>          rwa [hr] at this
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>        haveI := TopologicalSpace.isSeparable_univ_iff.1 hsep
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>        exact UniformSpace.secondCountable_of_separable _
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      letI : MeasurableSpace E := borel _
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      haveI : BorelSpace E := ⟨rfl⟩
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      exact hC H E E S S ⟨hev, Or.inr h⟩ (LinearIsometry.id) (fun x =&gt; rfl) (fun r t hr hrt htT y =&gt; rfl)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>example := (@covariance_measure_proof : type_of% @covariance_measure)
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>end Uniform
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>end HRS
+</span></code></pre></main></body></html>

@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.EVUE2 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.EVUE2</code></h1><p><a href="../../lean/HRS/ME/EVUE2.lean">Open the unaltered Lean file</a> · 114 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.EVUA
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.ME.EVUC
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.ME.EVUD
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.ME.EVUE1
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.MD.EQEvoUnif
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>/-!
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a># Chunk E, packet EVE2: final assembly of the V-uniform frozen data (`eqevo_thermal_unifV`)
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`HRS.ME.EVU.eqevo_thermal_unifV` is the V-uniform copy of `HRS.MD.EQEvoUnif.eqevo_thermal_unif`
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>(`HRS/MD/EQEvoUnif.lean:63`, P7.1). The original statement is kept, with `(Bv : ℝ)` fixed before the
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>constants and the hypothesis on the potential `V` replaced by `Torus.IsSmooth V → Torus.cbNorm (K+2) V ≤ Bv`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>The constants are chosen in this order: the sup bound `Λ` (`exists_sup_bound_unifV`, EVUA), the `H^K`
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>bound `C` of the global solutions (`exists_hK_bound_unifV`, EVUC), the thermal bounds `lam, Lam`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>(`exists_thermal_bounds_unifV`, EVUD), and the `C^n` constant `Cn` (`frozenHyp_of_bounds`, EVUE1).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>Then `Λ₀ := max Bv (Cn * √(C^2))`, `c₀ := lam`, `B := C^2`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>The reference datum is `ρ₀ ≡ 1` (as in the original), with `νm := βp⁻¹`, `νp := βm⁻¹`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>Per `V`, only qualitative facts are used (`HRS.Q41.q41_thermal_pos_cont`,
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>`HRS.PDE.MFThermalAssembly.thermal_memSobolev_all`, `eqevo_finiteRegHyp_one`, the real-coefficient
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>lemma `HRS.PDE.MFGlobal.isRealCoeff_of_isMFSolutionHK`), and `|V x| ≤ Bv` comes from `cbNorm (K+2) V ≤ Bv`.
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>-/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>noncomputable section
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>namespace HRS.ME.EVU
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>open HRS HRS.PDE HRS.PDE.MFAdjoint HRS.Uniform.Q54
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>variable {d : ℕ}
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>/-- **EVE2 (P7.1, V-uniform).** Uniform frozen-data bounds: the constants `Λ₀, c₀, lam, Lam, B` are
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>fixed before `V`, `β` and `ρβ`; the hypothesis on `V` is `IsSmooth V` and `cbNorm (K+2) V ≤ Bv`. -/
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>theorem eqevo_thermal_unifV (hd : 2 ≤ d) (s βm βp : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (hβm : 0 &lt; βm) (hββ : βm ≤ βp) (Bv : ℝ) :
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    ∀ (n K : ℕ), 2 * n + 6 * d + 30 ≤ K →
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>      ∃ Λ₀ c₀ lam Lam B : ℝ, 0 &lt; c₀ ∧ 0 &lt; lam ∧ 0 ≤ B ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        ∀ V : Torus d → ℝ, Torus.IsSmooth V → Torus.cbNorm (K + 2) V ≤ Bv →
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        ∀ β ∈ Set.Icc βm βp, ∀ ρβ : Torus d → ℝ, IsThermalDensity (periodicRiesz d s) V β ρβ →
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>            FrozenHyp d s n βp⁻¹ βm⁻¹ c₀ Λ₀ β V ρβ ∧ (∀ x, lam ≤ ρβ x ∧ ρβ x ≤ Lam) ∧
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>              hsNormSq (K : ℝ) (coeffOf ρβ) ≤ B := by
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  intro n K hK
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hKr : 2 * (n : ℝ) + 6 * (d : ℝ) + 30 ≤ K := by exact_mod_cast hK
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hdr : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hnr : (0 : ℝ) ≤ n := Nat.cast_nonneg n
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hKd2 : (d : ℝ) / 2 + 2 &lt; K := by linarith
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hnK : (d : ℝ) / 2 + n &lt; K := by linarith
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hβp : 0 &lt; βp := lt_of_lt_of_le hβm hββ
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hνm : 0 &lt; βp⁻¹ := inv_pos.2 hβp
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hνν : βp⁻¹ ≤ βm⁻¹ := inv_anti₀ hβm hββ
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hρ₀ : IsProbDensity (fun _ : Torus d =&gt; (1 : ℝ)) := HRS.MD.EQEvoUnif.eqevo_isProb_one
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hρH : MemSobolev (K : ℝ) (fun _ : Torus d =&gt; (1 : ℝ)) :=
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    HRS.MD.EQEvoUnif.eqevo_memSobolev_one K
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hpos : ∃ c : ℝ, 0 &lt; c ∧ ∀ x : Torus d, c ≤ (fun _ : Torus d =&gt; (1 : ℝ)) x :=
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    ⟨1, one_pos, fun _ =&gt; le_refl _⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  obtain ⟨Λ, hΛ0, hΛ⟩ :=
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    exists_sup_bound_unifV hd1 s hs0 hsd K hKd2 βp⁻¹ βm⁻¹ hνm hνν (fun _ : Torus d =&gt; (1 : ℝ))
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      hρ₀ hρH hpos Bv
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  obtain ⟨C, hC0, hC⟩ :=
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    exists_hK_bound_unifV hd1 s hs0 hsd K hKd2 βp⁻¹ βm⁻¹ hνm hνν (fun _ : Torus d =&gt; (1 : ℝ))
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      hρH Λ Bv
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  obtain ⟨lam, Lam, hlam, hbd⟩ := exists_thermal_bounds_unifV hd1 s hs0 hsd βm βp hβm hββ Bv
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  obtain ⟨Cn, hCn0, hF⟩ := frozenHyp_of_bounds (d := d) s βm βp hs0 hsd hβm hββ n K hnK
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  refine ⟨max Bv (Cn * Real.sqrt (C ^ 2)), lam, lam, Lam, C ^ 2, hlam, hlam, sq_nonneg C, ?_⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  intro V hV hVB β hβ ρβ hρβ
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hβpos : 0 &lt; β := lt_of_lt_of_le hβm hβ.1
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hVL : Torus.IsCk ((K + 2 : ℕ) : WithTop ENat) V :=
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    HRS.MD.EQEvoUnif.eqevo_isCk_nat hV (K + 2)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hVL&#x27; : Torus.IsCk (K + 2) V := by exact_mod_cast HRS.MD.EQEvoUnif.eqevo_isCk_nat hV (K + 2)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hVc : Continuous V :=
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    HRS.PDE.continuous_of_isCk (by exact_mod_cast HRS.MD.EQEvoUnif.eqevo_isCk_nat hV 1)
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  -- `|V x| ≤ Bv` from `cbNorm (K+2) V ≤ Bv` (the `C^0` part of the `C^{K+2}` norm)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hVb : ∀ x, |V x| ≤ Bv := fun x =&gt; by
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    have h := HRS.PDE.MFPair.norm_iter_le_cb_ps (L := K + 2) hVL (i := 0) (Nat.zero_le _)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      (Torus.rep x)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    rw [norm_iteratedFDeriv_zero] at h
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have hx : Torus.lift V (Torus.rep x) = V x := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      simp [Torus.lift, Torus.mk_rep]
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    rw [hx, Real.norm_eq_abs] at h
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    exact h.trans hVB
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have H0 : FiniteRegHyp d s βm βp K V (fun _ : Torus d =&gt; (1 : ℝ)) :=
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    HRS.MD.EQEvoUnif.eqevo_finiteRegHyp_one hd s βm βp hs0 hsd hβm hββ V hV K (by omega)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  -- the uniform `H^K` bound of every global solution of this `V`, for `t ≥ 0`
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hsol : ∀ β&#x27; ∈ Set.Icc βm βp, ∀ ρc : ℝ → Coeff d,
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      IsMFSolutionHK d s V β&#x27;⁻¹ (K : ℝ) (fun _ : Torus d =&gt; (1 : ℝ)) ρc →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>        ∀ t, 0 ≤ t → HRS.PDE.hsNorm (K : ℝ) (ρc t) ≤ C := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    intro β&#x27; hβ&#x27; ρc hρc t ht
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have hβ&#x27;pos : 0 &lt; β&#x27; := lt_of_lt_of_le hβm hβ&#x27;.1
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    have hν : β&#x27;⁻¹ ∈ Set.Icc βp⁻¹ βm⁻¹ := ⟨inv_anti₀ hβ&#x27;pos hβ&#x27;.2, inv_anti₀ hβm hβ&#x27;.1⟩
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    have hreal := HRS.PDE.MFGlobal.isRealCoeff_of_isMFSolutionHK hd1 s βm βp K V
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      (fun _ : Torus d =&gt; (1 : ℝ)) H0 β&#x27; hβ&#x27; ρc hρc
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    have hR : MFApriori.MFSolRealOn d s V β&#x27;⁻¹ K (fun _ : Torus d =&gt; (1 : ℝ)) ρc t :=
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      ⟨MFApriori.IsMFSolutionHK.toSolOn hρc t, fun τ hτ =&gt; hreal τ hτ.1⟩
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    have hΛb : ∀ τ ∈ Set.Icc 0 t, ∀ x, |mfPath ρc τ x| ≤ Λ := fun τ hτ x =&gt; by
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      obtain ⟨h0, h1⟩ := hΛ V hVL&#x27; hVB β&#x27;⁻¹ hν t ρc hR τ hτ x
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      rw [abs_of_nonneg h0]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      exact h1
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    exact hC V hVL&#x27; hVB β&#x27;⁻¹ hν t ρc hR hΛb t ⟨ht, le_rfl⟩
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  obtain ⟨hpos, hc⟩ := HRS.Q41.q41_thermal_pos_cont hd hs0 hsd hβpos hVc hρβ
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hSob : MemSobolev (K : ℝ) ρβ :=
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    HRS.PDE.MFThermalAssembly.thermal_memSobolev_all hd1 s hs0 hsd K V hVL&#x27; β hβpos ρβ hρβ hc hpos
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hB : hsNormSq (K : ℝ) (coeffOf ρβ) ≤ C ^ 2 :=
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    thermal_hK_of_bound hd1 s βm βp K V (fun _ : Torus d =&gt; (1 : ℝ)) H0 C hsol β hβ ρβ hρβ hc
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      hpos hSob
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hlb := hbd V hVc hVb β hβ ρβ hρβ hc hpos
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hFz := hF Bv lam (C ^ 2) V ρβ β hβ (HRS.MD.EQEvoUnif.eqevo_isCk_nat hV n)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    (le_trans (HRS.PDE.ET.cbNorm_mono&#x27; (by omega) V) hVB) hρβ hc hSob hlam
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    (fun x =&gt; (hlb x).1) (sq_nonneg C) hB
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  exact ⟨hFz, hlb, hB⟩
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>end HRS.ME.EVU
+</span></code></pre></main></body></html>

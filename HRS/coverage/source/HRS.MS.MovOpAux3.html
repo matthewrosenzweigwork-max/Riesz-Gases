@@ -1,0 +1,589 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.MovOpAux3 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.MovOpAux3</code></h1><p><a href="../../lean/HRS/MS/MovOpAux3.lean">Open the unaltered Lean file</a> · 588 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.MovOpAux2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># MOV-C1 (3): `P` is bounded `Σ^r → Σ^{r-a}` for every real `r`; the frozen `mov_operators_P` (S6.1, step 9)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Namespace `HRS.MS.MovC1`, helper prefix `movc1_`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>**Statements.**
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* `mov_P_bound` (file `MovOpAux3`): under the standing assumptions of `HRS.Whole.mov_operators_P`
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  (`2 ≤ d`, `0 ≤ s &lt; d`, `β, q &gt; 0`, `IsThermalEquilibrium d s q β ρ`), for **every real** `r` there is `C ≥ 0` with
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  `MemOsc (r - movA d s) (movP d s ρ v)` and `oscNorm (r - movA d s) (movP d s ρ v) ≤ C * oscNorm r v` for all Schwartz
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `v`.  Constants depend on `d, s, q, β, r` only (through `ρ = thermalDensity`).
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `mov_operators_P_proof`: the frozen `HRS.Whole.mov_operators_P` (the restriction `r ≥ -a` is dropped); the file ends
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  with the tie `example := (@mov_operators_P_proof : type_of% @HRS.Whole.mov_operators_P)`.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `movc1_P_bound_gen`: the same for any `MovcTherm d ρ q&#x27; B` (`GapRef d ρ q&#x27; B`, `q&#x27; &gt; 0`).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* `mv1_far_pair` (plan step 4(b), pairing form of the far field): for `U_far = g_far * (ψ v)`, every real `r` and every
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `K`, the coordinate-iterated derivatives (order `≤ K`) of `∂_i U_far` and of `x_{i&#x27;} ∂_i U_far` are bounded uniformly
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  in `x` by `C ‖v‖_{Σ^r}` (in the form `mova3b2_Q K 0 A b`, as used by the multiplier bridge `mo_mult_cb`); in
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>  particular `|∂_i U_far(x)| + ‖x‖ |∂_i U_far(x)| ≤ d C ‖v‖_{Σ^r}`.  The Fréchet-norm form `‖D^j ∇U_far‖` of the plan is
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  not stated: the coordinate form is what the bridges consume.
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>**Proof architecture** (no new analysis beyond the merged bridges).
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>`movc1_P_decomp`: `P v = -ψ (∑_i g_loc*∂_i∂_i h + ∑_i (∂_iκ_i)*h + ∑_i ∂_i log ρ (g_loc*∂_i h + κ_i*h))`,
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>`h = ψ v`, `ψ = √ρ`, `κ_i = ∂_i g_far` (from `mv1_P_formula`, `movb2_ibp`, `movc1_ibp`).
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>Local terms: `ψ v ∈ H^r` (`movc1_B1`, B1 by duality for all real `r`), `∂_j : H^t → H^{t-1}`,
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>`g_loc * : H^t → H^{t+d-s}` (`tc3_riesz_loc_sobolev_gain`), `ψ·, (ψ ∂_i log ρ)· : H^σ → Σ^σ` (`mo_bridge2`)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>(`movc1_loc_D1`, `movc1_loc_D2`), with `σ = r - a ≤ r - 2 + d - s` and `σ ≤ r - 1 + d - s`.
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>Far terms: `movc1_far_term` (pairing form of step 4(b), `mo_dual_le` + `mo_mult_cb`) for the kernels `∂_iκ_i`, `z_i κ_i`,
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>`κ_i`; the growing factor `-q&#x27; x_i` of `∂_i log ρ` is handled by `movc1_xT`
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>(`x_i (κ*h) = (z_i κ)*h + κ*(y_i h)`), the bounded part `B_i` by B3 (`movc1_mult_B`).  The six families are assembled by
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>the pointwise identity `movc1_P_identity` and the triangle inequality in `Σ^σ`.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>`MemLp (movP v) 2` needs no separate argument: every term lies in `MemOsc σ`, which contains `L²`.
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>**Not delivered** (not needed by the frozen statement; row 11 of the plan, packet MOV-C3): `mov_Padj_bound`,
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>`mov_P_schwartz`.
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>-/
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>noncomputable section
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>namespace HRS.MS.MovC1
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>open HRS HRS.Whole HRS.MS.MovOsc HRS.MS.Mov0 HRS.MS.MovForce
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>variable {d : ℕ}
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>local notation &quot;𝓢R&quot; =&gt; SchwartzMap (Euc d) ℝ
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>section Decomp
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>variable {s : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>include hd hs0 hsd
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-- Splitting the kernel `g = g_loc + g_far` in a convolution with a Gaussian-bounded continuous function. -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>lemma movc1_split_T {f : Euc d → ℝ} (hf : Continuous f) {c E : ℝ} (hc : 0 &lt; c) (hE : 0 ≤ E)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (h0 : ∀ y, |f y| ≤ E * Real.exp (-c * ‖y‖ ^ 2)) (x : Euc d) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    HRS.Whole.convFun (rieszKernel d s) f x = movb2_T (movb2_gloc d s) f x + movb2_T (movb2_gfar d s) f x := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hI1 := movb2_T_integrable hd hs0 hsd (movb2_gloc_ker hd hs0 hsd) hc hE hf h0 x
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hI2 := movb2_T_integrable hd hs0 hsd (movb2_gfar_ker hd hs0 hsd) hc hE hf h0 x
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  rw [mv1_convFun_eq]
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  unfold movb2_T
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  rw [← integral_add hI1 hI2]
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  refine integral_congr_ae (Eventually.of_forall fun z =&gt; ?_)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  beta_reduce
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  rw [← add_mul, movb2_gloc_add_gfar]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>/-- Linearity of `movb2_T` in the profile for finite sums. -/
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>lemma movc1_T_sum {ι : Type*} (S : Finset ι) {κ : Euc d → ℝ} (hκ : MovKer d s κ) {c : ℝ} (hc : 0 &lt; c)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    {f : ι → Euc d → ℝ} {E : ι → ℝ} (hE : ∀ i, 0 ≤ E i) (hfc : ∀ i, Continuous (f i))
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (h0 : ∀ i y, |f i y| ≤ E i * Real.exp (-c * ‖y‖ ^ 2)) (x : Euc d) :
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    movb2_T κ (fun y =&gt; ∑ i ∈ S, f i y) x = ∑ i ∈ S, movb2_T κ (f i) x := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  unfold movb2_T
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  simp_rw [Finset.mul_sum]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  exact integral_finsetSum _ fun i _ =&gt; movb2_T_integrable hd hs0 hsd hκ hc (hE i) (hfc i) (h0 i) x
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>lemma movc1_conv_int {f : Euc d → ℝ} (hf : Continuous f) {c E : ℝ} (hc : 0 &lt; c) (hE : 0 ≤ E)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (h0 : ∀ y, |f y| ≤ E * Real.exp (-c * ‖y‖ ^ 2)) (x : Euc d) :
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    Integrable (fun z =&gt; rieszKernel d s z * f (x - z)) volume := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  have hI1 := movb2_T_integrable hd hs0 hsd (movb2_gloc_ker hd hs0 hsd) hc hE hf h0 x
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  have hI2 := movb2_T_integrable hd hs0 hsd (movb2_gfar_ker hd hs0 hsd) hc hE hf h0 x
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  refine (hI1.add hI2).congr (Eventually.of_forall fun z =&gt; ?_)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  show movb2_gloc d s z * f (x - z) + movb2_gfar d s z * f (x - z) = rieszKernel d s z * f (x - z)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  rw [← add_mul, movb2_gloc_add_gfar]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>/-- **Exact decomposition of `P v`** into local and far parts (`h = ψ v`, `ψ = √ρ`):
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>`P v = -ψ (∑_i g_loc * ∂_i∂_i h + ∑_i (∂_i κ_i) * h + ∑_i ∂_i log ρ (g_loc * ∂_i h + κ_i * h))`,
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>`κ_i = ∂_i g_far`. -/
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>theorem movc1_P_decomp {ρ : Euc d → ℝ} (hpos : ∀ x, 0 &lt; ρ x) (hρs : ContDiff ℝ ∞ ρ)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (hψ : MovcG (fun y =&gt; Real.sqrt (ρ y))) (v : 𝓢R) (x : Euc d) :
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    movP d s ρ v x = -(Real.sqrt (ρ x)) *
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      ((∑ i : Fin d, movb2_T (movb2_gloc d s)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>          (mova3b1_Dj i (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y))) x) +
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        (∑ i : Fin d, movb2_T (mova3b1_Dj i (movb2_kfar d s i)) (fun y =&gt; Real.sqrt (ρ y) * v y) x) +
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        ∑ i : Fin d, gradient (fun y =&gt; Real.log (ρ y)) x i *
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>          (movb2_T (movb2_gloc d s) (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y)) x +
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>            movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y) x)) := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  set h : Euc d → ℝ := fun y =&gt; Real.sqrt (ρ y) * v y with hhdef
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hρd : MovRhoData d ρ := ⟨hpos, hρs, fun k =&gt; by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    obtain ⟨-, c, hc, hk⟩ := hψ
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    obtain ⟨C, hC⟩ := hk k
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    exact ⟨C, c, hc, hC⟩⟩
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  rw [mv1_P_formula hd hs0 hsd hρd v x]
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hh : MovcG h := movc1_schwartz_G_mul hψ v
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  have hh1 : ∀ i, MovcG (mova3b1_Dj i h) := fun i =&gt; movc1_G_Dj hh i
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>  have hh2 : ∀ i, MovcG (mova3b1_Dj i (mova3b1_Dj i h)) := fun i =&gt; movc1_G_Dj (hh1 i) i
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  -- Gaussian data
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  obtain ⟨c0, E0, hc0, hE0, hga0⟩ := movc1_G_GA hh 1
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hu0 : ContDiff ℝ 1 h := hh.1.of_le (by exact_mod_cast le_top)
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  -- the gradient terms
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hgrad : ∀ i : Fin d, HRS.Whole.convFun (rieszKernel d s) (fun y =&gt; gradient h y i) x =
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      movb2_T (movb2_gloc d s) (mova3b1_Dj i h) x + movb2_T (movb2_kfar d s i) h x := by
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    intro i
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    have e : (fun y =&gt; gradient h y i) = mova3b1_Dj i h := by
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      funext y; exact movtr_gradient_apply h y i
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    rw [e]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    obtain ⟨c1, E1, hc1, hE1, hga1⟩ := movc1_G_GA (hh1 i) 1
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    obtain ⟨h01, -⟩ := movb2_GA_01 hga1
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    rw [movc1_split_T hd hs0 hsd (hh1 i).1.continuous hc1 hE1 h01 x]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    congr 1
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    exact movb2_ibp hd hs0 hsd hc0 hu0 hga0 i x
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  -- the Laplacian term
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hlap : HRS.Whole.convFun (rieszKernel d s) (fun y =&gt; Laplacian.laplacian h y) x =
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      (∑ i : Fin d, movb2_T (movb2_gloc d s) (mova3b1_Dj i (mova3b1_Dj i h)) x) +
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        ∑ i : Fin d, movb2_T (mova3b1_Dj i (movb2_kfar d s i)) h x := by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    have e : (fun y =&gt; Laplacian.laplacian h y) = fun y =&gt; ∑ i : Fin d, mova3b1_Dj i (mova3b1_Dj i h) y := by
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      funext y
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      exact mv1_laplacian_eq (hh.1.of_le (by norm_num)) y
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    rw [e, mv1_convFun_eq]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    have hint : ∀ i : Fin d, Integrable (fun z =&gt; rieszKernel d s z * mova3b1_Dj i (mova3b1_Dj i h) (x - z)) volume := by
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      intro i
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      obtain ⟨c2, E2, hc2, hE2, hga2⟩ := movc1_G_GA (hh2 i) 1
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      obtain ⟨h02, -⟩ := movb2_GA_01 hga2
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      exact movc1_conv_int hd hs0 hsd (hh2 i).1.continuous hc2 hE2 h02 x
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    simp_rw [Finset.mul_sum]
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    rw [integral_finsetSum _ fun i _ =&gt; hint i, ← Finset.sum_add_distrib]
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    refine Finset.sum_congr rfl fun i _ =&gt; ?_
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    obtain ⟨c2, E2, hc2, hE2, hga2⟩ := movc1_G_GA (hh2 i) 1
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    obtain ⟨h02, -⟩ := movb2_GA_01 hga2
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    obtain ⟨c1, E1, hc1, hE1, hga1⟩ := movc1_G_GA (hh1 i) 1
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    have hsp := movc1_split_T hd hs0 hsd (hh2 i).1.continuous hc2 hE2 h02 x
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    rw [mv1_convFun_eq] at hsp
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    rw [hsp]
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    congr 1
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    -- ∂_i ∂_i h against g_far
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    have hu1 : ContDiff ℝ 1 (mova3b1_Dj i h) := (hh1 i).1.of_le (by exact_mod_cast le_top)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    have s1 := movb2_ibp hd hs0 hsd hc1 hu1 hga1 i x
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    have hκ : MovcB (movb2_kfar d s i) := movc1_K_B (movc1_kfar_K hs0 i)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    obtain ⟨A, hA0, hA⟩ := movc1_B_Bd hκ 1
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    have s2 := movc1_ibp hd hs0 hsd hκ.1 hA hc0 hu0 hga0 i x
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    exact s1.trans s2
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  have hgrad&#x27; : ∀ i : Fin d, HRS.Whole.convFun (rieszKernel d s)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      (fun y =&gt; gradient (fun z =&gt; Real.sqrt (ρ z) * v z) y i) x =
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>      movb2_T (movb2_gloc d s) (mova3b1_Dj i h) x + movb2_T (movb2_kfar d s i) h x := fun i =&gt; hgrad i
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  rw [hlap]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  simp only [hgrad&#x27;]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>end Decomp
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>/-! ### Thermal data -/
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>lemma movc1_proj_norm_le (i : Fin d) : ‖(EuclideanSpace.proj i : Euc d →L[ℝ] ℝ)‖ ≤ 1 := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  refine ContinuousLinearMap.opNorm_le_bound _ zero_le_one fun w =&gt; ?_
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  have : ‖(EuclideanSpace.proj i : Euc d →L[ℝ] ℝ) w‖ ≤ ‖w‖ := by simpa using PiLp.norm_apply_le w i
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  simpa using this
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>lemma movc1_comp_iter_le {F : Euc d → Euc d} (hF : ContDiff ℝ ∞ F) (i : Fin d) (k : ℕ) (x : Euc d) :
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    ‖iteratedFDeriv ℝ k (fun y =&gt; F y i) x‖ ≤ ‖iteratedFDeriv ℝ k F x‖ := by
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have h := (EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).norm_iteratedFDeriv_comp_left
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    (hF.contDiffAt) (x := x) (n := k) (by exact_mod_cast le_top)
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have e : ((EuclideanSpace.proj i : Euc d →L[ℝ] ℝ) ∘ F) = fun y =&gt; F y i := rfl
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  rw [e] at h
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  exact h.trans (mul_le_of_le_one_left (norm_nonneg _) (movc1_proj_norm_le i))
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>lemma movc1_comp_B {F : Euc d → Euc d} (hF : ContDiff ℝ ∞ F) (hFb : ∀ k : ℕ, ∃ M : ℝ, ∀ x, ‖iteratedFDeriv ℝ k F x‖ ≤ M)
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    (i : Fin d) : MovcB (fun y =&gt; F y i) := by
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  refine ⟨(EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).contDiff.comp hF, fun k =&gt; ?_⟩
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  obtain ⟨M, hM⟩ := hFb k
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  exact ⟨M, fun x =&gt; (movc1_comp_iter_le hF i k x).trans (hM x)⟩
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>/-- Data of the thermal density: `ψ = √ρ ∈ MovcG`, and the coordinates `ℓ_i = ∂_i log ρ` are smooth with linearly
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>growing derivatives. -/
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>structure MovcTherm (d : ℕ) (ρ : Euc d → ℝ) (q&#x27; : ℝ) (B : Euc d → Euc d) : Prop where
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  hq : 0 &lt; q&#x27;
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>  R : HRS.MS.Gap.GapRef d ρ q&#x27; B
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>lemma MovcTherm.psi {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (h : MovcTherm d ρ q&#x27; B) :
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    MovcG (fun y =&gt; Real.sqrt (ρ y)) := by
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>  obtain ⟨hs, -, c, hc, hk⟩ := mv0_sqrt_gauss h.hq h.R
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  exact ⟨hs, c, hc, hk⟩
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>lemma MovcTherm.ell_eq {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (h : MovcTherm d ρ q&#x27; B) (x : Euc d) (i : Fin d) :
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    gradient (fun y =&gt; Real.log (ρ y)) x i = -q&#x27; * x i + B x i := by
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  rw [mov0_grad_log h.R x]
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>  simp
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>lemma MovcTherm.B_B {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (h : MovcTherm d ρ q&#x27; B) (i : Fin d) :
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    MovcB (fun y =&gt; B y i) := by
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  refine movc1_comp_B (mov0_B_smooth h.R) (fun k =&gt; ?_) i
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  obtain ⟨Mb, hMb⟩ := h.R.cb k
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>  exact ⟨Mb, fun x =&gt; hMb.2 k le_rfl x⟩
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>lemma MovcTherm.ell_smooth {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (h : MovcTherm d ρ q&#x27; B) :
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    ContDiff ℝ ∞ (fun y =&gt; gradient (fun z =&gt; Real.log (ρ z)) y) := by
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  have : (fun y =&gt; gradient (fun z =&gt; Real.log (ρ z)) y) = fun y =&gt; (-q&#x27;) • y + B y :=
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    funext (mov0_grad_log h.R)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  rw [this]
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  exact (contDiff_id.const_smul (-q&#x27;)).add (mov0_B_smooth h.R)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>lemma MovcTherm.psi_ell {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (h : MovcTherm d ρ q&#x27; B) (i : Fin d) :
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    MovcG (fun x =&gt; Real.sqrt (ρ x) * gradient (fun y =&gt; Real.log (ρ y)) x i) := by
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  obtain ⟨hdl, M, hM⟩ := mv0_dlog_bounds h.hq.le h.R
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  have hsm := h.ell_smooth
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  have hG : MovcG (fun x =&gt; gradient (fun y =&gt; Real.log (ρ y)) x i * Real.sqrt (ρ x)) := by
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    refine movc1_G_mul h.psi ((EuclideanSpace.proj i : Euc d →L[ℝ] ℝ).contDiff.comp hsm) (fun k =&gt; ?_)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    rcases Nat.eq_zero_or_pos k with h0 | hpos
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    · subst h0
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>      refine ⟨max (max q&#x27; M) 0, le_max_right _ _, fun x =&gt; ?_⟩
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      rw [norm_iteratedFDeriv_zero]
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      have h1 : ‖gradient (fun y =&gt; Real.log (ρ y)) x i‖ ≤ ‖gradient (fun y =&gt; Real.log (ρ y)) x‖ := by
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        simpa using PiLp.norm_apply_le (gradient (fun y =&gt; Real.log (ρ y)) x) i
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>      have h2 := hM x
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>      have hm1 : q&#x27; ≤ max (max q&#x27; M) 0 := (le_max_left _ _).trans (le_max_left _ _)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      have hm2 : M ≤ max (max q&#x27; M) 0 := (le_max_right _ _).trans (le_max_left _ _)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>      have hn := norm_nonneg x
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>      change ‖(gradient (fun y =&gt; Real.log (ρ y)) x) i‖ ≤ _
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      nlinarith [mul_le_mul_of_nonneg_right hm1 hn]
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    · obtain ⟨C, hC⟩ := hdl k hpos
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      refine ⟨max C 0, le_max_right _ _, fun x =&gt; ?_⟩
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      refine (movc1_comp_iter_le hsm i k x).trans ((hC x).trans ?_)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      have := norm_nonneg x
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      nlinarith [le_max_left C 0, le_max_right C 0]
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>  have e : (fun x =&gt; Real.sqrt (ρ x) * gradient (fun y =&gt; Real.log (ρ y)) x i) =
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      fun x =&gt; gradient (fun y =&gt; Real.log (ρ y)) x i * Real.sqrt (ρ x) := by funext x; ring
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>  rw [e]; exact hG
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>/-! ### Local terms for the profile `h = ψ v` -/
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>lemma movc1_D_coe (F : 𝓢R) (i : Fin d) : (⇑(mova1_D i F) : Euc d → ℝ) = mova3b1_Dj i ⇑F := by
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  funext x; exact mova1_D_apply i F x
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>/-- Local term with two derivatives on the profile. -/
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>theorem movc1_loc_D2 {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) {ps b : Euc d → ℝ} (hps : MovcG ps) (hb : MovcG b)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    (r σ : ℝ) (hσ : σ ≤ r - 1 - 1 + ((d : ℝ) - s)) :
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ (v : 𝓢R) (i : Fin d),
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>      MemOsc σ (fun x =&gt; b x * movb2_T (movb2_gloc d s) (mova3b1_Dj i (mova3b1_Dj i (fun y =&gt; ps y * v y))) x) ∧
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>        oscNorm σ (fun x =&gt; b x * movb2_T (movb2_gloc d s)
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          (mova3b1_Dj i (mova3b1_Dj i (fun y =&gt; ps y * v y))) x) ≤ C * oscNorm r v := by
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>  obtain ⟨C1, hC1, hB1⟩ := movc1_B1 hps r
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  obtain ⟨C2, hC2, hloc⟩ := movc1_loc_term hs0 hsd hb hσ
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  refine ⟨C2 * C1, mul_nonneg hC2 hC1, fun v i =&gt; ?_⟩
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  obtain ⟨F, hF⟩ := movc1_G_schwartz (movc1_schwartz_G_mul hps v)
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  obtain ⟨hFm, hFn⟩ := hB1 v
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  rw [← hF] at hFm hFn ⊢
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  obtain ⟨hD1, hD1n⟩ := movc1_sob_D F i hFm
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  obtain ⟨hD2, hD2n⟩ := movc1_sob_D (mova1_D i F) i hD1
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>  rw [← movc1_D_coe, ← movc1_D_coe]
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  obtain ⟨h1, h2⟩ := hloc _ hD2
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  have h3 : Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (r - 1 - 1) (⇑(mova1_D i (mova1_D i F)))) ≤ C1 * oscNorm r v :=
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    (Real.sqrt_le_sqrt (hD2n.trans hD1n)).trans hFn
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  calc C2 * Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (r - 1 - 1) (⇑(mova1_D i (mova1_D i F))))
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>      ≤ C2 * (C1 * oscNorm r v) := mul_le_mul_of_nonneg_left h3 hC2
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    _ = _ := by ring
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>/-- Local term with one derivative on the profile. -/
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>theorem movc1_loc_D1 {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) {ps b : Euc d → ℝ} (hps : MovcG ps) (hb : MovcG b)
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    (r σ : ℝ) (hσ : σ ≤ r - 1 + ((d : ℝ) - s)) :
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ (v : 𝓢R) (i : Fin d),
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>      MemOsc σ (fun x =&gt; b x * movb2_T (movb2_gloc d s) (mova3b1_Dj i (fun y =&gt; ps y * v y)) x) ∧
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>        oscNorm σ (fun x =&gt; b x * movb2_T (movb2_gloc d s)
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>          (mova3b1_Dj i (fun y =&gt; ps y * v y)) x) ≤ C * oscNorm r v := by
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>  obtain ⟨C1, hC1, hB1⟩ := movc1_B1 hps r
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  obtain ⟨C2, hC2, hloc⟩ := movc1_loc_term hs0 hsd hb hσ
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>  refine ⟨C2 * C1, mul_nonneg hC2 hC1, fun v i =&gt; ?_⟩
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>  obtain ⟨F, hF⟩ := movc1_G_schwartz (movc1_schwartz_G_mul hps v)
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>  obtain ⟨hFm, hFn⟩ := hB1 v
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>  rw [← hF] at hFm hFn ⊢
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  obtain ⟨hD1, hD1n⟩ := movc1_sob_D F i hFm
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  rw [← movc1_D_coe]
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  obtain ⟨h1, h2⟩ := hloc _ hD1
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  have h3 : Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (r - 1) (⇑(mova1_D i F))) ≤ C1 * oscNorm r v :=
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    (Real.sqrt_le_sqrt hD1n).trans hFn
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  calc C2 * Real.sqrt (HRS.PDE.ToolboxRd.sobolevNormSq (r - 1) (⇑(mova1_D i F)))
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>      ≤ C2 * (C1 * oscNorm r v) := mul_le_mul_of_nonneg_left h3 hC2
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    _ = _ := by ring
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>/-! ### Families and linear combinations in `Σ^σ` -/
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>lemma movc1_osc_fam (σ : ℝ) {f : Fin d → Euc d → ℝ} {C : Fin d → ℝ} {K N : ℝ} (hK : ∀ i, C i ≤ K)
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>    (hN : 0 ≤ N) (h : ∀ i, MemOsc σ (f i) ∧ oscNorm σ (f i) ≤ C i * N) :
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>    MemOsc σ (fun x =&gt; ∑ i, f i x) ∧ oscNorm σ (fun x =&gt; ∑ i, f i x) ≤ (d * K) * N := by
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>  obtain ⟨h1, h2⟩ := movc1_osc_sum σ Finset.univ (f := f) (fun i _ =&gt; (h i).1)
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>  refine ⟨h1, h2.trans ?_⟩
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>  calc ∑ i, oscNorm σ (f i) ≤ ∑ _i : Fin d, K * N :=
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>        Finset.sum_le_sum fun i _ =&gt; (h i).2.trans (mul_le_mul_of_nonneg_right (hK i) hN)
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>    _ = (d * K) * N := by rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]; ring
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>lemma movc1_osc_lin (σ : ℝ) {f g : Euc d → ℝ} (a b : ℝ) (hf : MemOsc σ f) (hg : MemOsc σ g) :
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    MemOsc σ (fun x =&gt; a * f x + b * g x) ∧
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>      oscNorm σ (fun x =&gt; a * f x + b * g x) ≤ |a| * oscNorm σ f + |b| * oscNorm σ g := by
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>  obtain ⟨h1, h1n⟩ := movc1_osc_smul σ a hf
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  obtain ⟨h2, h2n⟩ := movc1_osc_smul σ b hg
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  obtain ⟨h3, h3n⟩ := movc1_osc_add σ h1 h2
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>  refine ⟨h3, h3n.trans ?_⟩
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>  rw [h1n, h2n]
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>/-! ### The six families of terms of `P v` -/
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>section Main
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>variable {s : ℝ} {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d}
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>/-- `ψ g_loc * ∂_i∂_i h`. -/
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>def movc1_U1 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  Real.sqrt (ρ x) * movb2_T (movb2_gloc d s)
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>    (mova3b1_Dj i (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y))) x
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>/-- `(∂_i κ_i) * h · ψ`. -/
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>def movc1_U2 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  movb2_T (mova3b1_Dj i (movb2_kfar d s i)) (fun y =&gt; Real.sqrt (ρ y) * v y) x * Real.sqrt (ρ x)
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>/-- `ψ ∂_i log ρ · (g_loc * ∂_i h)`. -/
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>def movc1_U3 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  (Real.sqrt (ρ x) * gradient (fun y =&gt; Real.log (ρ y)) x i) *
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    movb2_T (movb2_gloc d s) (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y)) x
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>/-- `((z_i κ_i) * h) ψ`. -/
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>def movc1_U4 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>  movb2_T (fun z =&gt; z i * movb2_kfar d s i z) (fun y =&gt; Real.sqrt (ρ y) * v y) x * Real.sqrt (ρ x)
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>/-- `(κ_i * (y_i ψ v)) ψ`. -/
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>def movc1_U5 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>  movb2_T (movb2_kfar d s i) (fun y =&gt; (y i * Real.sqrt (ρ y)) * v y) x * Real.sqrt (ρ x)
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>/-- `B_i · ((κ_i * h) ψ)`. -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>def movc1_U6 (d : ℕ) (s : ℝ) (ρ : Euc d → ℝ) (B : Euc d → Euc d) (v : Euc d → ℝ) (i : Fin d) (x : Euc d) : ℝ :=
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>  B x i * (movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y) x * Real.sqrt (ρ x))
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>variable (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>include hd hs0 hsd
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>/-- **Pointwise identity**: `P v = -∑U1 - ∑U2 - ∑U3 + q&#x27; ∑U4 + q&#x27; ∑U5 - ∑U6`. -/
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>theorem movc1_P_identity (T : MovcTherm d ρ q&#x27; B) (v : 𝓢R) (x : Euc d) :
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    movP d s ρ v x = -(∑ i, movc1_U1 d s ρ v i x) - (∑ i, movc1_U2 d s ρ v i x) - (∑ i, movc1_U3 d s ρ v i x)
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      + q&#x27; * (∑ i, movc1_U4 d s ρ v i x) + q&#x27; * (∑ i, movc1_U5 d s ρ v i x) - ∑ i, movc1_U6 d s ρ B v i x := by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  rw [movc1_P_decomp hd hs0 hsd T.R.pos T.R.smooth T.psi v x]
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  set ψx := Real.sqrt (ρ x) with hψx
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  have hh : MovcG (fun y =&gt; Real.sqrt (ρ y) * v y) := movc1_schwartz_G_mul T.psi v
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>  have hper : ∀ i : Fin d,
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>      -ψx * (movb2_T (movb2_gloc d s) (mova3b1_Dj i (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y))) x +
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>        movb2_T (mova3b1_Dj i (movb2_kfar d s i)) (fun y =&gt; Real.sqrt (ρ y) * v y) x +
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>        gradient (fun y =&gt; Real.log (ρ y)) x i *
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>          (movb2_T (movb2_gloc d s) (mova3b1_Dj i (fun y =&gt; Real.sqrt (ρ y) * v y)) x +
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>            movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y) x)) =
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>      -movc1_U1 d s ρ v i x - movc1_U2 d s ρ v i x - movc1_U3 d s ρ v i x + q&#x27; * movc1_U4 d s ρ v i x +
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>        q&#x27; * movc1_U5 d s ρ v i x - movc1_U6 d s ρ B v i x := by
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    intro i
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    have hκ : MovcB (movb2_kfar d s i) := movc1_K_B (movc1_kfar_K hs0 i)
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>    have hκ&#x27; : MovcB (fun z =&gt; z i * movb2_kfar d s i z) := movc1_coord_B (movc1_kfar_K hs0 i) i
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>    have hxT := movc1_xT hd hs0 hsd i hκ hκ&#x27; hh x
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>    have hU5 : movb2_T (movb2_kfar d s i) (fun y =&gt; (y i * Real.sqrt (ρ y)) * v y) x =
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>        movb2_T (movb2_kfar d s i) (fun y =&gt; y i * (Real.sqrt (ρ y) * v y)) x := by
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>      congr 1; funext y; ring
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    simp only [movc1_U1, movc1_U2, movc1_U3, movc1_U4, movc1_U5, movc1_U6]
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    rw [hU5, T.ell_eq x i]
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    linear_combination (q&#x27; * ψx) * hxT
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>  rw [← Finset.sum_add_distrib, ← Finset.sum_add_distrib, Finset.mul_sum]
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>  rw [Finset.sum_congr rfl fun i _ =&gt; hper i]
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>  simp only [Finset.sum_add_distrib, Finset.sum_sub_distrib, Finset.sum_neg_distrib, Finset.mul_sum]
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>omit hd hs0 hsd in
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>/-- A uniform constant for a finite family of constants. -/
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>lemma movc1_unif_const {ι : Type*} [Fintype ι] (C : ι → ℝ) (hC : ∀ i, 0 ≤ C i) :
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>    ∃ K : ℝ, 0 ≤ K ∧ ∀ i, C i ≤ K :=
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>  ⟨∑ i, C i, Finset.sum_nonneg fun i _ =&gt; hC i, fun i =&gt; Finset.single_le_sum (f := C) (fun i _ =&gt; hC i) (Finset.mem_univ i)⟩
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>/-- **`P` is bounded `Σ^r → Σ^{r-a}` for every real `r`** (Schwartz `v`), general thermal data. -/
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>theorem movc1_P_bound_gen (T : MovcTherm d ρ q&#x27; B) (r : ℝ) :
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ v : 𝓢R, MemOsc (r - movA d s) (movP d s ρ v) ∧
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      oscNorm (r - movA d s) (movP d s ρ v) ≤ C * oscNorm r v := by
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>  set σ : ℝ := r - movA d s with hσ
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>  have hma1 : (1 : ℝ) ≤ movA d s := le_max_left _ _
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>  have hma2 : (s : ℝ) + 2 - d ≤ movA d s := le_max_right _ _
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  have hds : (0 : ℝ) &lt; d - s := by linarith
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>  have hσ1 : σ ≤ r - 1 - 1 + ((d : ℝ) - s) := by rw [hσ]; linarith
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  have hσ2 : σ ≤ r - 1 + ((d : ℝ) - s) := by rw [hσ]; linarith
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  have hψ := T.psi
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  -- U1
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>  obtain ⟨C1, hC1, h1⟩ := movc1_loc_D2 hs0 hsd hψ hψ r σ hσ1
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>  -- U3 (one constant per coordinate)
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  choose C3 hC3 h3 using fun i : Fin d =&gt; movc1_loc_D1 hs0 hsd hψ (T.psi_ell i) r σ hσ2
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  -- far kernels
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>  have hK : ∀ i : Fin d, MovcK (movb2_kfar d s i) := fun i =&gt; movc1_kfar_K hs0 i
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>  choose C2 hC2 h2 using fun i : Fin d =&gt;
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>    movc1_far_term hd hs0 hsd hψ hψ (movc1_K_B (movc1_K_Dj (hK i) i)) r σ
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>  choose C4 hC4 h4 using fun i : Fin d =&gt;
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    movc1_far_term hd hs0 hsd hψ hψ (movc1_coord_B (hK i) i) r σ
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>  choose C5 hC5 h5 using fun i : Fin d =&gt;
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    movc1_far_term hd hs0 hsd (movc1_G_coord hψ i) hψ (movc1_K_B (hK i)) r σ
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>  choose C6 hC6 h6 using fun i : Fin d =&gt;
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>    movc1_far_term hd hs0 hsd hψ hψ (movc1_K_B (hK i)) r σ
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  choose CB hCB hB using fun i : Fin d =&gt; movc1_mult_B (T.B_B i) σ
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>  obtain ⟨K2, hK2, hK2&#x27;⟩ := movc1_unif_const C2 hC2
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>  obtain ⟨K3, hK3, hK3&#x27;⟩ := movc1_unif_const C3 hC3
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  obtain ⟨K4, hK4, hK4&#x27;⟩ := movc1_unif_const C4 hC4
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>  obtain ⟨K5, hK5, hK5&#x27;⟩ := movc1_unif_const C5 hC5
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  obtain ⟨K6, hK6, hK6&#x27;⟩ := movc1_unif_const (fun i =&gt; CB i * C6 i) (fun i =&gt; mul_nonneg (hCB i) (hC6 i))
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>  refine ⟨(d * C1) + (d * K2) + (d * K3) + |q&#x27;| * (d * K4) + |q&#x27;| * (d * K5) + (d * K6), by positivity, fun v =&gt; ?_⟩
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>  have hN : 0 ≤ oscNorm r v := movc1_osc_nonneg _ _
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  obtain ⟨hm1, hn1⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U1 d s ρ v i) (C := fun _ =&gt; C1) (K := C1) (N := oscNorm r v)
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>    (fun _ =&gt; le_rfl) hN (fun i =&gt; h1 v i)
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>  obtain ⟨hm2, hn2⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U2 d s ρ v i) (C := C2) (K := K2) (N := oscNorm r v)
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>    hK2&#x27; hN (fun i =&gt; h2 i v)
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  obtain ⟨hm3, hn3⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U3 d s ρ v i) (C := C3) (K := K3) (N := oscNorm r v)
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>    hK3&#x27; hN (fun i =&gt; h3 i v i)
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>  obtain ⟨hm4, hn4⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U4 d s ρ v i) (C := C4) (K := K4) (N := oscNorm r v)
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>    hK4&#x27; hN (fun i =&gt; h4 i v)
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>  obtain ⟨hm5, hn5⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U5 d s ρ v i) (C := C5) (K := K5) (N := oscNorm r v)
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    hK5&#x27; hN (fun i =&gt; h5 i v)
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>  obtain ⟨hm6, hn6⟩ := movc1_osc_fam σ (f := fun i =&gt; movc1_U6 d s ρ B v i) (C := fun i =&gt; CB i * C6 i) (K := K6)
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>    (N := oscNorm r v) hK6&#x27; hN (fun i =&gt; by
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>      obtain ⟨g1, g2⟩ := h6 i v
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>      obtain ⟨b1, b2⟩ := hB i _ g1
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>      refine ⟨b1, b2.trans ?_⟩
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>      calc CB i * oscNorm σ (fun x =&gt; movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y) x * Real.sqrt (ρ x))
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>          ≤ CB i * (C6 i * oscNorm r v) := mul_le_mul_of_nonneg_left g2 (hCB i)
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>        _ = CB i * C6 i * oscNorm r v := by ring)
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  obtain ⟨hp1, hpn1⟩ := movc1_osc_lin σ (-1) (-1) hm1 hm2
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>  obtain ⟨hp2, hpn2⟩ := movc1_osc_lin σ 1 (-1) hp1 hm3
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>  obtain ⟨hp3, hpn3⟩ := movc1_osc_lin σ 1 q&#x27; hp2 hm4
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>  obtain ⟨hp4, hpn4⟩ := movc1_osc_lin σ 1 q&#x27; hp3 hm5
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>  obtain ⟨hp5, hpn5⟩ := movc1_osc_lin σ 1 (-1) hp4 hm6
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>  have e : movP d s ρ v = fun x =&gt; 1 * (1 * (1 * (1 * (-1 * (∑ i, movc1_U1 d s ρ v i x) +
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>      -1 * (∑ i, movc1_U2 d s ρ v i x)) + -1 * (∑ i, movc1_U3 d s ρ v i x)) +
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>      q&#x27; * (∑ i, movc1_U4 d s ρ v i x)) + q&#x27; * (∑ i, movc1_U5 d s ρ v i x)) +
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>      -1 * (∑ i, movc1_U6 d s ρ B v i x) := by
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>    funext x
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    rw [movc1_P_identity hd hs0 hsd T v x]
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>    ring
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>  rw [e]
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>  refine ⟨hp5, ?_⟩
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  simp only [abs_one, abs_neg] at hpn1 hpn2 hpn3 hpn4 hpn5
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>  have hq0 : 0 ≤ |q&#x27;| := abs_nonneg _
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  have hq4 := mul_le_mul_of_nonneg_left hn4 hq0
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>  have hq5 := mul_le_mul_of_nonneg_left hn5 hq0
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>  linarith
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>end Main
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>/-! ### Step 4(b): the far potential in pairing form -/
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>lemma movc1_Q_add : ∀ {K m : ℕ} {A A&#x27; : ℝ} {b1 b2 : Euc d → ℝ}, ContDiff ℝ ∞ b1 → ContDiff ℝ ∞ b2 →
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>    mova3b2_Q K m A b1 → mova3b2_Q K m A&#x27; b2 → mova3b2_Q K m (A + A&#x27;) (fun x =&gt; b1 x + b2 x) := by
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>  intro K
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>  induction K with
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  | zero =&gt;
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>    intro m A A&#x27; b1 b2 _ _ h1 h2 x
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    calc |b1 x + b2 x| * (1 + ‖x‖) ^ m ≤ (|b1 x| + |b2 x|) * (1 + ‖x‖) ^ m :=
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>          mul_le_mul_of_nonneg_right (abs_add_le _ _) (by positivity)
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>      _ = |b1 x| * (1 + ‖x‖) ^ m + |b2 x| * (1 + ‖x‖) ^ m := by ring
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>      _ ≤ A + A&#x27; := add_le_add (h1 x) (h2 x)
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>  | succ K ih =&gt;
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    intro m A A&#x27; b1 b2 hb1 hb2 h1 h2
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>    refine ⟨fun x =&gt; ?_, fun j =&gt; ?_⟩
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>    · calc |b1 x + b2 x| * (1 + ‖x‖) ^ m ≤ (|b1 x| + |b2 x|) * (1 + ‖x‖) ^ m :=
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>            mul_le_mul_of_nonneg_right (abs_add_le _ _) (by positivity)
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>        _ = |b1 x| * (1 + ‖x‖) ^ m + |b2 x| * (1 + ‖x‖) ^ m := by ring
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>        _ ≤ A + A&#x27; := add_le_add (h1.1 x) (h2.1 x)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    · have e : mova3b1_Dj j (fun x =&gt; b1 x + b2 x) = fun x =&gt; mova3b1_Dj j b1 x + mova3b1_Dj j b2 x := by
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>        funext x
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>        simp only [mova3b1_Dj]
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        rw [show (fun x =&gt; b1 x + b2 x) = b1 + b2 from rfl,
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>          ((hb1.differentiable (by simp) x).hasFDerivAt.add (hb2.differentiable (by simp) x).hasFDerivAt).fderiv]
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>        rfl
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>      rw [e]
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>      exact ih (mova3b2_contDiff_Dj j hb1) (mova3b2_contDiff_Dj j hb2) (h1.2 j) (h2.2 j)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>section FarPair
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>variable {s : ℝ} (hd : 1 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>include hd hs0 hsd
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>/-- `∂_i (g_far * h) = κ_i * h` with `κ_i = ∂_i g_far`. -/
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>lemma movc1_dUfar {h : Euc d → ℝ} (hh : MovcG h) (i : Fin d) :
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    mova3b1_Dj i (movb2_T (movb2_gfar d s) h) = movb2_T (movb2_kfar d s i) h := by
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  funext x
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>  obtain ⟨c, E, hc, hE, hga⟩ := movc1_G_GA hh 1
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>  have hu : ContDiff ℝ 1 h := hh.1.of_le (by exact_mod_cast le_top)
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  obtain ⟨hF, hL⟩ := movb2_T_fderiv hd hs0 hsd (movb2_gfar_ker hd hs0 hsd) hc hu hga x
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>  simp only [mova3b1_Dj]
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>  rw [hF.fderiv, hL]
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>  exact movb2_ibp hd hs0 hsd hc hu hga i x
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>/-- **Far field, pairing form** (plan step 4(b), `mv1_far_pair`): for `U_far = g_far * (ψ v)` and every real `r`,
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>the coordinate-iterated derivatives (order `≤ K`) of `∂_i U_far` and of `x_{i&#x27;} ∂_i U_far` are bounded, uniformly
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>in `x`, by `C ‖v‖_{Σ^r}` (`mova3b2_Q K 0 A b` means `|∂_{j_1}⋯∂_{j_k} b| ≤ A` for `k ≤ K`); in particular
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>`|∂_i U_far(x)| + ‖x‖ |∂_i U_far(x)| ≤ d C ‖v‖_{Σ^r}`. -/
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>theorem mv1_far_pair {ρ : Euc d → ℝ} {q&#x27; : ℝ} {B : Euc d → Euc d} (T : MovcTherm d ρ q&#x27; B) (r : ℝ) (K : ℕ) :
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ (i i&#x27; : Fin d) (v : 𝓢R),
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      mova3b2_Q K 0 (C * oscNorm r v)
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>        (fun x =&gt; mova3b1_Dj i (movb2_T (movb2_gfar d s) (fun y =&gt; Real.sqrt (ρ y) * v y)) x) ∧
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>      mova3b2_Q K 0 (C * oscNorm r v)
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>        (fun x =&gt; x i&#x27; * mova3b1_Dj i (movb2_T (movb2_gfar d s) (fun y =&gt; Real.sqrt (ρ y) * v y)) x) := by
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  obtain ⟨C0, hC0, hfar⟩ := movc1_farK hd hs0 hsd T.psi r
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>  have hK : ∀ i : Fin d, MovcK (movb2_kfar d s i) := fun i =&gt; movc1_kfar_K hs0 i
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  choose C1 hC1 hfar1 using fun i&#x27; : Fin d =&gt; movc1_farK hd hs0 hsd (movc1_G_coord T.psi i&#x27;) r
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>  -- derivative bounds of the kernels
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>  choose A hA0 hA using fun i : Fin d =&gt; movc1_B_Bd (movc1_K_B (hK i)) (⌈|r|⌉₊ + K)
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>  choose A&#x27; hA&#x27;0 hA&#x27; using fun p : Fin d × Fin d =&gt;
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    movc1_B_Bd (movc1_coord_B (hK p.1) p.2) (⌈|r|⌉₊ + K)
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>  have hCt : ∀ p : Fin d × Fin d, 0 ≤ C0 * A p.1 + C0 * A&#x27; p + C1 p.2 * A p.1 := fun p =&gt;
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    add_nonneg (add_nonneg (mul_nonneg hC0 (hA0 _)) (mul_nonneg hC0 (hA&#x27;0 p))) (mul_nonneg (hC1 _) (hA0 _))
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>  obtain ⟨Kt, hKt, hKt&#x27;⟩ := movc1_unif_const _ hCt
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>  refine ⟨Kt, hKt, fun i i&#x27; v =&gt; ?_⟩
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>  have hh : MovcG (fun y =&gt; Real.sqrt (ρ y) * v y) := movc1_schwartz_G_mul T.psi v
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>  have hN : 0 ≤ oscNorm r v := movc1_osc_nonneg _ _
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>  have hΘ : mova3b2_Q K 0 (C0 * A i * oscNorm r v) (movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y)) :=
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>    hfar K (hA0 i) (movc1_K_B (hK i)) (hA i) v
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>  have hΘ1 : mova3b2_Q K 0 (C0 * A&#x27; (i, i&#x27;) * oscNorm r v)
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>      (movb2_T (fun z =&gt; z i&#x27; * movb2_kfar d s i z) (fun y =&gt; Real.sqrt (ρ y) * v y)) :=
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    hfar K (hA&#x27;0 (i, i&#x27;)) (movc1_coord_B (hK i) i&#x27;) (hA&#x27; (i, i&#x27;)) v
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>  have hΘ2 : mova3b2_Q K 0 (C1 i&#x27; * A i * oscNorm r v)
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>      (movb2_T (movb2_kfar d s i) (fun y =&gt; (y i&#x27; * Real.sqrt (ρ y)) * v y)) :=
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>    hfar1 i&#x27; K (hA0 i) (movc1_K_B (hK i)) (hA i) v
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>  have hle : ∀ t : ℝ, 0 ≤ t → t ≤ Kt → t * oscNorm r v ≤ Kt * oscNorm r v := fun t _ ht =&gt;
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>    mul_le_mul_of_nonneg_right ht hN
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>  have hkt := hKt&#x27; (i, i&#x27;)
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>  simp only at hkt
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>  have e1 : (fun x =&gt; mova3b1_Dj i (movb2_T (movb2_gfar d s) (fun y =&gt; Real.sqrt (ρ y) * v y)) x) =
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>      movb2_T (movb2_kfar d s i) (fun y =&gt; Real.sqrt (ρ y) * v y) := by
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    funext x
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>    rw [movc1_dUfar hd hs0 hsd hh i]
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  refine ⟨?_, ?_⟩
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  · rw [e1]
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    refine mova3b2_Q_mono_A ?_ hΘ
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    refine mul_le_mul_of_nonneg_right ?_ hN
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    have : 0 ≤ C0 * A&#x27; (i, i&#x27;) := mul_nonneg hC0 (hA&#x27;0 _)
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    have : 0 ≤ C1 i&#x27; * A i := mul_nonneg (hC1 _) (hA0 _)
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    linarith
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>  · have e2 : (fun x =&gt; x i&#x27; * mova3b1_Dj i (movb2_T (movb2_gfar d s) (fun y =&gt; Real.sqrt (ρ y) * v y)) x) =
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>        fun x =&gt; movb2_T (fun z =&gt; z i&#x27; * movb2_kfar d s i z) (fun y =&gt; Real.sqrt (ρ y) * v y) x +
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>          movb2_T (movb2_kfar d s i) (fun y =&gt; (y i&#x27; * Real.sqrt (ρ y)) * v y) x := by
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>      funext x
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      rw [movc1_dUfar hd hs0 hsd hh i, movc1_xT hd hs0 hsd i&#x27; (movc1_K_B (hK i)) (movc1_coord_B (hK i) i&#x27;) hh x]
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      congr 1
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>      congr 1; funext y; ring
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>    rw [e2]
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>    refine mova3b2_Q_mono_A ?_ (movc1_Q_add (movc1_T_tg hd hs0 hsd (movc1_coord_B (hK i) i&#x27;) hh).1
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>      (movc1_T_tg hd hs0 hsd (movc1_K_B (hK i)) (movc1_schwartz_G_mul (movc1_G_coord T.psi i&#x27;) v)).1
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>      hΘ1 hΘ2)
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>    have h0 : 0 ≤ C0 * A i * oscNorm r v := mul_nonneg (mul_nonneg hC0 (hA0 i)) hN
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>    have h3 := mul_le_mul_of_nonneg_right hkt hN
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>    nlinarith
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>end FarPair
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>/-! ### The thermal statement and the tie with the frozen `mov_operators_P` -/
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>/-- **`mov_P_bound`** (S6.1, step 9, plan row 9): for every real `r` there is `C` with
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>`P v ∈ Σ^{r-a}` and `‖P v‖_{Σ^{r-a}} ≤ C ‖v‖_{Σ^r}` for all Schwartz `v` (`a = movA d s`).  True for all real `r`,
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>in particular for `r ≥ -a`. -/
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>theorem mov_P_bound {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β q : ℝ) (hβ : 0 &lt; β) (hq : 0 &lt; q)
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>    (ρ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ) (r : ℝ) :
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ v : SchwartzMap (Euc d) ℝ, MemOsc (r - movA d s) (movP d s ρ v) ∧
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>      oscNorm (r - movA d s) (movP d s ρ v) ≤ C * oscNorm r v := by
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>  obtain ⟨B, -, hR, -⟩ := mv0_gapref hd hs0 hsd hq hβ hρ
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>  exact movc1_P_bound_gen hd1 hs0 hsd ⟨mul_pos hβ hq, hR⟩ r
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>/-- **`mov_operators_P_proof`**: the frozen statement `HRS.Whole.mov_operators_P` (S6.1, first assertion). -/
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>theorem mov_operators_P_proof {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β q : ℝ) (hβ : 0 &lt; β)
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>    (hq : 0 &lt; q) (ρ : Euc d → ℝ) (hρ : IsThermalEquilibrium d s q β ρ) :
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>    ∀ r : ℝ, -movA d s ≤ r → ∃ C : ℝ, ∀ v : SchwartzMap (Euc d) ℝ,
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>      MemOsc (r - movA d s) (movP d s ρ v) ∧
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>        oscNorm (r - movA d s) (movP d s ρ v) ≤ C * oscNorm r v := by
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>  intro r _
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>  obtain ⟨C, -, hC⟩ := mov_P_bound hd hs0 hsd β q hβ hq ρ hρ r
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>  exact ⟨C, hC⟩
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>end HRS.MS.MovC1
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>/-- Tie: `mov_operators_P_proof` has exactly the type of the frozen statement. -/
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>example := (@HRS.MS.MovC1.mov_operators_P_proof : type_of% @HRS.Whole.mov_operators_P)
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>end
+</span></code></pre></main></body></html>

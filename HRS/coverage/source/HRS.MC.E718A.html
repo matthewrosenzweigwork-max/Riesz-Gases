@@ -1,0 +1,139 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.E718A · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.E718A</code></h1><p><a href="../../lean/HRS/MC/E718A.lean">Open the unaltered Lean file</a> · 138 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.S7E5
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># E718A: Proposition 7.18, non-tightness and absence of a square-mean limit
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Proofs of the two statements `HRS.chaos_laws_not_tight` and `HRS.chaos_no_L2_limit` (stated in `HRS/MC/S7Chaos.lean`, with
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>the statements below copied verbatim).  Both follow from the proved packets `S7E4.e4_sigma_top` (the variance of `Q_ε`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>tends to infinity) and `S7E5.s7_E5_not_tight_proof` (`P(|Q_ε| &gt; R) → 1`).
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* Not tight: a tight family has, for the level `1/2`, a compact set `K ⊆ [-R,R]` with `P(Q_{ε_n} ∉ K) ≤ 1/2` for all `n`,
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  hence `P(|Q_{ε_n}| &gt; R) ≤ 1/2`, against `P(|Q_{ε_n}| &gt; R) → 1`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* No limit in square mean: if `E|Q_{ε_n} - Q₀|² → 0`, then `Q₀` is square integrable (as `Q_{ε_n}` is for one `n`, since
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  `E Q_{ε_n}² &gt; 0` there), and `E Q_{ε_n}² ≤ 2 E|Q_{ε_n} - Q₀|² + 2 E Q₀²` stays bounded, against `E Q_ε² → ∞`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>-/
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open scoped ENNReal NNReal
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>noncomputable section
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>namespace HRS.MC.E718
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open HRS HRS.Sec7 HRS.MC.Sec7
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>variable {d : ℕ}
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem chaos_laws_not_tight_proof (hd : 2 ≤ d) {s : ℝ} (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) {β : ℝ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (hβ : 0 &lt; β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (hφ : Torus.IsSmooth φ) (hnc : ∃ x y, φ x ≠ φ y) (e : ℕ → Torus d → ℝ)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (he : IsONBL2Zero (withDensityReal ρ) e) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    [IsProbabilityMeasure P] (G : ℕ → Ω → ℝ) (hG : s7_GaussData d s β ρ e P G) (Q : ℝ → Ω → ℝ)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (hQ : ∀ ε, 0 &lt; ε → AEMeasurable (Q ε) P ∧ s7_IsChaosLimit d s β ρ e P G (hCut d s φ ε) (Q ε))
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    (ε : ℕ → ℝ) (hε0 : ∀ n, 0 &lt; ε n) (hε : Tendsto ε atTop (𝓝 0)) :
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    ¬ IsTightMeasureSet (Set.range fun n : ℕ =&gt; P.map (Q (ε n))) := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  intro htight
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  rw [isTightMeasureSet_iff_exists_isCompact_measure_compl_le] at htight
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  obtain ⟨K, hK, hKb⟩ := htight (1 / 2) (by norm_num)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  obtain ⟨R, hR⟩ := hK.isBounded.exists_norm_le
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  have h5 := HRS.MC.Sec7.E5.s7_E5_not_tight_proof hd hs hsd hβ ρ hρ φ hφ hnc e he P G hG Q hQ R
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hεw : Tendsto ε atTop (𝓝[&gt;] 0) :=
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    tendsto_nhdsWithin_iff.2 ⟨hε, Eventually.of_forall hε0⟩
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have h6 := h5.comp hεw
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  have h7 : ∀ᶠ n in atTop, (1 / 2 : ℝ≥0∞) &lt; P {ω | R &lt; |Q (ε n) ω|} :=
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    h6.eventually (lt_mem_nhds (by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      rw [ENNReal.div_lt_iff (Or.inl (by norm_num)) (Or.inl (by norm_num))]; norm_num))
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨n, hn⟩ := h7.exists
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hmeas : AEMeasurable (Q (ε n)) P := (hQ (ε n) (hε0 n)).1
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have h8 := hKb (P.map (Q (ε n))) ⟨n, rfl⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  rw [Measure.map_apply_of_aemeasurable hmeas hK.isClosed.measurableSet.compl] at h8
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hsub : {ω | R &lt; |Q (ε n) ω|} ⊆ Q (ε n) ⁻¹&#x27; Kᶜ := by
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    intro ω hω hmem
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have := hR _ hmem
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    rw [Real.norm_eq_abs] at this
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    exact absurd hω (not_lt.2 this)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  exact absurd (lt_of_lt_of_le hn ((measure_mono hsub).trans h8)) (lt_irrefl _)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>theorem enorm_sq_eq (x : ℝ) : ‖x‖ₑ ^ 2 = ENNReal.ofReal (x ^ 2) := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  rw [Real.enorm_eq_ofReal_abs, ← ENNReal.ofReal_pow (abs_nonneg x), sq_abs]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>theorem enorm_sq_le (a b : ℝ) : ‖a‖ₑ ^ 2 ≤ 2 * ‖a - b‖ₑ ^ 2 + 2 * ‖b‖ₑ ^ 2 := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  rw [enorm_sq_eq, enorm_sq_eq, enorm_sq_eq]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have h : a ^ 2 ≤ 2 * (a - b) ^ 2 + 2 * b ^ 2 := by nlinarith [sq_nonneg (a - 2 * b)]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  calc ENNReal.ofReal (a ^ 2) ≤ ENNReal.ofReal (2 * (a - b) ^ 2 + 2 * b ^ 2) := ENNReal.ofReal_le_ofReal h
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    _ = 2 * ENNReal.ofReal ((a - b) ^ 2) + 2 * ENNReal.ofReal (b ^ 2) := by
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        rw [ENNReal.ofReal_add (by positivity) (by positivity), ENNReal.ofReal_mul (by norm_num),
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>          ENNReal.ofReal_mul (by norm_num)]
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        simp
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>theorem integral_sq_eq_toReal {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) {f : Ω → ℝ}
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    (hf : AEMeasurable f P) : ∫ ω, f ω ^ 2 ∂P = (∫⁻ ω, ‖f ω‖ₑ ^ 2 ∂P).toReal := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  rw [integral_eq_lintegral_of_nonneg_ae (Filter.Eventually.of_forall fun ω =&gt; sq_nonneg (f ω))
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    ((hf.pow_const 2).aestronglyMeasurable)]
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  simp_rw [enorm_sq_eq]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>theorem chaos_no_L2_limit_proof (hd : 2 ≤ d) {s : ℝ} (hs : (d : ℝ) / 2 ≤ s) (hsd : s &lt; d) {β : ℝ}
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    (hβ : 0 &lt; β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (hφ : Torus.IsSmooth φ) (hnc : ∃ x y, φ x ≠ φ y) (e : ℕ → Torus d → ℝ)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    (he : IsONBL2Zero (withDensityReal ρ) e) {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    [IsProbabilityMeasure P] (G : ℕ → Ω → ℝ) (hG : s7_GaussData d s β ρ e P G) (Q : ℝ → Ω → ℝ)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (hQ : ∀ ε, 0 &lt; ε → AEMeasurable (Q ε) P ∧ s7_IsChaosLimit d s β ρ e P G (hCut d s φ ε) (Q ε))
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (ε : ℕ → ℝ) (hε0 : ∀ n, 0 &lt; ε n) (hε : Tendsto ε atTop (𝓝 0)) :
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>    ¬ ∃ Q₀ : Ω → ℝ, AEMeasurable Q₀ P ∧
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      Tendsto (fun n : ℕ =&gt; ∫⁻ ω, ‖Q (ε n) ω - Q₀ ω‖ₑ ^ 2 ∂P) atTop (𝓝 0) := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  rintro ⟨Q₀, hQ₀, hlim⟩
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hεw : Tendsto ε atTop (𝓝[&gt;] 0) :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    tendsto_nhdsWithin_iff.2 ⟨hε, Eventually.of_forall hε0⟩
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  have hσ := (HRS.MC.Sec7.E4.e4_sigma_top hd hs hsd hβ ρ hρ φ hφ hnc e he P G hG Q hQ).comp hεw
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hmeas : ∀ n, AEMeasurable (Q (ε n)) P := fun n =&gt; (hQ (ε n) (hε0 n)).1
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hd1 : ∀ᶠ n in atTop, ∫⁻ ω, ‖Q (ε n) ω - Q₀ ω‖ₑ ^ 2 ∂P ≤ 1 :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    hlim.eventually (ge_mem_nhds (by norm_num))
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hbig : ∀ᶠ n in atTop, (1 : ℝ) ≤ ∫ ω, Q (ε n) ω ^ 2 ∂P := hσ.eventually_ge_atTop 1
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  obtain ⟨n0, hn0a, hn0b⟩ := (hd1.and hbig).exists
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hfin : ∫⁻ ω, ‖Q (ε n0) ω‖ₑ ^ 2 ∂P ≠ ⊤ := by
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    intro htop
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    rw [integral_sq_eq_toReal P (hmeas n0), htop] at hn0b
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    simp at hn0b
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    linarith
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  -- `Q₀` is square integrable
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hmeasD : ∀ n, AEMeasurable (fun ω =&gt; ‖Q (ε n) ω - Q₀ ω‖ₑ ^ 2) P := fun n =&gt;
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    (((hmeas n).sub hQ₀).enorm).pow_const 2
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hmeasQ : ∀ n, AEMeasurable (fun ω =&gt; ‖Q (ε n) ω‖ₑ ^ 2) P := fun n =&gt;
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    ((hmeas n).enorm).pow_const 2
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hmeas0 : AEMeasurable (fun ω =&gt; ‖Q₀ ω‖ₑ ^ 2) P := hQ₀.enorm.pow_const 2
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  set L0 : ℝ≥0∞ := ∫⁻ ω, ‖Q₀ ω‖ₑ ^ 2 ∂P with hL0def
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  have hL0 : L0 ≤ 2 * 1 + 2 * ∫⁻ ω, ‖Q (ε n0) ω‖ₑ ^ 2 ∂P := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    calc L0 ≤ ∫⁻ ω, (2 * ‖Q (ε n0) ω - Q₀ ω‖ₑ ^ 2 + 2 * ‖Q (ε n0) ω‖ₑ ^ 2) ∂P := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>          refine lintegral_mono fun ω =&gt; ?_
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>          have := enorm_sq_le (Q₀ ω) (Q (ε n0) ω)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>          rwa [enorm_sub_rev] at this
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      _ = 2 * ∫⁻ ω, ‖Q (ε n0) ω - Q₀ ω‖ₑ ^ 2 ∂P + 2 * ∫⁻ ω, ‖Q (ε n0) ω‖ₑ ^ 2 ∂P := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>          rw [lintegral_add_left&#x27; ((hmeasD n0).const_mul 2), lintegral_const_mul&#x27;&#x27; _ (hmeasD n0),
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>            lintegral_const_mul&#x27;&#x27; _ (hmeasQ n0)]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      _ ≤ _ := by gcongr
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have hL0fin : L0 ≠ ⊤ :=
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    ne_top_of_le_ne_top (by simp [ENNReal.mul_eq_top, hfin]) hL0
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  -- the second moments of `Q (ε n)` stay bounded
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  set B : ℝ≥0∞ := 2 * 1 + 2 * L0 with hBdef
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have hBfin : B ≠ ⊤ := by simp [hBdef, ENNReal.mul_eq_top, hL0fin]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  have hbd : ∀ᶠ n in atTop, ∫ ω, Q (ε n) ω ^ 2 ∂P ≤ B.toReal := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    filter_upwards [hd1] with n hn
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    rw [integral_sq_eq_toReal P (hmeas n)]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    refine ENNReal.toReal_mono hBfin ?_
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    calc ∫⁻ ω, ‖Q (ε n) ω‖ₑ ^ 2 ∂P
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        ≤ ∫⁻ ω, (2 * ‖Q (ε n) ω - Q₀ ω‖ₑ ^ 2 + 2 * ‖Q₀ ω‖ₑ ^ 2) ∂P :=
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          lintegral_mono fun ω =&gt; enorm_sq_le (Q (ε n) ω) (Q₀ ω)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      _ = 2 * ∫⁻ ω, ‖Q (ε n) ω - Q₀ ω‖ₑ ^ 2 ∂P + 2 * L0 := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>          rw [lintegral_add_left&#x27; ((hmeasD n).const_mul 2), lintegral_const_mul&#x27;&#x27; _ (hmeasD n),
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>            lintegral_const_mul&#x27;&#x27; _ hmeas0]
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      _ ≤ 2 * 1 + 2 * L0 := by gcongr
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  obtain ⟨n1, hn1⟩ := (hbd.and (hσ.eventually_ge_atTop (B.toReal + 1))).exists
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have h1 := hn1.1
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have h2 := hn1.2
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have h2&#x27; : B.toReal + 1 ≤ ∫ ω, Q (ε n1) ω ^ 2 ∂P := h2
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  linarith
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>end HRS.MC.E718
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>end
+</span></code></pre></main></body></html>

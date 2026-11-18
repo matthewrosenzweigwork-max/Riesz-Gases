@@ -1,0 +1,1 @@
+window.docContents[95].resolve({"/Browse-the-paper-and-supplement/#section-M-C":{"contents":"Main paper, lines 12221–12339.\n\n\n\n","context":"Fluctuations of Riesz gases\u0009Browse the paper and supplement","header":"3.10. C. Auxiliary lemmas","id":"/Browse-the-paper-and-supplement/#section-M-C"}});

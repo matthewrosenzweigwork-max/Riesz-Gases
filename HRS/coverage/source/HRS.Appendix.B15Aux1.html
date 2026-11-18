@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Appendix.B15Aux1 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Appendix.B15Aux1</code></h1><p><a href="../../lean/HRS/Appendix/B15Aux1.lean">Open the unaltered Lean file</a> · 172 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Appendix.CepaFlow
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Packet B15-A0: statement of the strong branch of B.15, the dispatcher and the cheap bridges
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Sources: `HRS_periodic_main_20261008T010000Z.tex`, Proposition B.15 (`M:B:prop:sde-entropy-law`,
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>L12140-12152) and its proof (L12153-12235); plan entry &quot;2026-10-16 plan for the M external cluster&quot;
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>in `docs/PROOF_QUEUE.md`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Contents.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `b15_fisherInfoGen`: `fisherInfo` with the potential as an argument (`fisherInfo` is the special case
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `U = totalPotential D`, `b15_fisherInfo_eq_gen`, by `rfl`);
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `b15_sde_entropy_law_free`: the statement (sorry) of Proposition B.15 for the collision-free strong
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  solution branch of `SelectedFlow`; the target of the later packets;
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `b15_sde_entropy_law_of_free`: the dispatcher, `sde_entropy_law`&#x27;s conclusion from the free statement
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  (strong branch) and `cepa_entropy_confined` (Cépa-Lépingle branch);
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* bridges: the FKE conjunct (`b15_solvesSelectedFKE`), null collision set of the selected law
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  (`b15_selectedLaw_collisionSet`), and `gibbsRef = canonicalGibbs` (`b15_gibbsRef_eq_canonicalGibbs`).
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>-/
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>noncomputable section
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>namespace HRS
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>variable {d N : ℕ}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>/-! ### (2) Fisher information with a general potential -/
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>/-- `fisherInfo` with the potential `U` and the inverse temperature factor `invβ` (`β = invβ⁻¹`) as
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>arguments instead of `totalPotential D`, `D.invβ`: the same variational formula
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>`B:eq:selected-fisher-variational` (TeX M L12205-12209),
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>`sup_ζ ∫ (-2 Div ζ + 2 β DU[ζ] - |ζ|²) dP` over `ζ ∈ C_c^∞(Ω_N; ℝ^{dN})`, with `DU[ζ]` computed by
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>differentiating the lift of `U`.  It allows a regularised potential `U_ε` (B.15, Step 2).
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>`fisherInfo D N P = b15_fisherInfoGen D.invβ (totalPotential D) P` is `b15_fisherInfo_eq_gen`. -/
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>def b15_fisherInfoGen (invβ : ℝ) (U : Config d N → ℝ) (P : Measure (Config d N)) : ℝ≥0∞ :=
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  ⨆ (ζ : Config d N → (Fin N → Euc d)) (_ : IsFisherTestField ζ),
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    ENNReal.ofReal (∫ X : Config d N,
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>      (-2 * configDiv ζ X
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>        + 2 * invβ⁻¹ * fderiv ℝ (fun Z : Fin N → Euc d =&gt; U (fun i =&gt; Torus.mk (Z i)))
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>            (fun i =&gt; Torus.rep (X i)) (ζ X)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>        - ∑ i, ‖ζ X i‖ ^ 2) ∂P)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- `fisherInfo` is `b15_fisherInfoGen` at the total potential. -/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem b15_fisherInfo_eq_gen (D : DynData d) (N : ℕ) (P : Measure (Config d N)) :
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    fisherInfo D N P = b15_fisherInfoGen D.invβ (totalPotential D) P := rfl
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>/-! ### (1) The conclusion of B.15 and the collision-free (strong) branch -/
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>/-- The conclusion of Proposition B.15 (`M:B:prop:sde-entropy-law`, TeX M L12140-12152), literally the
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>conclusion of `sde_entropy_law` (CepaFlow.lean): for every deterministic `t ∈ [0,T]` the time marginal
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>`P_N^t` has a density, the Gibbs entropy inequality `B:eq:selected-gradient-entropy`
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`𝓗_G(P_N^t) + β_N⁻¹ ∫_0^t 𝓘_G(P_N^r) dr ≤ 𝓗_G(P_N^0)` holds in `EReal` (`gibbsEntropy`, `fisherInfo`,
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>`β_N⁻¹ = invβ`, the time integral a `lintegral` over `Icc 0 t`), and the family solves the selected-law
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>forward equation of B.3 (`SolvesSelectedFKE`, distributional on `Ω_N`).  A named `Prop` so that the
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>free statement, the CL statement and the dispatcher share one text. -/
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>def b15_EntropyLawConcl {Ω : Type*} [mΩ : MeasurableSpace Ω] (P : Measure Ω) (D : DynData d) (T : ℝ)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (X : ℝ≥0 → Ω → Config d N) : Prop :=
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  (∀ t ∈ Set.Icc 0 T, HasSelectedDensity P X t ∧
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    gibbsEntropy D (selectedLaw P X t)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      + ((ENNReal.ofReal D.invβ *
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>          ∫⁻ r in Set.Icc (0 : ℝ) t, fisherInfo D N (selectedLaw P X r) : ℝ≥0∞) : EReal)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      ≤ gibbsEntropy D (selectedLaw P X 0)) ∧
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  SolvesSelectedFKE D T (selectedLaw P X)
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>/-- Proposition B.15 (`M:B:prop:sde-entropy-law`, TeX M L12140-12152; proof L12153-12235), the
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>collision-free (strong-solution) branch only.  STATEMENT, proof open (target of the later packets
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>C (radial cutoff `g_ε`, `X^ε = X` eventually), B (lower semicontinuity of `klDiv` and of the Fisher
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>information), D (parabolic theory on `𝕋^{dN}` for the smooth coefficients, Itô duality, entropy
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>dissipation), E (assembly)).
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>Representation decisions.
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>* `SelectedFlow` (`flow` field) is `(IsStrongSolution ∧ PathwiseUnique) ∨ (d = 1 ∧ s = 0 ∧ … CL)`; the
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  present statement is the first disjunct, with the four standing fields of `SelectedFlow`
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  (`init_meas`, `init_distinct`, `brownian`, `indep`) as the explicit hypotheses `hX₀ hdist hW hind`
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  (names as in `cepa_entropy_confined`), so `SelectedFlow P D T X₀ W X` is rebuilt as
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  `⟨hX₀, hdist, hW, hind, Or.inl ⟨hS, hU⟩⟩`.  The FKE conjunct then follows from `selected_law_fke`
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  (`b15_solvesSelectedFKE`).
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>* Collision-freeness of `X` is the field `IsStrongSolution.no_collision` (TeX: B:eq:particle-uniform-separation
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  for the strong solution, L12163-12165, gives the a.s. positive minimal pair distance);
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  `PathwiseUnique` is kept as a hypothesis because it is what the strong disjunct supplies (the TeX
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  Step 1 uses *stopped* pathwise uniqueness to show `X^ε = X` on `[0,T]` for `ε` small, L12162-12166).
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>* All other hypotheses, and the conclusion, are exactly those of `sde_entropy_law`:
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  `hN : 2 ≤ N`, `ζ_BM = -I` (`D.M = -1`), `0 &lt; invβ` (`β_N &lt; ∞`), `V ∈ C²`, `0 &lt; T`, the Brownian
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  filtration `hF : IsFilteredSolution`, a density at time 0 (`hdens0`), and
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  `𝓗_G(P_N^0) &lt; ⊤` (`B:eq:selected-initial-gibbs-entropy`; `gibbsEntropy` is `EReal`-valued).
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>* Valid for every `d`, including `d = 1` (then both branches of `SelectedFlow` can apply; B.14 covers the
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  Cépa-Lépingle one).  The TeX proof states `g_ε ≥ 0` for `s &gt; 0` (L12159; false for the mean-zero torus kernel,
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  only the uniform lower bound `b15c_gReg_ge` is used, ISSUES &quot;B15-C&quot;) and needs the `d = 1`, `0 &lt; s &lt; 1`
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  integrability of the Gibbs weight (see `b15_periodicRiesz_ge_d1`).  It also covers strong collision-free
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  solutions for `d = 1`, `s = 0`, which the TeX sends to B.14 (L12154); Step 1 does not use `g_ε ≥ 0`
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  when `s = 0`, so this extra case is harmless. -/
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>theorem b15_sde_entropy_law_free
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    {D : DynData d} (hM : D.M = -(1 : Matrix (Fin d) (Fin d) ℝ)) (hβ : 0 &lt; D.invβ)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    {X₀ : Ω → Config d N} (hX₀ : Measurable X₀) (hdist : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet d N)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    {W : ℝ≥0 → Ω → (Fin N → Euc d)} (hW : IsVectorBrownian P W)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (hind : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    (hS : IsStrongSolution P D T X₀ W X) (hU : PathwiseUnique P D T X₀ W)
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    (hdens0 : HasSelectedDensity P X 0)
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    (hH0 : gibbsEntropy D (selectedLaw P X 0) &lt; ⊤) :
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    b15_EntropyLawConcl P D T X := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  sorry
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>/-! ### (3) The dispatcher -/
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>/-- Dispatcher for Proposition B.15: `sde_entropy_law`&#x27;s conclusion follows from the strong-branch
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>statement `b15_sde_entropy_law_free` (called directly, so this theorem depends exactly on that statement
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>and on `cepa_entropy_confined`; statement review 2026-10-16, ISSUES &quot;B15-A0&quot;) and from `cepa_entropy_confined` (the
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>Cépa-Lépingle branch, after `subst d = 1`; `M = -I` there is exactly the `hM` of the statement, so the
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>constant `a` of the disjunct is not needed). -/
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>theorem b15_sde_entropy_law_of_free
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    {D : DynData d} (hM : D.M = -(1 : Matrix (Fin d) (Fin d) ℝ)) (hβ : 0 &lt; D.invβ)
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    (hdens0 : HasSelectedDensity P X 0)
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    (hH0 : gibbsEntropy D (selectedLaw P X 0) &lt; ⊤) :
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    (∀ t ∈ Set.Icc 0 T, HasSelectedDensity P X t ∧
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      gibbsEntropy D (selectedLaw P X t)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>        + ((ENNReal.ofReal D.invβ *
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>            ∫⁻ r in Set.Icc (0 : ℝ) t, fisherInfo D N (selectedLaw P X r) : ℝ≥0∞) : EReal)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>        ≤ gibbsEntropy D (selectedLaw P X 0)) ∧
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    SolvesSelectedFKE D T (selectedLaw P X) := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  rcases hX with ⟨hX₀, hdist, hW, hind, hflow⟩
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  rcases hflow with ⟨hS, hU⟩ | ⟨hd1, hs0, _, _, hCL⟩
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  · exact b15_sde_entropy_law_free hN hM hβ hV hT hX₀ hdist hW hind hS hU hF hdens0 hH0
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  · subst hd1
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    exact cepa_entropy_confined hN hs0 hβ hM hV hT hX₀ hdist hW hind hCL hF hdens0 hH0
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>/-! ### (4a), (4b) Cheap bridges -/
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>/-- The FKE conjunct of B.15 (B.3): for a selected flow, `selectedLaw` solves the forward equation of
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>`selected_law_fke` (the second conjunct, one line). -/
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>theorem b15_solvesSelectedFKE
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (hN : 2 ≤ N) [NeZero N]
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    {ℱ : Filtration ℝ mΩ} {W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ}
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    {D : DynData d} (hV : Torus.IsCk 2 D.V) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    (hX : SelectedFlow P D T X₀ W X) (hF : IsFilteredSolution P ℱ W&#x27; W X) :
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    SolvesSelectedFKE D T (selectedLaw P X) :=
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  (selected_law_fke hN hV hT hX hF).2
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>/-- A collision-free strong solution has a selected law that does not charge the collision set
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>`𝔇_N`, at every deterministic time `t ∈ [0,T]`
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>(`P_N^t(𝔇_N) = 0`, from `IsStrongSolution.no_collision`). -/
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>theorem b15_selectedLaw_collisionSet
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    {Ω : Type*} [mΩ : MeasurableSpace Ω] {P : Measure Ω}
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    {D : DynData d} {T : ℝ} {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)}
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    {X : ℝ≥0 → Ω → Config d N} (hS : IsStrongSolution P D T X₀ W X) {t : ℝ} (ht0 : 0 ≤ t)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    (htT : t ≤ T) :
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>    selectedLaw P X t (collisionSet d N) = 0 := by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  have hcoll : MeasurableSet (collisionSet d N) := (isClosed_collisionSet d N).measurableSet
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  unfold selectedLaw
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>  rw [Measure.map_apply (hS.adapted _) hcoll]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hle : ((Real.toNNReal t : ℝ≥0) : ℝ) ≤ T := by
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    rw [Real.coe_toNNReal t ht0]; exact htT
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  rw [measure_eq_zero_iff_ae_notMem]
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  filter_upwards [hS.no_collision] with ω hω using hω _ hle
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>end HRS
+</span></code></pre></main></body></html>

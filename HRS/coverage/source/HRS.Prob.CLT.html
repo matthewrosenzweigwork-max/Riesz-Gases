@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Prob.CLT · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Prob.CLT</code></h1><p><a href="../../lean/HRS/Prob/CLT.lean">Open the unaltered Lean file</a> · 100 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Prob.Metrics
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Quantitative martingale central limit theorems (finite-dimensional part)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Sources (HRS periodic main paper, Appendix A.4):
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* Lemma A.19 `M:B:lem:dds` (source lines 10520-10526): scalar quantitative martingale CLT,
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>  `W_2(Law M_t, N(0,v)) ≤ (E|[M]_t - v|)^{1/2}`, with the Dambis–Dubins–Schwarz coupling.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Lemma A.21 `M:B:lem:lindeberg` (10545-10551): multivariate quantitative martingale CLT
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>  in `d_{C²}`.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* The metric `d_{C²}` of `B:eq:dc2-def` (line 10042):
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `sup { ∫h dλ₁ - ∫h dλ₂ : h ∈ C²(E), ‖h‖_∞ + ‖Dh‖_∞ + ‖D²h‖_∞ ≤ 1 }`, which is `smoothDist 2`.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>## Representation of quadratic variation (Mathlib has no stochastic calculus)
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>Mathlib (at the pinned version) has `Martingale` for general index sets, Brownian motion,
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>but no stochastic integral, no quadratic variation, no DDS theorem.  A continuous
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>square-integrable real martingale `M` and its quadratic variation `A = [M]` are therefore
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>represented *axiomatically through their characterising properties*: `M` is a continuous
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>martingale with `M_0 = 0`, `A` is continuous, adapted, nondecreasing with `A_0 = 0`, and
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>`M² - A` is a martingale.  (For continuous `L²` martingales this characterises `[M]`
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>uniquely; the uniqueness is standard and is part of package CLT-01.)  The vector case uses
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>the absolutely continuous covariation `[M^a,M^b]_τ = ∫_0^τ Σ^{ab}` with a given process
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>`Σ`.  This keeps the lemma statements exactly as in the source without building Itô
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>calculus first; when a stochastic-integral library exists (package SI-01), `IsQuadraticVariation`
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>is to be *proved* for `∫ Φ dW`, not assumed.
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>-/
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>noncomputable section
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>namespace HRS
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>variable {Ω : Type*} {mΩ : MeasurableSpace Ω} (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>/-- `M` is a continuous square-integrable martingale on `[0,t]` with `M_0 = 0`, with respect
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>to the filtration `ℱ`. -/
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>structure IsContSqMartingale (ℱ : Filtration ℝ mΩ) (t : ℝ) (M : ℝ → Ω → ℝ) : Prop where
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  martingale : Martingale M ℱ P
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  zero : ∀ᵐ ω ∂P, M 0 ω = 0
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  cont : ∀ᵐ ω ∂P, ContinuousOn (fun τ =&gt; M τ ω) (Set.Icc 0 t)
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  sq_int : ∀ τ ∈ Set.Icc 0 t, MemLp (M τ) 2 P
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- `A` is the quadratic variation `[M]` of `M`: continuous, adapted, nondecreasing, `A_0 = 0`,
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>and `M² - A` is a martingale. -/
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>structure IsQuadraticVariation (ℱ : Filtration ℝ mΩ) (t : ℝ) (M A : ℝ → Ω → ℝ) : Prop where
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  adapted : Adapted ℱ A
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  zero : ∀ᵐ ω ∂P, A 0 ω = 0
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  cont : ∀ᵐ ω ∂P, ContinuousOn (fun τ =&gt; A τ ω) (Set.Icc 0 t)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  mono : ∀ᵐ ω ∂P, MonotoneOn (fun τ =&gt; A τ ω) (Set.Icc 0 t)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  compensator : Martingale (fun τ ω =&gt; M τ ω ^ 2 - A τ ω) ℱ P
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>/-- The centered real Gaussian `N(0,v)` (`v ≥ 0`). -/
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>def gaussianLaw (v : ℝ) : Measure ℝ := ProbabilityTheory.gaussianReal 0 (Real.toNNReal v)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>/-! Lemma A.19 `M:B:lem:dds` (`dds_wasserstein_bound`, `dds_coupling`) is stated in
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>`HRS/Prob/DDSCoupling.lean` (moved unchanged; the proof uses `HRS/Stochastic`). -/
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>/-! ### Multivariate version (Lemma A.21) -/
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>section Multivariate
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>variable {p : ℕ}
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>local notation &quot;ℝ^&quot; p =&gt; EuclideanSpace ℝ (Fin p)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- The Euclidean matrix norm used as `‖·‖_{S_1}` on symmetric matrices: trace norm via the
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>variational formula `sup_{U orthogonal} tr(Qᵀ U)` (`traceNormMatrix`). -/
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>abbrev s1Norm (Q : Matrix (Fin p) (Fin p) ℝ) : ℝ := traceNormMatrix Q
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>/-- `M` is a continuous `ℝ^p`-valued martingale on `[0,t]` with `M_0 = 0` and absolutely
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>continuous quadratic covariation `[M^a,M^b]_τ = ∫_0^τ Σ^{ab}_σ dσ`, `Σ_σ ≥ 0` symmetric
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>(source lines 10546-10547; the source presupposes that the Lebesgue integrals exist, which
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>`sigma_pathint` and `sigma_entry_int` record: without them the Bochner integrals below take the
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>junk value `0` on non-integrable paths), represented through: each pair `M^a M^b - ∫_0^· Σ^{ab}` is a
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>martingale, `Σ` is adapted and measurable in `(σ, ω)`. -/
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>structure IsVectorMartingaleWithCovariation (ℱ : Filtration ℝ mΩ) (t : ℝ)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (M : ℝ → Ω → (ℝ^p)) (Sg : ℝ → Ω → Matrix (Fin p) (Fin p) ℝ) : Prop where
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  martingale : ∀ a : Fin p, Martingale (fun τ ω =&gt; M τ ω a) ℱ P
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  zero : ∀ᵐ ω ∂P, M 0 ω = 0
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  cont : ∀ᵐ ω ∂P, ContinuousOn (fun τ =&gt; M τ ω) (Set.Icc 0 t)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  sq_int : ∀ τ ∈ Set.Icc 0 t, MemLp (M τ) 2 P
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  sigma_meas : Measurable (Function.uncurry Sg)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  sigma_adapted : ∀ σ, Measurable[ℱ σ] (Sg σ)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  sigma_psd : ∀ᵐ ω ∂P, ∀ σ ∈ Set.Icc 0 t, (Sg σ ω).PosSemidef
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  sigma_int : Integrable (fun ω =&gt; ∫ σ in Set.Icc 0 t, s1Norm (Sg σ ω)) P
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  sigma_pathint : ∀ᵐ ω ∂P, IntegrableOn (fun σ =&gt; s1Norm (Sg σ ω)) (Set.Icc 0 t)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  sigma_entry_int : ∀ᵐ ω ∂P, ∀ a b : Fin p, IntegrableOn (fun σ =&gt; Sg σ ω a b) (Set.Icc 0 t)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  covariation : ∀ a b : Fin p,
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    Martingale (fun τ ω =&gt; M τ ω a * M τ ω b - ∫ σ in Set.Icc 0 τ, Sg σ ω a b) ℱ P
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>/- `multivariate_martingale_clt` and `multivariate_martingale_clt_dc2` (Lemma A.21) are stated and
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>proved in `HRS/Prob/MartingaleCLT.lean` (that file imports `HRS.Prob.MartingaleLindeberg`, which
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>imports this one). -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>end Multivariate
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>end HRS
+</span></code></pre></main></body></html>

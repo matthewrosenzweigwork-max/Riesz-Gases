@@ -1,0 +1,5 @@
+For $C_b^j$ we use $\|f\|_{C_b^j}=\sum_{i=0}^j\sup_x\|D^i f(x)\|$, including the function itself. Let $h_\alpha$ be the normalized Hermite functions and $\lambda_\alpha=2|\alpha|+\mathsf d+1$. The oscillator space $\Sigma^m$ consists of the $L^2(\mathbb R^{\mathsf d})$ functions for which $\|f\|_{\Sigma^m}^2=\sum_\alpha\lambda_\alpha^m|\langle f,h_\alpha\rangle|^2$ is finite. Its continuous dual is $B_m$. Oscillator tests are smooth functions in $\Sigma^m$.
+
+A whole-space mean-field solution consists of probability densities $\mu^t=\rho^t\,dx$ with finite second moment at each time. For every $C_b^2$ test $f$ and each time $t$ in the interval, its weak equation is
+$$\langle\mu^t-\mu^0,f\rangle=\int_0^t\!\left[\langle\mu^r,\nu\Delta f-\nabla V\cdot\nabla f\rangle+\tfrac12\iint_{x\ne y}(\nabla f(x)-\nabla f(y))\cdot M\nabla\mathsf g(x-y)\,\mathrm d\mu^r(x)\,\mathrm d\mu^r(y)\right]\,\mathrm dr.$$
+Here $\nu$ is the diffusivity and $M$ the interaction matrix; for the quadratic gradient dynamics of Theorem S2.1 they are $\beta^{-1}$ and $-I$.

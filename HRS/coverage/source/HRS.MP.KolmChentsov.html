@@ -1,0 +1,689 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MP.KolmChentsov · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MP.KolmChentsov</code></h1><p><a href="../../lean/HRS/MP/KolmChentsov.lean">Open the unaltered Lean file</a> · 688 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.AppendixALemmas2
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MP.PathTightCrit
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Kolmogorov-Chentsov with a uniform modulus: proof of `kolmogorov_modulus_tightness`
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>-/
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>open HRS.Whole.AppendixALemmas
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open scoped ENNReal NNReal
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS.MP.KC
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>section Det
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>variable {E : Type*} [NormedAddCommGroup E]
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>/-- Increment hypothesis on dyadic grid values. -/
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>def mkc_Inc (x : ℕ → ℕ → E) (lam r : ℝ) : Prop :=
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  ∀ n k : ℕ, k &lt; 2 ^ n → ‖x n (k + 1) - x n k‖ ≤ lam * r ^ n
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- Consistency of the dyadic grids. -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>def mkc_Cons (x : ℕ → ℕ → E) : Prop := ∀ n k : ℕ, x (n + 1) (2 * k) = x n k
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem mkc_chain {x : ℕ → ℕ → E} {lam r : ℝ} (hc : mkc_Cons x) (hi : mkc_Inc x lam r) (m : ℕ) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    ∀ (j k : ℕ), k ≤ 2 ^ (m + j) →
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      ‖x (m + j) k - x m (k / 2 ^ j)‖ ≤ ∑ i ∈ Finset.range j, lam * r ^ (m + 1 + i) := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  intro j
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  induction j with
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  | zero =&gt; intro k hk; simp
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  | succ j ih =&gt;
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    intro k hk
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    have hQ : 2 ^ (m + (j + 1)) = 2 * 2 ^ (m + j) := by ring
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    rw [hQ] at hk
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    have h1 : k / 2 ≤ 2 ^ (m + j) := by omega
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    have ih&#x27; := ih (k / 2) h1
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    have hdiv : k / 2 ^ (j + 1) = k / 2 / 2 ^ j := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>      rw [Nat.div_div_eq_div_mul, pow_succ&#x27;]
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    rw [hdiv, Finset.sum_range_succ]
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    have hstep : ‖x (m + (j + 1)) k - x (m + j) (k / 2)‖ ≤ lam * r ^ (m + 1 + j) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      have hmj : m + (j + 1) = m + j + 1 := by ring
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>      have hpow : r ^ (m + 1 + j) = r ^ (m + j + 1) := by ring_nf
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      rw [hmj, hpow]
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      rcases Nat.even_or_odd&#x27; k with ⟨k&#x27;, hk&#x27; | hk&#x27;⟩
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>      · have : k / 2 = k&#x27; := by omega
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>        rw [this, hk&#x27;, hc (m + j) k&#x27;]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>        simp only [sub_self, norm_zero]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>        have := hi (m + j + 1) 0 (by positivity)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        have h0 : 0 ≤ ‖x (m + j + 1) (0 + 1) - x (m + j + 1) 0‖ := norm_nonneg _
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        linarith
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      · have : k / 2 = k&#x27; := by omega
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        rw [this, hk&#x27;]
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>        have h2 : 2 * k&#x27; &lt; 2 ^ (m + j + 1) := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>          have : 2 ^ (m + j + 1) = 2 * 2 ^ (m + j) := by ring
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>          omega
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>        have := hi (m + j + 1) (2 * k&#x27;) h2
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        rw [← hc (m + j) k&#x27;]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>        exact this
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    calc ‖x (m + (j + 1)) k - x m (k / 2 / 2 ^ j)‖
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>        = ‖(x (m + (j + 1)) k - x (m + j) (k / 2)) + (x (m + j) (k / 2) - x m (k / 2 / 2 ^ j))‖ := by
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>          congr 1; abel
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      _ ≤ _ := norm_add_le _ _
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      _ ≤ lam * r ^ (m + 1 + j) + ∑ i ∈ Finset.range j, lam * r ^ (m + 1 + i) := add_le_add hstep ih&#x27;
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      _ = _ := add_comm _ _
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>theorem mkc_geom_le {lam r : ℝ} (hlam : 0 ≤ lam) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) (m j : ℕ) :
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    ∑ i ∈ Finset.range j, lam * r ^ (m + 1 + i) ≤ lam * r ^ (m + 1) / (1 - r) := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have h1r : 0 &lt; 1 - r := by linarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have e : ∑ i ∈ Finset.range j, lam * r ^ (m + 1 + i) =
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      lam * r ^ (m + 1) * ∑ i ∈ Finset.range j, r ^ i := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun i _ =&gt; by ring
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  rw [e, div_eq_mul_one_div (lam * r ^ (m + 1))]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  refine mul_le_mul_of_nonneg_left ?_ (mul_nonneg hlam (pow_nonneg hr0 _))
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hg : (∑ i ∈ Finset.range j, r ^ i) * (1 - r) = 1 - r ^ j := geom_sum_mul_neg r j
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  rw [le_div_iff₀ h1r, hg]
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have := pow_nonneg hr0 j
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  linarith
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>/-- The constant of the chaining estimate. -/
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>def mkc_c (r : ℝ) : ℝ := 1 + 2 * r / (1 - r)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>theorem mkc_incr {x : ℕ → ℕ → E} {lam r : ℝ} (hc : mkc_Cons x) (hi : mkc_Inc x lam r)
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (hlam : 0 ≤ lam) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) (m j k l : ℕ)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (hk : k ≤ 2 ^ (m + j)) (hl : l ≤ 2 ^ (m + j)) (hkl : k ≤ l + 2 ^ j) (hlk : l ≤ k + 2 ^ j) :
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    ‖x (m + j) k - x (m + j) l‖ ≤ mkc_c r * (lam * r ^ m) := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have h1r : 0 &lt; 1 - r := by linarith
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hpos : 0 &lt; 2 ^ j := by positivity
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hb : ∀ q, q ≤ 2 ^ (m + j) →
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      ‖x (m + j) q - x m (q / 2 ^ j)‖ ≤ lam * r ^ (m + 1) / (1 - r) := fun q hq =&gt;
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (mkc_chain hc hi m j q hq).trans (mkc_geom_le hlam hr0 hr1 m j)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  have hk&#x27; : k / 2 ^ j ≤ 2 ^ m := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    apply Nat.div_le_of_le_mul
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    rw [pow_add] at hk
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    linarith
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  have hl&#x27; : l / 2 ^ j ≤ 2 ^ m := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    apply Nat.div_le_of_le_mul
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    rw [pow_add] at hl
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    linarith
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hkl&#x27; : k / 2 ^ j ≤ l / 2 ^ j + 1 := by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    calc k / 2 ^ j ≤ (l + 2 ^ j) / 2 ^ j := Nat.div_le_div_right hkl
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      _ = l / 2 ^ j + 1 := by rw [Nat.add_div_right _ hpos]
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hlk&#x27; : l / 2 ^ j ≤ k / 2 ^ j + 1 := by
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    calc l / 2 ^ j ≤ (k + 2 ^ j) / 2 ^ j := Nat.div_le_div_right hlk
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      _ = k / 2 ^ j + 1 := by rw [Nat.add_div_right _ hpos]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hmid : ‖x m (k / 2 ^ j) - x m (l / 2 ^ j)‖ ≤ lam * r ^ m := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    rcases Nat.lt_trichotomy (k / 2 ^ j) (l / 2 ^ j) with h | h | h
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    · have e : l / 2 ^ j = k / 2 ^ j + 1 := by omega
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      rw [e, norm_sub_rev]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      exact hi m (k / 2 ^ j) (by omega)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    · rw [h]; simp only [sub_self, norm_zero]; positivity
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    · have e : k / 2 ^ j = l / 2 ^ j + 1 := by omega
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      rw [e]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      exact hi m (l / 2 ^ j) (by omega)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  calc ‖x (m + j) k - x (m + j) l‖
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      = ‖(x (m + j) k - x m (k / 2 ^ j)) + (x m (k / 2 ^ j) - x m (l / 2 ^ j)) -
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>          (x (m + j) l - x m (l / 2 ^ j))‖ := by congr 1; abel
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    _ ≤ ‖(x (m + j) k - x m (k / 2 ^ j)) + (x m (k / 2 ^ j) - x m (l / 2 ^ j))‖ +
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          ‖x (m + j) l - x m (l / 2 ^ j)‖ := norm_sub_le _ _
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    _ ≤ ‖x (m + j) k - x m (k / 2 ^ j)‖ + ‖x m (k / 2 ^ j) - x m (l / 2 ^ j)‖ +
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          ‖x (m + j) l - x m (l / 2 ^ j)‖ := by gcongr; exact norm_add_le _ _
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    _ ≤ lam * r ^ (m + 1) / (1 - r) + lam * r ^ m + lam * r ^ (m + 1) / (1 - r) := by
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        gcongr
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        · exact hb k hk
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>        · exact hb l hl
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    _ = mkc_c r * (lam * r ^ m) := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>        unfold mkc_c; field_simp; ring
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>/-! Dyadic index of a point. -/
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>/-- The grid point `T k / 2^n`. -/
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>def mkc_pt (T : ℝ) (n k : ℕ) : ℝ := T * k / 2 ^ n
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>/-- The index of the grid point of level `n` just below `t`. -/
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>def mkc_idx (T : ℝ) (n : ℕ) (t : ℝ) : ℕ := ⌊t * 2 ^ n / T⌋₊
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>theorem mkc_idx_le {T : ℝ} (hT : 0 &lt; T) {t : ℝ} (ht : t ≤ T) (n : ℕ) : mkc_idx T n t ≤ 2 ^ n := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  unfold mkc_idx
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  apply Nat.floor_le_of_le
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  rw [div_le_iff₀ hT]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  push_cast
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have : (0 : ℝ) &lt; 2 ^ n := by positivity
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  nlinarith
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>theorem mkc_idx_div {T : ℝ} (hT : 0 &lt; T) (t : ℝ) (n j : ℕ) :
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    mkc_idx T (n + j) t / 2 ^ j = mkc_idx T n t := by
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  unfold mkc_idx
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have : t * 2 ^ n / T = (t * 2 ^ (n + j) / T) / ((2 ^ j : ℕ) : ℝ) := by
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    push_cast
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    rw [pow_add]; field_simp
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>  rw [this, Nat.floor_div_natCast]
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>theorem mkc_pt_idx {T : ℝ} (hT : 0 &lt; T) {t : ℝ} (ht0 : 0 ≤ t) (n : ℕ) :
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    mkc_pt T n (mkc_idx T n t) ≤ t ∧ t &lt; mkc_pt T n (mkc_idx T n t) + T / 2 ^ n := by
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have h2 : (0 : ℝ) &lt; 2 ^ n := by positivity
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have ha : 0 ≤ t * 2 ^ n / T := by positivity
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  have h1 := Nat.floor_le ha
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have h3 := Nat.lt_floor_add_one (t * 2 ^ n / T)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  unfold mkc_pt mkc_idx
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  constructor
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>  · rw [div_le_iff₀ h2]
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    calc T * (⌊t * 2 ^ n / T⌋₊ : ℝ) ≤ T * (t * 2 ^ n / T) := by gcongr
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>      _ = t * 2 ^ n := by field_simp
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  · rw [← sub_pos]
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    have : (T * (⌊t * 2 ^ n / T⌋₊ : ℝ) / 2 ^ n + T / 2 ^ n) - t =
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>        (T / 2 ^ n) * ((⌊t * 2 ^ n / T⌋₊ : ℝ) + 1 - t * 2 ^ n / T) := by
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>      field_simp
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    have h4 : 0 &lt; T / 2 ^ n := by positivity
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    rw [this]
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    exact mul_pos h4 (by linarith)
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>theorem mkc_idx_add {T : ℝ} (hT : 0 &lt; T) {t s : ℝ} (hs : 0 ≤ s) (m j : ℕ) (hts : t ≤ s + T / 2 ^ m) :
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    mkc_idx T (m + j) t ≤ mkc_idx T (m + j) s + 2 ^ j := by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  unfold mkc_idx
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>  have h2 : (0 : ℝ) &lt; 2 ^ (m + j) := by positivity
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  have ha : 0 ≤ s * 2 ^ (m + j) / T := by positivity
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have e : (s + T / 2 ^ m) * 2 ^ (m + j) / T = s * 2 ^ (m + j) / T + ((2 ^ j : ℕ) : ℝ) := by
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    push_cast; rw [pow_add]; field_simp
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  calc ⌊t * 2 ^ (m + j) / T⌋₊ ≤ ⌊(s + T / 2 ^ m) * 2 ^ (m + j) / T⌋₊ := by
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>        apply Nat.floor_le_floor
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>        gcongr
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    _ = ⌊s * 2 ^ (m + j) / T⌋₊ + 2 ^ j := by rw [e, Nat.floor_add_natCast ha]
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>theorem mkc_limit [CompleteSpace E] {x : ℕ → ℕ → E} {lam r : ℝ} (hc : mkc_Cons x)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (hi : mkc_Inc x lam r) (hlam : 0 ≤ lam) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    ∃ L : E, Tendsto (fun n =&gt; x n (mkc_idx T n t)) atTop (𝓝 L) ∧
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      ∀ n, ‖x n (mkc_idx T n t) - L‖ ≤ lam * r ^ (n + 1) / (1 - r) := by
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have h1r : 0 &lt; 1 - r := by linarith
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hb : ∀ n j : ℕ, ‖x (n + j) (mkc_idx T (n + j) t) - x n (mkc_idx T n t)‖ ≤
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      lam * r ^ (n + 1) / (1 - r) := by
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    intro n j
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    have := mkc_chain hc hi n j (mkc_idx T (n + j) t) (mkc_idx_le hT ht.2 _)
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    rw [mkc_idx_div hT] at this
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    exact this.trans (mkc_geom_le hlam hr0 hr1 n j)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  have hcau : CauchySeq (fun n =&gt; x n (mkc_idx T n t)) := by
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    rw [Metric.cauchySeq_iff&#x27;]
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    intro ε hε
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    have hlim : Tendsto (fun n : ℕ =&gt; lam * r ^ (n + 1) / (1 - r)) atTop (𝓝 0) := by
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      have := ((tendsto_pow_atTop_nhds_zero_of_lt_one hr0 hr1).comp
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>        (tendsto_add_atTop_nat 1)).const_mul lam |&gt;.div_const (1 - r)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>      simpa using this
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    obtain ⟨N, hN⟩ := (hlim.eventually (gt_mem_nhds hε)).exists
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    refine ⟨N, fun n hn =&gt; ?_⟩
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le hn
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    rw [dist_eq_norm]
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>    exact (hb N j).trans_lt hN
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  obtain ⟨L, hL⟩ := cauchySeq_tendsto_of_complete hcau
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>  refine ⟨L, hL, fun n =&gt; ?_⟩
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  have : Tendsto (fun n&#x27; =&gt; ‖x n&#x27; (mkc_idx T n&#x27; t) - x n (mkc_idx T n t)‖) atTop
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      (𝓝 ‖L - x n (mkc_idx T n t)‖) := (hL.sub_const _).norm
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  rw [norm_sub_rev]
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  refine le_of_tendsto this (eventually_atTop.2 ⟨n, fun n&#x27; hn&#x27; =&gt; ?_⟩)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le hn&#x27;
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  exact hb n j
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>theorem mkc_modulus {x : ℕ → ℕ → E} {lam r : ℝ} (hc : mkc_Cons x)
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    (hi : mkc_Inc x lam r) (hlam : 0 ≤ lam) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {T : ℝ} (hT : 0 &lt; T)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    {t s : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) (hs : s ∈ Set.Icc (0 : ℝ) T) (m : ℕ)
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    (hts : |t - s| ≤ T / 2 ^ m) {Lt Ls : E}
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    (hLt : Tendsto (fun n =&gt; x n (mkc_idx T n t)) atTop (𝓝 Lt))
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    (hLs : Tendsto (fun n =&gt; x n (mkc_idx T n s)) atTop (𝓝 Ls)) :
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    ‖Lt - Ls‖ ≤ mkc_c r * (lam * r ^ m) := by
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>  have h1 := (abs_le.1 hts)
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  have : Tendsto (fun n =&gt; ‖x n (mkc_idx T n t) - x n (mkc_idx T n s)‖) atTop (𝓝 ‖Lt - Ls‖) :=
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (hLt.sub hLs).norm
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  refine le_of_tendsto this (eventually_atTop.2 ⟨m, fun n hn =&gt; ?_⟩)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>  obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le hn
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>  exact mkc_incr hc hi hlam hr0 hr1 m j _ _ (mkc_idx_le hT ht.2 _) (mkc_idx_le hT hs.2 _)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>    (mkc_idx_add hT hs.1 m j (by linarith)) (mkc_idx_add hT ht.1 m j (by linarith))
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>end Det
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>section Prob
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>variable {E : Type*} [NormedAddCommGroup E] [MeasurableSpace E] [BorelSpace E]
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>  [SecondCountableTopology E]
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>variable {Ω : Type*} [MeasurableSpace Ω]
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>/-- Markov&#x27;s inequality for `‖d‖^p`. -/
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>theorem mkc_markov (μ : Measure Ω) {d : Ω → E} (hd : Measurable d) {p : ℝ} (hp : 0 &lt; p)
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    {c M : ℝ} (hc : 0 &lt; c) (hM : ∫⁻ ζ, ‖d ζ‖ₑ ^ p ∂μ ≤ ENNReal.ofReal M) :
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    μ {ζ | c &lt; ‖d ζ‖} ≤ ENNReal.ofReal (M / c ^ p) := by
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  have hcp : 0 &lt; c ^ p := Real.rpow_pos_of_pos hc p
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  have hsub : {ζ | c &lt; ‖d ζ‖} ⊆ {ζ | ENNReal.ofReal (c ^ p) ≤ ‖d ζ‖ₑ ^ p} := by
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>    intro ζ hζ
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>    simp only [Set.mem_ofPred_eq] at hζ ⊢
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    rw [← ENNReal.ofReal_rpow_of_nonneg hc.le hp.le]
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    exact ENNReal.rpow_le_rpow (by rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal hζ.le)
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>      hp.le
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  have hmeas : AEMeasurable (fun ζ =&gt; ‖d ζ‖ₑ ^ p) μ :=
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>    (hd.enorm.pow_const p).aemeasurable
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  calc μ {ζ | c &lt; ‖d ζ‖} ≤ μ {ζ | ENNReal.ofReal (c ^ p) ≤ ‖d ζ‖ₑ ^ p} := measure_mono hsub
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>    _ ≤ (∫⁻ ζ, ‖d ζ‖ₑ ^ p ∂μ) / ENNReal.ofReal (c ^ p) :=
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>        meas_ge_le_lintegral_div hmeas (by simpa using hcp) ENNReal.ofReal_ne_top
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    _ ≤ ENNReal.ofReal M / ENNReal.ofReal (c ^ p) := by gcongr
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>    _ = ENNReal.ofReal (M / c ^ p) := (ENNReal.ofReal_div_of_pos hcp).symm
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>variable (X : ℝ → Ω → E) (T r : ℝ)
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>/-- The dyadic grid values of `X` along the sample point `ζ`. -/
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>def mkc_xs (ζ : Ω) : ℕ → ℕ → E := fun n k =&gt; X (mkc_pt T n k) ζ
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>theorem mkc_cons_xs (ζ : Ω) : mkc_Cons (mkc_xs X T ζ) := by
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  intro n k
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  have : mkc_pt T (n + 1) (2 * k) = mkc_pt T n k := by
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>    unfold mkc_pt; push_cast; rw [pow_succ]; field_simp
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>  simp only [mkc_xs, this]
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>/-- The good event `{sup_n r^{-n} Δ_n ≤ lam}`. -/
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>def mkc_G (lam : ℝ) : Set Ω := {ζ | mkc_Inc (mkc_xs X T ζ) lam r}
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>/-- The event `{K &lt; ∞}`. -/
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>def mkc_Gs : Set Ω := ⋃ m : ℕ, mkc_G X T r (m : ℝ)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>theorem mkc_G_mono (hr : 0 ≤ r) {a b : ℝ} (hab : a ≤ b) : mkc_G X T r a ⊆ mkc_G X T r b := by
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>  intro ζ hζ n k hk
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  exact (hζ n k hk).trans (by gcongr)
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>theorem mkc_G_meas (hX : ∀ t, Measurable (X t)) (lam : ℝ) : MeasurableSet (mkc_G X T r lam) := by
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  have : mkc_G X T r lam = ⋂ n : ℕ, ⋂ k : ℕ,
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>      {ζ | k &lt; 2 ^ n → ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖ ≤ lam * r ^ n} := by
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    ext ζ; simp [mkc_G, mkc_Inc, mkc_xs]
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>  rw [this]
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>  refine MeasurableSet.iInter fun n =&gt; MeasurableSet.iInter fun k =&gt; ?_
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>  by_cases h : k &lt; 2 ^ n
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>  · simp only [h, forall_const]
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    exact measurableSet_le (((hX _).sub (hX _)).norm) measurable_const
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>  · simp [h]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>theorem mkc_Gs_meas (hX : ∀ t, Measurable (X t)) : MeasurableSet (mkc_Gs X T r) :=
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>  MeasurableSet.iUnion fun m =&gt; mkc_G_meas X T r hX _
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>theorem mkc_pt_mem {T : ℝ} (hT : 0 &lt; T) (n k : ℕ) (hk : k ≤ 2 ^ n) :
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    mkc_pt T n k ∈ Set.Icc (0 : ℝ) T := by
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  unfold mkc_pt
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  constructor
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>  · positivity
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>  · rw [div_le_iff₀ (by positivity)]
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>    have : (k : ℝ) ≤ 2 ^ n := by exact_mod_cast hk
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>    nlinarith
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>theorem mkc_pt_succ_sub (n k : ℕ) : mkc_pt T n (k + 1) - mkc_pt T n k = T / 2 ^ n := by
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  unfold mkc_pt; push_cast; ring
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>theorem mkc_real_bound {T β p r q lam Cp : ℝ} (hT : 0 &lt; T) (hCp : 0 ≤ Cp)
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    (hr0 : 0 &lt; r) (hqr : 1 ≤ q * 2 ^ β * r ^ p) (hq0 : 0 &lt; q) (hlam : 0 &lt; lam) (n : ℕ) :
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    (2 : ℝ) ^ n * (Cp * (T / 2 ^ n) ^ (1 + β) / (lam * r ^ n) ^ p) ≤
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>      Cp * T ^ (1 + β) * lam ^ (-p) * q ^ n := by
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>  have h2 : (0 : ℝ) &lt; 2 ^ n := by positivity
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>  have e1 : (T / 2 ^ n) ^ (1 + β) = T ^ (1 + β) / (2 ^ n * ((2 : ℝ) ^ β) ^ n) := by
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>    rw [Real.div_rpow hT.le h2.le, Real.rpow_add h2, Real.rpow_one,
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>      Real.rpow_pow_comm (by norm_num) β n]
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>  have e2 : (lam * r ^ n) ^ p = lam ^ p * (r ^ p) ^ n := by
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>    rw [Real.mul_rpow hlam.le (pow_nonneg hr0.le n), Real.rpow_pow_comm hr0.le p n]
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>  have hlp : 0 &lt; lam ^ p := Real.rpow_pos_of_pos hlam p
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  have hrp : 0 &lt; r ^ p := Real.rpow_pos_of_pos hr0 p
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>  have h2b : 0 &lt; (2 : ℝ) ^ β := Real.rpow_pos_of_pos (by norm_num) β
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>  set A : ℝ := ((2 : ℝ) ^ β) ^ n * (r ^ p) ^ n with hA
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>  have hApos : 0 &lt; A := by positivity
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>  set Kc : ℝ := Cp * T ^ (1 + β) / lam ^ p with hKc
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  have hKc0 : 0 ≤ Kc := by
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>    have : 0 ≤ T ^ (1 + β) := Real.rpow_nonneg hT.le _
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    positivity
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>  have hL : (2 : ℝ) ^ n * (Cp * (T / 2 ^ n) ^ (1 + β) / (lam * r ^ n) ^ p) = Kc / A := by
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>    rw [e1, e2, hKc, hA]
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>    field_simp
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>  have hR : Cp * T ^ (1 + β) * lam ^ (-p) * q ^ n = Kc * q ^ n := by
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>    rw [Real.rpow_neg hlam.le, hKc]
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>    field_simp
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  rw [hL, hR, div_le_iff₀ hApos]
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>  have h1 : 1 ≤ (q * 2 ^ β * r ^ p) ^ n := one_le_pow₀ hqr
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>  have h3 : (q * 2 ^ β * r ^ p) ^ n = q ^ n * A := by
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>    rw [hA, mul_assoc, mul_pow, mul_pow]
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>  rw [h3] at h1
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>  calc Kc = Kc * 1 := (mul_one _).symm
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    _ ≤ Kc * (q ^ n * A) := by gcongr
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    _ = Kc * q ^ n * A := by ring
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>theorem mkc_prob_bound (μ : Measure Ω) (hX : ∀ t, Measurable (X t)) {p β C q : ℝ}
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>    (hT : 0 &lt; T) (hp : 0 &lt; p)
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>    (hmom : ∀ s ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>      ∫⁻ ζ, ‖X t ζ - X s ζ‖ₑ ^ p ∂μ ≤ ENNReal.ofReal (C * |t - s| ^ (1 + β)))
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    (hr0 : 0 &lt; r) (hq0 : 0 &lt; q) (hq1 : q &lt; 1) (hqr : 1 ≤ q * 2 ^ β * r ^ p)
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    {lam : ℝ} (hlam : 0 &lt; lam) :
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>    μ (mkc_G X T r lam)ᶜ ≤
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>      ENNReal.ofReal (max C 0 * T ^ (1 + β) * lam ^ (-p) / (1 - q)) := by
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>  set Kc : ℝ := max C 0 * T ^ (1 + β) * lam ^ (-p) with hKc
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>  have hKc0 : 0 ≤ Kc := by
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>    have : 0 ≤ T ^ (1 + β) := Real.rpow_nonneg hT.le _
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>    have : 0 ≤ lam ^ (-p) := Real.rpow_nonneg hlam.le _
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>    positivity
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>  have hsub : (mkc_G X T r lam)ᶜ ⊆ ⋃ n : ℕ, ⋃ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>      {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖} := by
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>    intro ζ hζ
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>    simp only [mkc_G, mkc_Inc, mkc_xs, Set.mem_compl_iff, Set.mem_ofPred_eq, not_forall,
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>      not_le] at hζ
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>    obtain ⟨n, k, hk, h⟩ := hζ
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>    simp only [Set.mem_iUnion]
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>    exact ⟨n, k, Finset.mem_range.2 hk, h⟩
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>  have hterm : ∀ n : ℕ, μ (⋃ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>      {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖}) ≤
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>      ENNReal.ofReal (Kc * q ^ n) := by
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>    intro n
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>    refine (measure_biUnion_finset_le _ _).trans ?_
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>    have hk : ∀ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>        μ {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖} ≤
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>          ENNReal.ofReal (max C 0 * (T / 2 ^ n) ^ (1 + β) / (lam * r ^ n) ^ p) := by
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      intro k hk
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>      have hk&#x27; : k &lt; 2 ^ n := Finset.mem_range.1 hk
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>      refine mkc_markov μ ((hX _).sub (hX _)) hp (by positivity) ?_
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>      refine (hmom _ (mkc_pt_mem hT n k hk&#x27;.le) _ (mkc_pt_mem hT n (k + 1) hk&#x27;)).trans
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>        (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>      rw [mkc_pt_succ_sub, abs_of_pos (by positivity)]
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>      exact mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.rpow_nonneg (by positivity) _)
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>    calc ∑ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>          μ {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖}
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>        ≤ ∑ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>          ENNReal.ofReal (max C 0 * (T / 2 ^ n) ^ (1 + β) / (lam * r ^ n) ^ p) :=
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>          Finset.sum_le_sum hk
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>      _ = ENNReal.ofReal ((2 : ℝ) ^ n *
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>          (max C 0 * (T / 2 ^ n) ^ (1 + β) / (lam * r ^ n) ^ p)) := by
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>          rw [ENNReal.ofReal_mul (by positivity)]
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>          simp [ENNReal.ofReal_pow]
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      _ ≤ ENNReal.ofReal (Kc * q ^ n) := by
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>          apply ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>          have := mkc_real_bound (T := T) (β := β) (p := p) (r := r) (q := q) (lam := lam)
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>            (Cp := max C 0) hT (le_max_right _ _) hr0 hqr hq0 hlam n
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>          simpa [hKc, mul_assoc] using this
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>  have hsum : Summable fun n : ℕ =&gt; Kc * q ^ n :=
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>    (summable_geometric_of_lt_one hq0.le hq1).mul_left _
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>  calc μ (mkc_G X T r lam)ᶜ ≤ μ (⋃ n : ℕ, ⋃ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>        {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖}) := measure_mono hsub
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    _ ≤ ∑&#x27; n : ℕ, μ (⋃ k ∈ Finset.range (2 ^ n),
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>        {ζ | lam * r ^ n &lt; ‖X (mkc_pt T n (k + 1)) ζ - X (mkc_pt T n k) ζ‖}) :=
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>        measure_iUnion_le _
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>    _ ≤ ∑&#x27; n : ℕ, ENNReal.ofReal (Kc * q ^ n) := ENNReal.tsum_le_tsum hterm
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>    _ = ENNReal.ofReal (∑&#x27; n : ℕ, Kc * q ^ n) :=
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>        (ENNReal.ofReal_tsum_of_nonneg (fun n =&gt; by positivity) hsum).symm
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    _ = ENNReal.ofReal (Kc / (1 - q)) := by
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>        rw [tsum_mul_left, tsum_geometric_of_lt_one hq0.le hq1, div_eq_mul_inv]
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>open Classical in
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>/-- The continuous version: on `{K &lt; ∞}` the limit of the dyadic approximations, `0` elsewhere. -/
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>def mkc_Zc (t : ℝ) (ζ : Ω) : E :=
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>  if ζ ∈ mkc_Gs X T r then
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>    limUnder atTop (fun n =&gt; X (mkc_pt T n (mkc_idx T n (max 0 (min t T)))) ζ)
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>  else 0
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>theorem mkc_G_sub_Gs (hr : 0 ≤ r) {lam : ℝ} (hlam : 0 ≤ lam) : mkc_G X T r lam ⊆ mkc_Gs X T r := by
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>  intro ζ hζ
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>  exact Set.mem_iUnion.2 ⟨⌈lam⌉₊, mkc_G_mono X T r hr (Nat.le_ceil lam) hζ⟩
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>theorem mkc_Zc_of_notMem {ζ : Ω} (hζ : ζ ∉ mkc_Gs X T r) (t : ℝ) : mkc_Zc X T r t ζ = 0 := by
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>  simp [mkc_Zc, hζ]
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>variable [CompleteSpace E]
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>theorem mkc_Zc_tendsto (hT : 0 &lt; T) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {lam : ℝ} (hlam : 0 ≤ lam) {ζ : Ω}
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>    (hζ : ζ ∈ mkc_G X T r lam) {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>    Tendsto (fun n =&gt; X (mkc_pt T n (mkc_idx T n t)) ζ) atTop (𝓝 (mkc_Zc X T r t ζ)) := by
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>  obtain ⟨L, hL, -⟩ := mkc_limit (mkc_cons_xs X T ζ) hζ hlam hr0 hr1 hT ht
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>  have hclip : max 0 (min t T) = t := by
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>    rw [min_eq_left ht.2, max_eq_right ht.1]
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>  have : mkc_Zc X T r t ζ = L := by
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    simp only [mkc_Zc, mkc_G_sub_Gs X T r hr0 hlam hζ, ite_true, hclip]
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    exact hL.limUnder_eq
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>  rw [this]
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  exact hL
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>theorem mkc_Zc_dist_le (hT : 0 &lt; T) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {lam : ℝ} (hlam : 0 ≤ lam) {ζ : Ω}
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    (hζ : ζ ∈ mkc_G X T r lam) {t s : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) (hs : s ∈ Set.Icc (0 : ℝ) T)
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>    (m : ℕ) (hts : |t - s| ≤ T / 2 ^ m) :
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>    ‖mkc_Zc X T r t ζ - mkc_Zc X T r s ζ‖ ≤ mkc_c r * (lam * r ^ m) :=
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>  mkc_modulus (mkc_cons_xs X T ζ) hζ hlam hr0 hr1 hT ht hs m hts
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>    (mkc_Zc_tendsto X T r hT hr0 hr1 hlam hζ ht) (mkc_Zc_tendsto X T r hT hr0 hr1 hlam hζ hs)
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>theorem mkc_small {c lam : ℝ} (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {ε : ℝ} (hε : 0 &lt; ε) :
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>    ∃ m : ℕ, c * (lam * r ^ m) &lt; ε := by
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>  have : Tendsto (fun m : ℕ =&gt; c * (lam * r ^ m)) atTop (𝓝 (c * (lam * 0))) :=
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>    ((tendsto_pow_atTop_nhds_zero_of_lt_one hr0 hr1).const_mul lam).const_mul c
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>  rw [mul_zero, mul_zero] at this
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>  exact (this.eventually (gt_mem_nhds hε)).exists
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>theorem mkc_omegaE_le (hT : 0 &lt; T) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) {lam : ℝ} (hlam : 0 ≤ lam) {ζ : Ω}
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>    (hζ : ζ ∈ mkc_G X T r lam) (m : ℕ) {δ : ℝ} (hδ : δ ≤ T / 2 ^ m) :
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>    omegaE (fun t =&gt; mkc_Zc X T r t ζ) T δ ≤ ENNReal.ofReal (mkc_c r * (lam * r ^ m)) := by
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>  unfold omegaE
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  refine iSup₂_le fun s hs =&gt; iSup₂_le fun t ht =&gt; iSup_le fun hst =&gt; ?_
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  rw [← ofReal_norm]
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  exact ENNReal.ofReal_le_ofReal
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    (mkc_Zc_dist_le X T r hT hr0 hr1 hlam hζ ht hs m (hst.trans hδ))
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>theorem mkc_continuous (hT : 0 &lt; T) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) (ζ : Ω) :
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>    Continuous fun t : Set.Icc (0 : ℝ) T =&gt; mkc_Zc X T r t ζ := by
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>  by_cases hζ : ζ ∈ mkc_Gs X T r
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>  · obtain ⟨m, hm⟩ := Set.mem_iUnion.1 hζ
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>    rw [Metric.continuous_iff]
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>    intro b ε hε
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>    obtain ⟨m&#x27;, hm&#x27;⟩ := mkc_small (c := mkc_c r) (lam := (m : ℝ)) r hr0 hr1 hε
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>    refine ⟨T / 2 ^ m&#x27;, by positivity, fun a ha =&gt; ?_⟩
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>    rw [Subtype.dist_eq, Real.dist_eq] at ha
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>    rw [dist_eq_norm]
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>    exact (mkc_Zc_dist_le X T r hT hr0 hr1 (Nat.cast_nonneg m) hm a.2 b.2 m&#x27; ha.le).trans_lt hm&#x27;
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>  · have : (fun t : Set.Icc (0 : ℝ) T =&gt; mkc_Zc X T r t ζ) = fun _ =&gt; 0 := by
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>      funext t; exact mkc_Zc_of_notMem X T r hζ _
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>    rw [this]; exact continuous_const
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>theorem mkc_Zc_meas (hT : 0 &lt; T) (hr0 : 0 ≤ r) (hr1 : r &lt; 1) (hX : ∀ t, Measurable (X t))
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>    (t : ℝ) : Measurable (mkc_Zc X T r t) := by
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  have hf : ∀ n : ℕ, Measurable ((mkc_Gs X T r).indicator
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>      (fun ζ =&gt; X (mkc_pt T n (mkc_idx T n (max 0 (min t T)))) ζ)) :=
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    fun n =&gt; (hX _).indicator (mkc_Gs_meas X T r hX)
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>  have htc : max 0 (min t T) ∈ Set.Icc (0 : ℝ) T :=
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    ⟨le_max_left _ _, max_le hT.le (min_le_right _ _)⟩
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>  refine measurable_of_tendsto_metrizable hf (tendsto_pi_nhds.2 fun ζ =&gt; ?_)
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  by_cases hζ : ζ ∈ mkc_Gs X T r
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  · obtain ⟨m, hm⟩ := Set.mem_iUnion.1 hζ
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>    have h := mkc_Zc_tendsto X T r hT hr0 hr1 (Nat.cast_nonneg m) hm htc
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    have e : mkc_Zc X T r t ζ = mkc_Zc X T r (max 0 (min t T)) ζ := by
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>      have hclip : max 0 (min (max 0 (min t T)) T) = max 0 (min t T) := by
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>        rw [min_eq_left htc.2, max_eq_right htc.1]
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>      simp only [mkc_Zc, hζ, ite_true, hclip]
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    rw [e]
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>    simpa [Set.indicator_of_mem hζ, mkc_Zc, hζ, htc] using h
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  · simp only [Set.indicator_of_notMem hζ, mkc_Zc_of_notMem X T r hζ]
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>    exact tendsto_const_nhds
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>theorem mkc_tail_tendsto {p : ℝ} (hp : 0 &lt; p) (K q : ℝ) :
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>    Tendsto (fun lam : ℝ =&gt; ENNReal.ofReal (K * lam ^ (-p) / (1 - q))) atTop (𝓝 0) := by
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>  have h : Tendsto (fun lam : ℝ =&gt; K * lam ^ (-p) / (1 - q)) atTop (𝓝 (K * 0 / (1 - q))) :=
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    ((tendsto_rpow_neg_atTop hp).const_mul K).div_const _
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>  rw [mul_zero, zero_div] at h
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>  simpa using ENNReal.tendsto_ofReal h
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>theorem mkc_Gs_null (μ : Measure Ω) (hX : ∀ t, Measurable (X t)) {p β C q : ℝ}
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>    (hT : 0 &lt; T) (hp : 0 &lt; p)
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>    (hmom : ∀ s ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>      ∫⁻ ζ, ‖X t ζ - X s ζ‖ₑ ^ p ∂μ ≤ ENNReal.ofReal (C * |t - s| ^ (1 + β)))
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>    (hr0 : 0 &lt; r) (hq0 : 0 &lt; q) (hq1 : q &lt; 1) (hqr : 1 ≤ q * 2 ^ β * r ^ p) :
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    μ (mkc_Gs X T r)ᶜ = 0 := by
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>  refine le_antisymm ?_ zero_le
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>  refine ge_of_tendsto (mkc_tail_tendsto hp (max C 0 * T ^ (1 + β)) q)
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>    (eventually_atTop.2 ⟨1, fun lam hlam =&gt; ?_⟩)
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>  have hl : 0 &lt; lam := lt_of_lt_of_le one_pos hlam
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>  refine le_trans (measure_mono ?_) (mkc_prob_bound X T r μ hX hT hp hmom hr0 hq0 hq1 hqr hl)
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>  exact Set.compl_subset_compl.2 (mkc_G_sub_Gs X T r hr0.le hl.le)
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>theorem mkc_omega_prob (μ : Measure Ω) (hX : ∀ t, Measurable (X t)) {p β C q : ℝ}
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    (hT : 0 &lt; T) (hp : 0 &lt; p)
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>    (hmom : ∀ s ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>      ∫⁻ ζ, ‖X t ζ - X s ζ‖ₑ ^ p ∂μ ≤ ENNReal.ofReal (C * |t - s| ^ (1 + β)))
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>    (hr0 : 0 &lt; r) (hr1 : r &lt; 1) (hq0 : 0 &lt; q) (hq1 : q &lt; 1) (hqr : 1 ≤ q * 2 ^ β * r ^ p)
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>    {lam : ℝ} (hlam : 0 &lt; lam) {ε : ℝ} (m : ℕ) (hm : mkc_c r * (lam * r ^ m) ≤ ε)
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>    {δ : ℝ} (hδ : δ ≤ T / 2 ^ m) :
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>    μ {ζ | ENNReal.ofReal ε &lt; omegaE (fun t =&gt; mkc_Zc X T r t ζ) T δ} ≤
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>      ENNReal.ofReal (max C 0 * T ^ (1 + β) * lam ^ (-p) / (1 - q)) := by
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>  refine le_trans (measure_mono ?_) (mkc_prob_bound X T r μ hX hT hp hmom hr0 hq0 hq1 hqr hlam)
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>  intro ζ hζ hG
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  have := mkc_omegaE_le X T r hT hr0.le hr1 hlam.le hG m hδ
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>  exact absurd (lt_of_lt_of_le hζ (this.trans (ENNReal.ofReal_le_ofReal hm))) (lt_irrefl _)
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>theorem mkc_Zc_ae_eq (μ : Measure Ω) [IsFiniteMeasure μ] (hX : ∀ t, Measurable (X t)) {p β C q : ℝ}
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>    (hT : 0 &lt; T) (hp : 0 &lt; p) (hβ : 0 &lt; β)
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>    (hmom : ∀ s ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>      ∫⁻ ζ, ‖X t ζ - X s ζ‖ₑ ^ p ∂μ ≤ ENNReal.ofReal (C * |t - s| ^ (1 + β)))
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>    (hr0 : 0 &lt; r) (hr1 : r &lt; 1) (hq0 : 0 &lt; q) (hq1 : q &lt; 1) (hqr : 1 ≤ q * 2 ^ β * r ^ p)
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>    mkc_Zc X T r t =ᵐ[μ] X t := by
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>  have hnull := mkc_Gs_null X T r μ hX hT hp hmom hr0 hq0 hq1 hqr
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>  have hae : ∀ᵐ ζ ∂μ, ζ ∈ mkc_Gs X T r := by
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>    exact ae_iff.2 hnull
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  set f : ℕ → Ω → E := fun n ζ =&gt; X (mkc_pt T n (mkc_idx T n t)) ζ with hf
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>  have h1 : TendstoInMeasure μ f atTop (X t) := by
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>    refine tendstoInMeasure_of_ne_top fun ε hε hεt =&gt; ?_
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>    set e : ℝ := ε.toReal with he
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>    have hepos : 0 &lt; e := ENNReal.toReal_pos hε.ne&#x27; hεt
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    have hεe : ε = ENNReal.ofReal e := (ENNReal.ofReal_toReal hεt).symm
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    have hbound : ∀ n : ℕ, μ {ζ | ε ≤ edist (f n ζ) (X t ζ)} ≤
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>        ENNReal.ofReal (max C 0 * (T / 2 ^ n) ^ (1 + β) / (e / 2) ^ p) := by
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>      intro n
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>      have hmem : mkc_pt T n (mkc_idx T n t) ∈ Set.Icc (0 : ℝ) T :=
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>        mkc_pt_mem hT n _ (mkc_idx_le hT ht.2 n)
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>      have hpt := mkc_pt_idx hT ht.1 n
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>      refine le_trans (measure_mono ?_) (mkc_markov μ
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>        (d := fun ζ =&gt; X (mkc_pt T n (mkc_idx T n t)) ζ - X t ζ) ((hX _).sub (hX _)) hp
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>        (c := e / 2) (by positivity) (M := max C 0 * (T / 2 ^ n) ^ (1 + β)) ?_)
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>      · intro ζ hζ
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>        simp only [Set.mem_ofPred_eq, edist_eq_enorm_sub, hεe] at hζ ⊢
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>        rw [← ofReal_norm, ENNReal.ofReal_le_ofReal_iff (norm_nonneg _)] at hζ
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>        have h&#x27; : e ≤ ‖X (mkc_pt T n (mkc_idx T n t)) ζ - X t ζ‖ := hζ
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>        show e / 2 &lt; ‖X (mkc_pt T n (mkc_idx T n t)) ζ - X t ζ‖
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>        linarith
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>      · refine (hmom t ht _ hmem).trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>        have habs : |mkc_pt T n (mkc_idx T n t) - t| ≤ T / 2 ^ n := by
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>          rw [abs_sub_comm, abs_of_nonneg (by linarith [hpt.1])]
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>          linarith [hpt.2]
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>        calc C * |mkc_pt T n (mkc_idx T n t) - t| ^ (1 + β)
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>            ≤ max C 0 * |mkc_pt T n (mkc_idx T n t) - t| ^ (1 + β) :=
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>              mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.rpow_nonneg (abs_nonneg _) _)
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>          _ ≤ max C 0 * (T / 2 ^ n) ^ (1 + β) := by
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>              apply mul_le_mul_of_nonneg_left _ (le_max_right _ _)
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>              exact Real.rpow_le_rpow (abs_nonneg _) habs (by linarith)
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    have hlim : Tendsto (fun n : ℕ =&gt; max C 0 * (T / 2 ^ n) ^ (1 + β) / (e / 2) ^ p) atTop
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>        (𝓝 0) := by
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>      have h0 : Tendsto (fun n : ℕ =&gt; T / 2 ^ n) atTop (𝓝 0) := by
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>        have := (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num : (0 : ℝ) ≤ 1 / 2)
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>          (by norm_num)).const_mul T
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>        rw [mul_zero] at this
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>        simpa [div_eq_mul_inv, one_div, inv_pow] using this
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>      have h1 : Tendsto (fun n : ℕ =&gt; (T / 2 ^ n) ^ (1 + β)) atTop (𝓝 (0 ^ (1 + β))) :=
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>        ((Real.continuousAt_rpow_const 0 (1 + β) (Or.inr (by linarith))).tendsto).comp h0
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>      rw [Real.zero_rpow (by linarith)] at h1
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>      have := (h1.const_mul (max C 0)).div_const ((e / 2) ^ p)
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>      simpa using this
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>    exact tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>      (by simpa using ENNReal.tendsto_ofReal hlim) (fun _ =&gt; zero_le) hbound
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>  have h2 : ∀ᵐ ζ ∂μ, Tendsto (fun n =&gt; f n ζ) atTop (𝓝 (mkc_Zc X T r t ζ)) := by
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    filter_upwards [hae] with ζ hζ
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>    obtain ⟨m, hm⟩ := Set.mem_iUnion.1 hζ
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>    exact mkc_Zc_tendsto X T r hT hr0.le hr1 (Nat.cast_nonneg m) hm ht
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>  have h3 : TendstoInMeasure μ f atTop (mkc_Zc X T r t) :=
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>    tendstoInMeasure_of_tendsto_ae (fun n =&gt; (hX _).aestronglyMeasurable) h2
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>  exact tendstoInMeasure_ae_unique h3 h1
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>end Prob
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>section Final
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>theorem mkc_consts {β p : ℝ} (hβ : 0 &lt; β) (hp : 0 &lt; p) :
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>    ∃ r q : ℝ, 0 &lt; r ∧ r &lt; 1 ∧ 0 &lt; q ∧ q &lt; 1 ∧ 1 ≤ q * 2 ^ β * r ^ p := by
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>  set q : ℝ := (2 : ℝ) ^ (-(β / 2)) with hq
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>  have hq0 : 0 &lt; q := Real.rpow_pos_of_pos (by norm_num) _
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>  have hq1 : q &lt; 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>  set r : ℝ := q ^ (1 / p) with hr
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>  have hr0 : 0 &lt; r := Real.rpow_pos_of_pos hq0 _
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>  have hr1 : r &lt; 1 := Real.rpow_lt_one hq0.le hq1 (by positivity)
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>  have hrp : r ^ p = q := by
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>    rw [hr, ← Real.rpow_mul hq0.le, one_div_mul_cancel hp.ne&#x27;, Real.rpow_one]
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>  refine ⟨r, q, hr0, hr1, hq0, hq1, le_of_eq ?_⟩
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>  rw [hrp, hq, ← Real.rpow_add (by norm_num), ← Real.rpow_add (by norm_num)]
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>  rw [show -(β / 2) + β + -(β / 2) = 0 by ring, Real.rpow_zero]
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>theorem mkc_contPathOf_apply {E : Type*} [NormedAddCommGroup E] [MeasurableSpace E] [BorelSpace E]
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>    [SecondCountableTopology E] [CompleteSpace E] {Ω : Type*} [MeasurableSpace Ω]
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>    (X : ℝ → Ω → E) {T : ℝ} (hT : 0 &lt; T) {r : ℝ} (hr0 : 0 ≤ r) (hr1 : r &lt; 1) (ζ : Ω)
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>    (s : Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>    contPathOf T (fun t =&gt; mkc_Zc X T r t ζ) s = mkc_Zc X T r s ζ := by
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>  unfold contPathOf
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>  rw [dif_pos (mkc_continuous X T r hT hr0 hr1 ζ)]
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>  rfl
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>/-- Kolmogorov-Chentsov with a uniform modulus: statement copied verbatim from
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>`HRS.Whole.AppendixALemmas.kolmogorov_modulus_tightness`. -/
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>theorem kolmogorov_modulus_tightness_proof {E : Type*} [NormedAddCommGroup E]
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>    [InnerProductSpace ℝ E]
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>    [CompleteSpace E] [TopologicalSpace.SeparableSpace E] [MeasurableSpace E] [BorelSpace E]
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>    (T : ℝ) (hT : 0 &lt; T) {Ω : ℕ → Type*} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>    [∀ N, IsProbabilityMeasure (P N)] (Z : ∀ N, ℝ → Ω N → E)
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>    (hZmeas : ∀ N : ℕ, 1 ≤ N → ∀ t, Measurable (Z N t)) (p β C : ℝ) (hp : 0 &lt; p) (hβ : 0 &lt; β)
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>    (hmom : ∀ N : ℕ, 1 ≤ N → ∀ s ∈ Set.Icc (0 : ℝ) T, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>      ∫⁻ ζ, ‖Z N t ζ - Z N s ζ‖ₑ ^ p ∂(P N) ≤ ENNReal.ofReal (C * |t - s| ^ (1 + β))) :
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>    ∃ Zc : ∀ N, ℝ → Ω N → E, ContVersionTight T P Z Zc := by
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>  obtain ⟨r, q, hr0, hr1, hq0, hq1, hqr⟩ := mkc_consts hβ hp
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>  have hmod : ∀ ε : ℝ, 0 &lt; ε → Tendsto (fun δ : ℝ =&gt;
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>      ⨆ N : ℕ, ⨆ (_ : 1 ≤ N),
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>        P N {ζ | ENNReal.ofReal ε &lt; omegaE (fun t =&gt; mkc_Zc (Z N) T r t ζ) T δ})
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>      (𝓝[&gt;] 0) (𝓝 0) := by
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>    intro ε hε
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>    refine ENNReal.tendsto_nhds_zero.2 fun η hη =&gt; ?_
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>    obtain ⟨η&#x27;, hη&#x27;pos, hη&#x27;le⟩ : ∃ η&#x27; : ℝ, 0 &lt; η&#x27; ∧ ENNReal.ofReal η&#x27; ≤ η := by
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>      by_cases ht : η = ⊤
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>      · exact ⟨1, one_pos, by simp [ht]⟩
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>      · exact ⟨η.toReal, ENNReal.toReal_pos hη.ne&#x27; ht, by rw [ENNReal.ofReal_toReal ht]⟩
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>    have hη&#x27;pos&#x27; : (0 : ℝ≥0∞) &lt; ENNReal.ofReal η&#x27; := ENNReal.ofReal_pos.2 hη&#x27;pos
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>    obtain ⟨lam, hlamb, hlam⟩ :=
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>      (((mkc_tail_tendsto hp (max C 0 * T ^ (1 + β)) q).eventually (gt_mem_nhds hη&#x27;pos&#x27;)).and
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>        (eventually_gt_atTop (0 : ℝ))).exists
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>    obtain ⟨m, hm⟩ := mkc_small (c := mkc_c r) (lam := lam) r hr0.le hr1 hε
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>    have hpos : (0 : ℝ) &lt; T / 2 ^ m := by positivity
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>    filter_upwards [Ioo_mem_nhdsGT hpos] with δ hδ
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>    refine iSup₂_le fun N hN =&gt; ?_
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>    refine le_trans ?_ hη&#x27;le
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>    refine le_trans (mkc_omega_prob (Z N) T r (P N) (hZmeas N hN) hT hp (hmom N hN) hr0 hr1 hq0 hq1
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>      hqr hlam m hm.le hδ.2.le) hlamb.le
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>  have hcont : ∀ N : ℕ, 1 ≤ N → ∀ᵐ ζ ∂(P N),
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>      Continuous fun t : Set.Icc (0 : ℝ) T =&gt; mkc_Zc (Z N) T r t ζ :=
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>    fun N _ =&gt; ae_of_all _ (mkc_continuous (Z N) T r hT hr0.le hr1)
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>  have hZc : ∀ N : ℕ, 1 ≤ N → ∀ t, Measurable (mkc_Zc (Z N) T r t) :=
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>    fun N hN t =&gt; mkc_Zc_meas (Z N) T r hT hr0.le hr1 (hZmeas N hN) t
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>  have hpath : ∀ N : ℕ, 1 ≤ N →
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>      Measurable fun ζ =&gt; contPathOf T (fun t =&gt; mkc_Zc (Z N) T r t ζ) := by
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    intro N hN
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>    refine ContinuousMap.measurable_iff_eval.2 fun s =&gt; ?_
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>    have : (fun ζ =&gt; contPathOf T (fun t =&gt; mkc_Zc (Z N) T r t ζ) s) =
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>        fun ζ =&gt; mkc_Zc (Z N) T r s ζ := by
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>      funext ζ; exact mkc_contPathOf_apply (Z N) hT hr0.le hr1 ζ s
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>    rw [this]
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>    exact hZc N hN s
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>  have hae : ∀ N : ℕ, 1 ≤ N → ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>      ∀ᵐ ζ ∂(P N), mkc_Zc (Z N) T r t ζ = Z N t ζ :=
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>    fun N hN t ht =&gt; mkc_Zc_ae_eq (Z N) T r (P N) (hZmeas N hN) hT hp hβ (hmom N hN) hr0 hr1 hq0
+</span><span class="line" id="L666"><a class="ln" aria-label="Line 666" href="#L666">666</a>      hq1 hqr ht
+</span><span class="line" id="L667"><a class="ln" aria-label="Line 667" href="#L667">667</a>  refine ⟨fun N t ζ =&gt; mkc_Zc (Z N) T r t ζ, hae, hcont, hpath, hmod, fun htight =&gt; ?_⟩
+</span><span class="line" id="L668"><a class="ln" aria-label="Line 668" href="#L668">668</a>  refine HRS.MP.PathTight.path_tightness_criterion_proof T hT P
+</span><span class="line" id="L669"><a class="ln" aria-label="Line 669" href="#L669">669</a>    (fun N t ζ =&gt; mkc_Zc (Z N) T r t ζ) hZc hcont hpath (Set.Icc (0 : ℝ) T) subset_rfl
+</span><span class="line" id="L670"><a class="ln" aria-label="Line 670" href="#L670">670</a>    subset_closure ?_ hmod
+</span><span class="line" id="L671"><a class="ln" aria-label="Line 671" href="#L671">671</a>  intro t ht
+</span><span class="line" id="L672"><a class="ln" aria-label="Line 672" href="#L672">672</a>  have hset : {μ | ∃ N : ℕ, 1 ≤ N ∧ μ = (P N).map (fun ζ =&gt; mkc_Zc (Z N) T r t ζ)} =
+</span><span class="line" id="L673"><a class="ln" aria-label="Line 673" href="#L673">673</a>      {μ | ∃ N : ℕ, 1 ≤ N ∧ μ = (P N).map (Z N t)} := by
+</span><span class="line" id="L674"><a class="ln" aria-label="Line 674" href="#L674">674</a>    ext μ
+</span><span class="line" id="L675"><a class="ln" aria-label="Line 675" href="#L675">675</a>    constructor
+</span><span class="line" id="L676"><a class="ln" aria-label="Line 676" href="#L676">676</a>    · rintro ⟨N, hN, rfl⟩
+</span><span class="line" id="L677"><a class="ln" aria-label="Line 677" href="#L677">677</a>      exact ⟨N, hN, Measure.map_congr (hae N hN t ht)⟩
+</span><span class="line" id="L678"><a class="ln" aria-label="Line 678" href="#L678">678</a>    · rintro ⟨N, hN, rfl⟩
+</span><span class="line" id="L679"><a class="ln" aria-label="Line 679" href="#L679">679</a>      exact ⟨N, hN, (Measure.map_congr (hae N hN t ht)).symm⟩
+</span><span class="line" id="L680"><a class="ln" aria-label="Line 680" href="#L680">680</a>  rw [hset]
+</span><span class="line" id="L681"><a class="ln" aria-label="Line 681" href="#L681">681</a>  exact htight t ht
+</span><span class="line" id="L682"><a class="ln" aria-label="Line 682" href="#L682">682</a>
+</span><span class="line" id="L683"><a class="ln" aria-label="Line 683" href="#L683">683</a>example := (@kolmogorov_modulus_tightness_proof :
+</span><span class="line" id="L684"><a class="ln" aria-label="Line 684" href="#L684">684</a>  type_of% @HRS.Whole.AppendixALemmas.kolmogorov_modulus_tightness)
+</span><span class="line" id="L685"><a class="ln" aria-label="Line 685" href="#L685">685</a>
+</span><span class="line" id="L686"><a class="ln" aria-label="Line 686" href="#L686">686</a>end Final
+</span><span class="line" id="L687"><a class="ln" aria-label="Line 687" href="#L687">687</a>
+</span><span class="line" id="L688"><a class="ln" aria-label="Line 688" href="#L688">688</a>end HRS.MP.KC
+</span></code></pre></main></body></html>

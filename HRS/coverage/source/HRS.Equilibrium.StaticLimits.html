@@ -1,0 +1,305 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Equilibrium.StaticLimits · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Equilibrium.StaticLimits</code></h1><p><a href="../../lean/HRS/Equilibrium/StaticLimits.lean">Open the unaltered Lean file</a> · 304 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>/-
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a># HRS.Equilibrium.StaticLimits — local divergence, field singularity, examples, quadratic limit
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>(EQ-01e)
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>* Proposition 7.17 `M:E:prop:local-divergence` (source lines 9649-9687),
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>* Proposition 2.4 `M:H:prop:field-singularity` (source lines 701-710),
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* Examples 5.11 `M:A:ex:conditioned` and 5.12 `M:A:ex:cosine` (static parts, source lines
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>  7092-7119, 7139-7155; the time evolution `A:eq:half-normal-evolution` is dynamics),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* Lemma 7.5 `M:N:lem:quadratic-limit` (source lines 7956-7967; setting lines 7894-7954).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>import HRS.Equilibrium.PairCorrection
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>import HRS.Equilibrium.StaticLimitsAux
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>import HRS.Equilibrium.FieldSingAux
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>import HRS.Equilibrium.LocalDivAsym
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>import HRS.Equilibrium.LocalDivSub
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>noncomputable section
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d : ℕ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-! ### Proposition 7.17: the exact local divergence -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>/-- `h_{φ,ε} = 1_{dist(x,y) &gt; ε} h_φ` (`E:eq:hphi`, source lines 9654-9657), with the periodic
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>Euclidean distance (the leading constant for `s &gt; d/2` depends on the shape of the cutoff). -/
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>def hCut (d : ℕ) (s : ℝ) (φ : Torus d → ℝ) (ε : ℝ) (x y : Torus d) : ℝ :=
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  if ε &lt; Torus.eucDist x y then hTransport d s φ x y else 0
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>/-- `J_{φ,ρ} = s²|𝕊^{d-1}|/(d(d+2)) ∫ ρ² ((Δφ)² + 2|D²φ|_F²) dx` (`E:eq:J`). -/
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>def localDivCoeff (d : ℕ) (s : ℝ) (ρ φ : Torus d → ℝ) : ℝ :=
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  s ^ 2 * sphereArea d / (d * (d + 2)) *
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    ∫ x, ρ x ^ 2 * (Torus.laplacian φ x ^ 2 +
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      2 * ∑ i : Fin d, ∑ j : Fin d, Torus.partialDeriv i (Torus.partialDeriv j φ) x ^ 2)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>/-- Proposition 7.17, `E:eq:J`: `J_{φ,ρ} &gt; 0` for `0 &lt; s &lt; d`, a smooth positive density `ρ`
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>and a smooth nonconstant `φ`. -/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem localDivCoeff_pos {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 &lt; s) (hsd : s &lt; d) (ρ : Torus d → ℝ)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ) (hφ : Torus.IsSmooth φ)
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (hnc : ∃ x y, φ x ≠ φ y) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    0 &lt; localDivCoeff d s ρ φ := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hρc : Continuous ρ := StaticLimitAux.continuous_of_smooth hρ.smooth
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  set g : Torus d → ℝ := fun x =&gt; ρ x ^ 2 * (Torus.laplacian φ x ^ 2 +
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>      2 * ∑ i : Fin d, ∑ j : Fin d, Torus.partialDeriv i (Torus.partialDeriv j φ) x ^ 2) with hg
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have gcont : Continuous g := by
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    refine (hρc.pow 2).mul ((( StaticLimitsAux.continuous_laplacian hφ).pow 2).add
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      (continuous_const.mul (continuous_finset_sum _ fun i _ =&gt; continuous_finset_sum _ fun j _ =&gt; ?_)))
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    exact (StaticLimitsAux.continuous_second hφ i j).pow 2
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have gnn : 0 ≤ g := fun x =&gt; by
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    simp only [hg]
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    positivity
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hex : ∃ x0, g x0 ≠ 0 := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    by_contra hcon
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    push_neg at hcon
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    obtain ⟨x, y, hxy⟩ := hnc
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    refine hxy (StaticLimitsAux.const_of_second_zero hφ (fun i j z =&gt; ?_) x y)
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    have h0 := hcon z
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have hρz : ρ z ^ 2 ≠ 0 := (pow_pos (hρ.pos z) 2).ne&#x27;
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    have h1 : Torus.laplacian φ z ^ 2 +
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>        2 * ∑ i : Fin d, ∑ j : Fin d, Torus.partialDeriv i (Torus.partialDeriv j φ) z ^ 2 = 0 := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      simp only [hg] at h0
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      exact (mul_eq_zero.mp h0).resolve_left hρz
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    have h2 : 0 ≤ ∑ i : Fin d, ∑ j : Fin d, Torus.partialDeriv i (Torus.partialDeriv j φ) z ^ 2 :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      Finset.sum_nonneg fun i _ =&gt; Finset.sum_nonneg fun j _ =&gt; sq_nonneg _
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    have h3 : ∑ i : Fin d, ∑ j : Fin d, Torus.partialDeriv i (Torus.partialDeriv j φ) z ^ 2 = 0 := by
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      nlinarith [sq_nonneg (Torus.laplacian φ z)]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    have h4 := (Finset.sum_eq_zero_iff_of_nonneg fun i _ =&gt; Finset.sum_nonneg fun j _ =&gt;
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      sq_nonneg (Torus.partialDeriv i (Torus.partialDeriv j φ) z)).mp h3 i (Finset.mem_univ _)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    have h5 := (Finset.sum_eq_zero_iff_of_nonneg fun j _ =&gt;
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      sq_nonneg (Torus.partialDeriv i (Torus.partialDeriv j φ) z)).mp h4 j (Finset.mem_univ _)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    exact pow_eq_zero_iff (two_ne_zero) |&gt;.mp h5
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  obtain ⟨x0, hx0⟩ := hex
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  have hpos : 0 &lt; ∫ x, g x :=
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    Continuous.integral_pos_of_hasCompactSupport_nonneg_nonzero gcont
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      (HasCompactSupport.of_compactSpace g) gnn hx0
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hK : 0 &lt; s ^ 2 * sphereArea d / (d * (d + 2)) := by
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have : (0 : ℝ) &lt; d := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      have : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      linarith
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have := StaticLimitsAux.sphereArea_pos hd
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    positivity
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  exact mul_pos hK hpos
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>/-- Proposition 7.17, `E:eq:L2-asymptotics`, critical case `s = d/2`:
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>`‖h°_{φ,ε}‖²_{L²(μ^{⊗2})} = J_{φ,ρ} log(1/ε) + O(1)` as `ε ↓ 0`. -/
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>theorem localDiv_critical {s : ℝ} (hd : 2 ≤ d) (hcrit : s = (d : ℝ) / 2) (ρ : Torus d → ℝ)
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ) (hφ : Torus.IsSmooth φ)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    (hnc : ∃ x y, φ x ≠ φ y) :
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    ∃ C ε₀ : ℝ, 0 &lt; ε₀ ∧ ∀ ε ∈ Set.Ioo (0 : ℝ) ε₀,
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      |∫ p : Torus d × Torus d,
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>          canonicalCenter (withDensityReal ρ) (hCut d s φ ε) p.1 p.2 ^ 2
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>            ∂((withDensityReal ρ).prod (withDensityReal ρ)) -
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        localDivCoeff d s ρ φ * Real.log (1 / ε)| ≤ C := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  obtain ⟨C, ε₀, hε₀, H⟩ := LocalDivAux.critical_main hd hcrit hρ hφ
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  exact ⟨C, ε₀, hε₀, H⟩
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>/-- Proposition 7.17, `E:eq:L2-asymptotics`, supercritical case `d/2 &lt; s &lt; d`:
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>`‖h°_{φ,ε}‖²_{L²(μ^{⊗2})} = J_{φ,ρ}/(2s-d) ε^{d-2s} (1 + o(1))`. -/
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>theorem localDiv_supercritical {s : ℝ} (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ) (hφ : Torus.IsSmooth φ)
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    (hnc : ∃ x y, φ x ≠ φ y) :
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    Tendsto (fun ε =&gt; (∫ p : Torus d × Torus d,
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>          canonicalCenter (withDensityReal ρ) (hCut d s φ ε) p.1 p.2 ^ 2
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>            ∂((withDensityReal ρ).prod (withDensityReal ρ))) /
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        (localDivCoeff d s ρ φ / (2 * s - d) * ε ^ ((d : ℝ) - 2 * s)))
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      (𝓝[&gt;] 0) (𝓝 1) := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  have hd2 : (2 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  have hs0 : 0 &lt; s := by linarith
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  exact LocalDivAux.supercritical_main hd hs hsd hρ hφ (localDivCoeff_pos hd hs0 hsd ρ hρ φ hφ hnc)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>/-- Proposition 7.17, last two sentences (source lines 9684-9686): for `0 ≤ s &lt; d/2`,
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>`h_φ ∈ L²(μ^{⊗2})` and the canonical cutoffs `h°_{φ,ε}` converge in `L²(μ^{⊗2})` (to the
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>canonical centering of `h_φ`); `s = 0` is included (bounded kernel near the diagonal). -/
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>theorem localDiv_subcritical {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (φ : Torus d → ℝ) (hφ : Torus.IsSmooth φ) :
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    MemLp (fun p : Torus d × Torus d =&gt; hTransport d s φ p.1 p.2) 2
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>        ((withDensityReal ρ).prod (withDensityReal ρ)) ∧
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      Tendsto (fun ε =&gt; eLpNorm (fun p : Torus d × Torus d =&gt;
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>          canonicalCenter (withDensityReal ρ) (hCut d s φ ε) p.1 p.2 -
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>            canonicalCenter (withDensityReal ρ) (hTransport d s φ) p.1 p.2) 2
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          ((withDensityReal ρ).prod (withDensityReal ρ))) (𝓝[&gt;] 0) (𝓝 0) := by
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  exact ⟨LocalDivAux.sub_memLp hd hs0 hs hρ hφ, LocalDivAux.sub_conv hd hs0 hs hρ hφ⟩
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>/-! ### Proposition 2.4: mutual singularity of field laws -/
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>/-- The covariance of a field law `γ` on `H^{-m}_0` is comparable to `‖·‖²_{L²(dx)}` on smooth
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>zero-Haar-mean functions (hypothesis of Proposition 2.4, source lines 703-705). -/
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>def HasL2ComparableCov (m : ℝ) (γ : Measure (NegSobolev d m)) : Prop :=
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  ∃ c C : ℝ, 0 &lt; c ∧ ∀ φ : Torus d → ℝ, Torus.IsSmooth φ → Torus.mean φ = 0 →
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    c * ∫ x, φ x ^ 2 ≤ ∫ F, NegSobolev.eval F φ ^ 2 ∂γ ∧
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      ∫ F, NegSobolev.eval F φ ^ 2 ∂γ ≤ C * ∫ x, φ x ^ 2
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-- Proposition 2.4 `M:H:prop:field-singularity` (source lines 701-708): for `m &gt; d/2`, a centred
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>Gaussian law `γ` on `H^{-m}_0` with `L²`-comparable covariance is mutually singular with the law
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>of `√N(μ_N - ν_N)` for every `N`, every particle law and every probability measure `ν_N`.
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>`hd : 1 ≤ d` excludes the point torus `d = 0`, where the statement is false; the source works
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>under the standing assumption `d ≥ 2` (M L419), so this is weaker than inherited (`docs/ISSUES.md` §E). -/
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>theorem field_singularity (hd : 1 ≤ d) (m : ℝ) (hm : (d : ℝ) / 2 &lt; m) (γ : Measure (NegSobolev d m))
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    [IsProbabilityMeasure γ] (hγ : IsCenteredGaussian γ) (hcov : HasL2ComparableCov m γ)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    (N : ℕ) (P : Measure (Config d N)) [IsProbabilityMeasure P] (ν : Measure (Torus d))
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    [IsProbabilityMeasure ν] :
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    γ ⟂ₘ law P (fun X =&gt; Real.sqrt N • NegSobolev.ofMeasureDiff m (empirical X) ν) := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  obtain ⟨c, C, hc, H⟩ := hcov
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  exact FieldSingAux.field_singularity_main hd hm γ hγ c hc (fun φ h1 h2 =&gt; (H φ h1 h2).1) N P ν
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- Proposition 2.4, last sentence (source lines 708-709): the susceptibility Gaussian of a
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>smooth strictly positive density has `L²`-comparable covariance. -/
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>theorem susceptibility_hasL2ComparableCov {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    (m : ℝ) (hm : (d : ℝ) / 2 &lt; m) (β : ℝ) (hβ : 0 ≤ β) (ρ : Torus d → ℝ)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    (hρ : SmoothPosDensity ρ) (γ : Measure (NegSobolev d m))
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    (hγ : IsCenteredGaussianWithCov m γ
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      (susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β)) :
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    HasL2ComparableCov m γ := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  obtain ⟨c, C, hc, H⟩ := StaticLimitsAux.comparable_of_susc hd hs0 hsd β hβ hρ
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  refine ⟨c, C, hc, fun φ hφ h0 =&gt; ?_⟩
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  have e := hγ.2 φ φ hφ hφ
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  simp only [← sq] at e
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  rw [e]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  exact H φ hφ h0
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>/-! ### Examples 5.11 and 5.12: conditioned and tilted equilibrium samples -/
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>/-- `Z_N = ⟨ψ, η_N⟩ = √N(μ_N(ψ) - μ_β(ψ))` (source line 7094). -/
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>def linCoord {N : ℕ} (μ : Measure (Torus d)) (ψ : Torus d → ℝ) (X : Config d N) : ℝ :=
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  Real.sqrt N * ((1 / (N : ℝ)) * ∑ i, ψ (X i) - pair μ ψ)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>/-- The half-normal density `√(2/(πv)) e^{-z²/(2v)} 1_{z&gt;0}` (`A:eq:half-normal`). -/
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>def halfNormalDensity (v z : ℝ) : ℝ :=
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  if 0 &lt; z then Real.sqrt (2 / (Real.pi * v)) * Real.exp (-z ^ 2 / (2 * v)) else 0
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>/-- The cosine-tilted Gaussian density `(1 + a cos z)/(1 + a e^{-v/2}) · e^{-z²/(2v)}/√(2πv)`
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>(`A:eq:cosine-density`). -/
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>def cosineTiltDensity (a v z : ℝ) : ℝ :=
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  (1 + a * Real.cos z) / (1 + a * Real.exp (-v / 2)) *
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    (Real.exp (-z ^ 2 / (2 * v)) / Real.sqrt (2 * Real.pi * v))
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>/-- Example 5.11 `M:A:ex:conditioned` (source lines 7092-7104), general part: for a smooth
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>nonconstant `ψ`, `v = C_β(ψ,ψ) &gt; 0`, `P_{N,β}(Z_N &gt; 0) → 1/2`, and the law of `Z_N` under
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>`P_{N,β}(· | Z_N &gt; 0)` converges (against bounded continuous tests) to the half-normal law.
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>The source derives the convergence of `Z_N = ⟨ψ, η_N⟩` from Theorem 2.9, which centres at the
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>exact marginal; the mean-field centering used here has the same limit only for `s &lt; 2d/3`
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>(source lines 989-991), which is therefore assumed (see the report). -/
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>theorem conditioned_example {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; 2 * (d : ℝ) / 3)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    (β : ℝ) (hβ : 0 &lt; β) (V : Torus d → ℝ) (hV : Torus.IsSmooth V) (ρ : Torus d → ℝ)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    (hρ : IsThermalDensity (periodicRiesz d s) V β ρ) (ψ : Torus d → ℝ) (hψ : Torus.IsSmooth ψ)
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    (hnc : ∃ x y, ψ x ≠ ψ y) :
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    0 &lt; susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β ψ ψ ∧
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    Tendsto (fun N =&gt; (canonicalGibbs (periodicRiesz d s) V N β
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>        {X | 0 &lt; linCoord (withDensityReal ρ) ψ X}).toReal) atTop (𝓝 (1 / 2)) ∧
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    ∀ f : ℝ → ℝ, Continuous f → (∃ M, ∀ z, |f z| ≤ M) →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      Tendsto (fun N =&gt; ∫ X, f (linCoord (withDensityReal ρ) ψ X)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>          ∂(ProbabilityTheory.cond (canonicalGibbs (periodicRiesz d s) V N β)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>            {X | 0 &lt; linCoord (withDensityReal ρ) ψ X})) atTop
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>        (𝓝 (∫ z, f z * halfNormalDensity
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>          (susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β ψ ψ) z)) := by
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  sorry
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>/-- Example 5.11, explicit homogeneous case (source lines 7105-7113): `V = 0`,
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>`ψ(x) = √2 cos(2π x_1)`. Then `P_{N,β}(Z_N &gt; 0) = 1/2` for every `N ≥ 1` (so the conditioned
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>density is exactly `2·1_{Z_N &gt; 0}`), and `v = 1/(1 + β c_{d,s} (2π)^{s-d})` (`A:eq:explicit-variance`). -/
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>theorem conditioned_example_explicit {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (β : ℝ)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    (hβ : 0 &lt; β) (N : ℕ) (hN : 1 ≤ N) :
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    (canonicalGibbs (periodicRiesz d s) (fun _ =&gt; 0) N β
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>        {X | 0 &lt; linCoord volume
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>          (fun x =&gt; Real.sqrt 2 * Torus.cosMode (Pi.single ⟨0, by omega⟩ 1) x) X}).toReal = 1 / 2 ∧
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      susceptibilityCov (periodicRiesz d s) volume β
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>          (fun x =&gt; Real.sqrt 2 * Torus.cosMode (Pi.single ⟨0, by omega⟩ 1) x)
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>          (fun x =&gt; Real.sqrt 2 * Torus.cosMode (Pi.single ⟨0, by omega⟩ 1) x) =
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>        1 / (1 + β * rieszConst d s * (2 * Real.pi) ^ (s - d)) := by
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>  constructor
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>  · obtain ⟨n, rfl⟩ : ∃ n, N = n + 1 := ⟨N - 1, by omega⟩
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    have h := StaticLimitsAux.prob_cos hd hs0 hsd β hβ.le (⟨0, by omega⟩ : Fin d) n
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    unfold linCoord
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    exact h
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  · have h := StaticLimitsAux.susc_cos hd hs0 hsd β hβ (⟨0, by omega⟩ : Fin d)
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    rw [h, StaticLimitsAux.rieszCoeff_single, mul_assoc]
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>/-- Example 5.12 `M:A:ex:cosine` (source lines 7139-7155), general setting of Example 5.11:
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>for `0 &lt; |a| &lt; 1` the tilt density `(1 + a cos Z_N)/E[1 + a cos Z_N]` is bounded above and below
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>uniformly in `N` (by `(1+|a|)/(1-|a|)` and its inverse), the law of `Z_N` under the tilted law
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>converges to the density `A:eq:cosine-density`, and this limit is not Gaussian. -/
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>theorem cosine_tilt_example {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; 2 * (d : ℝ) / 3)
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>    (β : ℝ) (hβ : 0 &lt; β) (V : Torus d → ℝ) (hV : Torus.IsSmooth V) (ρ : Torus d → ℝ)
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    (hρ : IsThermalDensity (periodicRiesz d s) V β ρ) (ψ : Torus d → ℝ) (hψ : Torus.IsSmooth ψ)
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    (hnc : ∃ x y, ψ x ≠ ψ y) (a : ℝ) (ha0 : a ≠ 0) (ha1 : |a| &lt; 1) :
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    (∀ N : ℕ, ∀ X : Config d N,
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      (1 - |a|) / (1 + |a|) ≤ (1 + a * Real.cos (linCoord (withDensityReal ρ) ψ X)) /
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>          ∫ Y, (1 + a * Real.cos (linCoord (withDensityReal ρ) ψ Y))
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>            ∂(canonicalGibbs (periodicRiesz d s) V N β) ∧
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>        (1 + a * Real.cos (linCoord (withDensityReal ρ) ψ X)) /
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>          ∫ Y, (1 + a * Real.cos (linCoord (withDensityReal ρ) ψ Y))
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>            ∂(canonicalGibbs (periodicRiesz d s) V N β) ≤ (1 + |a|) / (1 - |a|)) ∧
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    (∀ f : ℝ → ℝ, Continuous f → (∃ M, ∀ z, |f z| ≤ M) →
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      Tendsto (fun N =&gt; ∫ X, f (linCoord (withDensityReal ρ) ψ X) *
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>          ((1 + a * Real.cos (linCoord (withDensityReal ρ) ψ X)) /
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>            ∫ Y, (1 + a * Real.cos (linCoord (withDensityReal ρ) ψ Y))
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>              ∂(canonicalGibbs (periodicRiesz d s) V N β))
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>          ∂(canonicalGibbs (periodicRiesz d s) V N β)) atTop
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        (𝓝 (∫ z, f z * cosineTiltDensity a
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>          (susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β ψ ψ) z))) ∧
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (∀ (m : ℝ) (w : ℝ≥0), volume.withDensity (fun z =&gt; ENNReal.ofReal (cosineTiltDensity a
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        (susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β ψ ψ) z)) ≠
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      gaussianReal m w) := by
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>  sorry
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>/-! ### Lemma 7.5: joint centered quadratic limit (`s &lt; d/2`) -/
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>/-- `(e_i)` is an orthonormal basis of `L²_0(μ)`: square integrable, centred, orthonormal, and
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>complete (a centred `L²` function orthogonal to every `e_i` vanishes a.e.). -/
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>structure IsONBL2Zero (μ : Measure (Torus d)) (e : ℕ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  memLp : ∀ i, MemLp (e i) 2 μ
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  centered : ∀ i, ∫ x, e i x ∂μ = 0
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  orthonormal : ∀ i j, l2Inner μ (e i) (e j) = if i = j then 1 else 0
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  complete : ∀ f : Torus d → ℝ, MemLp f 2 μ → ∫ x, f x ∂μ = 0 →
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>    (∀ i, l2Inner μ f (e i) = 0) → f =ᵐ[μ] 0
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>/-- Lemma 7.5 `M:N:lem:quadratic-limit` (source lines 7956-7966): `s &lt; d/2`, `Q_{N,β}(μ)` with a
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>smooth positive background, `w = g + c_* ≥ 1` off zero, `h` symmetric with `|h| ≤ B w`,
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>`B_N(h) = N(F_N^h - E F_N^h)`. Jointly with the exactly centred linear statistics
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>`√N(μ_N(φ_a) - m_N(φ_a))` of finitely many bounded tests, `B_N(h)` converges to
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>`½ I_2^{R_{β,μ}}(H_μ)`, and mixed expectations against bounded continuous functions converge.
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>The limit is described on a probability space carrying `G_i = G(e_i)`, jointly Gaussian with
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>covariance `C_{β,μ}(e_i, e_j) = ⟨e_i, R_{β,μ} e_j⟩` along an orthonormal basis `(e_i)` of
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>`L²_0(μ)`; `G(φ_a)` is the `L²` limit of `∑_{i&lt;L} ⟨φ_a, e_i⟩ G_i`, and the chaos
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>`Q = ½ I_2^R(H_μ)` is the `L²` limit of `½ ∑_{i,j&lt;L} ⟨e_i, H_μ e_j⟩ (G_i G_j - C(e_i,e_j))`
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>(this equals `½ I_2(R^{1/2} H_μ R^{1/2})`, `N:eq:second-chaos-definition`). -/
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>theorem quadratic_limit {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2) (β : ℝ)
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    (hβ : 0 &lt; β) (ρ : Torus d → ℝ) (hρ : SmoothPosDensity ρ) (c : ℝ)
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>    (hc : ∀ z, z ≠ 0 → 1 ≤ periodicRiesz d s z + c) (B : ℝ) (h : Torus d → Torus d → ℝ)
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>    (hmeas : Measurable (Function.uncurry h)) (hsymm : ∀ x y, h x y = h y x)
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    (hB : ∀ x y, x ≠ y → |h x y| ≤ B * (periodicRiesz d s (x - y) + c))
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    (e : ℕ → Torus d → ℝ) (he : IsONBL2Zero (withDensityReal ρ) e)
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>    (p : ℕ) (φ : Fin p → Torus d → ℝ) (hφ : ∀ a, Measurable (φ a) ∧ ∃ M, ∀ x, |φ a x| ≤ M) :
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    (∀ N : ℕ, 1 ≤ N → Integrable (fun X : Config d N =&gt; modulatedEnergy h X (withDensityReal ρ))
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))) ∧
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    ∃ (Ω : Type) (_ : MeasurableSpace Ω) (P : Measure Ω) (_ : IsProbabilityMeasure P)
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>      (G : ℕ → Ω → ℝ) (Q : Ω → ℝ) (Lin : Fin p → Ω → ℝ),
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>      (∀ n : ℕ, law P (fun ω =&gt; (WithLp.toLp 2 fun i : Fin n =&gt; G i ω : EuclideanSpace ℝ (Fin n))) =
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>        multivariateGaussian 0 (Matrix.of fun i j : Fin n =&gt;
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>          susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β (e i) (e j))) ∧
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>      (∀ a, Tendsto (fun L =&gt; ∫⁻ ω, ‖Lin a ω - ∑ i ∈ Finset.range L,
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>          l2Inner (withDensityReal ρ) (φ a) (e i) * G i ω‖ₑ ^ 2 ∂P) atTop (𝓝 0)) ∧
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>      Tendsto (fun L =&gt; ∫⁻ ω, ‖Q ω - (1 / 2) * ∑ i ∈ Finset.range L, ∑ j ∈ Finset.range L,
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>          (∫ x, ∫ y, h x y * e i x * e j y ∂(withDensityReal ρ) ∂(withDensityReal ρ)) *
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>            (G i ω * G j ω -
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>              susceptibilityCov (periodicRiesz d s) (withDensityReal ρ) β (e i) (e j))‖ₑ ^ 2 ∂P)
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>        atTop (𝓝 0) ∧
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>      ∀ F : ℝ × (Fin p → ℝ) → ℝ, Continuous F → (∃ M, ∀ z, |F z| ≤ M) →
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>        Tendsto (fun N : ℕ =&gt; ∫ X, F ((N : ℝ) * (modulatedEnergy h X (withDensityReal ρ) -
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>              ∫ Y, modulatedEnergy h Y (withDensityReal ρ)
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>                ∂(modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))),
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>            fun a =&gt; Real.sqrt N * ((1 / (N : ℝ)) * ∑ i, φ a (X i) -
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>              pair (firstMarginal (modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ)))
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>                (φ a)))
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>            ∂(modulatedGibbs (periodicRiesz d s) N β (withDensityReal ρ))) atTop
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>          (𝓝 (∫ ω, F (Q ω, fun a =&gt; Lin a ω) ∂P)) := by
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>  sorry
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>end HRS
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>end
+</span></code></pre></main></body></html>

@@ -1,0 +1,355 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.Critical · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.Critical</code></h1><p><a href="../../lean/HRS/Whole/Critical.lean">Open the unaltered Lean file</a> · 354 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.HeadlineStatement
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.Bias
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Shifted field paths and critical stationary fluctuations (spec packet SPEC-W3):
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Sections S7.9, S8.1, S8.2
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Source: HRS whole-space supplement (S).
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* S7.9 `S:cor:shifted-field-path` (S lines 6133-6169): the exactly centered field and path
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  theorems with the leading deterministic shift `N^{3/2-p} b_{β,μ}`; setting of S lines 6073-6132
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  (`B_m = E_m&#x27;`, `S:eq:field-embedding`, `S:eq:Gaussian-covariance`, `S:eq:stationary-SDE`).
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S8.1 `S:prop:critical-whole` (S lines 6212-6250): critical (`s = d/2`) static marginal
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  expansion with the coefficient `β²|S^{d-1}|/d`, and the stationary path rates.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* S8.2 `S:prop:weighted-critical-forcing` (S lines 6308-6321): the weighted centered forcing
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  estimate in the stationary quadratic model.  The nonlinear forcing `𝓡_N` is
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `(√N/2){D_μ(h_f) - E D_μ(h_f)}` (`M:Q:eq:normal-form`, M line 4915).
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>(S8.3-S8.8 are in `HRS/Whole/CriticalNoise.lean`.)
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>## Representation decisions
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* The stationary quadratic model is `quadraticGradientDyn d s a β` (Headline.lean) started from the
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  canonical law `canonicalGibbs` (`IsCanonicalRealization`: a strong solution on all of `[0,∞)`,
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  independent Brownian motion, `S:eq:stationary-SDE`, S lines 6121-6126; and the invariance of
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  `canonicalGibbs` for the dynamics, `GibbsInvariant`).  Every statement is &quot;for
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  every such realization&quot;.  `μ_β = ρ_β dx` is any `IsThermalEquilibrium d s a β ρ_β` (S3.4).
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>* The stationary Gaussian field `Z` (`S:eq:Gaussian-covariance`) is a process satisfying
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  `IsLinearGaussianEvolutionW` along the constant reference `ρ_β`, noise level `q = β⁻¹`, initial
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  covariance `susceptibilityCov` (`IsStationaryGaussianField`), for every horizon.
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>* The bias `b_{β,μ}` is an element of `B_m` through `OscDual.ofFun` applied to the density of `b`
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  with respect to Lebesgue measure (`bias density × ρ`); the embedding `u ↦ uμ` of
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  `S:eq:field-embedding` (S lines 6081-6087).  The constant path `𝐛(t) = b` is `constPath`.
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>* `r_N = (log N)/√N`; &quot;`W_p/r_N → ‖𝐛‖`&quot; (S8.1) is stated through `ℝ≥0∞`-valued `wassersteinE`
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  with explicit two-sided `ofReal` bounds (no real-valued junk when infinite).
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>* The adjoint propagator `U_{t-r}` is `propagatorW C r t` (classical adjoint solution of the
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  unprojected generator).  It differs from the semigroup of the projected generator `𝒜 = P_μ ℒ` by an
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  additive constant, which every pairing with a zero-mass field (`μ_N - m_N`, `μ_N - μ`) ignores
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  (S line 6552).  Its existence is part of the conclusion of the statements that use it.
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>-/
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>noncomputable section
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>open scoped ENNReal NNReal BigOperators ContDiff BoundedContinuousFunction
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>namespace HRS.Whole
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>variable {d : ℕ}
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>/-! ### The stationary quadratic model -/
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>/-- The data of a stationary realization of the canonical quadratic model (S lines 6121-6126,
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>`S:eq:canonical-law`, `S:eq:stationary-SDE`): independent vector Brownian motion `W`, initial law
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>`P_{N,β}` (`canonicalGibbs`), and a collision-free strong solution of the gradient dynamics with
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>`V = a|x|²/2` and `ν = β⁻¹` on every horizon.
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>Statement repair `Supplement repair P7` (docs/ISSUES.md): the solution is moreover filtered (`filtered`: some filtration
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>makes `W` Brownian and `X` adapted and progressive; the completed filtration of `(X₀, W)` is one).
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>Statement change M1b (2026-10-22): the realization carries the invariance of the canonical Gibbs law for this dynamics at this `N` (`invariant : GibbsInvariant d s a β N`; S L7901 &quot;the canonical law
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>is invariant&quot;), which is what makes the stationary claims (`law (X t) = canonicalGibbs`) available; it is a true property of the dynamics (it does not constrain `P, X₀, W, X`), to be removed
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>if the invariance is proved. -/
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>structure IsCanonicalRealization (d : ℕ) (s a β : ℝ) (N : ℕ) {Ω : Type} [mΩ : MeasurableSpace Ω]
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (P : Measure Ω) (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (X : ℝ≥0 → Ω → EucConfig d N) : Prop where
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  brownian : IsVectorBrownian P W
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  indep : IndepFun X₀ (fun ζ t =&gt; W t ζ) P
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  init : law P X₀ = canonicalGibbs (rieszKernel d s) (confinement a) N β
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  solution : ∀ T&#x27; : ℝ, IsWholeStrongSolution P (quadraticGradientDyn d s a β) T&#x27; X₀ W X
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  filtered : ∃ (ℱ : Filtration ℝ mΩ) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    IsWholeFilteredSolution P ℱ W&#x27; W X
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  invariant : GibbsInvariant d s a β N
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- The stationary Gaussian linearized field `Z_β` (`S:eq:Gaussian-covariance`): a linear
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>Gaussian evolution on every horizon along the constant reference `ρ_β`, noise level `q = β⁻¹`, with
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>initial covariance the susceptibility form `⟨P_μφ, R_{β,μ}P_μψ⟩_{L²(μ)}`. -/
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>def IsStationaryGaussianField (d : ℕ) (s a β : ℝ) (m : ℝ) (ρβ : Euc d → ℝ) {Ω&#x27; : Type}
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) (Z : ℝ → Ω&#x27; → OscDual d m) : Prop :=
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  ∀ T&#x27; : ℝ, IsLinearGaussianEvolutionW P&#x27; ((quadraticGradientDyn d s a β).coeff (fun _ =&gt; ρβ))
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    m β⁻¹ T&#x27; (susceptibilityCov (rieszKernel d s) (withDensityReal ρβ) β) Z
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>/-- The coefficients of the linear equation / the generator at the critical exponent `s = d/2` of
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>the quadratic model with thermal density `ρβ`. -/
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>def critCoeff (d : ℕ) (a β : ℝ) (ρβ : Euc d → ℝ) : WholeCoeff d :=
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  (quadraticGradientDyn d ((d : ℝ) / 2) a β).coeff (fun _ =&gt; ρβ)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>/-- The constant path `𝐛(t) = v`, `t ∈ [0,T]`, in `𝒳_T = C([0,T]; B_m)`. -/
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>def constPath (m T : ℝ) (v : OscDual d m) : OscPath d m T :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  (ContinuousMap.const (Set.Icc (0 : ℝ) T) v : C(Set.Icc (0 : ℝ) T, OscDual d m))
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>/-- The bias `b_{β,μ} = 2A_{d,s}β^p (R_{β,μ}P_μρ) μ` as an element of `B_m`
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>(`S:eq:bias-measure`, `S:eq:field-embedding`): the embedding of the density `biasDensity · ρ`
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>with respect to Lebesgue measure. -/
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>def biasField (m : ℝ) (d : ℕ) (s β : ℝ) (ρ : Euc d → ℝ) : OscDual d m :=
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  OscDual.ofFun m fun x =&gt; biasDensity d s β ρ x * ρ x
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-- The density of the critical bias `b_{β,μ} = β²|S^{d-1}|/d (R_{β,μ}P_μρ) μ` relative to `μ`
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>(`S:eq:critical-whole-bias`, S lines 6220-6222), `s = d/2`. -/
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>def critBiasDensity (d : ℕ) (β : ℝ) (ρ : Euc d → ℝ) (x : Euc d) : ℝ :=
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  β ^ 2 * sphereArea d / d *
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    responseInverse (rieszKernel d ((d : ℝ) / 2)) (withDensityReal ρ) β ρ x
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>/-- The critical bias as an element of `B_m` (as `biasField`). -/
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>def critBiasField (m : ℝ) (d : ℕ) (β : ℝ) (ρ : Euc d → ℝ) : OscDual d m :=
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  OscDual.ofFun m fun x =&gt; critBiasDensity d β ρ x * ρ x
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>/-! ### S7.9 `S:cor:shifted-field-path` (S lines 6133-6169) -/
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>section Shifted
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>variable {s : ℝ}
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>/-- Corollary S7.9 (S:S:cor:shifted-field-path, TeX S L6133-6169) (S lines 6133-6169), static field
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>(`S:eq:shifted-static-rate`): `d/2 &lt; s &lt; d`, `p = d/s`, the exactly canonical quadratic trap
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>(`P_{N,β}`), `Y_N = √N(μ_N - μ)` (`etaB`, the mean-field centering `η_N`), `Z_0` a centered
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>Gaussian in `B_m` with covariance `⟨P_μφ, R_{β,μ}P_μψ⟩` (`IsCenteredGaussianOsc`), `m` in the
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>static range of S4.5 (`m &gt; J + 2d`, `J &gt; d/2 + 2` an integer):
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>`d_{C_b²(B_m)}(Law(Y_N), Law(Z_0 + N^{3/2-p} b_{β,μ})) ≤ C(√δ_N + N^{3/2-p-θ_{d,s}})`.
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>`C` depends on `d, s, a, β, J, m`.  Measurability of `Y_N` is part of the conclusion. -/
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>theorem shifted_field_static (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (J : ℕ) (hJ : (d : ℝ) / 2 + 2 &lt; J) (m : ℝ)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    (hm : (J : ℝ) + 2 * d &lt; m) :
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    ∃ C : ℝ, ∀ N, 2 ≤ N → ∀ γ : Measure (OscDual d m),
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      IsCenteredGaussianOsc m γ
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>        (susceptibilityCov (rieszKernel d s) (thermalMeasure d s a β) β) →
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      Measurable (fun X : EucConfig d N =&gt; etaB m X (thermalMeasure d s a β)) ∧
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      smoothDist 2 (law (canonicalGibbs (rieszKernel d s) (confinement a) N β)
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>          (fun X : EucConfig d N =&gt; etaB m X (thermalMeasure d s a β)))
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        (γ.map fun z =&gt; z + (N : ℝ) ^ (3 / 2 - biasP d s) •
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>          biasField m d s β (thermalDensity d s a β)) ≤
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        C * (Real.sqrt (deltaN d s N) + (N : ℝ) ^ (3 / 2 - biasP d s - biasTheta d s)) := by
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  sorry
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>/-- Corollary S7.9 (S:S:cor:shifted-field-path, TeX S L6133-6169) (S lines 6133-6169), paths
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>(`S:eq:shifted-path-smooth`, `S:eq:shifted-path-W1`, S lines 6146-6156): `d/2 &lt; s &lt; d`,
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>`T &lt; ∞`, `m = 24d + 240`, `Y_N^t = √N(μ_N^t - μ)`, `Z` the stationary Gaussian field, `𝐛` the
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>constant path `b_{β,μ}`, `w_N = (N^{-1/d} + √(C₀N^{s/d-1}))^{4/(d+4)}` (`localizationRate`) with
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>the heat-kernel completion constant `C₀` of S2.1(i) (`∃ C₀` with the completion property
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>`F_N(X_N, μ_β) + o_N ≥ 0` off collisions, chosen for the class, as in `whole_space_stationary`):
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>`d_{C_b²(𝒳_T)}(Law(Y_N), Law(Z + N^{3/2-p}𝐛)) ≤ C_T(√δ_N + w_N + N^{3/2-p-θ})` and
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>`W_1(Law(Y_N), Law(Z + N^{3/2-p}𝐛); 𝒳_T) ≤ C_T(δ_N^{3/20} + √w_N + N^{3/2-p-θ})`.
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>&quot;The same bounds hold for a fixed-length stationary window with constants independent of its
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>starting time&quot; (S line 6168): the window `a₀ ≥ 0` is quantified inside, `C_T` before it.
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>Technical hypotheses: `T &gt; 0`, `N ≥ 2`.  Measurability of the path maps is part of the conclusion. -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>theorem shifted_field_path (hd : 2 ≤ d) (hs : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    ∃ C₀ C : ℝ, (∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        ∀ X : EucConfig d N, X ∉ eucCollisionSet d N →
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>          0 ≤ rieszModulatedEnergy d s X (withDensityReal ρβ) + oN d s C₀ N) ∧
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        IsCanonicalRealization d s a β N P X₀ W X →
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>        (Z : ℝ → Ω&#x27; → OscDual d (wholeSpaceIndex d)),
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        IsStationaryGaussianField d s a β (wholeSpaceIndex d) ρβ P&#x27; Z →
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      ∀ a₀ : ℝ, 0 ≤ a₀ →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>        AEMeasurable (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X (fun _ =&gt; ρβ)) P ∧
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        AEMeasurable (fun ζ&#x27; =&gt; processWindow (wholeSpaceIndex d) T a₀ Z ζ&#x27; +
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>          constPath (wholeSpaceIndex d) T ((N : ℝ) ^ (3 / 2 - biasP d s) •
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>            biasField (wholeSpaceIndex d) d s β ρβ)) P&#x27; ∧
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        smoothDist 2 (law P (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X (fun _ =&gt; ρβ)))
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>            (law P&#x27; (fun ζ&#x27; =&gt; processWindow (wholeSpaceIndex d) T a₀ Z ζ&#x27; +
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>              constPath (wholeSpaceIndex d) T ((N : ℝ) ^ (3 / 2 - biasP d s) •
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>                biasField (wholeSpaceIndex d) d s β ρβ))) ≤
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>          C * (Real.sqrt (deltaN d s N) + localizationRate d s C₀ N +
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>            (N : ℝ) ^ (3 / 2 - biasP d s - biasTheta d s)) ∧
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>        wassersteinE 1 (law P (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X (fun _ =&gt; ρβ)))
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>            (law P&#x27; (fun ζ&#x27; =&gt; processWindow (wholeSpaceIndex d) T a₀ Z ζ&#x27; +
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>              constPath (wholeSpaceIndex d) T ((N : ℝ) ^ (3 / 2 - biasP d s) •
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>                biasField (wholeSpaceIndex d) d s β ρβ))) ≤
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>          ENNReal.ofReal (C * (deltaN d s N ^ ((3 : ℝ) / 20) +
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>            Real.sqrt (localizationRate d s C₀ N) +
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>            (N : ℝ) ^ (3 / 2 - biasP d s - biasTheta d s))) := by
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  sorry
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>/-- Corollary S7.9 (S:S:cor:shifted-field-path, TeX S L6133-6169) (S lines 6133-6169), critical path limit
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>`S:eq:critical-path-limit` (S lines 6157-6159, 6165-6167): at `s = 2d/3` (`p = 3/2`),
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>`√N(μ_N^· - μ_β) ⇒ Z + b_{β,μ_β}` in `C([0,T]; B_m)`, `m = 24d + 240`.  The particle systems form a
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>sequence `N ↦ (Ω_N, P_N, X_N)` of canonical realizations (`N ≥ 2`); weak convergence is
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>`∫ F(√N(μ_N^· - μ_β)) dP_N → ∫ F(Z + 𝐛) dP&#x27;` for every bounded continuous `F` on the path space. -/
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>theorem critical_path_limit (hd : 2 ≤ d) (hs : s = 2 * (d : ℝ) / 3) (a β : ℝ) (ha : 0 &lt; a)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (hβ : 0 &lt; β) (T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ →
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    ∀ {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → EucConfig d N)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → EucConfig d N),
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      (∀ N : ℕ, 2 ≤ N → IsCanonicalRealization d s a β N (P N) (X₀ N) (W N) (X N)) →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>      (Z : ℝ → Ω&#x27; → OscDual d (wholeSpaceIndex d)),
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      IsStationaryGaussianField d s a β (wholeSpaceIndex d) ρβ P&#x27; Z →
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      (∀ N : ℕ, 2 ≤ N → AEMeasurable (flucPathW (wholeSpaceIndex d) T 0 (Real.sqrt N) (X N)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        (fun _ =&gt; ρβ)) (P N)) ∧
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>      AEMeasurable (fun ζ&#x27; =&gt; processWindow (wholeSpaceIndex d) T 0 Z ζ&#x27; +
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>        constPath (wholeSpaceIndex d) T (biasField (wholeSpaceIndex d) d s β ρβ)) P&#x27; ∧
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      ∀ F : OscPath d (wholeSpaceIndex d) T →ᵇ ℝ,
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        Tendsto (fun N : ℕ =&gt; ∫ ζ, F (flucPathW (wholeSpaceIndex d) T 0 (Real.sqrt N) (X N)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>            (fun _ =&gt; ρβ) ζ) ∂(P N)) atTop
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>          (𝓝 (∫ ζ&#x27;, F (processWindow (wholeSpaceIndex d) T 0 Z ζ&#x27; +
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>            constPath (wholeSpaceIndex d) T (biasField (wholeSpaceIndex d) d s β ρβ)) ∂P&#x27;)) := by
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>  sorry
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>end Shifted
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>/-! ### S8.1 `S:prop:critical-whole` (S lines 6212-6250) -/
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>section CriticalWhole
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>/-- Proposition S8.1 (S:S:prop:critical-whole, TeX S L6212-6250) (S lines 6212-6250), static part
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>(`S:eq:critical-whole-bias`): `d ≥ 2`, `s = d/2`, `μ = ρ dx` a bounded Lipschitz probability
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>density, `m_N` the first marginal of `Q_{N,β}(μ)`,
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>`‖dm_N/dμ - 1 - (log N/N) db_{β,μ}/dμ‖_{L²(μ)} ≤ C√(log N)/N`, `b_{β,μ} = β²|S^{d-1}|/d (R_{β,μ}P_μρ) μ`.
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>No positive lower bound, moment or compact support is assumed.  &quot;Its constants for fixed `μ` are
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>uniform on compact positive inverse-temperature intervals&quot;: `C` depends on `ρ` and `[β₋,β₊]` and is
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>chosen before `β ∈ [β₋,β₊]` and `N`.  The law is asserted well defined and `R P ρ ∈ L²(μ)`.  The
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>pairing `b_{β,μ}(ρ) = ∫ ρ (db/dμ) dμ` is strictly positive for every `β &gt; 0` (S lines 6234-6246).
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>Technical hypothesis: `N ≥ 2` (the right side vanishes at `N = 1`). -/
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>theorem critical_whole_marginal (hd : 2 ≤ d) (ρ : Euc d → ℝ) (hρ : IsProbDensity ρ)
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    (hbdd : ∃ M : ℝ, ∀ x, ρ x ≤ M) (hlip : ∃ Λ : ℝ≥0, LipschitzWith Λ ρ) (βm βp : ℝ)
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    (hβm : 0 &lt; βm) (hβ : βm ≤ βp) :
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    (∀ β : ℝ, 0 &lt; β → 0 &lt; l2Inner (withDensityReal ρ) ρ (critBiasDensity d β ρ)) ∧
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    ∃ C : ℝ, ∀ β ∈ Set.Icc βm βp, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      GibbsWellDefined (fun x y =&gt; rieszKernel d ((d : ℝ) / 2) (x - y)) N β (withDensityReal ρ) ∧
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>      MemLp (critBiasDensity d β ρ) 2 (withDensityReal ρ) ∧
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      ∃ φ : Euc d → ℝ, Measurable φ ∧ (∀ x, 0 ≤ φ x) ∧
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>        firstMarginal (modulatedGibbs (rieszKernel d ((d : ℝ) / 2)) N β (withDensityReal ρ)) =
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>          (withDensityReal ρ).withDensity (fun x =&gt; ENNReal.ofReal (φ x)) ∧
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>        MemLp (fun x =&gt; φ x - 1 - (Real.log N / N) * critBiasDensity d β ρ x) 2
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>          (withDensityReal ρ) ∧
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>        l2Norm (withDensityReal ρ) (fun x =&gt; φ x - 1 - (Real.log N / N) * critBiasDensity d β ρ x) ≤
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>          C * Real.sqrt (Real.log N) / N := by
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>  sorry
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>/-- Proposition S8.1 (S:S:prop:critical-whole, TeX S L6212-6250) (S lines 6212-6250), centered path
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>(`S:eq:critical-whole-W2`): `d ≥ 2`, `s = d/2`, `V = a|x|²/2` (`a, β &gt; 0`), `μ = μ_β`,
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>`m ≥ 24d + 240`, `𝒳 = C([0,T]; B_m)`: for the stationary canonical diffusion (any
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>`IsCanonicalRealization`) and its stationary Gaussian field `Z_β`,
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>`sup_{u≥0} W_2^𝒳(Law[ζ_N^{u+·}], Law[Z_β]) ≤ C_T N^{-1/2}`, `ζ_N^t = √N(μ_N^t - m_N^t)`.  `C_T`
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>depends on `d, a, β, T, m` and is chosen before the realization.  Measurability of the window
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>paths is part of the conclusion.  Technical hypotheses: `T &gt; 0` (`T &lt; ∞`), `N ≥ 2`. -/
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>theorem critical_whole_W2 (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    ∃ C : ℝ, ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>        (Z : ℝ → Ω&#x27; → OscDual d m),
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>        IsStationaryGaussianField d ((d : ℝ) / 2) a β m ρβ P&#x27; Z →
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        AEMeasurable (processWindow m T 0 Z) P&#x27; ∧
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>        ∀ u : ℝ, 0 ≤ u →
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          AEMeasurable (zetaPathW m T u P X) P ∧
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>          wassersteinE 2 (law P (zetaPathW m T u P X)) (law P&#x27; (processWindow m T 0 Z)) ≤
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>            ENNReal.ofReal (C * (N : ℝ) ^ (-(1 / 2 : ℝ))) := by
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  sorry
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>/-- Proposition S8.1 (S:S:prop:critical-whole, TeX S L6212-6250) (S lines 6212-6250), mean-field-centered constants
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>(`S:eq:critical-whole-constants`): with `r_N = (log N)/√N` and `𝐛(t) = b_{β,μ}` on `[0,T]`, for
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>`1 ≤ p ≤ 2`, `r_N^{-1} W_p^𝒳(Law[η_N^{u+·}], Law[Z_β]) → ‖𝐛‖_𝒳 = ‖b_{β,μ}‖_{B_m}` uniformly in
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>`u ≥ 0`, `η_N^t = √N(μ_N^t - μ)`.  Stated as: for every `ε &gt; 0` there is `N₀` such that for all
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>`N ≥ N₀`, all realizations and all `u ≥ 0`,
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>`r_N(‖𝐛‖ - ε) ≤ W_p ≤ r_N(‖𝐛‖ + ε)` (in `ℝ≥0∞`). -/
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>theorem critical_whole_constants (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) (p : ℝ) (hp1 : 1 ≤ p) (hp2 : p ≤ 2) :
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ →
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>    ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N → 2 ≤ N →
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>        (Z : ℝ → Ω&#x27; → OscDual d m),
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>        IsStationaryGaussianField d ((d : ℝ) / 2) a β m ρβ P&#x27; Z →
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>        AEMeasurable (processWindow m T 0 Z) P&#x27; ∧
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>        ∀ u : ℝ, 0 ≤ u →
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>          AEMeasurable (flucPathW m T u (Real.sqrt N) X (fun _ =&gt; ρβ)) P ∧
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>          ENNReal.ofReal (Real.log N / Real.sqrt N *
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>              (‖constPath m T (critBiasField m d β ρβ)‖ - ε)) ≤
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>            wassersteinE p (law P (flucPathW m T u (Real.sqrt N) X (fun _ =&gt; ρβ)))
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>              (law P&#x27; (processWindow m T 0 Z)) ∧
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>          wassersteinE p (law P (flucPathW m T u (Real.sqrt N) X (fun _ =&gt; ρβ)))
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>              (law P&#x27; (processWindow m T 0 Z)) ≤
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>            ENNReal.ofReal (Real.log N / Real.sqrt N *
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>              (‖constPath m T (critBiasField m d β ρβ)‖ + ε)) := by
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  sorry
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>/-- Proposition S8.1 (S:S:prop:critical-whole, TeX S L6212-6250) (S lines 6212-6250), smooth metrics (last sentence,
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>S lines 6247-6249): in the sum-norm `C_b^k` metric, `k ≥ 2`, the limit of
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>`r_N^{-1} d_k^𝒳(Law[η_N^{u+·}], Law[Z_β])` is `sup_{‖F‖_{C_b^k} ≤ 1} |E[DF(Z_β)[𝐛]]|`
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>(`smoothConstant`: the sup over the unit ball, which is symmetric), uniformly in `u ≥ 0`. -/
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>theorem critical_whole_smooth (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) (k : ℕ) (hk : 2 ≤ k) :
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ →
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>    ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N → 2 ≤ N →
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>        (Z : ℝ → Ω&#x27; → OscDual d m),
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>        IsStationaryGaussianField d ((d : ℝ) / 2) a β m ρβ P&#x27; Z →
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>        AEMeasurable (processWindow m T 0 Z) P&#x27; ∧
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>        ∀ u : ℝ, 0 ≤ u →
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>          AEMeasurable (flucPathW m T u (Real.sqrt N) X (fun _ =&gt; ρβ)) P ∧
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>          |(Real.log N / Real.sqrt N)⁻¹ *
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>              smoothDist k (law P (flucPathW m T u (Real.sqrt N) X (fun _ =&gt; ρβ)))
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>                (law P&#x27; (processWindow m T 0 Z)) -
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>            smoothConstant P&#x27; k (processWindow m T 0 Z)
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>              (constPath m T (critBiasField m d β ρβ))| ≤ ε := by
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>  sorry
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>end CriticalWhole
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>/-! ### S8.2 `S:prop:weighted-critical-forcing` (S lines 6308-6321) -/
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>section Forcing
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>/-- Proposition S8.2 (S:S:prop:weighted-critical-forcing, TeX S L6308-6321) (S lines 6308-6321): in the stationary
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>quadratic model of S8.1 (`d ≥ 2`, `s = d/2`, `V = a|x|²/2`, `μ = μ_β`, canonical stationary
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>particles, `m ≥ 24d + 240`, `φ_j = λ_j^{-m/2}h_j` is `oscTestFun m`), the centered nonlinear
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>forcing `𝓡_N(f) = (√N/2){D_μ(h_f) - E D_μ(h_f)}` (`M:Q:eq:normal-form`, M line 4915;
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>`D_μ(h_f)(X) = commForcing`: `h_f = (∇f(x) - ∇f(y))·∇g(x-y)`, deleted diagonal, no factor `1/2`,
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>the expectation under the stationary law) satisfies
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>`sup_{a₀ ≥ 0} (E[sup_{0≤t≤T} ∑_j |∫_0^{a₀+t} 𝓡_N(U_{a₀+t-r}φ_j)(X_N^r) dr|²])^{1/2} ≤ C_T N^{-1/2}`.
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>(`a₀` is the window start called `a` in the source, which also calls the confinement `a`.)  `U_{t-r}`
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>is the classical adjoint evolution (`propagatorW`); its existence for every `φ_j` and terminal time
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>and the almost sure integrability of the `r`-integrands, the `P`-integrability of `commForcing` at each `r` and the integrability of `r ↦ E[commForcing]` on `[0,t]` (so the centering `E D_μ(h_f)` is not a junk `0`) are part of the conclusion (so that
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>`propagatorW`, the Bochner integrals are not junk).  `C_T` depends on `d, a, β, T, m` and is
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>chosen before the realization.  Technical hypotheses: `T &gt; 0`, `N ≥ 2`. -/
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>theorem weighted_critical_forcing (hd : 2 ≤ d) (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (m : ℝ)
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>    (hm : (wholeSpaceIndex d : ℝ) ≤ m) (T : ℝ) (hT : 0 &lt; T) :
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>    ∃ C : ℝ, ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d ((d : ℝ) / 2) a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>        IsCanonicalRealization d ((d : ℝ) / 2) a β N P X₀ W X →
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>      (∀ α : MultiIndex d, ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>        ∃ f, IsClassicalAdjointW (critCoeff d a β ρβ) t (oscTestFun m α) f) ∧
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>      (∀ᵐ ζ ∂P, ∀ α : MultiIndex d, ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>        IntegrableOn (fun r =&gt; commForcing (critCoeff d a β ρβ) ((d : ℝ) / 2) m
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>          (withDensityReal ρβ) X α t r ζ) (Set.Icc 0 t)) ∧
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>      (∀ α : MultiIndex d, ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>        (∀ r ∈ Set.Icc (0 : ℝ) t, Integrable (fun ζ =&gt; commForcing (critCoeff d a β ρβ)
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>          ((d : ℝ) / 2) m (withDensityReal ρβ) X α t r ζ) P) ∧
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>        IntegrableOn (fun r =&gt; ∫ ζ, commForcing (critCoeff d a β ρβ) ((d : ℝ) / 2) m
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>          (withDensityReal ρβ) X α t r ζ ∂P) (Set.Icc 0 t)) ∧
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>      ∀ a₀ : ℝ, 0 ≤ a₀ →
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>        (∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>            ∫ r in Set.Icc (0 : ℝ) (a₀ + t),
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>              (Real.sqrt N / 2) * (commForcing (critCoeff d a β ρβ) ((d : ℝ) / 2) m
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>                  (withDensityReal ρβ) X α (a₀ + t) r ζ -
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>                ∫ ζ&#x27;, commForcing (critCoeff d a β ρβ) ((d : ℝ) / 2) m (withDensityReal ρβ) X α
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>                  (a₀ + t) r ζ&#x27; ∂P))) ^ 2 ∂P) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>          ENNReal.ofReal (C * (N : ℝ) ^ (-(1 / 2 : ℝ))) := by
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  sorry
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>end Forcing
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>end HRS.Whole
+</span></code></pre></main></body></html>

@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.D3EAsm · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.D3EAsm</code></h1><p><a href="../../lean/HRS/MC/D3EAsm.lean">Open the unaltered Lean file</a> · 87 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.FDLE
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MC.D3EW
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.MC.D3EG
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Packet D3EAsm: Lemma D.3 on `ℝ^d`, assembled from `FDLE`, `D3EW` and `D3EG`.
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>The statement is `HRS.fdl_kernel_euclid` with ONE repair, recorded in `docs/ISSUES.md` as
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`MC: request FDL-E1`: the third bullet of (i), `w_λ ≤ g + C·1_{s=0}`, carries the extra premise
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>`s = 0 → ‖z‖ ≤ 1` (for `s = 0` and `‖z‖` large `g(z) = -log‖z‖ → -∞` while `w_λ = 0`).  Once Session A
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>applies the repair to `HRS/Appendix/FDL.lean`, the tie `example := (@fdl_kernel_euclid_proof : type_of% @HRS.fdl_kernel_euclid)`
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>below becomes valid.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>-/
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>namespace HRS.MC.D3EAsm
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open HRS
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>variable {d : ℕ}
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>theorem fdl_kernel_euclid_proof (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) {ψ : Euc d → ℝ}
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>    (hψ : IsFDLProfile ψ) {b : ℝ} (hb : IsFDLConst ψ s b) :
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    -- (i)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (∃ C : ℝ, 0 ≤ C ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 →
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>      (∀ z : Euc d, z ≠ 0 → 0 ≤ fdlWE ψ s b lam z) ∧
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>      (∀ z : Euc d, lam ≤ ‖z‖ →
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>        fdlWE ψ s b lam z = 0 ∧ fdlTruncE ψ s b lam z = Whole.rieszKernel d s z) ∧
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      (∀ z : Euc d, z ≠ 0 → (s = 0 → ‖z‖ ≤ 1) →
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>        fdlWE ψ s b lam z ≤ Whole.rieszKernel d s z + C * (if s = 0 then 1 else 0)) ∧
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>      ∫⁻ z : Euc d, ENNReal.ofReal (fdlWE ψ s b lam z) ≤
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>        ENNReal.ofReal (C * lam ^ ((d : ℝ) - s))) ∧
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    -- (ii), `j + s &gt; 0`
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    (∀ j : ℕ, 0 &lt; (j : ℝ) + s → ∃ C : ℝ, 0 ≤ C ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 →
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∀ z : Euc d, z ≠ 0 →
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        ‖iteratedFDeriv ℝ j (fdlWE ψ s b lam) z‖ ≤
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>          (if ‖z‖ ≤ lam then C * ‖z‖ ^ (-s - (j : ℝ)) else 0) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        ‖iteratedFDeriv ℝ j (fdlTruncE ψ s b lam) z‖ ≤ C * (max lam ‖z‖) ^ (-s - (j : ℝ))) ∧
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    -- (ii), `s = j = 0`
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    (s = 0 → ∃ C : ℝ, 0 ≤ C ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 → ∀ z : Euc d, z ≠ 0 →
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>      |fdlWE ψ s b lam z| ≤ (if ‖z‖ ≤ lam then C * Real.log (lam / ‖z‖) else 0) ∧
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>      |fdlTruncE ψ s b lam z| ≤ C * (1 + |Real.log (max lam ‖z‖)|)) ∧
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    -- (ii), smoothness and sup bounds (&quot;in particular&quot;)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    (∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 →
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fdlTruncE ψ s b lam)) ∧
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (∀ j : ℕ, 0 &lt; (j : ℝ) + s → ∃ C : ℝ, 0 ≤ C ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 → ∀ z : Euc d,
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>      ‖iteratedFDeriv ℝ j (fdlTruncE ψ s b lam) z‖ ≤ C * lam ^ (-s - (j : ℝ))) ∧
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (∃ C : ℝ, 0 ≤ C ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 →
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>      |fdlTruncE ψ s b lam 0| ≤
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        C * (lam ^ (-s) + (if s = 0 then |Real.log lam| else 0))) ∧
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    -- (iv)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    (0 &lt; s → ∃ c : ℝ, 0 &lt; c ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 → ∀ z : Euc d, lam ≤ ‖z‖ →
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>      c * ‖z‖ ^ (-s) ≤ fdlTruncE ψ s b lam z) ∧
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    (s = 0 → ∃ c C : ℝ, 0 &lt; c ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 → ∀ z : Euc d, lam ≤ ‖z‖ →
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      ‖z‖ ≤ 1 / 2 → c * Real.log (1 / ‖z‖) - C ≤ fdlTruncE ψ s b lam z) ∧
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (∀ K : ℝ, fdlK ≤ K → ∃ c : ℝ, 0 &lt; c ∧ ∀ lam : ℝ, 0 &lt; lam → lam &lt; 1 → ∀ z : Euc d, z ≠ 0 →
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      ‖z‖ ≤ 2 * lam → c * (if s = 0 then 1 else lam ^ (-s)) ≤ fdlWE ψ s b (K * lam) z) := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  obtain ⟨hiv1, hiv2, hiv3⟩ := FDLE.fdle_part_iv hd hs0 hsd hψ hb
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  refine ⟨FDLE.fdle_part_i hd hs0 hsd hψ hb, ?_, ?_, D3EG.d3eg_smooth hd hs0 hsd hψ hb,
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    D3EG.d3eg_sup hd hs0 hsd hψ hb, D3EG.d3eg_zero hd hs0 hsd hψ hb, hiv1, hiv2, hiv3⟩
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  · intro j hj
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    obtain ⟨C1, hC1, h1⟩ := D3EW.d3ew_deriv hd hs0 hsd hψ hb j hj
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    obtain ⟨C2, hC2, h2⟩ := D3EG.d3eg_deriv hd hs0 hsd hψ hb j hj
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    refine ⟨max C1 C2, le_max_of_le_left hC1, fun lam hl hl1 z hz =&gt; ⟨?_, ?_⟩⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    · have := h1 lam hl hl1 z hz
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>      split_ifs at this ⊢
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      · exact this.trans (mul_le_mul_of_nonneg_right (le_max_left _ _)
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          (Real.rpow_nonneg (norm_nonneg _) _))
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      · exact this
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    · exact (h2 lam hl hl1 z hz).trans (mul_le_mul_of_nonneg_right (le_max_right _ _)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        (Real.rpow_nonneg (le_trans hl.le (le_max_left _ _)) _))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  · intro hs
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    obtain ⟨C1, hC1, h1⟩ := D3EW.d3ew_log hd hs0 hsd hψ hb hs
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    obtain ⟨C2, hC2, h2⟩ := D3EG.d3eg_log hd hs0 hsd hψ hb hs
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    refine ⟨max C1 C2, le_max_of_le_left hC1, fun lam hl hl1 z hz =&gt; ⟨?_, ?_⟩⟩
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    · have := h1 lam hl hl1 z hz
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      split_ifs at this ⊢ with h
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      · refine this.trans (mul_le_mul_of_nonneg_right (le_max_left _ _) ?_)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        exact Real.log_nonneg (by rw [le_div_iff₀ (norm_pos_iff.2 hz)]; linarith)
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      · exact this
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    · exact (h2 lam hl hl1 z hz).trans (mul_le_mul_of_nonneg_right (le_max_right _ _)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        (by positivity))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>end HRS.MC.D3EAsm
+</span></code></pre></main></body></html>

@@ -1,0 +1,163 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.SuppU5 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.SuppU5</code></h1><p><a href="../../lean/HRS/MS/SuppU5.lean">Open the unaltered Lean file</a> · 162 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import Mathlib
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.SuppU5Aux8
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Whole.AppendixBField
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Packet U5: `iid_init_field_rd` (S.B.2, single time)
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>-/
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open scoped ENNReal NNReal BigOperators RealInnerProductSpace Matrix
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>namespace HRS.U5
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open HRS HRS.Whole HRS.MP.RdProp HRS.MP.HNegInfra
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>variable {d : ℕ}
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>lemma u5_fieldAmp_bounds (N : ℕ) (hN : 1 ≤ N) (invβ : ℝ) (h0 : 0 ≤ invβ) :
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>    0 ≤ fieldAmp N invβ ∧ fieldAmp N invβ ≤ 1 := by
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  have hNpos : (0 : ℝ) &lt; N := by exact_mod_cast hN
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  have hs : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 hNpos
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  unfold fieldAmp Ascale sigmaScale
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  by_cases hb : invβ = 0
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  · simp [hb]
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  · simp only [hb, if_false]
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    refine ⟨div_nonneg (le_min hs.le (Real.sqrt_nonneg _)) hs.le, ?_⟩
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    rw [div_le_one hs]
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    exact min_le_left _ _
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>lemma u5_log_ge_one {N : ℕ} (hN : 3 ≤ N) : (1 : ℝ) ≤ Real.log N := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have h3 : (3 : ℝ) ≤ N := by exact_mod_cast hN
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have : Real.exp 1 &lt; 3 := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    have := Real.exp_one_lt_d9
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    linarith
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  have h2 : (1 : ℝ) &lt; Real.log 3 := by
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    rw [Real.lt_log_iff_exp_lt (by norm_num)]
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    exact this
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have : Real.log 3 ≤ Real.log N := Real.log_le_log (by norm_num) h3
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  linarith
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>/-- The data extracted from the adjoint input at one time. -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>lemma u5_adj_data {Γ : ℕ} {T K : ℝ} {C : WholeCoeff d} (hadj : AdjointInputOne (Γ : ℝ) C T K)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    (∀ φ, IsSobolevTest (Γ : ℝ) φ → MemCb 1 (propagatorW C 0 t φ) ∧
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>        cbNorm 1 (propagatorW C 0 t φ) ≤ K * HRS.Whole.sobolevNorm (Γ : ℝ) φ) ∧
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (∀ (φ₁ φ₂ : Euc d → ℝ) (c : ℝ), IsSobolevTest (Γ : ℝ) φ₁ → IsSobolevTest (Γ : ℝ) φ₂ →
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>        propagatorW C 0 t (φ₁ + c • φ₂) = propagatorW C 0 t φ₁ + c • propagatorW C 0 t φ₂) := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  obtain ⟨-, hlin, hbd⟩ := hadj t ht
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  exact ⟨fun φ hφ =&gt; hbd φ hφ, fun φ₁ φ₂ c h₁ h₂ =&gt; hlin φ₁ φ₂ h₁ h₂ c 0 ⟨le_rfl, ht.1⟩⟩
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>lemma u5_range_orth_bot (Γ : ℝ) : (LinearMap.range (rpk_J (d := d) Γ))ᗮ = ⊥ := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  rw [Submodule.eq_bot_iff]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  intro F hF
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  refine hneg_eq_zero_of_pairing_zero F fun φ hφ =&gt; ?_
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  rw [← rpk_J_inner (⟨φ, hφ⟩ : rpk_Tst d Γ) F]
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  exact (Submodule.mem_orthogonal _ _).1 hF _ ⟨⟨φ, hφ⟩, rfl⟩
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>lemma u5_hmean {Γ : ℝ} (A : ℝ) (μ : Measure (Euc d)) [IsProbabilityMeasure μ]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (ψ : (Euc d → ℝ) → (Euc d → ℝ)) (hψc : ∀ φ, IsSobolevTest Γ φ → MemCb 1 (ψ φ))
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    (J : Euc d → HNeg d Γ)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (hJ : ∀ x φ, IsSobolevTest Γ φ → HNeg.pairing φ (J x) = A * (ψ φ x - HRS.Whole.pair μ (ψ φ))) :
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    ∀ w ∈ LinearMap.range (rpk_J Γ), ∫ x, inner ℝ w (J x) ∂μ = 0 := by
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  rintro w ⟨Φ, rfl⟩
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have : ∀ x, inner ℝ (rpk_J Γ Φ) (J x) = A * (ψ Φ.1 x - HRS.Whole.pair μ (ψ Φ.1)) := fun x =&gt; by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    rw [rpk_J_inner, hJ x _ Φ.2]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  simp_rw [this]
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  rw [integral_const_mul, integral_sub (u5_cb_integrable (hψc _ Φ.2) μ) (integrable_const _)]
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  simp [HRS.Whole.pair]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>end HRS.U5
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>open HRS HRS.Whole HRS.U5 HRS.MP.RdProp HRS.MP.HNegInfra
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>variable {d : ℕ} in
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>theorem iid_init_field_rd_proof : type_of% @HRS.Whole.iid_init_field_rd := by
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  intro d hd Γ T K m₂
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  refine ⟨max (3 * u5_C0 d m₂ * max K 0) (8 * (max K 0) ^ 2), ?_⟩
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  intro Cf invβ hinv hadj μ hμ hμ2 hm N hN t ht
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  haveI := hμ
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  set A := fieldAmp N (invβ N) with hAdef
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  obtain ⟨hA0, hA1⟩ := u5_fieldAmp_bounds N hN (invβ N) (hinv N)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  obtain ⟨hψ, hlin⟩ := u5_adj_data (hadj N hN) ht
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  set ψ : (Euc d → ℝ) → Euc d → ℝ := fun φ =&gt; propagatorW (Cf N) 0 t φ with hψdef
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  obtain ⟨J, hJ, hJb, hJL⟩ := u5_feature (Γ : ℝ) K A hA0 μ ψ hψ hlin
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>  set Kp : ℝ := max K 0 with hKp
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have hKp0 : 0 ≤ Kp := le_max_right _ _
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hJc : Continuous J :=
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    (LipschitzWith.of_dist_le&#x27; (K := A * Kp) fun x y =&gt; by
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      simpa [dist_eq_norm] using hJL x y).continuous
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  set S₀ : EucConfig d N → HNeg d (Γ : ℝ) := fun X =&gt; (Real.sqrt N)⁻¹ • ∑ i, J (X i) with hS₀
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  have hS₀m : Measurable S₀ :=
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    Measurable.const_smul (g := fun X : EucConfig d N =&gt; ∑ i, J (X i))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      (Finset.measurable_sum Finset.univ fun i _ =&gt; hJc.measurable.comp (measurable_pi_apply i))
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      (Real.sqrt N)⁻¹
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hS₀pair : ∀ X φ, IsSobolevTest (Γ : ℝ) φ → HNeg.pairing φ (S₀ X) =
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      A * Real.sqrt N * (HRS.Whole.pair (HRS.Whole.empirical X) (ψ φ) - HRS.Whole.pair μ (ψ φ)) := fun X φ hφ =&gt;
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    u5_pairing_sum hN A μ ψ J (fun φ hφ =&gt; (hψ φ hφ).1) hJ X φ hφ
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>  refine ⟨⟨S₀, hS₀m, fun φ hφ X =&gt; hS₀pair X φ hφ⟩, ?_, ?_⟩
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  · intro Ω&#x27; _ P&#x27; _ η hη
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    exact u5_exists_I K A hA0 μ ψ hψ hlin P&#x27; η hη.1 hη.2
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  · intro Ω _ P _ X hXm hXl Iemp hIm hIemp Ω&#x27; _ P&#x27; _ η hη I hIm&#x27; hI
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    have hae : Iemp =ᵐ[P] fun ζ =&gt; S₀ (X ζ) :=
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      u5_ae_eq_of_pairing P Iemp (fun ζ =&gt; S₀ (X ζ)) (fun φ hφ =&gt; by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>        filter_upwards [hIemp φ hφ] with ζ hζ
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        rw [hζ, hS₀pair (X ζ) φ hφ])
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    have hlawE : law P Iemp = P.map (fun ζ =&gt; S₀ (X ζ)) := Measure.map_congr hae
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have hb0 : 0 ≤ 2 * A * Kp := by positivity
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    have hΛ0 : 0 ≤ A * Kp := by positivity
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have hIl : ∀ (L : ℕ) (w : Fin L → HNeg d (Γ : ℝ)), (∀ a, w a ∈ LinearMap.range (rpk_J (Γ : ℝ))) →
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        P&#x27;.map (fun ζ =&gt; (WithLp.toLp 2 fun a =&gt; inner ℝ (w a) (I ζ) : Ek L)) =
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>          multivariateGaussian 0 (Matrix.of fun a b =&gt; ∫ x, inner ℝ (w a) (J x) * inner ℝ (w b) (J x) ∂μ) :=
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      fun L w hw =&gt; u5_coords_law K A hA0 μ ψ (fun φ hφ =&gt; (hψ φ hφ).1) J hJ P&#x27; η hη.1 hη.2 I hI L w hw
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    obtain ⟨hW, hmS, hmI⟩ := u5_assembly (E := HNeg d (Γ : ℝ)) hd hN μ hμ2 hm
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      (LinearMap.range (rpk_J (Γ : ℝ))) (u5_range_orth_bot _) J hJc.measurable hb0 hΛ0 hJb hJL
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      (u5_hmean A μ ψ (fun φ hφ =&gt; (hψ φ hφ).1) J hJ) P X hXm hXl P&#x27; I hIm&#x27; hIl
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    set Cc : ℝ := max (3 * u5_C0 d m₂ * max K 0) (8 * (max K 0) ^ 2) with hCc
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have hCc0 : 0 ≤ Cc := le_trans (by have := u5_C0_nonneg d m₂; positivity) (le_max_left _ _)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have hmomE : ∫⁻ ζ, ‖Iemp ζ‖ₑ ^ 2 ∂P ≤ ENNReal.ofReal ((2 * A * Kp) ^ 2) := by
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      rw [lintegral_congr_ae (hae.mono fun ζ h =&gt; by rw [h])]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>      exact hmS
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    refine ⟨fun h3 =&gt; ?_, ?_⟩
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    · have hlog := u5_log_ge_one h3
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>      have hrpow : 1 ≤ Real.log N ^ (1 / (2 * (d : ℝ) + 5)) :=
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>        Real.one_le_rpow hlog (by positivity)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>      have hNa : 0 ≤ (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) := by positivity
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>      have hX0 : 0 ≤ Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) *
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>          Real.log N ^ (1 / (2 * (d : ℝ) + 5)) := by positivity
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>      have hC0 := u5_C0_nonneg d m₂
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      have hmain : u5_C0 d m₂ * (A * Kp + 2 * A * Kp) * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) ≤
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>          Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) *
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>            Real.log N ^ (1 / (2 * (d : ℝ) + 5)) := by
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        have h1 : u5_C0 d m₂ * (A * Kp + 2 * A * Kp) ≤ Cc * A := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>          have : 3 * u5_C0 d m₂ * Kp ≤ Cc := le_max_left _ _
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          nlinarith [this, hA0]
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>        calc u5_C0 d m₂ * (A * Kp + 2 * A * Kp) * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10)))
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>            ≤ Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) := mul_le_mul_of_nonneg_right h1 hNa
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>          _ ≤ Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) *
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>                Real.log N ^ (1 / (2 * (d : ℝ) + 5)) := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>              have : 0 ≤ Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) := by positivity
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>              nlinarith [this, hrpow]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      have hW1 : wassersteinE 1 (law P Iemp) (law P&#x27; I) ≤
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>          ENNReal.ofReal (Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) *
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>            Real.log N ^ (1 / (2 * (d : ℝ) + 5))) := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        rw [hlawE]
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        exact hW.trans (ENNReal.ofReal_le_ofReal hmain)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      refine ⟨hW1, ?_⟩
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      have h1 : ENNReal.ofReal (smoothDist 1 (law P Iemp) (law P&#x27; I)) ≤
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>          ENNReal.ofReal (Cc * A * (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 10))) *
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>            Real.log N ^ (1 / (2 * (d : ℝ) + 5))) :=
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        (smoothDist_one_le_wasserstein _ _).trans hW1
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      have h2 := (ENNReal.ofReal_le_ofReal_iff hX0).1 h1
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      exact (smoothDist_succ_le 1 _ _).trans h2
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    · have h1 : ENNReal.ofReal ((2 * A * Kp) ^ 2) + ENNReal.ofReal ((2 * A * Kp) ^ 2) ≤
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>          ENNReal.ofReal Cc := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>        rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>        have : 8 * Kp ^ 2 ≤ Cc := le_max_right _ _
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        have hA2 : A ^ 2 ≤ 1 := by nlinarith
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>        nlinarith [sq_nonneg Kp, mul_nonneg (sq_nonneg Kp) (sub_nonneg.2 hA2)]
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      exact (add_le_add hmomE hmI).trans h1
+</span></code></pre></main></body></html>

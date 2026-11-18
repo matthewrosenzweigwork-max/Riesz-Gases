@@ -1,0 +1,9 @@
+import HRS.MS.PROS15dPhysicalRieszProjectionP21
+set_option autoImplicit false
+open HRS
+#print axioms HRS.MS.R26T3.s15d_hilbert_basis_physical_tilt_tail
+#print axioms HRS.MS.R26T3.s15d_complete_physical_family_hilbert_basis
+#print axioms HRS.MS.R26T3.s15d_physical_riesz_alltest_spectral_tilt_projection
+#check HRS.MS.R26T3.s15d_hilbert_basis_physical_tilt_tail
+#check HRS.MS.R26T3.s15d_complete_physical_family_hilbert_basis
+#check HRS.MS.R26T3.s15d_physical_riesz_alltest_spectral_tilt_projection

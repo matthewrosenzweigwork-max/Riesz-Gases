@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.DynCmpFinal · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.DynCmpFinal</code></h1><p><a href="../../lean/HRS/Sections/DynCmpFinal.lean">Open the unaltered Lean file</a> · 181 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.DynCmpAux7
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Sections.DynEntFinal
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># DYNCMP: Theorem 5.4 `dynamic_comparison` (final, statement verbatim)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Chain plan: header of `DynCmpAux1.lean`.  The proof uses `dynamic_entropy_proof` (conditional on the sorried MOV statements, see
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`DynEntFinal.lean`) for the entropy bounds `H(f^r|Q^r), H(f^r|(μ^r)^{⊗N}) ≤ C₁ B_N`, then `dyncmp_master` (duality identity,
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>remainder `L¹` bound `C B_N/√N`, Gaussian comparison on the enlargement, bracket error `C √(B_N/N)`).
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>open MeasureTheory Filter Topology ProbabilityTheory Set InformationTheory
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>noncomputable section
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>namespace HRS
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>variable {d : ℕ}
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>theorem dynamic_comparison_proof (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (T : ℝ) (hT : 0 ≤ T) (p : ℕ)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    (φ : Fin p → Torus d → ℝ) (hφ : ∀ a, Torus.IsSmooth (φ a)) :
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>        IsParticleSystem P htr.dyn T X₀ W X →
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>        relEntropy (P.map X₀)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>          (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) ≠ ⊤ →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>        ∀ t : Fin p → ℝ, (∀ a, t a ∈ Set.Icc (0 : ℝ) T) →
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>        ∀ G : Ω → EuclideanSpace ℝ (Fin p),
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>          law P G = ProbabilityTheory.multivariateGaussian 0 (noiseCovMatrix htr.dyn ρ β⁻¹ t φ) →
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>          AEMeasurable G P →
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>          ProbabilityTheory.IndepFun X₀ G P →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>          smoothDist 2
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>              (law P fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>                linCoord (withDensityReal (ρ (t a))) (φ a) (X (t a).toNNReal ω) :
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>                  EuclideanSpace ℝ (Fin p)))
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>              (law P fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>                linCoord (withDensityReal (ρ 0)) (propagator htr.dyn ρ 0 (t a) (φ a)) (X₀ ω) + G ω a :
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>                  EuclideanSpace ℝ (Fin p))) ≤
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>            C * (entropyScale d s N (P.map X₀)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>                  (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) / Real.sqrt N +
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>                Real.sqrt (entropyScale d s N (P.map X₀)
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>                  (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) / N)) := by
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have htr&#x27; : MovTraj htr.dyn T ρ :=
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    movT_traj_of_global_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global T
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  obtain ⟨c₀, Λ₂, hc₀, hb⟩ :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    movT_traj_uniform_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  obtain ⟨C₁, hC₁0, hC₁⟩ := dynamic_entropy_proof hd htr T hT
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  obtain ⟨Λ, hreg, hjc, hpack⟩ := dyncmp_adjoint_package hd htr T
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  choose Cφ hCφ using fun a =&gt; hpack (φ a) (hφ a)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  set Cmax : ℝ := ∑ a, |Cφ a| with hCmax
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hCmax0 : 0 ≤ Cmax := Finset.sum_nonneg fun a _ =&gt; abs_nonneg _
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  set L : ℝ := d * Cmax with hLdef
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hL0 : 0 ≤ L := by positivity
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  obtain ⟨Cf, hCf0, hCf⟩ := dyncmp_pair_moment hd1 htr&#x27; hc₀ (fun r hr x =&gt; (hb r hr.1).1 x)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    (fun r hr =&gt; (hb r hr.1).2) hL0
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  set K₂ : ℝ := ∑ a : Fin p, ∑ b : Fin p, 2 * β⁻¹ * (L * Real.exp T) * (L * Real.exp T) / (2 * 1) with hK₂
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  have hK₂0 : 0 ≤ K₂ := by
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    have := htr.hβ
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    positivity
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  refine ⟨T * p * Cf * (C₁ + 1) + (1 / 2) * K₂ * Real.sqrt (2 * (C₁ + 1)), by positivity, ?_⟩
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  intro N hN Ω _ P _ X₀ W X hP hfilt hfin t ht G hG hGm hind
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  haveI : NeZero N := ⟨by omega⟩
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  obtain ⟨ℱ, W&#x27;, hF⟩ := hfilt
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have e : ∀ r, movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ r =
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>      modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ r)) := fun r =&gt;
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    movT_Q_eq_beta (g := periodicRiesz d s) rfl N ρ r
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  set B : ℝ := entropyScale d s N (P.map X₀)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) with hB
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  have hH0 : 0 ≤ (relEntropy (P.map X₀)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))).toReal := ENNReal.toReal_nonneg
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  have hδ : 1 ≤ (N : ℝ) * deltaN d s N := one_le_mul_deltaN htr.hs0 N (by omega)
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hBge : (N : ℝ) * deltaN d s N ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  have hB1 : 1 ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hentboth := fun r (hr : r ∈ Set.Icc (0 : ℝ) T) =&gt; hC₁ N hN P X₀ W X hP ⟨ℱ, W&#x27;, hF⟩ hfin r hr
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  have hentQ : ∀ r ∈ Set.Icc (0 : ℝ) T, relEntropy (P.map (X r.toNNReal))
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      (movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ r) ≤ ENNReal.ofReal (C₁ * B) := by
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    intro r hr
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    rw [e]
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    exact le_trans le_self_add (hentboth r hr)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hentP : ∀ r ∈ Set.Icc (0 : ℝ) T, relEntropy (P.map (X r.toNNReal))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ r)) ≤ ENNReal.ofReal (C₁ * B) := fun r hr =&gt;
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    le_trans le_add_self (hentboth r hr)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hH₁ : 0 ≤ C₁ * B := by positivity
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hBge&#x27; : (N : ℝ) * deltaN d htr.dyn.s N ≤ B := hBge
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hδ&#x27; : 1 ≤ (N : ℝ) * deltaN d htr.dyn.s N := hδ
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hcl : ∀ a, IsClassicalAdjointSolution htr.dyn ρ (t a) (φ a)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      (fun r =&gt; propagator htr.dyn ρ r (t a) (φ a)) := fun a =&gt; (hCφ a (t a) (ht a)).1
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  have hgrad : ∀ a, ∀ r ∈ Set.Icc 0 (t a), ∀ x,
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      ‖Torus.grad (propagator htr.dyn ρ r (t a) (φ a)) x‖ ≤ L := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    intro a r hr x
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    have hck : Torus.IsCk 2 (propagator htr.dyn ρ r (t a) (φ a)) := (hcl a).c2 r hr
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    refine (dyncmp_norm_grad_le hck x).trans ?_
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    have h1 := (hCφ a (t a) (ht a)).2 r hr
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    have h2 : |Cφ a| ≤ Cmax := Finset.single_le_sum (f := fun a =&gt; |Cφ a|) (fun _ _ =&gt; abs_nonneg _)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      (Finset.mem_univ a)
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>    have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    calc (d : ℝ) * Torus.cbNorm 2 (propagator htr.dyn ρ r (t a) (φ a)) ≤ d * Cmax :=
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>          mul_le_mul_of_nonneg_left (h1.trans ((le_abs_self _).trans h2)) hd0
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      _ = L := rfl
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  have hLip : ∀ a, ∀ r ∈ Set.Icc 0 (t a), IsLipschitzVF L
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      (Torus.grad (propagator htr.dyn ρ r (t a) (φ a))) := by
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    intro a r hr
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    have hck : Torus.IsCk 2 (propagator htr.dyn ρ r (t a) (φ a)) := (hcl a).c2 r hr
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    refine mova_isLipschitzVF_mono ?_ (dyncmp_lip_grad hck)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have h1 := (hCφ a (t a) (ht a)).2 r hr
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    have h2 : |Cφ a| ≤ Cmax := Finset.single_le_sum (f := fun a =&gt; |Cφ a|) (fun _ _ =&gt; abs_nonneg _)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      (Finset.mem_univ a)
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    exact mul_le_mul_of_nonneg_left (h1.trans ((le_abs_self _).trans h2)) hd0
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hX0 : ∀ᵐ ω ∂P, X 0 ω = X₀ ω := hP.sol.init
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  have hind&#x27; : IndepFun (X 0) G P := hind.congr (hX0.mono fun ω h =&gt; h.symm) Filter.EventuallyEq.rfl
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have hmaster := dyncmp_master hd htr hT htr&#x27; hN hP.sol hF hH₁ hentQ hentP hCf0
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    (fun r hr v hv =&gt; ⟨(hCf N hN r hr v hv).1, fun ν hν hH =&gt; ((hCf N hN r hr v hv).2 ν hν hH).1⟩) t ht φ hφ (fun _ =&gt; L) (fun _ =&gt; hL0) hcl hgrad hLip G hGm hG hind&#x27;
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  have hlawX : (law P fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>      linCoord (withDensityReal (ρ 0)) (propagator htr.dyn ρ 0 (t a) (φ a)) (X 0 ω) + G ω a :
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        EuclideanSpace ℝ (Fin p))) =
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      law P fun ω =&gt; (WithLp.toLp 2 fun a =&gt;
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>        linCoord (withDensityReal (ρ 0)) (propagator htr.dyn ρ 0 (t a) (φ a)) (X₀ ω) + G ω a :
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>          EuclideanSpace ℝ (Fin p)) :=
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    Measure.map_congr (hX0.mono fun ω h =&gt; by simp only [h])
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  rw [hlawX] at hmaster
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  refine hmaster.trans ?_
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hNr : (0 : ℝ) &lt; N := by exact_mod_cast (by omega : 0 &lt; N)
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hsq : 0 &lt; Real.sqrt N := Real.sqrt_pos.2 hNr
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  have hBnn : 0 ≤ B := by linarith
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hx : 0 ≤ B / Real.sqrt N := by positivity
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hy : 0 ≤ Real.sqrt (B / N) := Real.sqrt_nonneg _
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hHN : C₁ * B + N * deltaN d htr.dyn.s N ≤ (C₁ + 1) * B := by nlinarith [hBge&#x27;]
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>  have h1 : ∑ a, t a * (Cf * (C₁ * B + N * deltaN d htr.dyn.s N)) / Real.sqrt N ≤
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      (T * p * Cf * (C₁ + 1)) * (B / Real.sqrt N) := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    calc ∑ a, t a * (Cf * (C₁ * B + N * deltaN d htr.dyn.s N)) / Real.sqrt N
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        ≤ ∑ _a : Fin p, T * (Cf * ((C₁ + 1) * B)) / Real.sqrt N := by
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>          refine Finset.sum_le_sum fun a _ =&gt; ?_
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          have hta0 : 0 ≤ t a := (ht a).1
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>          have htaT : t a ≤ T := (ht a).2
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>          have hin : 0 ≤ Cf * (C₁ * B + N * deltaN d htr.dyn.s N) := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>            have : 0 ≤ C₁ * B + N * deltaN d htr.dyn.s N := by linarith [hH₁, hδ&#x27;]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>            positivity
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>          have h2 : Cf * (C₁ * B + N * deltaN d htr.dyn.s N) ≤ Cf * ((C₁ + 1) * B) :=
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>            mul_le_mul_of_nonneg_left hHN hCf0
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>          have h3 : t a * (Cf * (C₁ * B + N * deltaN d htr.dyn.s N)) ≤ T * (Cf * ((C₁ + 1) * B)) :=
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>            mul_le_mul htaT h2 hin hT
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>          exact div_le_div_of_nonneg_right h3 hsq.le
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      _ = (T * p * Cf * (C₁ + 1)) * (B / Real.sqrt N) := by
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>          simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>          ring
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>  have hlog : Real.log 2 ≤ B := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) &lt; 2 by norm_num)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    linarith
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  have h2 : Real.sqrt (2 * (C₁ * B + Real.log 2) / N) ≤ Real.sqrt (2 * (C₁ + 1)) * Real.sqrt (B / N) := by
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    rw [← Real.sqrt_mul (by positivity)]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    refine Real.sqrt_le_sqrt ?_
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    have : 2 * (C₁ + 1) * (B / N) = 2 * ((C₁ + 1) * B) / N := by ring
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    rw [this]
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    refine div_le_div_of_nonneg_right ?_ hNr.le
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    nlinarith
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have h3 : (1 / 2 : ℝ) * (K₂ * Real.sqrt (2 * (C₁ * B + Real.log 2) / N)) ≤
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      ((1 / 2) * K₂ * Real.sqrt (2 * (C₁ + 1))) * Real.sqrt (B / N) := by
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    calc (1 / 2 : ℝ) * (K₂ * Real.sqrt (2 * (C₁ * B + Real.log 2) / N))
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>        ≤ (1 / 2 : ℝ) * (K₂ * (Real.sqrt (2 * (C₁ + 1)) * Real.sqrt (B / N))) :=
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left h2 hK₂0) (by norm_num)
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>      _ = _ := by ring
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  have hA1 : 0 ≤ T * p * Cf * (C₁ + 1) := by positivity
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  have hA2 : 0 ≤ (1 / 2) * K₂ * Real.sqrt (2 * (C₁ + 1)) := by positivity
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  calc _ ≤ (T * p * Cf * (C₁ + 1)) * (B / Real.sqrt N) +
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>        ((1 / 2) * K₂ * Real.sqrt (2 * (C₁ + 1))) * Real.sqrt (B / N) := add_le_add h1 h3
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    _ ≤ (T * p * Cf * (C₁ + 1) + (1 / 2) * K₂ * Real.sqrt (2 * (C₁ + 1))) *
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>        (B / Real.sqrt N + Real.sqrt (B / N)) := by
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>        nlinarith [mul_nonneg hA1 hy, mul_nonneg hA2 hx]
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>example := (@dynamic_comparison_proof : type_of% @HRS.dynamic_comparison)
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>end HRS
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>end
+</span></code></pre></main></body></html>

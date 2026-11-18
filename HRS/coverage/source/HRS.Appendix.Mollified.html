@@ -1,0 +1,164 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Appendix.Mollified · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Appendix.Mollified</code></h1><p><a href="../../lean/HRS/Appendix/Mollified.lean">Open the unaltered Lean file</a> · 163 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.Toolbox
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Kernel.HigherDerivBounds
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Appendix C: Lemma C.2 (mollified kernels), statement (packet SPEC-D, part C)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Source: `HRS_periodic_main_20261008T010000Z.tex`, Lemma C.2 `M:B:lem:mollified-kernels`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>(L12235-12237), with `γ_δ` as in Step 1 of `B:sec:adjoint-existence` (L1957):
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`χ₁ ∈ C_c^∞(ℝ^d;[0,1])` radial, `χ₁ ≡ 1` on `B(0,1)`, `supp χ₁ ⊂ B(0,2)`, and `ĝ_δ(k) = ĝ(k) χ₁(δk)²`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>## Representation decisions
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* The cutoff `χ₁` is the existing `HRS.PDE.IsFriedrichsCutoff` (reused, not redefined).
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* `mollifiedRiesz d s χ δ` is the trigonometric series `∑_k ĝ(k) χ₁(δk)² cos(2π k·x)`, i.e. the function
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  with Fourier coefficients `ĝ(k) χ₁(δk)²` (`ĝ` even, `rieszCoeff`).  Because `χ₁(δk) = 0` for `|δk| ≥ 2`
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  the series is a finite trigonometric sum, so the `tsum` is not a junk value.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* The TeX range `1 ≤ n ≤ m + 2` (with `m` the regularity level of the surrounding section, the constant
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  `C_n` not depending on `m`) is stated as &quot;for every `n ≥ 1`&quot;.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* `|x|` on the torus is the quotient distance `KernelGrad.tdist x 0` (norm of the centered representative);
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  derivatives are taken on the covering space (`iteratedFDeriv` of the periodic lift) at a point `y` with
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  `mk y ≠ 0` (the bounds are meaningless at `x = 0`, where `|x|^{-s-n} = ∞`).
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>* Constants `C_n`, `C` depend on `d, s, n` and the cutoff `χ₁` and are chosen before `δ` and `x`.
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>-/
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>noncomputable section
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>namespace HRS
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>variable {d : ℕ}
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>/-- The mollified periodic Riesz/log kernel `g_δ` with `ĝ_δ(k) = ĝ(k) χ₁(δk)²`
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>(Step 1 of `B:sec:adjoint-existence`, TeX M L1957): `g_δ(x) = ∑_k ĝ(k) χ₁(δk)² cos(2π k·x)`
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>(a finite sum since `χ₁` has compact support). -/
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>def mollifiedRiesz (d : ℕ) (s : ℝ) (χ : Euc d → ℝ) (δ : ℝ) (x : Torus d) : ℝ :=
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  ∑&#x27; k : Lattice d, rieszCoeff d s k * χ (δ • Lattice.toEuc k) ^ 2 * Torus.cosMode k x
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>/-- `g_δ` is the trigonometric series `mollSum` of `HRS.HDB` -/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem mollifiedRiesz_eq_mollSum (s : ℝ) (χ : Euc d → ℝ) (δ : ℝ) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    mollifiedRiesz d s χ δ = HDB.mollSum d s χ δ := rfl
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem rieszCoeff_nonneg_of_one_le (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : Lattice d) :
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    0 ≤ rieszCoeff d s k := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have h := KernelD1Aux.rieszConst_pos_d1 hd hs0 hsd
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  unfold rieszCoeff
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  split_ifs
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  · exact le_rfl
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  · exact mul_nonneg h.le (Real.rpow_nonneg (by unfold Lattice.enorm; positivity) _)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>theorem mollifiedRiesz_neg (s : ℝ) (χ : Euc d → ℝ) (δ : ℝ) (x : Torus d) :
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    mollifiedRiesz d s χ δ (-x) = mollifiedRiesz d s χ δ x := by
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  unfold mollifiedRiesz
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  refine tsum_congr fun k =&gt; ?_
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have : Torus.cosMode k (-x) = Torus.cosMode k x := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    unfold Torus.cosMode
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    rw [PDE.LevyAux.mode_neg_arg, Torus.mode_neg, Complex.conj_re]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  rw [this]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>/-- the coefficients of `g_δ`: `fcoef g_δ k = ĝ(k) χ(δk)²` -/
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>theorem fcoef_mollifiedRiesz (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) {χ : Euc d → ℝ}
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    (hχ : PDE.IsFriedrichsCutoff χ) {δ : ℝ} (hδ : 0 &lt; δ) (k : Lattice d) :
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    Torus.fcoef (mollifiedRiesz d s χ δ) k =
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      ((rieszCoeff d s k * χ (δ • Lattice.toEuc k) ^ 2 : ℝ) : ℂ) := by
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have h2 : ∀ ξ : Euc d, 2 ≤ ‖ξ‖ → χ ξ = 0 := hχ.support
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  set b : Lattice d → ℂ := fun k =&gt; ((HDB.bC d s χ δ k : ℝ) : ℂ) with hb
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hT : PDE.IsTrigPoly ⌈2 / δ⌉₊ b :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    HDB.isTrigPoly_of_enorm_lt (fun k hk =&gt; HDB.bC_support h2 hδ k (by simpa [hb] using hk))
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hbeven : ∀ k, b (-k) = b k := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    intro k
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    simp only [hb, HDB.bC]
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have h1 : rieszCoeff d s (-k) = rieszCoeff d s k := rieszCoeff_neg k
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    have h3 : Lattice.toEuc (-k) = -Lattice.toEuc k := by ext i; simp [Lattice.toEuc]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    have h4 : ‖δ • Lattice.toEuc k‖ = ‖δ • Lattice.toEuc (-k)‖ := by rw [h3, smul_neg, norm_neg]
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    rw [h1, hχ.radial _ _ h4.symm]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  -- the function is the trigonometric polynomial `trig b`
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hfun : ∀ x : Torus d, ((mollifiedRiesz d s χ δ x : ℝ) : ℂ) = PDE.Kern.trig b x := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    intro x
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    have hs1 : Summable fun k =&gt; b k * Torus.mode k x := PDE.Kern.summable_trig hT x
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    have hs2 : Summable fun k =&gt; b k * Torus.mode (-k) x := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      refine summable_of_ne_finset_zero (s := PDE.Kern.boxF d ⌈2 / δ⌉₊) fun k hk =&gt; ?_
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>      have : b k = 0 := by
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        by_contra h
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        exact hk (PDE.Kern.mem_boxF.2 (hT k h))
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      simp [this]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    have hneg : PDE.Kern.trig b x = ∑&#x27; k, b k * Torus.mode (-k) x := by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      unfold PDE.Kern.trig
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      rw [← (Equiv.neg (Lattice d)).tsum_eq (fun k =&gt; b k * Torus.mode k x)]
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      exact tsum_congr fun k =&gt; by simp [hbeven]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    have h2x : 2 * PDE.Kern.trig b x = ∑&#x27; k, b k * (2 * (Torus.cosMode k x : ℂ)) := by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      have : ∀ k, b k * (2 * (Torus.cosMode k x : ℂ)) = b k * Torus.mode k x + b k * Torus.mode (-k) x := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>        intro k
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        rw [Torus.mode_neg, Torus.cosMode, ← mul_add, Complex.add_conj]
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        push_cast; ring
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      simp_rw [this]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      rw [hs1.tsum_add hs2, ← hneg]
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      unfold PDE.Kern.trig; ring
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    have : PDE.Kern.trig b x = ∑&#x27; k, b k * (Torus.cosMode k x : ℂ) := by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      have h3 : ∑&#x27; k, b k * (2 * (Torus.cosMode k x : ℂ)) = 2 * ∑&#x27; k, b k * (Torus.cosMode k x : ℂ) := by
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>        rw [← tsum_mul_left]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        exact tsum_congr fun k =&gt; by ring
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      rw [h3] at h2x
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      exact mul_left_cancel₀ two_ne_zero h2x
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    rw [this]
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    unfold mollifiedRiesz
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    rw [Complex.ofReal_tsum]
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    exact tsum_congr fun k =&gt; by simp [hb, HDB.bC]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hcoef : Torus.fcoef (mollifiedRiesz d s χ δ) k = PDE.coeffOfC (PDE.Kern.trig b) k := by
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    unfold Torus.fcoef
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    rw [PDE.coeffOfC_eq_integral&#x27;]
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>    refine integral_congr_ae (Filter.Eventually.of_forall fun x =&gt; ?_)
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    simp only
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    rw [Torus.mode_neg, hfun x]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  rw [hcoef, PDE.Fried.coeffOfC_trig hT]
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  simp [hb, HDB.bC]
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>/-- Lemma C.2 (`M:B:lem:mollified-kernels`, TeX M L12235-12237).  Let `γ_δ` be the mollified kernel,
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>`0 ≤ s &lt; d`.  Then
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>* for `n ≥ 1` and `0 &lt; δ ≤ 1`, `|∇^{⊗n} g_δ(x)| ≤ C_n (|x|^{-s-n} + 1)`, uniformly in `δ`;
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>* for `n = 0` the same bound `|g_δ(x)| ≤ C (|x|^{-s} + 1)` holds when `s &gt; 0`, while in the logarithmic
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  case `s = 0`, `|g_δ(x)| ≤ C (1 + |log(δ ∨ |x|)|)`;
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>* in all cases `g_δ` is even and `ĝ_δ ≥ 0` (`ĝ_δ(k) = ĝ(k) χ₁(δk)² ≥ 0` is the Fourier coefficient of
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  `g_δ`, stated through `Torus.fcoef`).
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>Pointwise bounds are for `x ≠ 0`.  Technical hypotheses: `1 ≤ d` (`d = 0` is degenerate). -/
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>theorem mollified_kernels (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    {χ : Euc d → ℝ} (hχ : PDE.IsFriedrichsCutoff χ) :
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    (∀ n : ℕ, 1 ≤ n → ∃ C : ℝ, 0 ≤ C ∧ ∀ δ : ℝ, 0 &lt; δ → δ ≤ 1 → ∀ y : Euc d, Torus.mk y ≠ 0 →
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>        ‖iteratedFDeriv ℝ n (Torus.lift (mollifiedRiesz d s χ δ)) y‖ ≤
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>          C * (KernelGrad.tdist (Torus.mk y) 0 ^ (-s - (n : ℝ)) + 1)) ∧
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (0 &lt; s → ∃ C : ℝ, 0 ≤ C ∧ ∀ δ : ℝ, 0 &lt; δ → δ ≤ 1 → ∀ x : Torus d, x ≠ 0 →
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        |mollifiedRiesz d s χ δ x| ≤ C * (KernelGrad.tdist x 0 ^ (-s) + 1)) ∧
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    (s = 0 → ∃ C : ℝ, 0 ≤ C ∧ ∀ δ : ℝ, 0 &lt; δ → δ ≤ 1 → ∀ x : Torus d, x ≠ 0 →
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>        |mollifiedRiesz d s χ δ x| ≤ C * (1 + |Real.log (max δ (KernelGrad.tdist x 0))|)) ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    (∀ δ : ℝ, 0 &lt; δ → δ ≤ 1 →
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>      (∀ x : Torus d, mollifiedRiesz d s χ δ (-x) = mollifiedRiesz d s χ δ x) ∧
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>      ∀ k : Lattice d,
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        Torus.fcoef (mollifiedRiesz d s χ δ) k =
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>            ((rieszCoeff d s k * χ (δ • Lattice.toEuc k) ^ 2 : ℝ) : ℂ) ∧
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>          0 ≤ rieszCoeff d s k * χ (δ • Lattice.toEuc k) ^ 2) := by
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have hcut := hχ
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have hs : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) χ := hχ.smooth
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  have h0 : ∀ ξ, 0 ≤ χ ξ ∧ χ ξ ≤ 1 := hχ.range
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have h1 : ∀ ξ : Euc d, ‖ξ‖ ≤ 1 → χ ξ = 1 := hχ.one
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  have h2 : ∀ ξ : Euc d, 2 ≤ ‖ξ‖ → χ ξ = 0 := hχ.support
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  refine ⟨?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  · intro n hn
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    obtain ⟨C, hC0, hC⟩ := HDB.deriv_bound_pos hd hsd hs h0 h1 h2 n (by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      have : (1 : ℝ) ≤ n := by exact_mod_cast hn
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      linarith)
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    exact ⟨C, hC0, fun δ hδ hδ1 y hy =&gt; hC δ hδ hδ1 y hy⟩
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  · intro hs&#x27;
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    obtain ⟨C, hC0, hC⟩ := HDB.zeroth_bound_pos hd hsd hs h0 h1 h2 hs&#x27;
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    exact ⟨C, hC0, fun δ hδ hδ1 x hx =&gt; hC δ hδ hδ1 x hx⟩
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  · intro hs&#x27;
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    subst hs&#x27;
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    obtain ⟨C, hC0, hC⟩ := HDB.zeroth_bound_log hd hsd hs h0 h1 h2
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    exact ⟨C, hC0, fun δ hδ hδ1 x hx =&gt; hC δ hδ hδ1 x hx⟩
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  · intro δ hδ hδ1
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    refine ⟨mollifiedRiesz_neg s χ δ, fun k =&gt; ⟨fcoef_mollifiedRiesz hd hs0 hsd hχ hδ k, ?_⟩⟩
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    exact mul_nonneg (rieszCoeff_nonneg_of_one_le hd hs0 hsd k) (sq_nonneg _)
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>end HRS
+</span></code></pre></main></body></html>

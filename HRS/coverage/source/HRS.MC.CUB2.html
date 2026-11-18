@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.CUB2 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.CUB2</code></h1><p><a href="../../lean/HRS/MC/CUB2.lean">Open the unaltered Lean file</a> · 86 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.CUB1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Main.HeadlineEdgeworth
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.Main.ThermLinFinal
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>/-!
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a># Cubic tensor uniqueness, part 2: agreement on evaluation functionals and the main proof
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Two tensors satisfying `SatisfiesCubicFormula` agree on every product of evaluation functionals
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`ℓ_{t,k}` (`t ∈ [0,T]`, `k` a nonzero frequency), provided the cross-covariance densities exist
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>(`CrossCovDensitiesExist`); the finite-rank form of `projPoly` then gives `P_L^{⊗3} K₁ = P_L^{⊗3} K₂`
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>and the strong convergence `P_L^{⊗3} → id` on `projTensor` gives `K₁ = K₂`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>-/
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>noncomputable section
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>namespace HRS.MC.CUB
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open HRS HRS.Sec7 HRS.Main HRS.MC.Sec7.S7PIC
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>set_option maxSynthPendingDepth 3
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d : ℕ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>/-- Existence of a witness `(ν, Ω&#x27;, P&#x27;, Z₀, Z)` for the cubic formula. -/
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>theorem witness_exists (S : PreparedData d) (β₀ m T a : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    (hT : 0 &lt; T) (ha : 0 ≤ a) :
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    ∃ ν : Measure (NegSobolev d m), IsCenteredGaussianWithCov m ν (preparedCov d S.s β₀ S.μ0) ∧
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>      ∃ (Ω&#x27; : Type) (_ : MeasurableSpace Ω&#x27;) (P&#x27; : Measure Ω&#x27;) (_ : IsProbabilityMeasure P&#x27;)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>        (Z₀ : Ω&#x27; → NegSobolev d m) (Z : ℝ → Ω&#x27; → NegSobolev d m), IsPreparedLinear S m (a + T) ν P&#x27; Z₀ Z := by
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have hd : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  have hm := hE.m_gt
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  obtain ⟨ν, hν, hνc⟩ := preparedGaussian_exists_proof S β₀ hE.β₀_nonneg m (by linarith)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  refine ⟨ν, hνc, ?_⟩
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have := hν
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  obtain ⟨Ω&#x27;, hΩ, P&#x27;, hP&#x27;, Z₀, Z, hZ⟩ :=
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    preparedLinear_exists_proof S m (by linarith) (a + T) (by linarith) ν
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  exact ⟨Ω&#x27;, hΩ, P&#x27;, hP&#x27;, Z₀, Z, hZ⟩
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>theorem pathEval_eq_pathAt {m T : ℝ} (w : PathSpace d m T) (t : Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    pathEval w (t : ℝ) = pathAt w (t : ℝ) := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  unfold pathEval pathAt
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  rw [dif_pos t.2]
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>/-- Two tensors with the cubic formula agree on products of evaluation functionals. -/
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>theorem agree_lf (S : PreparedData d) (β₀ m T a : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (hT : 0 &lt; T) (ha : 0 ≤ a) (hχ : CrossCovDensitiesExist S β₀ m T a)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    (K₁ K₂ : projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    (h₁ : SatisfiesCubicFormula S β₀ m T a K₁) (h₂ : SatisfiesCubicFormula S β₀ m T a K₂)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (n : Fin 3 → Set.Icc (0 : ℝ) T) (k : Fin 3 → NonzeroLattice d) :
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    ((K₁ : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        (prodFormN 3 (fun i =&gt; S7PIC_lf m T (n i) (k i))) =
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>      ((K₂ : projTensor (PathSpace d m T) 3) : TensorDual (PathSpace d m T) 3)
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>        (prodFormN 3 (fun i =&gt; S7PIC_lf m T (n i) (k i))) := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  obtain ⟨ν, hν, Ω&#x27;, hΩ, P&#x27;, hP&#x27;, Z₀, Z, hZ⟩ := witness_exists S β₀ m T a hE hT ha
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  set t : Fin 3 → ℝ := fun i =&gt; a + (n i : ℝ) with ht_def
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  set φ : Fin 3 → Torus d → ℝ := fun i =&gt; Torus.realMode (k i) with hφ_def
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have ht : ∀ i, t i ∈ Set.Icc a (a + T) := fun i =&gt;
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ⟨le_add_of_nonneg_right (n i).2.1, by linarith [(n i).2.2]⟩
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hφ : ∀ i, Torus.IsSmooth (φ i) := fun i =&gt; FieldSingAux.isSmooth_realMode (k i)
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hℓ : ∀ i w, S7PIC_lf m T (n i) (k i) w = NegSobolev.eval (pathEval w (t i - a)) (φ i) := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    intro i w
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    have : t i - a = (n i : ℝ) := by simp [ht_def]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    rw [this, pathEval_eq_pathAt, S7PIC_lf_eq_eval]
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  obtain ⟨χ, hχs, hχc⟩ := hχ t φ ht hφ ν hν P&#x27; Z₀ Z hZ
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  have e₁ := h₁ t φ ht hφ (fun i =&gt; S7PIC_lf m T (n i) (k i)) hℓ ν hν P&#x27; Z₀ Z hZ χ hχs hχc
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have e₂ := h₂ t φ ht hφ (fun i =&gt; S7PIC_lf m T (n i) (k i)) hℓ ν hν P&#x27; Z₀ Z hZ χ hχs hχc
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  exact e₁.trans e₂.symm
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>theorem cubic_tensor_unique_proof (S : PreparedData d) (β₀ m T a : ℝ) (hE : EdgeworthHyp S β₀ m)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    (hT : 0 &lt; T) (ha : 0 ≤ a) (hχ : CrossCovDensitiesExist S β₀ m T a)
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    (K₁ K₂ : projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    (h₁ : SatisfiesCubicFormula S β₀ m T a K₁) (h₂ : SatisfiesCubicFormula S β₀ m T a K₂) :
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    K₁ = K₂ := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  obtain ⟨Pj, hPj, hnorm, hconv, hten⟩ := projection_strong_proof (d := d) m T hT
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  refine Subtype.ext ?_
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  refine eq_of_proj Pj _ _ (hten 3 _ K₁.2) (hten 3 _ K₂.2) (fun L =&gt; ?_)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  refine tensorPow_eq_of_agree 3 (Pj L)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (fun a : Fin (2 ^ L + 1) × ↥(S7PIC_box d L) =&gt; S7PIC_lf m T (S7PIC_node T hT.le L a.1) a.2)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    (fun a =&gt; S7PIC_vpath m T L a.1 a.2) (fun w =&gt; ?_) _ _ (fun r =&gt; ?_)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  · rw [hPj, S7PIC_projPoly_eq_sum]
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  · exact agree_lf S β₀ m T a hE hT ha hχ K₁ K₂ h₁ h₂ (fun i =&gt; S7PIC_node T hT.le L (r i).1)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      (fun i =&gt; (r i).2)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>end HRS.MC.CUB
+</span></code></pre></main></body></html>

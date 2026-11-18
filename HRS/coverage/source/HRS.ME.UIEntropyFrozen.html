@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.ME.UIEntropyFrozen · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.ME.UIEntropyFrozen</code></h1><p><a href="../../lean/HRS/ME/UIEntropyFrozen.lean">Open the unaltered Lean file</a> · 93 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.ME.UIEntropy
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Sections.Sec5
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Proposition 5.10, last sentence: the entropy bound implies uniform integrability (frozen statement)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Proof of `HRS.ui_of_entropy_bound` exactly as frozen, with no hypotheses on `d`, `s`, `V`, `β`.  For arbitrary `V` and `β`,
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>`canonicalGibbs` is `c • μ` with `μ` the measure with density `exp (-β H)` and `c = (ofReal Z)⁻¹`, `Z` the Bochner integral
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>of the density.  The density is positive, so `Z ≥ 0`, and there are two cases.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `Z &gt; 0`: the density is integrable, `μ univ = ofReal Z`, and the Gibbs law is a probability measure.  Then
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `HRS.ME.UIEntropy.ui_tail_of_relEntropy` applies.
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `Z = 0`: `c = ⊤`.  From the entropy bound `ν ≪ Q`.  If `ν` had a Lebesgue decomposition with respect to `Q`, then
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `ν = Q.withDensity (ν.rnDeriv Q)` would have total mass `⊤ * ∫⁻ rnDeriv dμ ∈ {0, ⊤}`, not `1`.  So there is no
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  Lebesgue decomposition, `rnDeriv = 0` by the junk-value convention, and the tail set is empty.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>-/
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>noncomputable section
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open scoped ENNReal NNReal
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>namespace HRS.ME.UIEntropyFrozen
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>/-- If `Q = ⊤ • μ` and `ν` is a probability measure with `ν ≪ Q`, then `ν.rnDeriv Q = 0`. -/
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>lemma rnDeriv_top_smul {α : Type*} [MeasurableSpace α] (ν μ : Measure α) [IsProbabilityMeasure ν]
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    (hac : ν ≪ (⊤ : ℝ≥0∞) • μ) : ν.rnDeriv ((⊤ : ℝ≥0∞) • μ) = 0 := by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  by_cases h : ν.HaveLebesgueDecomposition ((⊤ : ℝ≥0∞) • μ)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  · exfalso
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    have e := Measure.withDensity_rnDeriv_eq ν ((⊤ : ℝ≥0∞) • μ) hac
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    have h1 := congrArg (fun m : Measure α =&gt; m Set.univ) e
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    simp only [measure_univ] at h1
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    rw [withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ, lintegral_smul_measure] at h1
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    simp only [smul_eq_mul] at h1
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    by_cases h0 : ∫⁻ x, ν.rnDeriv ((⊤ : ℝ≥0∞) • μ) x ∂μ = 0
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    · rw [h0, mul_zero] at h1
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>      exact zero_ne_one h1
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    · rw [ENNReal.top_mul h0] at h1
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>      exact ENNReal.top_ne_one h1
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  · exact Measure.rnDeriv_of_not_haveLebesgueDecomposition h
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>theorem ui_of_entropy_bound_proof {d : ℕ} : type_of% (@HRS.ui_of_entropy_bound d) := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>  intro s β V ν hν H₀ hH
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  have hb : ∀ L : ℝ, 1 &lt; L → uiTail d s β V ν L ≤ ENNReal.ofReal ((H₀ + Real.exp (-1)) / Real.log L) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    intro L hL
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    unfold uiTail
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    refine iSup_le fun n =&gt; ?_
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    have := hν n
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>    set N := n + 2 with hN
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>    set f : Config d N → ℝ := fun X =&gt; Real.exp (-β * canonicalHamiltonian (periodicRiesz d s) V X) with hf
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    set Z := canonicalPartition (periodicRiesz d s) V N β with hZ
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    have hZ0 : 0 ≤ Z := integral_nonneg fun X =&gt; (Real.exp_pos _).le
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    rcases hZ0.eq_or_lt with hZ0 | hZpos
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    · -- junk case `Z = 0`
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      have hQ : canonicalGibbs (periodicRiesz d s) V N β =
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>          (⊤ : ℝ≥0∞) • (volume : Measure (Config d N)).withDensity fun X =&gt; ENNReal.ofReal (f X) := by
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>        unfold canonicalGibbs
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        rw [← hZ, ← hZ0, ENNReal.ofReal_zero, ENNReal.inv_zero]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      have hkl := hH n
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>      have hac : ν n ≪ canonicalGibbs (periodicRiesz d s) V N β := by
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>        have : HRS.relEntropy (ν n) (canonicalGibbs (periodicRiesz d s) V N β) ≠ ⊤ :=
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>          ne_top_of_le_ne_top ENNReal.ofReal_ne_top hkl
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>        exact (InformationTheory.klDiv_ne_top_iff.mp this).1
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      rw [hQ] at hac ⊢
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      rw [rnDeriv_top_smul _ _ hac]
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>      have : {X : Config d N | ENNReal.ofReal L &lt; (0 : Config d N → ℝ≥0∞) X} = ∅ := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>        ext X; simp
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      simp
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    · -- `Z &gt; 0`: the Gibbs law is a probability measure
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>      have hP : IsProbabilityMeasure (canonicalGibbs (periodicRiesz d s) V N β) := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>        have hint : Integrable f := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>          by_contra hni
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>          have : Z = 0 := integral_undef hni
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>          exact hZpos.ne&#x27; this
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>        have hl := ofReal_integral_eq_lintegral_ofReal hint
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>          (Filter.Eventually.of_forall fun X =&gt; (Real.exp_pos _).le)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        refine ⟨?_⟩
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>        unfold canonicalGibbs
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        rw [Measure.smul_apply, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>          ← hl, smul_eq_mul]
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>        exact ENNReal.inv_mul_cancel (by simpa using hZpos) ENNReal.ofReal_ne_top
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      exact (HRS.ME.UIEntropy.ui_tail_of_relEntropy (ν n) _ H₀ L hL (hH n)).2
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  refine ⟨hb, ?_⟩
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  have hlim : Tendsto (fun L : ℝ =&gt; ENNReal.ofReal ((H₀ + Real.exp (-1)) / Real.log L)) atTop (𝓝 0) := by
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    have h1 : Tendsto (fun L : ℝ =&gt; (H₀ + Real.exp (-1)) / Real.log L) atTop (𝓝 0) :=
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      tendsto_const_nhds.div_atTop Real.tendsto_log_atTop
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    have h2 := (ENNReal.continuous_ofReal.tendsto 0).comp h1
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    rw [ENNReal.ofReal_zero] at h2
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    exact h2
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  refine tendsto_of_tendsto_of_tendsto_of_le_of_le&#x27; tendsto_const_nhds hlim (Eventually.of_forall fun L =&gt; bot_le) ?_
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  filter_upwards [eventually_gt_atTop (1 : ℝ)] with L hL using hb L hL
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>end HRS.ME.UIEntropyFrozen
+</span></code></pre></main></body></html>

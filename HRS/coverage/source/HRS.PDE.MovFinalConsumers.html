@@ -1,0 +1,666 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.PDE.MovFinalConsumers · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.PDE.MovFinalConsumers</code></h1><p><a href="../../lean/HRS/PDE/MovFinalConsumers.lean">Open the unaltered Lean file</a> · 665 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.PDE.MovFinal1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.PDE.MovFinal2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>import HRS.PDE.MovFinal3
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>import HRS.Energy.MFEFinal
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>import HRS.Sections.DynEntFinal
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>import HRS.Sections.AllTimeFinal
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>import HRS.Sections.MovLogFinal2
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>/-!
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a># MOV-FINAL (consumers): the MOV consumers re-run with the sorry-free glue
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>Verbatim copies of `mfe_uniform_proof`, `dynamic_entropy_proof`, `alltime_Lp_proof` (with its helper `alltime_item1`),
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>`moving_log_moment_proof`, `moving_pair_moments_proof` (with its helper `movlog_pair_core`) with `mov_mfe_ineq`,
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`movT_entropy_bound`, `mov_lp_bound` replaced by `mov_mfe_ineq_proof`, `movT_entropy_bound_proof`, `mov_lp_bound_proof`
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>(`MovFinal1-3`).  Each primed `_proof&#x27;` is tied by `type_of%` to the frozen statement.  Bridge B is not needed in its frozen
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>form: `alltime_item1` and `movlog_L` use `movT_relaxation_L_proof_reg` (with `IsCk 2 ρβ` from `Regime.thermal`).
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>-/
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>section
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>noncomputable section
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>namespace HRS
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>variable {d : ℕ}
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>theorem mfe_uniform_proof&#x27; (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s &lt; d) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    ∃ C₀ C : ℝ, 0 ≤ C₀ ∧ 0 &lt; C ∧
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      ∀ (D : DynData d), D.s = s → ∀ (N : ℕ), 2 ≤ N → ∀ (T Λ lam₀ : ℝ), 0 ≤ T →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>        (ρ : ℝ → Torus d → ℝ) (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>        (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>        MFEHyp P D N T Λ lam₀ ρ X₀ W X →
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      ∀ K : ℝ → ℝ, IntegrableOn K (Set.Icc 0 T) →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        (∀ t ∈ Set.Icc 0 T, HasTransportBound d s (mfeTransport D (ρ t)) (K t)) →
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∀ t ∈ Set.Icc 0 T,
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>        (P.map (X (Real.toNNReal t))).AbsolutelyContinuous volume ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        MFEFinite d s (P.map (X (Real.toNNReal t))) (withDensityReal (ρ t)) ∧
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        modulatedFreeEnergy d s D.invβ (P.map (X (Real.toNNReal t))) (withDensityReal (ρ t)) +
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>            oNΛ d s C₀ Λ N ≤
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>          Real.exp (C * ∫ r in Set.Icc 0 T, K r) *
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>            (modulatedFreeEnergy d s D.invβ (P.map X₀) (withDensityReal (ρ 0)) + oNΛ d s C₀ Λ N) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  obtain ⟨A₀, A, hA₀, hA, hcomm⟩ := Commutator.commutator_estimate_of_packets hd hs0 hsd
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  obtain ⟨B₀, hB₀, hnn⟩ := Commutator.energy_add_oN_nonneg hd hs0 hsd
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  refine ⟨max A₀ B₀, A / 2, le_max_of_le_left hA₀, by positivity, ?_⟩
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  intro D hDs N hN T Λ lam₀ hT Ω _ P _ ρ X₀ W X h K hKi hK
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  subst hDs
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  have hMov := movT_hyp_of_mfeHyp_proof h
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have key := mov_mfe_ineq_proof hN P hMov h.mfe_init
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have hΛ1 : 1 ≤ Λ := h.Λ_ge
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hΛ0 : 0 ≤ Λ := by linarith
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hβ : 0 &lt; D.invβ := h.pos_temp
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  set o : ℝ := oNΛ d D.s (max A₀ B₀) Λ N with ho
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>  have hoA : oNΛ d D.s A₀ Λ N ≤ o := oNΛ_mono_C₀ (le_max_left _ _) hΛ0 N
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>  have hoB : oNΛ d D.s B₀ Λ N ≤ o := oNΛ_mono_C₀ (le_max_right _ _) hΛ0 N
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  have hK0 : ∀ r ∈ Set.Icc 0 T, 0 ≤ K r := fun r hr =&gt; (hK r hr).nonneg
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hρΛ : ∀ r ∈ Set.Icc 0 T, ∀ x, ρ r x ≤ Λ := fun r hr x =&gt;
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (le_abs_self _).trans ((PDE.R2Aux.abs_le_cbNorm (h.mf_reg r hr).1 x).trans (h.mf_reg r hr).2)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  -- general bounds for a probability measure ν of finite modulated free energy at time r
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hbd : ∀ r ∈ Set.Icc 0 T, ∀ (ν : Measure (Config d N)) [IsProbabilityMeasure ν],
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>      MFEFinite d D.s ν (withDensityReal (ρ r)) →
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>      0 ≤ ∫ Z, rieszEnergy d D.s Z (withDensityReal (ρ r)) ∂ν + o ∧
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>      |∫ Z, commQuantity d D.s (mfeTransport D (ρ r)) Z (withDensityReal (ρ r)) ∂ν| ≤
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        A * K r * (∫ Z, rieszEnergy d D.s Z (withDensityReal (ρ r)) ∂ν + o) ∧
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      ∫ Z, rieszEnergy d D.s Z (withDensityReal (ρ r)) ∂ν + o ≤
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>        modulatedFreeEnergy d D.s D.invβ ν (withDensityReal (ρ r)) + o := by
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    intro r hr ν _ hfin
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    have hρ := h.mf.density r hr
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    obtain ⟨-, hae⟩ := mfe41_ac hd hρ hfin.1
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    have hnn&#x27; : ∀ᵐ Z ∂ν, 0 ≤ rieszEnergy d D.s Z (withDensityReal (ρ r)) + o := by
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>      filter_upwards [hae] with Z hZ
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>      have := hnn Λ hΛ1 N hN (ρ r) hρ (hρΛ r hr) Z hZ
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      linarith
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>    have hc&#x27; : ∀ᵐ Z ∂ν, |commQuantity d D.s (mfeTransport D (ρ r)) Z (withDensityReal (ρ r))| ≤
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        A * K r * (rieszEnergy d D.s Z (withDensityReal (ρ r)) + o) := by
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      filter_upwards [hae] with Z hZ
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      have h1 := (hcomm Λ hΛ1 N hN (ρ r) hρ (hρΛ r hr) Z hZ _ (K r) (hK r hr)).2
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      refine h1.trans ?_
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      have hAK : 0 ≤ A * K r := mul_nonneg hA.le (hK0 r hr)
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      exact mul_le_mul_of_nonneg_left (by linarith) hAK
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    obtain ⟨h1, h2⟩ := mfe41_int hfin.2 hnn&#x27; hc&#x27;
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    refine ⟨h1, h2, ?_⟩
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    unfold modulatedFreeEnergy
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    have : 0 ≤ D.invβ * (normRelEntropy N ν (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ r))).toReal :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      mul_nonneg hβ.le ENNReal.toReal_nonneg
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    linarith
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  -- Gronwall
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  have hT&#x27; : T ∈ Set.Icc 0 T := ⟨hT, le_rfl⟩
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  have hint := (key T hT&#x27;).2.2.1
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>  have hgr := movspec_gronwall_var (T := T)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (u0 := modulatedFreeEnergy d D.s D.invβ (P.map X₀) (withDensityReal (ρ 0)) + o)
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>    (a := fun r =&gt; A / 2 * K r)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    (G := fun r =&gt; -(1 / 2) * ∫ Z, commQuantity d D.s (mfeTransport D (ρ r)) Z (withDensityReal (ρ r))
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        ∂(P.map (X r.toNNReal)))
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (u := fun r =&gt; modulatedFreeEnergy d D.s D.invβ (P.map (X r.toNNReal)) (withDensityReal (ρ r)) + o)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    (fun r hr =&gt; mul_nonneg (by positivity) (hK0 r hr)) (hKi.const_mul _) (hint.const_mul _)
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    (fun t ht =&gt; by
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      have := (key t ht).2.2.2
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      rw [integral_const_mul]
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      linarith)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    (fun r hr =&gt; by
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      haveI : IsProbabilityMeasure (P.map (X r.toNNReal)) := inferInstance
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      obtain ⟨-, h2, h3⟩ := hbd r hr (P.map (X r.toNNReal)) (key r hr).1
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      have h4 := neg_abs_le (∫ Z, commQuantity d D.s (mfeTransport D (ρ r)) Z (withDensityReal (ρ r))
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        ∂(P.map (X r.toNNReal)))
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      have h5 : 0 ≤ A * K r := mul_nonneg hA.le (hK0 r hr)
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      have h6 := mul_le_mul_of_nonneg_left h3 h5
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      nlinarith)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  haveI : IsProbabilityMeasure (P.map X₀) := inferInstance
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  obtain ⟨hu0, -, hu0&#x27;⟩ := hbd 0 ⟨le_rfl, hT⟩ (P.map X₀) h.mfe_init
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  intro t ht
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  refine ⟨?_, (key t ht).1, ?_⟩
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  · have hρ := h.mf.density t ht
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    exact (mfe41_ac hd hρ (key t ht).1.1).1
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  · have h1 := hgr t ht
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    refine h1.trans ?_
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have hu0n : 0 ≤ modulatedFreeEnergy d D.s D.invβ (P.map X₀) (withDensityReal (ρ 0)) + o := by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>      linarith
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    rw [mul_comm]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    refine mul_le_mul_of_nonneg_right (Real.exp_le_exp.mpr ?_) hu0n
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    rw [integral_const_mul]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    exact setIntegral_mono_set hKi (ae_restrict_of_forall_mem measurableSet_Icc (fun r hr =&gt; hK0 r hr))
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      (Eventually.of_forall (Set.Icc_subset_Icc le_rfl ht.2))
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>example := (@mfe_uniform_proof&#x27; : type_of% @HRS.mfe_uniform)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>end HRS
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>end
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>end
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>section
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>open MeasureTheory Filter Topology ProbabilityTheory Set InformationTheory
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>noncomputable section
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>namespace HRS
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>variable {d : ℕ}
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>theorem dynamic_entropy_proof&#x27; (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (T : ℝ) (hT : 0 ≤ T) :
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>        IsParticleSystem P htr.dyn T X₀ W X →
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        relEntropy (P.map X₀)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>          (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) ≠ ⊤ →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>        ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>          relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>              (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))) +
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>            relEntropy (P.map (X t.toNNReal)) (Measure.pi fun _ =&gt; withDensityReal (ρ t)) ≤
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          ENNReal.ofReal (C * entropyScale d s N (P.map X₀)
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>            (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))) := by
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have htr&#x27; : MovTraj htr.dyn T ρ :=
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    movT_traj_of_global_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global T
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  obtain ⟨c₀, Λ₂, hc₀, hb⟩ :=
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    movT_traj_uniform_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ htr.V_smooth htr.init htr.global
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  obtain ⟨C₁, hC₁0, hC₁⟩ := movT_entropy_bound_proof htr&#x27;
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  obtain ⟨C₂, hC₂0, hC₂⟩ := dynent_product_bound hd1 htr&#x27; hc₀ (fun r hr x =&gt; (hb r hr.1).1 x)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>    (fun r hr =&gt; (hb r hr.1).2)
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  refine ⟨2 * C₁ + C₂ * (1 + C₁), by positivity, ?_⟩
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  intro N hN Ω _ P _ X₀ W X hP hfilt hfin t ht
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have e : ∀ r, movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ r =
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>      modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ r)) := fun r =&gt;
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    movT_Q_eq_beta (g := periodicRiesz d s) rfl N ρ r
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  have hMov : MovHyp P htr.dyn N T ρ X₀ W X :=
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    movT_hyp_of_parts htr&#x27; hP.brownian hP.indep hP.sol hfilt
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  have hfin&#x27; : relEntropy (P.map X₀) (movT_Q (periodicRiesz d htr.dyn.s) htr.dyn N ρ 0) ≠ ⊤ := by
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    rw [e]; exact hfin
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  obtain ⟨hfinT, hbd⟩ := hC₁ N hN P X₀ W X hMov hfin&#x27; t ht
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  haveI : IsProbabilityMeasure (P.map (X t.toNNReal)) :=
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    (Measure.isProbabilityMeasure_map_iff (hP.sol.adapted _).aemeasurable).2 inferInstance
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  obtain ⟨hprodfin, hprodle⟩ := hC₂ N hN t ht (P.map (X t.toNNReal)) inferInstance hfinT
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  rw [e] at hfinT hbd hprodle
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  set B : ℝ := entropyScale d s N (P.map X₀)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) with hB
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hbd&#x27; : (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal ≤ C₁ * B := by
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    rw [e 0] at hbd; exact hbd
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>  have hδ : 1 ≤ (N : ℝ) * deltaN d s N := one_le_mul_deltaN htr.hs0 N (by omega)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>  have hH0 : 0 ≤ (relEntropy (P.map X₀)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))).toReal := ENNReal.toReal_nonneg
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>  have hBge : (N : ℝ) * deltaN d s N ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  have hB1 : 1 ≤ B := by rw [hB]; unfold entropyScale; linarith
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  have hHq0 := ENNReal.toReal_nonneg (a := relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))))
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>  have hp0 := ENNReal.toReal_nonneg (a := relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ t)))
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>  rw [← ENNReal.ofReal_toReal hfinT, ← ENNReal.ofReal_toReal hprodfin,
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    ← ENNReal.ofReal_add hHq0 hp0]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  refine ENNReal.ofReal_le_ofReal ?_
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  have hpr : (relEntropy (P.map (X t.toNNReal)) (Measure.pi fun _ : Fin N =&gt; withDensityReal (ρ t))).toReal ≤
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>        (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal +
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>      C₂ * ((N : ℝ) * deltaN d s N + (relEntropy (P.map (X t.toNNReal))
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>        (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)))).toReal) := hprodle
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>  nlinarith [mul_le_mul_of_nonneg_left hBge hC₂0, mul_le_mul_of_nonneg_left hbd&#x27; hC₂0, hC₁0]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>example := (@dynamic_entropy_proof&#x27; : type_of% @HRS.dynamic_entropy)
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>end HRS
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>end
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>end
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>section
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>noncomputable section
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>namespace HRS
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>namespace Sec7
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>variable {d : ℕ}
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>/-- Item 1 of Lemma 7.8, from `mov_lp_bound_proof` (MOV glue), bridges A, A&#x27;, B, C. -/
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>theorem movfin_alltime_item1 (R : Regime d) :
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    ∃ p : ℝ, 1 &lt; p ∧ ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) (X₀ : Ω → Config d N)
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>        (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>        PreparedRealization R.D P (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀))
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>          X₀ W X →
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>          (P.map (X t.toNNReal)) ≪ modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t)) ∧
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>          eLpNorm ((P.map (X t.toNNReal)).rnDeriv
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>              (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))))
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>            (ENNReal.ofReal p)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>            (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))) ≤ ENNReal.ofReal C := by
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>  have hd1 : 1 ≤ d := by have := R.hd; omega
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>  have hs0 := alltime_hs0 R
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>  have hsd := alltime_hsd R
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>  have hsd2 : R.D.s &lt; (d : ℝ) / 2 := R.hs
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>  obtain ⟨p₀, Ci, hp₀, hCi, hinit⟩ := alltime_init R
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>  obtain ⟨c₀, Λ₂, hc₀, hunif⟩ := movT_traj_uniform_proof R.D.s R.β R.D.V R.ρ₀ R.ρ hs0 hsd R.hβ R.hV
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>    R.hρ₀ (alltime_glob R)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>  obtain ⟨Λ₁, hΛ₁, L, hLl, hLi, hLlip, hLint⟩ := alltime_L R
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>  obtain ⟨pInf, C₁, hp, hC₁, H⟩ := mov_lp_bound_proof hd1 hs0 hsd R.β R.β R.hβ c₀ hc₀ Λ₂ p₀ hp₀ Λ₁ hΛ₁
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  have hβ₀ : 0 ≤ R.β₀ := by
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    rcases R.hβ₀ with h | ⟨-, h⟩
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>    · exact h.le
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>    · exact h.ge
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  have hcont0 : Continuous R.ρ₀ := mova_continuous_of_isCk (mova_isCk_two_of_smooth R.hρ₀.smooth)
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  refine ⟨pInf, hp, Real.exp (C₁ * (2 + Ci)), fun N hN Ω _ P X₀ W X hprep t ht =&gt; ?_⟩
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>  have hQ0eq : ∀ r : ℝ, movT_Q (periodicRiesz d R.D.s) R.D N R.ρ r =
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>      modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ r)) :=
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    fun r =&gt; movT_Q_eq_beta R.hDβ N R.ρ r
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>  have hprobQ0 := alltime_gibbs_prob hd1 hs0 hsd R.hρ₀.density hcont0 hN0 hβ₀
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  have hmapprob : IsProbabilityMeasure (P.map X₀) := by rw [hprep.law_init]; exact hprobQ0
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  have hae : AEMeasurable X₀ P :=
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>    ((hprep.solution 0).adapted 0).aemeasurable.congr (hprep.solution 0).init
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>  haveI : IsProbabilityMeasure P := alltime_isProb hae hmapprob
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>  have hMov : MovHyp P R.D N t R.ρ X₀ W X :=
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>    ⟨alltime_traj R t, hprep.brownian, hprep.indep, hprep.solution t, hprep.filtered⟩
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>  obtain ⟨ρt, hρt⟩ := (alltime_traj R t).classical
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>  obtain ⟨ℓ, hℓ, hLℓ⟩ := hLl t
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>  obtain ⟨hinit1, hinit2⟩ := hinit N hN
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>  have hac : P.map X₀ ≪ movT_Q (periodicRiesz d R.D.s) R.D N R.ρ 0 := by
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>    rw [hprep.law_init, hQ0eq 0, R.init]; exact hinit1
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>  have hfin : eLpNorm ((P.map X₀).rnDeriv (movT_Q (periodicRiesz d R.D.s) R.D N R.ρ 0))
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>      (ENNReal.ofReal p₀) (movT_Q (periodicRiesz d R.D.s) R.D N R.ρ 0) &lt; ⊤ := by
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>    rw [hprep.law_init, hQ0eq 0, R.init]
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>    exact lt_of_le_of_lt hinit2 ENNReal.ofReal_lt_top
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>  have key := H N hN P X₀ W X hMov hρt rfl
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>    (by rw [R.hDβ, inv_inv]; exact ⟨le_rfl, le_rfl⟩)
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>    (fun r hr x =&gt; (hunif r hr.1).1 x) (fun r hr =&gt; (hunif r hr.1).2) L ⟨ℓ, hℓ, hLℓ⟩ (hLi t)
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>    (hLlip t) (hLint t) hac hfin t ⟨ht, le_rfl⟩
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>  obtain ⟨hacT, hle⟩ := key
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>  rw [hQ0eq t] at hacT hle
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>  refine ⟨hacT, hle.trans (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 ?_))⟩
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>  rw [hQ0eq 0, hprep.law_init, R.init, alltime_Ndelta hsd2 hN0]
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  refine mul_le_mul_of_nonneg_left ?_ hC₁
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>  have hlog : Real.log (eLpNorm ((modulatedGibbs (periodicRiesz d R.D.s) N R.β₀
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>      (withDensityReal R.ρ₀)).rnDeriv (modulatedGibbs (periodicRiesz d R.D.s) N R.β
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>        (withDensityReal R.ρ₀))) (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d R.D.s) N R.β
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>          (withDensityReal R.ρ₀))).toReal ≤ Ci := by
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    set a := eLpNorm ((modulatedGibbs (periodicRiesz d R.D.s) N R.β₀
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>      (withDensityReal R.ρ₀)).rnDeriv (modulatedGibbs (periodicRiesz d R.D.s) N R.β
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>        (withDensityReal R.ρ₀))) (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d R.D.s) N R.β
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>          (withDensityReal R.ρ₀)) with ha
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>    have h1 : a.toReal ≤ Real.exp Ci := by
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>      have := ENNReal.toReal_mono ENNReal.ofReal_ne_top hinit2
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>      rwa [ENNReal.toReal_ofReal (Real.exp_pos _).le] at this
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>    rcases (ENNReal.toReal_nonneg (a := a)).eq_or_lt with h0 | h0
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>    · rw [← h0]; simpa using hCi
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>    · exact (Real.log_le_iff_le_exp h0).2 h1
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>  linarith
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>end Sec7
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>end HRS
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>end
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>end
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>section
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>noncomputable section
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>namespace HRS
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>namespace Sec7
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>variable {d : ℕ}
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>theorem alltime_Lp_proof&#x27; (R : Regime d) (c : ℝ) (hc : EnvelopeConst (d := d) R.D.s c) :
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>    (∃ p : ℝ, 1 &lt; p ∧ ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) (X₀ : Ω → Config d N)
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>        (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>        PreparedRealization R.D P (modulatedGibbs (periodicRiesz d R.D.s) N R.β₀ (withDensityReal R.ρ₀))
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>          X₀ W X →
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>        ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>          (P.map (X t.toNNReal)) ≪ modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t)) ∧
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>          eLpNorm ((P.map (X t.toNNReal)).rnDeriv
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>              (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))))
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>            (ENNReal.ofReal p)
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>            (modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>    (∀ q : ℝ, 1 ≤ q → ∃ C : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>      modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t)) ≪
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>          Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t)) ∧
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>        eLpNorm ((modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))).rnDeriv
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>            (Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t)))) (ENNReal.ofReal q)
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>          (Measure.pi (fun _ : Fin N =&gt; withDensityReal (R.ρ t))) ≤ ENNReal.ofReal C) ∧
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>    (∀ B : ℝ, ∃ cB CB : ℝ, 0 &lt; cB ∧ ∀ N : ℕ, 2 ≤ N → ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>      ∀ h : Torus d → Torus d → ℝ, Measurable (Function.uncurry h) → (∀ x y, h x y = h y x) →
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>        (∀ x y, x ≠ y → |h x y| ≤ B * (periodicRiesz d R.D.s (x - y) + c)) →
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>        ∫⁻ X : Config d N, ENNReal.ofReal (Real.exp (cB * N *
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>            |modulatedEnergy h X (withDensityReal (R.ρ t))|))
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>          ∂(modulatedGibbs (periodicRiesz d R.D.s) N R.β (withDensityReal (R.ρ t))) ≤
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>          ENNReal.ofReal CB) :=
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>  ⟨movfin_alltime_item1 R, alltime_item2 R, alltime_item3 R c hc⟩
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>example := (@alltime_Lp_proof&#x27; : type_of% @HRS.Sec7.alltime_Lp)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>end Sec7
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>end HRS
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>end
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>end
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>section
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>noncomputable section
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>namespace HRS
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>variable {d : ℕ}
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>theorem moving_log_moment_proof&#x27; (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (p₀ : ℝ) (hp₀ : 1 &lt; p₀) :
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>    ∃ pInf C : ℝ, 1 &lt; pInf ∧ 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>        (∀ T : ℝ, 0 ≤ T → IsParticleSystem P htr.dyn T X₀ W X) →
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>        P.map X₀ ≪ modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)) →
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>        eLpNorm ((P.map X₀).rnDeriv (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))))
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>          (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) &lt; ⊤ →
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>        ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>          P.map (X t.toNNReal) ≪ modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t)) ∧
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>          eLpNorm ((P.map (X t.toNNReal)).rnDeriv
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>              (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))))
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>            (ENNReal.ofReal pInf) (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ t))) ≤
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>          ENNReal.ofReal (Real.exp (C * logMomentScale d s N p₀ (P.map X₀)
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>            (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))))) := by
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>  obtain ⟨c₀, Λ₂, hc₀, hunif⟩ := movT_traj_uniform_proof s β V ρ₀ ρ htr.hs0 htr.hsd htr.hβ
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>    htr.V_smooth htr.init htr.global
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>  obtain ⟨Λ₁, hΛ₁, L, hLl, hLi, hLlip, hLint⟩ := MovLog.movlog_L hd htr
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>  obtain ⟨pInf, C₁, hp, hC₁, H⟩ := mov_lp_bound_proof hd1 htr.hs0 htr.hsd β β htr.hβ c₀ hc₀ Λ₂ p₀ hp₀ Λ₁ hΛ₁
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>  refine ⟨pInf, C₁, hp, hC₁, fun N hN Ω _ P _ X₀ W X hps hfilt hac hfin t ht =&gt; ?_⟩
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>  have hQ : ∀ r : ℝ, movT_Q (periodicRiesz d s) htr.dyn N ρ r =
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ r)) :=
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>    fun r =&gt; movT_Q_eq_beta (D := htr.dyn) (β := β) (by simp [IsSmoothPositiveTrajectory.dyn, PDE.mfData]) N ρ r
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>  have hMov : MovHyp P htr.dyn N t ρ X₀ W X :=
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>    ⟨MovLog.movlog_traj htr t, (hps t ht).brownian, (hps t ht).indep, (hps t ht).sol, hfilt⟩
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>  obtain ⟨ρt, hρt⟩ := (MovLog.movlog_traj htr t).classical
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>  obtain ⟨ℓ, hℓ, hLℓ⟩ := hLl t
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>  rw [← hQ 0] at hac hfin
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>  have key := H N hN P X₀ W X hMov hρt rfl
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>    (by simp [IsSmoothPositiveTrajectory.dyn, PDE.mfData])
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>    (fun r hr x =&gt; (hunif r hr.1).1 x) (fun r hr =&gt; (hunif r hr.1).2) L ⟨ℓ, hℓ, hLℓ⟩ (hLi t)
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>    (hLlip t) (hLint t) hac hfin t ⟨ht, le_rfl⟩
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>  rw [hQ t, hQ 0] at key
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>  exact key
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>example := (@moving_log_moment_proof&#x27; : type_of% @HRS.moving_log_moment)
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>end HRS
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>end
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>end
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>section
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>noncomputable section
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>namespace HRS
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>namespace MovLog
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>variable {d : ℕ}
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>theorem movfin_movlog_pair_core (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (p₀ : ℝ) (hp₀ : 1 &lt; p₀) (cstar : ℝ)
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>    (hw : ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + cstar) (r : ℝ) (hr : 1 ≤ r) :
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>        (∀ T : ℝ, 0 ≤ T → IsParticleSystem P htr.dyn T X₀ W X) →
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>        P.map X₀ ≪ modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)) →
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>        eLpNorm ((P.map X₀).rnDeriv (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))))
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>          (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) &lt; ⊤ →
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>        ∀ (D : ℝ), 0 &lt; D → ∀ h : Torus d → Torus d → ℝ, Measurable (Function.uncurry h) →
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>          (∀ x y, h x y = h y x) →
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>          (∀ x y, x ≠ y → |h x y| ≤ D * (periodicRiesz d s (x - y) + cstar)) →
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>          ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>            eLpNorm (fun ω =&gt; (N : ℝ) * modulatedEnergy h (X t.toNNReal ω) (withDensityReal (ρ t)))
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>              (ENNReal.ofReal r) P ≤
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>            ENNReal.ofReal (C * D * logMomentScale d s N p₀ (P.map X₀)
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>              (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))) := by
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>  have hd1 : 1 ≤ d := by omega
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>  have hs0 := htr.hs0
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>  have hsd := htr.hsd
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>  obtain ⟨pInf, C₁, hp, hC₁, Hlog⟩ := moving_log_moment_proof&#x27; hd htr p₀ hp₀
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>  set cs : ℝ := max cstar (1 - periodicRiesz d s 0) with hcs
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>  have hcsc : cstar ≤ cs := le_max_left _ _
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>  have hw1 : ∀ z : Torus d, 1 ≤ periodicRiesz d s z + cs := fun z =&gt; by
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>    by_cases hz : z = 0
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>    · subst hz
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>      have : 1 - periodicRiesz d s 0 ≤ cs := le_max_right _ _
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>      linarith
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>    · have := hw z hz; linarith
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>  obtain ⟨c, C0, hc, hC0, Hexp⟩ := movlog_expmoment hd htr cs hw1
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>  obtain ⟨K, hK0, Htail⟩ := movlog_tail_moment r hr
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>  have hp0 : 0 &lt; pInf := by linarith
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>  have hp1 : 0 &lt; pInf - 1 := by linarith
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>  set a : ℝ := c * (pInf - 1) / pInf with ha
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>  have ha0 : 0 &lt; a := by positivity
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>  set A&#x27; : ℝ := C₁ + C0 + 1 with hA&#x27;
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>  have hA&#x27;1 : 1 ≤ A&#x27; := by linarith
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>  refine ⟨K * A&#x27; / a, by positivity, fun N hN Ω _ P _ X₀ W X hps hfilt hac hfin D hD h hm hsym hdom t ht =&gt; ?_⟩
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>  have hN0 : 0 &lt; N := by omega
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>  have hQ : ∀ r : ℝ, movT_Q (periodicRiesz d s) htr.dyn N ρ r =
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>      modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ r)) :=
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>    fun r =&gt; movT_Q_eq_beta (D := htr.dyn) (β := β) (by simp [IsSmoothPositiveTrajectory.dyn, PDE.mfData]) N ρ r
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  -- notation
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>  set μt : Measure (Torus d) := withDensityReal (ρ t) with hμt
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>  set Q : Measure (Config d N) := modulatedGibbs (periodicRiesz d s) N β μt with hQdef
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>  set ν : Measure (Config d N) := P.map (X t.toNNReal) with hν
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>  set J : ℝ := logMomentScale d s N p₀ (P.map X₀)
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>    (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) with hJ
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>  have hXm : Measurable (X t.toNNReal) := (hps t ht).sol.adapted _
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>  have hae : AEMeasurable X₀ P := ((hps 0 le_rfl).sol.adapted 0).aemeasurable.congr (hps 0 le_rfl).sol.init
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>  haveI : IsProbabilityMeasure (P.map X₀) := (Measure.isProbabilityMeasure_map_iff hae).2 inferInstance
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>  haveI : IsProbabilityMeasure (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) := by
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>    rw [← hQ 0]; exact movfin_movT_Q_isProb hN (movlog_traj htr 0) ⟨le_rfl, le_rfl⟩
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  -- J ≥ 1 + Nδ
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>  have hNδ1 : 1 ≤ (N : ℝ) * deltaN d s N := one_le_mul_deltaN hs0 N (by omega)
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>  have hJ2 : 1 + (N : ℝ) * deltaN d s N ≤ J := by
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    have ha1 := movspec_one_le_eLpNorm_rnDeriv (P.map X₀)
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) hac hp₀.le
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>    have hat1 : 1 ≤ (eLpNorm ((P.map X₀).rnDeriv (modulatedGibbs (periodicRiesz d s) N β
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>        (withDensityReal (ρ 0)))) (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d s) N β
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>          (withDensityReal (ρ 0)))).toReal := by
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>      have := ENNReal.toReal_mono hfin.ne ha1
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>      simpa using this
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>    have := Real.log_nonneg hat1
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>    rw [hJ]; unfold logMomentScale; linarith
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>  have hJ1 : 1 ≤ J := by linarith
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>  obtain ⟨hνQ, hnorm⟩ := Hlog N hN P X₀ W X hps hfilt hac hfin t ht
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>  -- the repaired kernel
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>  set hk : Torus d → Torus d → ℝ := fun x y =&gt; if x = y then 0 else D⁻¹ * h x y with hhk
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>  have hkm : Measurable (Function.uncurry hk) := by
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>    have : Function.uncurry hk = fun p : Torus d × Torus d =&gt;
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>        if p.1 = p.2 then 0 else D⁻¹ * Function.uncurry h p := by
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>      funext p; rfl
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>    rw [this]
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>    exact Measurable.ite (measurableSet_eq_fun measurable_fst measurable_snd) measurable_const
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>      (measurable_const.mul hm)
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>  have hks : ∀ x y, hk x y = hk y x := fun x y =&gt; by
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>    by_cases hxy : x = y
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>    · subst hxy; rfl
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>    · simp only [hhk, if_neg hxy, if_neg (Ne.symm hxy)]; rw [hsym x y]
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>  have hkd : ∀ x y, |hk x y| ≤ 1 * (periodicRiesz d s (x - y) + cs) := fun x y =&gt; by
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>    by_cases hxy : x = y
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>    · simp only [hhk, if_pos hxy, abs_zero]
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>      have := hw1 (x - y); linarith
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>    · simp only [hhk, if_neg hxy]
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>      have h1 := hdom x y hxy
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>      rw [abs_mul, abs_of_pos (inv_pos.2 hD)]
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>      calc D⁻¹ * |h x y| ≤ D⁻¹ * (D * (periodicRiesz d s (x - y) + cstar)) :=
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>            mul_le_mul_of_nonneg_left h1 (inv_pos.2 hD).le
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>        _ = periodicRiesz d s (x - y) + cstar := by field_simp
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>        _ ≤ 1 * (periodicRiesz d s (x - y) + cs) := by linarith
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>  obtain ⟨hEm, hEx⟩ := Hexp N hN t ht hk hkm hks hkd
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  set Z : Config d N → ℝ := fun Y =&gt; (N : ℝ) * modulatedEnergy hk Y μt with hZ
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>  have hZm : Measurable Z := measurable_const.mul hEm
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>  have hEx&#x27; : ∫⁻ Y, ENNReal.ofReal (Real.exp (c * |Z Y|)) ∂Q ≤
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>      ENNReal.ofReal (Real.exp (C0 * ((N : ℝ) * deltaN d s N))) := by
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>    refine le_trans (le_of_eq ?_) hEx
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>    refine lintegral_congr fun Y =&gt; ?_
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>    have e : c * |Z Y| = c * N * |modulatedEnergy hk Y μt| := by
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>      simp only [hZ, abs_mul, abs_of_nonneg (Nat.cast_nonneg N : (0 : ℝ) ≤ N)]; ring
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>    rw [e]
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>  -- Hölder
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>  have hnorm&#x27; : eLpNorm (ν.rnDeriv Q) (ENNReal.ofReal pInf) Q ≤ ENNReal.ofReal (Real.exp (C₁ * J)) := by
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>    exact hnorm
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>  have hνQ&#x27; : ν ≪ Q := hνQ
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>  haveI : IsProbabilityMeasure Q := by
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>    rw [hQdef, ← hQ t]; exact movfin_movT_Q_isProb hN (movlog_traj htr t) ⟨ht, le_rfl⟩
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>  haveI : IsProbabilityMeasure ν := (Measure.isProbabilityMeasure_map_iff hXm.aemeasurable).2 inferInstance
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>  have hH := movlog_holder_exp hνQ&#x27; hp hZm hc hnorm&#x27; hEx&#x27;
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>  have hH2 : ∫⁻ Y, ENNReal.ofReal (Real.exp (a * |Z Y|)) ∂ν ≤ ENNReal.ofReal (Real.exp (A&#x27; * J)) := by
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>    refine hH.trans (ENNReal.ofReal_le_ofReal (Real.exp_le_exp.2 ?_))
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>    have hq1 : (pInf - 1) / pInf ≤ 1 := by rw [div_le_one hp0]; linarith
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>    have hq0 : 0 ≤ (pInf - 1) / pInf := by positivity
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>    have hNJ : (N : ℝ) * deltaN d s N ≤ J := by linarith
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>    have : C0 * ((N : ℝ) * deltaN d s N) * ((pInf - 1) / pInf) ≤ C0 * J := by
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>      calc C0 * ((N : ℝ) * deltaN d s N) * ((pInf - 1) / pInf)
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>          ≤ C0 * ((N : ℝ) * deltaN d s N) * 1 :=
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>            mul_le_mul_of_nonneg_left hq1 (by positivity)
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>        _ ≤ C0 * J := by rw [mul_one]; exact mul_le_mul_of_nonneg_left hNJ hC0
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>    have e : c * (pInf - 1) / pInf = a := rfl
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>    nlinarith
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>  -- transfer to P
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>  have hZP : ∫⁻ ω, ENNReal.ofReal (Real.exp (a * |Z (X t.toNNReal ω)|)) ∂P ≤
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>      ENNReal.ofReal (Real.exp (A&#x27; * J)) := by
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>    have hmeas : Measurable (fun Y : Config d N =&gt; ENNReal.ofReal (Real.exp (a * |Z Y|))) :=
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>      ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (measurable_const.mul hZm.abs))
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>    rw [← lintegral_map&#x27; hmeas.aemeasurable hXm.aemeasurable]
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>    exact hH2
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>  have hT := Htail P (fun ω =&gt; Z (X t.toNNReal ω)) (hZm.comp hXm).aemeasurable a (A&#x27; * J) ha0
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>    (by nlinarith) hZP
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>  -- a.e. identification of the energies
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>  have hρd := (movlog_traj htr t).mf.density t ⟨ht, le_rfl⟩
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>  have hcont : Continuous (ρ t) :=
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>    mova_continuous_of_isCk ((movlog_traj htr t).ck t ⟨ht, le_rfl⟩)
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>  have hQπ : Q ≪ Measure.pi (fun _ : Fin N =&gt; μt) := by
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>    rw [hQdef, movf_modGibbs_eq_tilted hd1 hs0 hsd hρd hcont hN0 htr.hβ.le]
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>    exact tilted_absolutelyContinuous _ _
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>  haveI := isProb_withDensityReal hρd
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>  have hinj : ∀ᵐ ω ∂P, ∀ i j, i ≠ j → X t.toNNReal ω i ≠ X t.toNNReal ω j := by
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>    have h1 : ∀ᵐ Y ∂(Measure.pi (fun _ : Fin N =&gt; μt)), ∀ i j, i ≠ j → Y i ≠ Y j :=
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>      ae_injective_pi (withDensityReal_singleton hd1 (ρ t))
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>    have h2 : ∀ᵐ Y ∂ν, ∀ i j, i ≠ j → Y i ≠ Y j := hνQ&#x27;.ae_le (hQπ.ae_le h1)
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>    exact ae_of_ae_map hXm.aemeasurable h2
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>  have hcongr : (fun ω =&gt; (N : ℝ) * modulatedEnergy h (X t.toNNReal ω) μt) =ᵐ[P]
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>      fun ω =&gt; D • Z (X t.toNNReal ω) := by
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>    filter_upwards [hinj] with ω hω
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>    have e1 : modulatedEnergy hk (X t.toNNReal ω) μt =
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>        modulatedEnergy (fun x y =&gt; D⁻¹ * h x y) (X t.toNNReal ω) μt :=
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>      modulatedEnergy_congr_offdiag (withDensityReal_singleton hd1 (ρ t))
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>        (fun x y hxy =&gt; by simp only [hhk, if_neg hxy]) _ hω
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>    rw [movlog_modEnergy_smul] at e1
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>    simp only [hZ, smul_eq_mul, e1]
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>    field_simp
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>  have e5 : eLpNorm (fun ω =&gt; D • Z (X t.toNNReal ω)) (ENNReal.ofReal r) P =
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>      ENNReal.ofReal D * eLpNorm (fun ω =&gt; Z (X t.toNNReal ω)) (ENNReal.ofReal r) P := by
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>    have := eLpNorm_const_smul (μ := P) (p := ENNReal.ofReal r) D (fun ω =&gt; Z (X t.toNNReal ω))
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>    rw [Real.enorm_of_nonneg hD.le] at this
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>    exact this
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>  rw [eLpNorm_congr_ae hcongr, e5]
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>  calc ENNReal.ofReal D * eLpNorm (fun ω =&gt; Z (X t.toNNReal ω)) (ENNReal.ofReal r) P
+</span><span class="line" id="L591"><a class="ln" aria-label="Line 591" href="#L591">591</a>      ≤ ENNReal.ofReal D * ENNReal.ofReal (K * (A&#x27; * J) / a) := by gcongr
+</span><span class="line" id="L592"><a class="ln" aria-label="Line 592" href="#L592">592</a>    _ = ENNReal.ofReal (K * A&#x27; / a * D * J) := by
+</span><span class="line" id="L593"><a class="ln" aria-label="Line 593" href="#L593">593</a>        rw [← ENNReal.ofReal_mul hD.le]
+</span><span class="line" id="L594"><a class="ln" aria-label="Line 594" href="#L594">594</a>        congr 1
+</span><span class="line" id="L595"><a class="ln" aria-label="Line 595" href="#L595">595</a>        field_simp
+</span><span class="line" id="L596"><a class="ln" aria-label="Line 596" href="#L596">596</a>
+</span><span class="line" id="L597"><a class="ln" aria-label="Line 597" href="#L597">597</a>
+</span><span class="line" id="L598"><a class="ln" aria-label="Line 598" href="#L598">598</a>end MovLog
+</span><span class="line" id="L599"><a class="ln" aria-label="Line 599" href="#L599">599</a>
+</span><span class="line" id="L600"><a class="ln" aria-label="Line 600" href="#L600">600</a>end HRS
+</span><span class="line" id="L601"><a class="ln" aria-label="Line 601" href="#L601">601</a>
+</span><span class="line" id="L602"><a class="ln" aria-label="Line 602" href="#L602">602</a>end
+</span><span class="line" id="L603"><a class="ln" aria-label="Line 603" href="#L603">603</a>
+</span><span class="line" id="L604"><a class="ln" aria-label="Line 604" href="#L604">604</a>end
+</span><span class="line" id="L605"><a class="ln" aria-label="Line 605" href="#L605">605</a>
+</span><span class="line" id="L606"><a class="ln" aria-label="Line 606" href="#L606">606</a>section
+</span><span class="line" id="L607"><a class="ln" aria-label="Line 607" href="#L607">607</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L608"><a class="ln" aria-label="Line 608" href="#L608">608</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L609"><a class="ln" aria-label="Line 609" href="#L609">609</a>
+</span><span class="line" id="L610"><a class="ln" aria-label="Line 610" href="#L610">610</a>noncomputable section
+</span><span class="line" id="L611"><a class="ln" aria-label="Line 611" href="#L611">611</a>
+</span><span class="line" id="L612"><a class="ln" aria-label="Line 612" href="#L612">612</a>namespace HRS
+</span><span class="line" id="L613"><a class="ln" aria-label="Line 613" href="#L613">613</a>
+</span><span class="line" id="L614"><a class="ln" aria-label="Line 614" href="#L614">614</a>variable {d : ℕ}
+</span><span class="line" id="L615"><a class="ln" aria-label="Line 615" href="#L615">615</a>
+</span><span class="line" id="L616"><a class="ln" aria-label="Line 616" href="#L616">616</a>theorem moving_pair_moments_proof&#x27; (hd : 2 ≤ d) {s β : ℝ} {V ρ₀ : Torus d → ℝ} {ρ : ℝ → Torus d → ℝ}
+</span><span class="line" id="L617"><a class="ln" aria-label="Line 617" href="#L617">617</a>    (htr : IsSmoothPositiveTrajectory d s β V ρ₀ ρ) (p₀ : ℝ) (hp₀ : 1 &lt; p₀) (cstar : ℝ)
+</span><span class="line" id="L618"><a class="ln" aria-label="Line 618" href="#L618">618</a>    (hw : ∀ z : Torus d, z ≠ 0 → 1 ≤ periodicRiesz d s z + cstar) (r : ℝ) (hr : 1 ≤ r) :
+</span><span class="line" id="L619"><a class="ln" aria-label="Line 619" href="#L619">619</a>    ∃ C : ℝ, 0 ≤ C ∧ ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L620"><a class="ln" aria-label="Line 620" href="#L620">620</a>      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L621"><a class="ln" aria-label="Line 621" href="#L621">621</a>        (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → Config d N),
+</span><span class="line" id="L622"><a class="ln" aria-label="Line 622" href="#L622">622</a>        (∀ T : ℝ, 0 ≤ T → IsParticleSystem P htr.dyn T X₀ W X) →
+</span><span class="line" id="L623"><a class="ln" aria-label="Line 623" href="#L623">623</a>        (∃ (ℱ : MeasureTheory.Filtration ℝ ‹MeasurableSpace Ω›) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L624"><a class="ln" aria-label="Line 624" href="#L624">624</a>          IsFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L625"><a class="ln" aria-label="Line 625" href="#L625">625</a>        P.map X₀ ≪ modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)) →
+</span><span class="line" id="L626"><a class="ln" aria-label="Line 626" href="#L626">626</a>        eLpNorm ((P.map X₀).rnDeriv (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))))
+</span><span class="line" id="L627"><a class="ln" aria-label="Line 627" href="#L627">627</a>          (ENNReal.ofReal p₀) (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) &lt; ⊤ →
+</span><span class="line" id="L628"><a class="ln" aria-label="Line 628" href="#L628">628</a>        ∀ (D : ℝ), 0 ≤ D → ∀ h : Torus d → Torus d → ℝ, Measurable (Function.uncurry h) →
+</span><span class="line" id="L629"><a class="ln" aria-label="Line 629" href="#L629">629</a>          (∀ x y, h x y = h y x) →
+</span><span class="line" id="L630"><a class="ln" aria-label="Line 630" href="#L630">630</a>          (∀ x y, x ≠ y → |h x y| ≤ D * (periodicRiesz d s (x - y) + cstar)) →
+</span><span class="line" id="L631"><a class="ln" aria-label="Line 631" href="#L631">631</a>          ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L632"><a class="ln" aria-label="Line 632" href="#L632">632</a>            eLpNorm (fun ω =&gt; (N : ℝ) * modulatedEnergy h (X t.toNNReal ω) (withDensityReal (ρ t)))
+</span><span class="line" id="L633"><a class="ln" aria-label="Line 633" href="#L633">633</a>              (ENNReal.ofReal r) P ≤
+</span><span class="line" id="L634"><a class="ln" aria-label="Line 634" href="#L634">634</a>            ENNReal.ofReal (C * D * logMomentScale d s N p₀ (P.map X₀)
+</span><span class="line" id="L635"><a class="ln" aria-label="Line 635" href="#L635">635</a>              (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0)))) := by
+</span><span class="line" id="L636"><a class="ln" aria-label="Line 636" href="#L636">636</a>  obtain ⟨C, hC, H⟩ := MovLog.movfin_movlog_pair_core hd htr p₀ hp₀ cstar hw r hr
+</span><span class="line" id="L637"><a class="ln" aria-label="Line 637" href="#L637">637</a>  refine ⟨C, hC, fun N hN Ω _ P _ X₀ W X hps hfilt hac hfin D hD h hm hsym hdom t ht =&gt; ?_⟩
+</span><span class="line" id="L638"><a class="ln" aria-label="Line 638" href="#L638">638</a>  rcases hD.eq_or_lt with h0 | hpos
+</span><span class="line" id="L639"><a class="ln" aria-label="Line 639" href="#L639">639</a>  · subst h0
+</span><span class="line" id="L640"><a class="ln" aria-label="Line 640" href="#L640">640</a>    set J : ℝ := logMomentScale d s N p₀ (P.map X₀)
+</span><span class="line" id="L641"><a class="ln" aria-label="Line 641" href="#L641">641</a>      (modulatedGibbs (periodicRiesz d s) N β (withDensityReal (ρ 0))) with hJ
+</span><span class="line" id="L642"><a class="ln" aria-label="Line 642" href="#L642">642</a>    have key : ∀ ε : ℝ, 0 &lt; ε → eLpNorm (fun ω =&gt; (N : ℝ) *
+</span><span class="line" id="L643"><a class="ln" aria-label="Line 643" href="#L643">643</a>        modulatedEnergy h (X t.toNNReal ω) (withDensityReal (ρ t))) (ENNReal.ofReal r) P ≤
+</span><span class="line" id="L644"><a class="ln" aria-label="Line 644" href="#L644">644</a>        ENNReal.ofReal (C * ε * J) := fun ε hε =&gt;
+</span><span class="line" id="L645"><a class="ln" aria-label="Line 645" href="#L645">645</a>      H N hN P X₀ W X hps hfilt hac hfin ε hε h hm hsym (fun x y hxy =&gt; by
+</span><span class="line" id="L646"><a class="ln" aria-label="Line 646" href="#L646">646</a>        have := hdom x y hxy
+</span><span class="line" id="L647"><a class="ln" aria-label="Line 647" href="#L647">647</a>        have h1 := hw (x - y) (sub_ne_zero.2 hxy)
+</span><span class="line" id="L648"><a class="ln" aria-label="Line 648" href="#L648">648</a>        rw [zero_mul] at this
+</span><span class="line" id="L649"><a class="ln" aria-label="Line 649" href="#L649">649</a>        have h2 : 0 ≤ ε * (periodicRiesz d s (x - y) + cstar) := by nlinarith
+</span><span class="line" id="L650"><a class="ln" aria-label="Line 650" href="#L650">650</a>        exact this.trans h2) t ht
+</span><span class="line" id="L651"><a class="ln" aria-label="Line 651" href="#L651">651</a>    have tend : Tendsto (fun ε : ℝ =&gt; ENNReal.ofReal (C * ε * J)) (nhdsWithin 0 (Set.Ioi 0))
+</span><span class="line" id="L652"><a class="ln" aria-label="Line 652" href="#L652">652</a>        (nhds (ENNReal.ofReal (C * 0 * J))) :=
+</span><span class="line" id="L653"><a class="ln" aria-label="Line 653" href="#L653">653</a>      ((ENNReal.continuous_ofReal.tendsto _).comp
+</span><span class="line" id="L654"><a class="ln" aria-label="Line 654" href="#L654">654</a>        ((((continuous_const.mul continuous_id).mul continuous_const).tendsto 0))).mono_left
+</span><span class="line" id="L655"><a class="ln" aria-label="Line 655" href="#L655">655</a>        nhdsWithin_le_nhds
+</span><span class="line" id="L656"><a class="ln" aria-label="Line 656" href="#L656">656</a>    exact ge_of_tendsto tend (eventually_nhdsWithin_of_forall fun ε hε =&gt; key ε hε)
+</span><span class="line" id="L657"><a class="ln" aria-label="Line 657" href="#L657">657</a>  · exact H N hN P X₀ W X hps hfilt hac hfin D hpos h hm hsym hdom t ht
+</span><span class="line" id="L658"><a class="ln" aria-label="Line 658" href="#L658">658</a>
+</span><span class="line" id="L659"><a class="ln" aria-label="Line 659" href="#L659">659</a>example := (@moving_pair_moments_proof&#x27; : type_of% @HRS.moving_pair_moments)
+</span><span class="line" id="L660"><a class="ln" aria-label="Line 660" href="#L660">660</a>
+</span><span class="line" id="L661"><a class="ln" aria-label="Line 661" href="#L661">661</a>end HRS
+</span><span class="line" id="L662"><a class="ln" aria-label="Line 662" href="#L662">662</a>
+</span><span class="line" id="L663"><a class="ln" aria-label="Line 663" href="#L663">663</a>end
+</span><span class="line" id="L664"><a class="ln" aria-label="Line 664" href="#L664">664</a>
+</span><span class="line" id="L665"><a class="ln" aria-label="Line 665" href="#L665">665</a>end
+</span></code></pre></main></body></html>

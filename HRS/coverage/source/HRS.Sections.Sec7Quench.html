@@ -1,0 +1,263 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Sections.Sec7Quench · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Sections.Sec7Quench</code></h1><p><a href="../../lean/HRS/Sections/Sec7Quench.lean">Open the unaltered Lean file</a> · 262 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Sections.Sec7Setting
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Section 7: change of preparation temperature (Propositions 7.13, 7.14) (SPEC-7)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Specification file (statements with `sorry` proofs).  Sources (`HRS_periodic_main_20261008T010000Z.tex`):
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>* Proposition 7.13 `M:E:prop:quench` (TeX L9352-9393): exact mode and window covariances;
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>* Corollary 7.14 `M:E:cor:critical-Edgeworth` (TeX L9453-9485): sharp waiting time.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>## Representation decisions
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* The homogeneous torus (`V = 0`, `ρ ≡ 1`, `μ = dx`), gradient dynamics `D` (`M = -I`), `D.invβ = β⁻¹`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  `ĝ(k)` is `HRS.rieszCoeff d s k`; `λ_{β,k} = (2π|k|)²(β⁻¹ + ĝ(k))`, `v_{β,k} = (1 + βĝ(k))⁻¹`
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  (TeX L877, L1236).  `ℤ^d_+` is the lexicographically positive half-lattice `Lattice.IsPosHalf`, and
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  `ψ_k = √2 cos(2πk·x)`, `χ_k = √2 sin(2πk·x)`.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `Z` is `IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P Z` (the solution of `E:eq:homogeneous-linear` with
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>  `Z^0` the homogeneous Gibbs susceptibility at `β₀`); the stationary window `Z_{∞,T}` is the same with `β₀ = β`.
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>* The SDE `dZ^t(e) = -λ Z^t(e) dt + σ dB^t` is stated in integrated form (the project&#x27;s convention for additive
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>  noise), with an existentially quantified Brownian motion `B` independent of `Z^0(e)`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* Projective covariance tensors `C_a = E[Z^{a+·}⊗Z^{a+·}] ∈ 𝒳_T ⊗̂_π 𝒳_T` are represented as functionals on
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  bounded bilinear forms `M` on `𝒳_T`: `M ↦ E[M(Z^{a+·},Z^{a+·})]`; the projective norm of a (difference of)
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  tensor(s) is the supremum over `‖M‖ ≤ 1` (the tensor lives in the dual of the bilinear forms,
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  `HRS.TensorDual`).  Convergence &quot;in projective tensor norm&quot; is therefore uniform convergence over the unit
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  ball of bilinear forms.
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>-/
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>noncomputable section
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>namespace HRS
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>namespace Sec7
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>variable {d : ℕ}
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>/-- `λ_{β,k} = (2π|k|)²(β⁻¹ + ĝ(k))` (TeX L877). -/
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>def lamMode (d : ℕ) (s β : ℝ) (k : Lattice d) : ℝ :=
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  (2 * Real.pi * Lattice.enorm k) ^ 2 * (β⁻¹ + rieszCoeff d s k)
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>/-- `v_{β,k} = (1 + βĝ(k))⁻¹` (TeX L1236). -/
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>def varMode (d : ℕ) (s β : ℝ) (k : Lattice d) : ℝ := (1 + β * rieszCoeff d s k)⁻¹
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>/-- `δv_k = v_{β₀,k} - v_{β,k}` (TeX L9363). -/
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>def deltaVar (d : ℕ) (s β β₀ : ℝ) (k : Lattice d) : ℝ := varMode d s β₀ k - varMode d s β k
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>/-- The positive half-lattice `ℤ^d_+`. -/
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>abbrev PosHalf (d : ℕ) : Type := {k : Lattice d // Lattice.IsPosHalf k}
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>/-- The real modes `ψ_k = √2 cos(2πk·x)` (`b = true`) and `χ_k = √2 sin(2πk·x)` (`b = false`). -/
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>def modeFn (k : Lattice d) (b : Bool) (x : Torus d) : ℝ :=
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  if b then Real.sqrt 2 * Torus.cosMode k x else Real.sqrt 2 * Torus.sinMode k x
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>/-- `λ_* = min_{k ≠ 0} λ_{β,k}` over `ℤ^d_+` (as an infimum; the theorem asserts it is attained). -/
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>def lamStar (d : ℕ) (s β : ℝ) : ℝ := ⨅ k : PosHalf d, lamMode d s β k.1
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-- The elementary path `f_{k,e}(t) = e^{-λ t} e ∈ 𝒳_{m,T}` (`E:eq:slowest`, TeX L9374). -/
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>def modePath (m T lam : ℝ) (e : Torus d → ℝ) : PathSpace d m T :=
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  show C(Set.Icc (0 : ℝ) T, NegSobolev d m) from
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    ⟨fun t =&gt; Real.exp (-lam * (t : ℝ)) • NegSobolev.ofFun m e, by fun_prop⟩
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>/-- The tensor `D_* = ∑_{k∈ℐ_*} δv_k (f_{k,ψ_k}^{⊗2} + f_{k,χ_k}^{⊗2})` (`E:eq:Dstar`, TeX L9383-9385),
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>as a functional on bounded bilinear forms `M` on `𝒳_T`. -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>def slowTensor (d : ℕ) (s β β₀ m T : ℝ) (M : PathSpace d m T [×2]→L[ℝ] ℝ) : ℝ :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  ∑&#x27; k : {k : PosHalf d // lamMode d s β k.1 = lamStar d s β},
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    deltaVar d s β β₀ k.1.1 *
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      (M ![modePath m T (lamMode d s β k.1.1) (modeFn k.1.1 true),
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>           modePath m T (lamMode d s β k.1.1) (modeFn k.1.1 true)] +
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        M ![modePath m T (lamMode d s β k.1.1) (modeFn k.1.1 false),
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>           modePath m T (lamMode d s β k.1.1) (modeFn k.1.1 false)])
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>/-- Proposition 7.13 `M:E:prop:quench` (TeX L9352-9393), first part: the Fourier coordinates of `Z`
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>(`E:eq:mode-OU`, `E:eq:quench-covariance`).  Setting (TeX L9334-9351): homogeneous torus `V = 0`, `ρ ≡ 1`,
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>`0 ≤ s &lt; d`, `β &gt; 0`, `β₀ &gt; 0`, `β₀ ≠ β`, `Z` the solution of `E:eq:homogeneous-linear` with `Z^0` having the
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>homogeneous Gibbs susceptibility at `β₀` independent of the noise.  For each real mode `e ∈ {ψ_k, χ_k}`,
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>`k ∈ ℤ^d_+`:
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>* `Z^t(e)` solves `dZ^t(e) = -λ_{β,k}Z^t(e)dt + √(2/β)(2π|k|) dB^t_{k,e}` (integrated form) with a Brownian
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  motion `B` independent of `Z^0(e)`, and `Var(Z^0(e)) = v_{β₀,k}`;
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>* all these real coordinate processes (over `(k,e)`) are independent;
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>* `E[Z^{a+t}(e)Z^{a+r}(e)] = v_{β,k}e^{-λ|t-r|} + δv_k e^{-2λa}e^{-λ(t+r)}` for `a,t,r ≥ 0`.
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>Standing: `d ≥ 2` (M L419); &quot;all Gaussian assertions hold for every `0 ≤ s &lt; d`&quot; (TeX L9351), which is
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>`D.hsd`. -/
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>theorem quench_modes (hd : 2 ≤ d) {s β β₀ : ℝ} (hβ : 0 &lt; β) (hβ₀ : 0 &lt; β₀) (hne : β₀ ≠ β)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P Z) :
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (∀ (k : PosHalf d) (b : Bool), ∃ B : ℝ≥0 → Ω → ℝ, IsBrownianReal B P ∧
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>        IndepFun (fun ω =&gt; NegSobolev.eval (Z 0 ω) (modeFn k.1 b)) (fun ω =&gt; fun t =&gt; B t ω) P ∧
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>        ∀ᵐ ω ∂P, ∀ t : ℝ≥0, NegSobolev.eval (Z t ω) (modeFn k.1 b) =
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>          NegSobolev.eval (Z 0 ω) (modeFn k.1 b) -
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>            lamMode d s β k.1 * (∫ u in Set.Icc (0 : ℝ) t, NegSobolev.eval (Z u ω) (modeFn k.1 b)) +
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>            Real.sqrt (2 / β) * (2 * Real.pi * Lattice.enorm k.1) * B t ω) ∧
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    (∀ (k : PosHalf d) (b : Bool),
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      ∫ ω, NegSobolev.eval (Z 0 ω) (modeFn k.1 b) ^ 2 ∂P = varMode d s β₀ k.1) ∧
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>    iIndepFun (fun (kb : PosHalf d × Bool) ω =&gt; fun t : ℝ≥0 =&gt;
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      NegSobolev.eval (Z t ω) (modeFn kb.1.1 kb.2)) P ∧
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    (∀ (k : PosHalf d) (b : Bool) (a t r : ℝ), 0 ≤ a → 0 ≤ t → 0 ≤ r →
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      ∫ ω, NegSobolev.eval (Z (a + t) ω) (modeFn k.1 b) * NegSobolev.eval (Z (a + r) ω) (modeFn k.1 b) ∂P =
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>        varMode d s β k.1 * Real.exp (-lamMode d s β k.1 * |t - r|) +
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>          deltaVar d s β β₀ k.1 * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>            Real.exp (-lamMode d s β k.1 * (t + r))) := by
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  sorry
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>/-- Proposition 7.13 `M:E:prop:quench` (TeX L9352-9393), second part: window covariance tensors
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>(`E:eq:slowest`-`E:eq:sharp-covnorm`).  For `m &gt; d/2 + 1`, `T &gt; 0`, `𝒳_T = C([0,T];H^{-m}_0)`, `Z` as above
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>(initial temperature `β₀ ≠ β`) and `Z_∞` the stationary solution (initial temperature `β`); `C_a - C_∞` is the
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>difference of the covariance tensors of the windows `Z^{a+·}` and `Z_∞^{0+·}`, written `Δ_a(M) =
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>E[M(Z^{a+·},Z^{a+·})] - E[M(Z_∞^{·},Z_∞^{·})]` on bilinear forms `M`.  Conclusions:
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>(i) `λ_* &gt; 0`, `ℐ_*` finite and nonempty;
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>(ii) for `a ≥ 0`, the series `∑_k δv_k e^{-2λ_k a}(f_{kψ}^{⊗2} + f_{kχ}^{⊗2})` converges absolutely in projective
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>norm (`‖f⊗f‖_π = ‖f‖²`) and equals `Δ_a` on every bilinear form (`E:eq:window-spectral`);
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>(iii) `e^{2λ_*a}Δ_a → D_*` in projective norm, i.e. uniformly on the unit ball of bilinear forms, and `D_* ≠ 0`
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>(`E:eq:Dstar`);
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>(iv) there are `0 &lt; c_T ≤ C_T` with `c_T e^{-2λ_*a} ≤ ‖Δ_a‖_π ≤ C_T e^{-2λ_*a}` for `a ≥ 0`
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>(`E:eq:sharp-covnorm`; the projective norm is the supremum over the unit ball, written as a supremum for the lower
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>bound and as a pointwise bound for the upper bound, avoiding the real `iSup` junk value).
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>Technical hypotheses: as in `quench_modes`. -/
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>theorem quench_window_tensors (hd : 2 ≤ d) {s β β₀ : ℝ} (hβ : 0 &lt; β) (hβ₀ : 0 &lt; β₀) (hne : β₀ ≠ β)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ) (hm : (d : ℝ) / 2 + 1 &lt; m)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P Z)
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    (Zs : ℝ → Ω&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27; Zs) :
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    let Δ : ℝ → (PathSpace d m T [×2]→L[ℝ] ℝ) → ℝ := fun a M =&gt;
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      ∫ ω, M ![procWin m T a Z ω, procWin m T a Z ω] ∂P -
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>        ∫ ω, M ![procWin m T 0 Zs ω, procWin m T 0 Zs ω] ∂P&#x27;
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    (0 &lt; lamStar d s β ∧ {k : PosHalf d | lamMode d s β k.1 = lamStar d s β}.Finite ∧
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>      {k : PosHalf d | lamMode d s β k.1 = lamStar d s β}.Nonempty) ∧
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>      Summable (fun k : PosHalf d =&gt; |deltaVar d s β β₀ k.1| * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>        (‖modePath m T (lamMode d s β k.1) (modeFn k.1 true)‖ ^ 2 +
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>          ‖modePath m T (lamMode d s β k.1) (modeFn k.1 false)‖ ^ 2)) ∧
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>      ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, Δ a M =
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>        ∑&#x27; k : PosHalf d, deltaVar d s β β₀ k.1 * Real.exp (-2 * lamMode d s β k.1 * a) *
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>          (M ![modePath m T (lamMode d s β k.1) (modeFn k.1 true),
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 true)] +
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>            M ![modePath m T (lamMode d s β k.1) (modeFn k.1 false),
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>               modePath m T (lamMode d s β k.1) (modeFn k.1 false)])) ∧
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    (∀ ε : ℝ, 0 &lt; ε → ∃ a₀ : ℝ, ∀ a ≥ a₀, ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, ‖M‖ ≤ 1 →
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      |Real.exp (2 * lamStar d s β * a) * Δ a M - slowTensor d s β β₀ m T M| ≤ ε) ∧
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    (∃ M : PathSpace d m T [×2]→L[ℝ] ℝ, slowTensor d s β β₀ m T M ≠ 0) ∧
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    ∃ cT CT : ℝ, 0 &lt; cT ∧ cT ≤ CT ∧ ∀ a : ℝ, 0 ≤ a →
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>      (∀ M : PathSpace d m T [×2]→L[ℝ] ℝ, ‖M‖ ≤ 1 → |Δ a M| ≤ CT * Real.exp (-2 * lamStar d s β * a)) ∧
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>      cT * Real.exp (-2 * lamStar d s β * a) ≤
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>        ⨆ M : {M : PathSpace d m T [×2]→L[ℝ] ℝ // ‖M‖ ≤ 1}, |Δ a M.1| := by
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  sorry
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>/-- Proposition 7.13, equal-temperature remark (TeX L9484-9485, last sentence of Corollary 7.14: &quot;When
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>`β₀ = β`, the covariance transient vanishes exactly&quot;): for `β₀ = β` the window covariance tensors of `Z^{a+·}`
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>and of the stationary window coincide for every `a ≥ 0` (formula `E:eq:window-spectral` with `δv = 0`).
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>Only this Gaussian part of that sentence is formalised (see the docstring of `critical_edgeworth`). -/
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>theorem quench_equal_temperature (hd : 2 ≤ d) {s β : ℝ} (hβ : 0 &lt; β)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0)) (m : ℝ) (hm : (d : ℝ) / 2 + 1 &lt; m)
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    (Z : ℝ → Ω → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P Z)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    (Zs : ℝ → Ω&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27; Zs) :
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    ∀ a : ℝ, 0 ≤ a → ∀ M : PathSpace d m T [×2]→L[ℝ] ℝ,
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>      ∫ ω, M ![procWin m T a Z ω, procWin m T a Z ω] ∂P =
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        ∫ ω, M ![procWin m T 0 Zs ω, procWin m T 0 Zs ω] ∂P&#x27; := by
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  sorry
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>/-- Corollary 7.14 `M:E:cor:critical-Edgeworth` (TeX L9453-9485).  Assume `0 ≤ s &lt; d/2`, `m &gt; 3d + 8`, the
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>particles start from `Q_{N,β₀}(dx)` with fixed `β₀ &gt; 0`, `β₀ ≠ β` (homogeneous torus, `V = 0`, gradient
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>dynamics), `T &gt; 0`.
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>1. `m_N^t = dx` for all `N ≥ 1`, `t ≥ 0` (the mean empirical measure is Haar measure), hence
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>   `η_N^t = ζ_N^t = √N(μ_N^t - dx)`.
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>2. If `a_N = log N/(4λ_*) + τ + o(1)`, `τ ∈ ℝ`, then uniformly over `‖Φ‖_{C_b^5(𝒳_T)} ≤ 1`,
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>   `√N(E Φ(ζ_N^{a_N+·}) - E Φ(Z_{∞,T})) = (e^{-2λ_*τ}/2) E⟨D²Φ(Z_{∞,T}),D_*⟩ + (1/6) E⟨D³Φ(Z_{∞,T}),𝔎_{∞,T}⟩ + o(1)`
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>   (`E:eq:critical-expansion`; `⟨D²Φ,D_*⟩ = slowTensor` applied to `D²Φ`).
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>3. For an arbitrary `a_N → ∞`, the purely stationary Edgeworth formula (quadratic term omitted, uniform
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>   `o(N^{-1/2})` remainder) holds iff `√N e^{-2λ_*a_N} → 0`, equivalently `a_N - log N/(4λ_*) → +∞`
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>   (`E:eq:necessary-wait`).
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>The last sentence of the corollary (&quot;When `β₀ = β` ... no waiting-time condition&quot;) is formalised by
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>`quench_equal_temperature` (the covariance transient vanishes exactly) and `critical_edgeworth_equal_temperature`
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>(under the same import `hK`, the purely stationary formula holds for every `a_N → ∞`, because `Z^{a+·}` and the
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>stationary window have the same law).
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>INTERIM IMPORT (hypothesis `hK`): `hK` is the conclusion of Corollary 2.14 `H:cor:stationary-correction`
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>(`H:eq:hybrid-correction`, TeX L1342-1348), imported as a hypothesis; it is to be replaced by Theorem 2.13/Corollary 2.14
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>once those are stated in Lean (a Section 2 packet is drafting them).  `𝔎_{∞,T}` is &quot;the stationary cubic path tensor of
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>`H:thm:edgeworth`&quot;.  It is represented as a bounded functional `Kinf` on trilinear forms
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>(an element of `TensorDual 𝒳_T 3`, `Kinf ∈ projTensor`) satisfying the hybrid expansion
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>`E:eq:hybrid-correction` (imported in the TeX proof as `E:eq:hybrid-import`, L9487-9492) for every
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>`a_N → ∞`, uniformly on the `C_b^5` unit ball; this is the only property of `𝔎_{∞,T}` used.
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>Technical hypotheses: `d ≥ 2`; realisations exist for every `N ≥ 1`; `Z`, `Z_∞` Gaussian windows on arbitrary
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>probability spaces; `hK` as just described. -/
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>theorem critical_edgeworth (hd : 2 ≤ d) {s β β₀ : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    (hβ : 0 &lt; β) (hβ₀ : 0 &lt; β₀) (hne : β₀ ≠ β) (m : ℝ) (hm : 3 * (d : ℝ) + 8 &lt; m) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0))
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (hreal : ∀ N, 1 ≤ N → PreparedRealization D (P N)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      (modulatedGibbs (periodicRiesz d s) N β₀ volume) (X₀ N) (W N) (X N))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    (Z : ℝ → Ω&#x27; → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β₀ m P&#x27; Z)
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27;&#x27; Zs)
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    (Kinf : TensorDual (PathSpace d m T) 3) (hKmem : Kinf ∈ projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    (hK : ∀ a : ℕ → ℝ, Tendsto a atTop atTop → ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N →
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      ∀ Φ ∈ CbUnitBall (PathSpace d m T) 5,
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>        |Real.sqrt N * (∫ ω, Φ (zetaWin m T (a N) (P N) (X N) ω) ∂(P N) -
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>            ∫ ω, Φ (procWin m T (a N) Z ω) ∂P&#x27;) -
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>          (1 / 6) * ∫ ω, Kinf (iteratedFDeriv ℝ 3 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤ ε) :
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    (∀ N, 1 ≤ N → ∀ t : ℝ, 0 ≤ t → meanEmpirical ((P N).map (X N t.toNNReal)) = volume ∧
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>        ∀ ω, zetaAt m (P N) (X N) t ω = etaE m (X N t.toNNReal ω) volume) ∧
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    (∀ (a : ℕ → ℝ) (τ : ℝ),
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      Tendsto (fun N : ℕ =&gt; a N - Real.log N / (4 * lamStar d s β) - τ) atTop (𝓝 0) →
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N → ∀ Φ ∈ CbUnitBall (PathSpace d m T) 5,
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>        |Real.sqrt N * (∫ ω, Φ (zetaWin m T (a N) (P N) (X N) ω) ∂(P N) -
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>              ∫ ω, Φ (procWin m T 0 Zs ω) ∂P&#x27;&#x27;) -
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>            (Real.exp (-2 * lamStar d s β * τ) / 2 *
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>                ∫ ω, slowTensor d s β β₀ m T (iteratedFDeriv ℝ 2 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27; +
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>              (1 / 6) * ∫ ω, Kinf (iteratedFDeriv ℝ 3 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27;)| ≤ ε) ∧
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>    (∀ a : ℕ → ℝ, Tendsto a atTop atTop →
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>      ((∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N → ∀ Φ ∈ CbUnitBall (PathSpace d m T) 5,
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>          |Real.sqrt N * (∫ ω, Φ (zetaWin m T (a N) (P N) (X N) ω) ∂(P N) -
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>                ∫ ω, Φ (procWin m T 0 Zs ω) ∂P&#x27;&#x27;) -
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>            (1 / 6) * ∫ ω, Kinf (iteratedFDeriv ℝ 3 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤ ε) ↔
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>        Tendsto (fun N : ℕ =&gt; Real.sqrt N * Real.exp (-2 * lamStar d s β * a N)) atTop (𝓝 0)) ∧
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      (Tendsto (fun N : ℕ =&gt; Real.sqrt N * Real.exp (-2 * lamStar d s β * a N)) atTop (𝓝 0) ↔
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>        Tendsto (fun N : ℕ =&gt; a N - Real.log N / (4 * lamStar d s β)) atTop atTop)) := by
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>  sorry
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>/-- Corollary 7.14 `M:E:cor:critical-Edgeworth`, last sentence (TeX L9484-9485): for `β₀ = β` (particles started from
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>`Q_{N,β}(dx)`, `V = 0`), the covariance transient vanishes (`quench_equal_temperature`) and there is no waiting-time
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>condition: under the import `hK` (Corollary 2.14, `H:eq:hybrid-correction`, with `Z` of initial temperature `β`; see
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>`critical_edgeworth` for its status), the purely stationary Edgeworth formula (quadratic term omitted, uniform
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>`o(N^{-1/2})` remainder) holds for *every* sequence `a_N → ∞`, because the Gaussian windows `Z^{a+·}` and `Z_{∞,T}`
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>have the same law.  Same setting and technical hypotheses as `critical_edgeworth` (with `β₀ = β`, no `hne`). -/
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>theorem critical_edgeworth_equal_temperature (hd : 2 ≤ d) {s β : ℝ} (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>    (hβ : 0 &lt; β) (m : ℝ) (hm : 3 * (d : ℝ) + 8 &lt; m) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    (D : DynData d) (hD : IsGradientData D s β (fun _ =&gt; 0))
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    {Ω : ℕ → Type} [∀ N, MeasurableSpace (Ω N)] (P : ∀ N, Measure (Ω N))
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    [∀ N, IsProbabilityMeasure (P N)] (X₀ : ∀ N, Ω N → Config d N)
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>    (W : ∀ N, ℝ≥0 → Ω N → (Fin N → Euc d)) (X : ∀ N, ℝ≥0 → Ω N → Config d N)
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    (hreal : ∀ N, 1 ≤ N → PreparedRealization D (P N)
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>      (modulatedGibbs (periodicRiesz d s) N β volume) (X₀ N) (W N) (X N))
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>    {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>    (Z : ℝ → Ω&#x27; → NegSobolev d m) (hZ : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27; Z)
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    {Ω&#x27;&#x27; : Type} [MeasurableSpace Ω&#x27;&#x27;] (P&#x27;&#x27; : Measure Ω&#x27;&#x27;) [IsProbabilityMeasure P&#x27;&#x27;]
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>    (Zs : ℝ → Ω&#x27;&#x27; → NegSobolev d m) (hZs : IsGaussianLimitField D (fun _ _ =&gt; 1) volume β m P&#x27;&#x27; Zs)
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>    (Kinf : TensorDual (PathSpace d m T) 3) (hKmem : Kinf ∈ projTensor (PathSpace d m T) 3)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>    (hK : ∀ a : ℕ → ℝ, Tendsto a atTop atTop → ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N →
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>      ∀ Φ ∈ CbUnitBall (PathSpace d m T) 5,
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        |Real.sqrt N * (∫ ω, Φ (zetaWin m T (a N) (P N) (X N) ω) ∂(P N) -
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>            ∫ ω, Φ (procWin m T (a N) Z ω) ∂P&#x27;) -
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          (1 / 6) * ∫ ω, Kinf (iteratedFDeriv ℝ 3 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤ ε) :
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    ∀ a : ℕ → ℝ, Tendsto a atTop atTop →
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>      ∀ ε : ℝ, 0 &lt; ε → ∃ N₀ : ℕ, ∀ N ≥ N₀, 1 ≤ N → ∀ Φ ∈ CbUnitBall (PathSpace d m T) 5,
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>        |Real.sqrt N * (∫ ω, Φ (zetaWin m T (a N) (P N) (X N) ω) ∂(P N) -
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>              ∫ ω, Φ (procWin m T 0 Zs ω) ∂P&#x27;&#x27;) -
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>            (1 / 6) * ∫ ω, Kinf (iteratedFDeriv ℝ 3 Φ (procWin m T 0 Zs ω)) ∂P&#x27;&#x27;| ≤ ε := by
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>  sorry
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>end Sec7
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>end HRS
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>end
+</span></code></pre></main></body></html>

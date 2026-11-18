@@ -1,0 +1,237 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Main.A8Final · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Main.A8Final</code></h1><p><a href="../../lean/HRS/Main/A8Final.lean">Open the unaltered Lean file</a> · 236 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Main.TorusTheorems
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Main.A8PAux46
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Packet A8P: relocated proofs of Proposition A.8 (`main_torus_stat`, `main_torus_stat_tendsto`)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>-/
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>noncomputable section
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>open scoped ENNReal NNReal BigOperators MeasureTheory BoundedContinuousFunction
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>namespace HRS
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>namespace Main
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open HRS.Main.A8P
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>variable {d : ℕ}
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>theorem a8p_realIm_cont {n : ℕ} {φ : Fin (n + 1) → Torus d → ℂ} (h : ∀ a, Continuous (φ a))
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>    (ab : Fin (n + 1) × Bool) : Continuous (realImParts φ ab) := by
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  unfold realImParts
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  cases ab.2
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  · exact Complex.continuous_re.comp (h ab.1)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  · exact Complex.continuous_im.comp (h ab.1)
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem a8p_realIm_mem {n : ℕ} {φ : Fin (n + 1) → Torus d → ℂ} {m : ℝ}
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (h : ∀ a, MemSobolevC m (φ a)) (ab : Fin (n + 1) × Bool) : MemSobolev m (realImParts φ ab) := by
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>  unfold realImParts
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>  cases ab.2
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  · simpa using (h ab.1).1
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  · simpa using (h ab.1).2
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>theorem main_torus_stat_proof (s : ℝ) :
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>    ∃ C₀min : ℝ, ∀ (Rg : PDE.Regime) (ν₀ MB Λ T VB Cin : ℝ) (C₀ Cc : ℝ), C₀min ≤ C₀ →
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    ∃ C ΛT : ℝ, 0 &lt; C ∧ 0 &lt; ΛT ∧
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>      ∀ (S : MainData d), S.s = s → S.T = T →
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>      ∀ (R : ∀ N, Realization d N) (𝔈 : ℕ → ℝ),
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        TorusStanding S R Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 →
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>        -- (a) single statistics, `W₁`
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>        (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (t : ℝ) (φ : Torus d → ℝ), t ∈ Set.Icc (0 : ℝ) T →
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>          MemSobolev (PDE.mStar d : ℝ) φ → Continuous φ →
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>          InitialFluctuation S R m₀ Cin ε
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>            (transportedTests S (fun _ : Fin 1 =&gt; t) (fun _ =&gt; φ)) →
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>          ∀ N : ℕ, C ≤ (N : ℝ) →
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>            wassersteinE 1
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>              (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) (fun _ : Fin 1 =&gt; t) (fun _ =&gt; φ))
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>              (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) (fun _ : Fin 1 =&gt; t)
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>                (fun _ =&gt; φ) (R N).P (R N).η) ≤
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>            ENNReal.ofReal (statBound C ΛT t (sobolevNorm (PDE.mStar d : ℝ) φ)
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>              (masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N))) ∧
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        -- (b) joint statistics, `d_{C²}`
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>        (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (t : ℝ) (p : ℕ) (φ : Fin p → Torus d → ℝ), 1 ≤ p →
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>          t ∈ Set.Icc (0 : ℝ) T → (∀ a, MemSobolev (PDE.mStar d : ℝ) (φ a)) →
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>          (∀ a, Continuous (φ a)) →
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>          InitialFluctuation S R m₀ Cin ε (transportedTests S (fun _ : Fin p =&gt; t) φ) →
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>          ∀ N : ℕ, C ≤ (N : ℝ) →
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>            smoothDist 2
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>              (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) (fun _ : Fin p =&gt; t) φ)
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>              (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) (fun _ : Fin p =&gt; t) φ
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>                (R N).P (R N).η) ≤
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>            statBound C ΛT t (∑ a, sobolevNorm (PDE.mStar d : ℝ) (φ a))
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>              (masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N)) ∧
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>        -- (c) complex tests, finitely many times, `d_{C²}`
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>        (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (n : ℕ) (ts : Fin (n + 1) → ℝ) (φ : Fin (n + 1) → Torus d → ℂ),
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>          Monotone ts → 0 ≤ ts 0 → ts (Fin.last n) ≤ T →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>          (∀ a, MemSobolevC (PDE.mStar d : ℝ) (φ a)) → (∀ a, Continuous (φ a)) →
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>          InitialFluctuation S R m₀ Cin ε
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>            (transportedTests S (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ)) →
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          ∀ N : ℕ, C ≤ (N : ℝ) →
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>            smoothDist 2
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>              (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>                (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ))
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>              (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N)
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>                (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ) (R N).P (R N).η) ≤
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>            statBound C ΛT (ts (Fin.last n)) (∑ a, sobolevNormC (PDE.mStar d : ℝ) (φ a))
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>              (masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N)) ∧
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>        -- (d) joint `W₂` variant under A.7, complex tests, finitely many times
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>        (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (𝔈&#x27; ε2 : ℕ → ℝ) (n : ℕ) (ts : Fin (n + 1) → ℝ)
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>          (φ : Fin (n + 1) → Torus d → ℂ),
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>          Monotone ts → 0 ≤ ts 0 → ts (Fin.last n) ≤ T →
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>          (∀ a, MemSobolevC (PDE.mStar d : ℝ) (φ a)) → (∀ a, Continuous (φ a)) →
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>          InitialFluctuation S R m₀ Cin ε
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>            (transportedTests S (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ)) →
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>          EnergySmallness2 S R C₀ Λ m₀
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>            (transportedTests S (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ)) 𝔈&#x27; ε2 →
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>          ∀ N : ℕ, C ≤ (N : ℝ) →
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>            wassersteinE 2
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>              (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N)
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>                (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ))
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>              (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>                (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) (realImParts φ) (R N).P (R N).η) ≤
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>            ENNReal.ofReal (statBound C ΛT (ts (Fin.last n)) (∑ a, sobolevNormC (PDE.mStar d : ℝ) (φ a))
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>              (masterRate d (ε2 N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈&#x27; N) N))) := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  by_cases hok : 1 ≤ d ∧ 0 ≤ s ∧ s &lt; d
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  swap
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>  · refine ⟨0, fun Rg ν₀ MB Λ T VB Cin C₀ Cc _ =&gt; ⟨1, 1, one_pos, one_pos, fun S hs =&gt; ?_⟩⟩
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    exact absurd ⟨S.hd, hs ▸ S.hs0, hs ▸ S.hsd⟩ hok
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  obtain ⟨hd, hs0, hsd⟩ := hok
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  obtain ⟨C₀&#x27;, Cq, hC₀&#x27;, hCq, hcom⟩ := a8p_commSpec hd hs0 hsd
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  refine ⟨C₀&#x27;, fun Rg ν₀ MB Λ T VB Cin C₀ Cc hC =&gt; ?_⟩
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  obtain ⟨Ca, Λ₁, hCa, hspec⟩ := a8p_adjSpec hd s hs0 hsd Rg MB Λ VB ν₀
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  obtain ⟨Cp, hCp0, hCp⟩ := a8p_hom_prod hd hs0 hsd
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  obtain ⟨cT, hcT0, hcT⟩ := a8p_transport_bound hd MB s hs0
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  obtain ⟨Cb, hCb⟩ : ∃ x : ℝ, x = (1 / 2) * Cq * cT * T + 1 + 4 * T * d * Ca ^ 2 +
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      2 * T * Cq * (2 * d * Ca ^ 2 + Cp) := ⟨_, rfl⟩
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  obtain ⟨Cw, hCw⟩ : ∃ x : ℝ, x = (1 / 2) * Cq * cT * T + 1 +
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>      Real.sqrt (2 * T * Cq * (2 * d * Ca ^ 2 + Cp)) := ⟨_, rfl⟩
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  refine ⟨2 + 4 * |Cb| + 4 * |Cw|, 2 * |Λ₁| + 1, by positivity, by positivity, ?_⟩
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  intro S hSs hST R 𝔈 hS
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  subst hSs hST
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  have hP : A8Pack d S.s Rg MB Λ VB ν₀ C₀ Ca Λ₁ C₀&#x27; Cq Cp cT :=
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    ⟨hCa.le, hspec, hcom, hCq.le, hC, hCp0, hCp, hcT0, hcT⟩
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>  have hT0 : 0 ≤ S.T := S.hT.le
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  have hCb0 : 0 ≤ Cb := by rw [hCb]; have := hCq.le; positivity
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>  have hCw0 : 0 ≤ Cw := by rw [hCw]; have := hCq.le; positivity
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>  have hN2 : ∀ N : ℕ, 2 + 4 * |Cb| + 4 * |Cw| ≤ (N : ℝ) → 2 ≤ N := fun N hN =&gt; by
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have : (2 : ℝ) ≤ N := le_trans (by nlinarith [abs_nonneg Cb, abs_nonneg Cw]) hN
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    exact_mod_cast this
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hCC : ∀ x : ℝ, 0 ≤ x → x = Cb ∨ x = Cw → 4 * x ≤ 2 + 4 * |Cb| + 4 * |Cw| := by
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    intro x hx h
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    rcases h with h | h
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>    · rw [h]; nlinarith [abs_nonneg Cb, abs_nonneg Cw, le_abs_self Cb]
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>    · rw [h]; nlinarith [abs_nonneg Cb, abs_nonneg Cw, le_abs_self Cw]
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  refine ⟨?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>  · -- (a)
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    intro m₀ ε t φ ht hφ hφc hIF N hN
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    have hN2&#x27; := hN2 N hN
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    have key := a8p_case_wass1 hP hS hN2&#x27; (fun _ : Fin 1 =&gt; t) (fun _ =&gt; ht) (fun _ =&gt; φ)
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>      (fun _ =&gt; hφc) (fun _ =&gt; hφ) hIF
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    rw [← hCw] at key
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    refine key.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    have hε : 0 ≤ ε N := hIF.eps_anti.le_of_tendsto hIF.eps_tendsto N
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    have hr := a8p_masterRate_nonneg (d := d) (N := N) hε (a8p_q_bounds S hN1).1
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      (a8p_sigma_nonneg S N) (hS.energy.pos N hN1).le (hS.energy.pos N hN1).le
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>    refine a8p_stat_real hCw0 hr ?_ ?_ zero_le_one one_le_two (Real.sqrt_nonneg _) ht.1
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>      (hCC Cw hCw0 (Or.inr rfl))
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    · exact Finset.sum_nonneg fun a _ =&gt; a8pK_nonneg Λ₁ t φ
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    · simp [a8pK]
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>  · -- (b)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    intro m₀ ε t p φ hp ht hφ hφc hIF N hN
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    have hN2&#x27; := hN2 N hN
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>    have key := a8p_case_smooth hP hS hN2&#x27; (fun _ : Fin p =&gt; t) (fun _ =&gt; ht) φ hφc hφ hIF
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    rw [← hCb] at key
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    refine key.trans ?_
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    have hε : 0 ≤ ε N := hIF.eps_anti.le_of_tendsto hIF.eps_tendsto N
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    have hr := a8p_masterRate_nonneg (d := d) (N := N) hε (a8p_q_bounds S hN1).1
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      (a8p_sigma_nonneg S N) (hS.energy.pos N hN1).le (hS.energy.pos N hN1).le
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    refine a8p_stat_real hCb0 hr ?_ ?_ zero_le_one one_le_two
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      (Finset.sum_nonneg fun a _ =&gt; Real.sqrt_nonneg _) ht.1 (hCC Cb hCb0 (Or.inl rfl))
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    · exact Finset.sum_nonneg fun a _ =&gt; a8pK_nonneg Λ₁ t (φ a)
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    · rw [a8p_Ksum_const]; simp
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  · -- (c)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    intro m₀ ε n ts φ hmono h0 hlast hφ hφc hIF N hN
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>    have hN2&#x27; := hN2 N hN
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    have htsm : ∀ ab : Fin (n + 1) × Bool, ts ab.1 ∈ Set.Icc (0 : ℝ) S.T := fun ab =&gt;
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>      ⟨h0.trans (hmono (Fin.zero_le _)), (hmono (Fin.le_last _)).trans hlast⟩
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>    have key := a8p_case_smooth hP hS hN2&#x27; (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) htsm (realImParts φ)
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      (a8p_realIm_cont hφc) (fun ab =&gt; a8p_realIm_mem hφ ab) hIF
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    rw [← hCb] at key
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    refine key.trans ?_
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    have hε : 0 ≤ ε N := hIF.eps_anti.le_of_tendsto hIF.eps_tendsto N
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    have hr := a8p_masterRate_nonneg (d := d) (N := N) hε (a8p_q_bounds S hN1).1
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>      (a8p_sigma_nonneg S N) (hS.energy.pos N hN1).le (hS.energy.pos N hN1).le
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    have ht0 : 0 ≤ ts (Fin.last n) := h0.trans (hmono (Fin.zero_le _))
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>    refine a8p_stat_real hCb0 hr ?_ (a8p_Ksum_complex Λ₁ ts hmono φ) zero_le_two le_rfl
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>      (Finset.sum_nonneg fun a _ =&gt; Real.sqrt_nonneg _) ht0 (hCC Cb hCb0 (Or.inl rfl))
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    exact Finset.sum_nonneg fun a _ =&gt; a8pK_nonneg Λ₁ _ _
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>  · -- (d)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    intro m₀ ε 𝔈&#x27; ε2 n ts φ hmono h0 hlast hφ hφc hIF hE2 N hN
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    have hN2&#x27; := hN2 N hN
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>    have hN1 : 1 ≤ N := by omega
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    have htsm : ∀ ab : Fin (n + 1) × Bool, ts ab.1 ∈ Set.Icc (0 : ℝ) S.T := fun ab =&gt;
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      ⟨h0.trans (hmono (Fin.zero_le _)), (hmono (Fin.le_last _)).trans hlast⟩
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    have key := a8p_case_wass2 hP hS hN2&#x27; (fun ab : Fin (n + 1) × Bool =&gt; ts ab.1) htsm (realImParts φ)
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>      (a8p_realIm_cont hφc) (fun ab =&gt; a8p_realIm_mem hφ ab) hIF hE2
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>    rw [← hCw] at key
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>    refine key.trans (ENNReal.ofReal_le_ofReal ?_)
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have hε : 0 ≤ ε2 N := hE2.ε2_nonneg N hN1
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    have hr := a8p_masterRate_nonneg (d := d) (N := N) hε (a8p_q_bounds S hN1).1
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      (a8p_sigma_nonneg S N) (hS.energy.pos N hN1).le (hE2.𝔈&#x27;_nonneg N hN1)
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    have ht0 : 0 ≤ ts (Fin.last n) := h0.trans (hmono (Fin.zero_le _))
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    refine a8p_stat_real hCw0 hr ?_ (a8p_Ksum_complex Λ₁ ts hmono φ) zero_le_two le_rfl
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>      (Finset.sum_nonneg fun a _ =&gt; Real.sqrt_nonneg _) ht0 (hCC Cw hCw0 (Or.inr rfl))
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>    exact Finset.sum_nonneg fun a _ =&gt; a8pK_nonneg Λ₁ _ _
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>theorem main_torus_stat_tendsto_proof (s : ℝ) :
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    ∃ C₀min : ℝ, ∀ (Rg : PDE.Regime) (ν₀ MB Λ T VB Cin : ℝ) (C₀ Cc : ℝ), C₀min ≤ C₀ →
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>    ∀ (S : MainData d), S.s = s → S.T = T →
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    ∀ (R : ∀ N, Realization d N) (𝔈 : ℕ → ℝ),
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>    TorusStanding S R Rg ν₀ MB Λ VB (PDE.mStar d) C₀ Cc 𝔈 →
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>    (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (Ψ : ℕ → Set (Torus d → ℝ)), InitialFluctuation S R m₀ Cin ε Ψ →
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      Tendsto (fun N =&gt; masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N) atTop (𝓝 0)) ∧
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    (∀ (m₀ : ℕ) (ε : ℕ → ℝ) (t : ℝ) (p : ℕ) (φ : Fin p → Torus d → ℝ), 1 ≤ p →
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>      t ∈ Set.Icc (0 : ℝ) T → (∀ a, MemSobolev (PDE.mStar d : ℝ) (φ a)) →
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>      (∀ a, Continuous (φ a)) →
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>      InitialFluctuation S R m₀ Cin ε (transportedTests S (fun _ : Fin p =&gt; t) φ) →
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      Tendsto (fun N =&gt; smoothDist 2
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>        (fluctStatLaw (R N).P (S.sigma N) (R N).X (S.ρ N) (fun _ : Fin p =&gt; t) φ)
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>        (surrogateStatLaw (S.dyn N) (S.ρ N) (S.AN N) (S.qN N) (fun _ : Fin p =&gt; t) φ
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>          (R N).P (R N).η)) atTop (𝓝 0)) := by
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>  obtain ⟨C₀min, h⟩ := main_torus_stat_proof (d := d) s
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>  refine ⟨C₀min, fun Rg ν₀ MB Λ T VB Cin C₀ Cc hC S hSs hST R 𝔈 hS =&gt; ?_⟩
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>  obtain ⟨C, ΛT, hC0, hΛT, hmain⟩ := h Rg ν₀ MB Λ T VB Cin C₀ Cc hC
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  obtain ⟨-, hb, -, -⟩ := hmain S hSs hST R 𝔈 hS
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>  have hrate : ∀ (m₀ : ℕ) (ε : ℕ → ℝ) (Ψ : ℕ → Set (Torus d → ℝ)), InitialFluctuation S R m₀ Cin ε Ψ →
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>      Tendsto (fun N =&gt; masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N) atTop (𝓝 0) :=
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    fun m₀ ε Ψ hIF =&gt; a8p_rate_tendsto S S.hd ε 𝔈 hIF.eps_tendsto hS.energy.small
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>      (fun N hN =&gt; (hS.energy.pos N hN).le)
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>  refine ⟨hrate, ?_⟩
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>  intro m₀ ε t p φ hp ht hφ hφc hIF
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  have hr := hrate m₀ ε _ hIF
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>  have hup : Tendsto (fun N =&gt; statBound C ΛT t (∑ a, sobolevNorm (PDE.mStar d : ℝ) (φ a))
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>      (masterRate d (ε N) (S.qN N) (S.sigma N) (𝔈 N) (𝔈 N) N)) atTop (𝓝 0) := by
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    have h1 := hr.const_mul (C * Real.exp (ΛT * t) * (∑ a, sobolevNorm (PDE.mStar d : ℝ) (φ a)) *
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>      (1 + ∑ a, sobolevNorm (PDE.mStar d : ℝ) (φ a)))
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    rw [mul_zero] at h1
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>    refine h1.congr fun N =&gt; ?_
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    unfold statBound
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    ring
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>  refine squeeze_zero&#x27; (Filter.Eventually.of_forall fun N =&gt; smoothDist_nonneg _ _ _) ?_ hup
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>  filter_upwards [Filter.eventually_ge_atTop ⌈C⌉₊] with N hN
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>  exact hb m₀ ε t p φ hp ht hφ hφc hIF N ((Nat.le_ceil C).trans (by exact_mod_cast hN))
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>example := (@main_torus_stat_proof : type_of% @HRS.Main.main_torus_stat)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>example := (@main_torus_stat_tendsto_proof : type_of% @HRS.Main.main_torus_stat_tendsto)
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>end Main
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>end HRS
+</span></code></pre></main></body></html>

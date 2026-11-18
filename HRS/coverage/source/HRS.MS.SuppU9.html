@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.SuppU9 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.SuppU9</code></h1><p><a href="../../lean/HRS/MS/SuppU9.lean">Open the unaltered Lean file</a> · 126 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.SuppU9Aux1
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MS.SuppU9Aux2
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># U9: the frozen statement `HRS.Whole.orbit_maximal` (Lemma S5.2, clauses (i) and (ii))
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Clause (i): `u9_exists_form` (`SuppU9Aux1`), with `Ctr = 2 n B²`.
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>Clause (ii): `‖(𝒯M)(t)‖ ≤ (3 + √T) sup_s ‖M_s‖` (`SuppU9Aux2`), continuity of `evalA`, and
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>`hilbert_bdg` with `p = 2`; `Cmax = (3 + √T)² C_BDG`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>set_option linter.unusedSectionVars false
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>set_option linter.unusedVariables false
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.MS.U9
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS HRS.Whole
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d : ℕ} {m T : ℝ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>lemma u9_traceNormForm_nonneg {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H]
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>    [CompleteSpace H] (C : H →L[ℝ] H →L[ℝ] ℝ) : 0 ≤ traceNormForm C :=
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>  Real.iSup_nonneg fun _ =&gt; Finset.sum_nonneg fun _ _ =&gt; abs_nonneg _
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>lemma u9_continuous_recon (hT : 0 ≤ T) {Ω : Type*} (M : ℝ → Ω → KSpace d m T) (ζ : Ω)
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    (hc : ContinuousOn (fun τ =&gt; M τ ζ) (Set.Icc 0 T)) :
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    Continuous fun t : Set.Icc (0 : ℝ) T =&gt; reconstructPath m T M ζ t := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>  unfold reconstructPath
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  have h1 : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; (M T ζ).evalA t :=
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>    continuousOn_iff_continuous_restrict.1 (u9_continuousOn_evalA hT (M T ζ))
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have h3 : Continuous fun t : Set.Icc (0 : ℝ) T =&gt; (M t ζ).B :=
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    continuousOn_iff_continuous_restrict.1 (u9_continuous_B.comp_continuousOn hc)
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  exact (h1.sub continuous_const).add h3
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>lemma u9_pointwise (hT : 0 ≤ T) {Ω : Type*} (M : ℝ → Ω → KSpace d m T) (ζ : Ω) (t : ℝ)
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    (ht : t ∈ Set.Icc (0 : ℝ) T) :
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>    ENNReal.ofReal ‖reconstructPath m T M ζ t‖ ≤
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>      ENNReal.ofReal (3 + Real.sqrt T) * ⨆ s ∈ Set.Icc (0 : ℝ) T, ‖M s ζ‖ₑ := by
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  set S := ⨆ s ∈ Set.Icc (0 : ℝ) T, ‖M s ζ‖ₑ with hS
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hTm : T ∈ Set.Icc (0 : ℝ) T := ⟨hT, le_rfl⟩
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hx : ‖M T ζ‖ₑ ≤ S := le_iSup₂ (f := fun s (_ : s ∈ Set.Icc (0 : ℝ) T) =&gt; ‖M s ζ‖ₑ) T hTm
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hy : ‖M t ζ‖ₑ ≤ S := le_iSup₂ (f := fun s (_ : s ∈ Set.Icc (0 : ℝ) T) =&gt; ‖M s ζ‖ₑ) t ht
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>  have hs : 0 ≤ Real.sqrt T := Real.sqrt_nonneg _
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have h := u9_recon_norm_le hT (M T ζ) (M t ζ) t
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  calc ENNReal.ofReal ‖reconstructPath m T M ζ t‖
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>      ≤ ENNReal.ofReal ((2 + Real.sqrt T) * ‖M T ζ‖ + ‖M t ζ‖) := ENNReal.ofReal_le_ofReal h
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    _ = ENNReal.ofReal (2 + Real.sqrt T) * ‖M T ζ‖ₑ + ‖M t ζ‖ₑ := by
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>        rw [ENNReal.ofReal_add (by positivity) (norm_nonneg _), ENNReal.ofReal_mul (by positivity),
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>          ofReal_norm, ofReal_norm]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    _ ≤ ENNReal.ofReal (2 + Real.sqrt T) * S + 1 * S := by
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        gcongr; rw [one_mul]; exact hy
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    _ = ENNReal.ofReal (3 + Real.sqrt T) * S := by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        rw [← add_mul, ← ENNReal.ofReal_one, ← ENNReal.ofReal_add (by positivity) (by norm_num)]
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>        congr 2; ring
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>lemma u9_lintegral_trace {Ω : Type} [mΩ : MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    {ℱ : Filtration ℝ mΩ} {M : ℝ → Ω → KSpace d m T}
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    {Sg : ℝ → Ω → (KSpace d m T →L[ℝ] KSpace d m T →L[ℝ] ℝ)}
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    (hM : IsHilbertMartingaleWithCovariation P ℱ T M Sg) :
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    ∫⁻ ζ, (∫⁻ r in Set.Icc (0 : ℝ) T, ENNReal.ofReal (traceNormForm (Sg r ζ))) ∂P =
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>      ENNReal.ofReal (∫ ζ, (∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ)) ∂P) := by
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  have hnn : ∀ ζ, 0 ≤ ∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ) :=
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>    fun ζ =&gt; integral_nonneg fun r =&gt; u9_traceNormForm_nonneg _
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  rw [ofReal_integral_eq_lintegral_ofReal hM.sigma_int (Filter.Eventually.of_forall hnn)]
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  refine lintegral_congr_ae ?_
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  filter_upwards [hM.sigma_pathint] with ζ hζ
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  rw [ofReal_integral_eq_lintegral_ofReal hζ (Filter.Eventually.of_forall fun r =&gt;
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>    u9_traceNormForm_nonneg _)]
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>lemma u9_bound (hT : 0 ≤ T) {Ω : Type} [mΩ : MeasurableSpace Ω] {P : Measure Ω}
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    [IsProbabilityMeasure P] {ℱ : Filtration ℝ mΩ} {M : ℝ → Ω → KSpace d m T}
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    {Sg : ℝ → Ω → (KSpace d m T →L[ℝ] KSpace d m T →L[ℝ] ℝ)}
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>    (hM : IsHilbertMartingaleWithCovariation P ℱ T M Sg) (C₂ : ℝ) (hC₂ : 0 ≤ C₂)
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    (hb : ∫⁻ ω, (⨆ t ∈ Set.Icc (0 : ℝ) T, ‖M t ω‖ₑ) ^ (2 : ℝ) ∂P ≤
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>      ENNReal.ofReal C₂ * ∫⁻ ω, (∫⁻ r in Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>        ENNReal.ofReal (traceNormForm (Sg r ω))) ^ ((2 : ℝ) / 2) ∂P) :
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    ∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, ENNReal.ofReal ‖reconstructPath m T M ζ t‖) ^ 2 ∂P ≤
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>      ENNReal.ofReal ((3 + Real.sqrt T) ^ 2 * C₂ *
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>        ∫ ζ, (∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ)) ∂P) := by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hJ : 0 ≤ ∫ ζ, (∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ)) ∂P :=
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    integral_nonneg fun ζ =&gt; integral_nonneg fun r =&gt; u9_traceNormForm_nonneg _
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  have h22 : ((2 : ℝ) / 2) = 1 := by norm_num
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  simp only [h22, ENNReal.rpow_one] at hb
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>  rw [u9_lintegral_trace hM] at hb
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  calc ∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, ENNReal.ofReal ‖reconstructPath m T M ζ t‖) ^ 2 ∂P
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      ≤ ∫⁻ ζ, ENNReal.ofReal (3 + Real.sqrt T) ^ 2 *
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>          (⨆ t ∈ Set.Icc (0 : ℝ) T, ‖M t ζ‖ₑ) ^ (2 : ℝ) ∂P := by
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        refine lintegral_mono fun ζ =&gt; ?_
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        rw [ENNReal.rpow_two, ← mul_pow]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>        gcongr
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        exact iSup_le fun t =&gt; u9_pointwise hT M ζ t t.2
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    _ = ENNReal.ofReal (3 + Real.sqrt T) ^ 2 *
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          ∫⁻ ζ, (⨆ t ∈ Set.Icc (0 : ℝ) T, ‖M t ζ‖ₑ) ^ (2 : ℝ) ∂P :=
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>        lintegral_const_mul&#x27; _ _ (ENNReal.pow_ne_top ENNReal.ofReal_ne_top)
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    _ ≤ ENNReal.ofReal (3 + Real.sqrt T) ^ 2 * (ENNReal.ofReal C₂ *
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>          ENNReal.ofReal (∫ ζ, (∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ)) ∂P)) := by
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>        gcongr
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>    _ = ENNReal.ofReal ((3 + Real.sqrt T) ^ 2 * C₂ *
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        ∫ ζ, (∫ r in Set.Icc (0 : ℝ) T, traceNormForm (Sg r ζ)) ∂P) := by
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>        have h3 : 0 ≤ 3 + Real.sqrt T := by positivity
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>          ENNReal.ofReal_pow h3, mul_assoc]
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>theorem orbit_maximal_proof : type_of% @HRS.Whole.orbit_maximal := by
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  intro d C m T hT n Dop B hB hmeas
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  obtain ⟨C₂, hC₂, hbdg⟩ := HRS.HilbertBDG.hilbert_bdg 2 le_rfl
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  refine ⟨2 * n * B ^ 2, (3 + Real.sqrt T) ^ 2 * C₂, ?_, ?_⟩
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>  · intro q hq r hr ν hν
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>    haveI := hν
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    obtain ⟨Bf, h1, h2, h3⟩ := u9_exists_form (ν := ν)
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      (Γ := fun a =&gt; orbitFeature C m T (Dop a) r) hq (fun a =&gt; hmeas a r hr)
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>      (fun a x =&gt; hB a r hr x)
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    exact ⟨Bf, h1, h2, h3⟩
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>  · intro Ω mΩ P hP ℱ M Sg hM
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    refine ⟨?_, ?_⟩
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>    · filter_upwards [hM.cont] with ζ hζ
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>      exact u9_continuous_recon hT M ζ hζ
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    · exact u9_bound hT hM C₂ hC₂ (hbdg Ω P ℱ (KSpace d m T) T M Sg hM)
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>end HRS.MS.U9
+</span></code></pre></main></body></html>

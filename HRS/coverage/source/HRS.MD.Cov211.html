@@ -1,0 +1,259 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MD.Cov211 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MD.Cov211</code></h1><p><a href="../../lean/HRS/MD/Cov211.lean">Open the unaltered Lean file</a> · 258 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MD.Cov211Pt
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.MD.Cov211Growth
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Packet COV211: Proposition 2.11 `covariance_obstruction` (relocated proof)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Plan (TeX `V:subsubsec:covariance-obstruction-proof`, L5344-5497); all bounds on the `θ`-integrals are
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>lower bounds through continuous minorants, so no measurability of `θ ↦ W_p` is used.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* `Cov211Metric`: `W_2`, `W_1`, `d_j` lower bounds by test functions on `ℝ`.
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>* `Cov211Trunc`, `Cov211Lower`: the truncated quadratic `FL L` and sub-Gaussian second-moment tails.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>* `Cov211Base`, `Cov211Bias`: smoothness of `M, C`, `∫_a^b (C_N - C) = ΔM`, and the pointwise bias limit
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>  from `equilibrium_bias_expansion_proof`; `δ_N⁻¹ ∫_a^b (C_N - C) → B(b) - B(a)`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* `Cov211Fam`, `Cov211Pt`: the family (`i = 0` is `W_2`, `1` is `W_1`, `j + 2` is `d_{j+2}`) of continuous
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>  minorants `gfam i N θ` with `ofReal (gfam) ≤ ofReal (wfam) * Tfam`, and their interval averages.
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* `Cov211Scheme`: interval-averaged `liminf` and the dense `G_δ` set (Baire, via `response_category_freq`),
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `inter_dense` for the countable intersection over `i`.
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* `Cov211Growth`: root-`N` failure at `s &gt; 2d/3`.
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* this file: assembly.  The tie to `HRS.Main.covariance_obstruction` is in `Cov211Tie`.
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>-/
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>open scoped ENNReal NNReal
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>noncomputable section
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>namespace HRS.MD.Cov211
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>open HRS
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>variable {d : ℕ} {s : ℝ}
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>theorem sqrt_mul_delta (hs1 : (d : ℝ) / 2 &lt; s) {N : ℕ} (hN : 0 &lt; N) :
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    Real.sqrt N * deltaN d s N = (N : ℝ) ^ ((3 : ℝ) / 2 - d / s) := by
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  rw [deltaN_eq hs1, Real.sqrt_eq_rpow, ← Real.rpow_add (by exact_mod_cast hN)]
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  congr 1; ring
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>theorem growth_exponent (hs1 : (d : ℝ) / 2 &lt; s) (h23 : 2 * (d : ℝ) / 3 &lt; s) :
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    0 &lt; (3 : ℝ) / 2 - d / s := by
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>  have hspos : 0 &lt; s := lt_of_le_of_lt (by positivity) hs1
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  have : (d : ℝ) / s &lt; 3 / 2 := by rw [div_lt_iff₀ hspos]; linarith
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  linarith
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>theorem growth (hs1 : (d : ℝ) / 2 &lt; s) (h23 : 2 * (d : ℝ) / 3 &lt; s) (i : ℕ) :
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>    Tendsto (fun N : ℕ =&gt; Real.sqrt N / wfam d s i N) atTop atTop := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have ha := growth_exponent hs1 h23
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>  have hpow : Tendsto (fun N : ℕ =&gt; (N : ℝ) ^ ((3 : ℝ) / 2 - d / s)) atTop atTop :=
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    (tendsto_rpow_atTop ha).comp tendsto_natCast_atTop_atTop
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  rcases i with _ | _ | j
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  · refine hpow.congr&#x27; ?_
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    simp only [wfam, div_inv_eq_mul]
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>    exact (sqrt_mul_delta hs1 hN).symm
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  · refine (tendsto_rpow_div_sqrt_log _ ha).congr&#x27; ?_
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    have hδ := deltaN_pos hs1 (show 0 &lt; N by omega)
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    have hlog : 0 &lt; Real.sqrt (Real.log (Real.exp 1 * N)) := Real.sqrt_pos.2 (by
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      have := log_exp_mul_pos hN; linarith)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    simp only [wfam]
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    rw [← sqrt_mul_delta hs1 (show 0 &lt; N by omega)]
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    field_simp
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  · refine (tendsto_rpow_div_log _ ha).congr&#x27; ?_
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    filter_upwards [eventually_ge_atTop 1] with N hN
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    have hδ := deltaN_pos hs1 (show 0 &lt; N by omega)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    have hlog : 0 &lt; Real.log (Real.exp 1 * N) := by have := log_exp_mul_pos hN; linarith
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    simp only [wfam]
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    rw [← sqrt_mul_delta hs1 (show 0 &lt; N by omega)]
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    field_simp
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>theorem wfam_pos (hs1 : (d : ℝ) / 2 &lt; s) (i N : ℕ) (hN : 2 ≤ N) : 0 &lt; wfam d s i N := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>  have hδ := deltaN_pos hs1 (show 0 &lt; N by omega)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have hlog : 0 &lt; Real.log (Real.exp 1 * N) := by have := log_exp_mul_pos (show 1 ≤ N by omega); linarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  rcases i with _ | _ | j
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  · simp only [wfam]; positivity
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>  · simp only [wfam]; have := Real.sqrt_pos.2 hlog; positivity
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  · simp only [wfam]; positivity
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>theorem Kfam_pos (D D&#x27; : ℝ) (hD : 0 &lt; D) (hD&#x27; : 0 &lt; D&#x27;) (i : ℕ) : 0 &lt; Kfam D D&#x27; i := by
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  rcases i with _ | _ | j
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  · unfold Kfam; positivity
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  · unfold Kfam; have := M1c_pos; positivity
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  · unfold Kfam; have := Mjc_pos (j + 2); positivity
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>theorem deltaN_nonneg&#x27; (hs1 : (d : ℝ) / 2 &lt; s) (N : ℕ) : 0 ≤ deltaN d s N := by
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  rw [deltaN_eq hs1]; exact Real.rpow_nonneg (Nat.cast_nonneg N) _
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>theorem covariance_obstruction_proof (hd : 2 ≤ d) {s : ℝ} (hs1 : (d : ℝ) / 2 &lt; s) (hsd : s &lt; d)
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    (β : ℝ) (hβ : 0 &lt; β) (k : Lattice d) (hk : k ≠ 0) (ρ : ℝ → Torus d → ℝ)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    (hρ : ∀ θ, IsThermalDensity (periodicRiesz d s) (rateV k β θ) β (ρ θ)) :
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    ∃ ε c : ℝ, 0 &lt; ε ∧ 0 &lt; c ∧
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>        (fun θ =&gt; supercriticalBias d s β (ρ θ) (Torus.cosMode k)) ∧
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      supercriticalBias d s β (ρ 0) (Torus.cosMode k) = 0 ∧
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      (∃ c₀ : ℝ, 0 &lt; c₀ ∧ ∀ θ ∈ Set.Icc (0 : ℝ) ε,
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>        c₀ ≤ deriv (fun θ&#x27; =&gt; supercriticalBias d s β (ρ θ&#x27;) (Torus.cosMode k)) θ) ∧
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      (∃ c₁ : ℝ, 0 &lt; c₁ ∧ ∃ cJ : ℕ → ℝ, (∀ j : ℕ, 2 ≤ j → 0 &lt; cJ j) ∧
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>        ∀ a b : ℝ, 0 &lt; a → a &lt; b → b &lt; ε →
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>        Tendsto (fun N : ℕ =&gt; (deltaN d s N)⁻¹ * ∫ θ in a..b,
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>            (rateVarN d s k β N θ - susceptibilityCov (periodicRiesz d s) (withDensityReal (ρ θ)) β
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>              (Torus.cosMode k) (Torus.cosMode k))) atTop
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          (𝓝 (supercriticalBias d s β (ρ b) (Torus.cosMode k) -
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>            supercriticalBias d s β (ρ a) (Torus.cosMode k))) ∧
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>        0 &lt; supercriticalBias d s β (ρ b) (Torus.cosMode k) -
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>          supercriticalBias d s β (ρ a) (Torus.cosMode k) ∧
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        ENNReal.ofReal (c * (b - a)) ≤ liminf (fun N : ℕ =&gt;
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>          ENNReal.ofReal (deltaN d s N)⁻¹ * ∫⁻ θ in Set.Icc a b,
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>            wassersteinE 2 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop ∧
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>        ENNReal.ofReal (c₁ * (b - a)) ≤ liminf (fun N : ℕ =&gt;
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>          ENNReal.ofReal (Real.sqrt (Real.log (Real.exp 1 * N)) / deltaN d s N) *
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>            ∫⁻ θ in Set.Icc a b,
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>              wassersteinE 1 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop ∧
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>        (∀ j : ℕ, 2 ≤ j → ENNReal.ofReal (cJ j * (b - a)) ≤
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>          liminf (fun N : ℕ =&gt;
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>            ENNReal.ofReal (Real.log (Real.exp 1 * N) / deltaN d s N) *
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>              ∫⁻ θ in Set.Icc a b, ENNReal.ofReal
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>                (smoothDist j (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ)))) atTop)) ∧
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      ∃ ℛ : Set ℝ, IsGδ ℛ ∧ ℛ ⊆ Set.Ioo 0 ε ∧ Set.Ioo 0 ε ⊆ closure ℛ ∧
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>        ∀ θ ∈ ℛ,
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>          ENNReal.ofReal c ≤ limsup (fun N : ℕ =&gt; ENNReal.ofReal (deltaN d s N)⁻¹ *
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>            wassersteinE 2 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop ∧
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>          0 &lt; limsup (fun N : ℕ =&gt;
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>            ENNReal.ofReal (Real.sqrt (Real.log (Real.exp 1 * N)) / deltaN d s N) *
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>              wassersteinE 1 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop ∧
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>          (∀ j : ℕ, 2 ≤ j →
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>            0 &lt; limsup (fun N : ℕ =&gt; ENNReal.ofReal (Real.log (Real.exp 1 * N) / deltaN d s N) *
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>              ENNReal.ofReal (smoothDist j (rateLaw d s k β N θ)
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>                (rateGaussian d s k β (ρ θ)))) atTop) ∧
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>          (2 * (d : ℝ) / 3 &lt; s →
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>            limsup (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N) *
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>              wassersteinE 2 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop = ⊤ ∧
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>            limsup (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N) *
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>              wassersteinE 1 (rateLaw d s k β N θ) (rateGaussian d s k β (ρ θ))) atTop = ⊤ ∧
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>            ∀ j : ℕ, 2 ≤ j →
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>              limsup (fun N : ℕ =&gt; ENNReal.ofReal (Real.sqrt N) *
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>                ENNReal.ofReal (smoothDist j (rateLaw d s k β N θ)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>                  (rateGaussian d s k β (ρ θ)))) atTop = ⊤) := by
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  classical
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  have H : Hyp d s β k ρ := ⟨hd, hs1, hsd, hβ, hk, hρ⟩
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  have hs : (d : ℝ) / 2 ≤ s := hs1.le
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  obtain ⟨-, -, -, hB4⟩ := TRR.thermal_response_rates_proof hd hs hsd β hβ k hk ρ hρ
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  obtain ⟨hBcd, hB0, hBder, hP0⟩ := hB4 hs1
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  obtain ⟨P0, hBder, hP0⟩ : ∃ P0 : ℝ, HasDerivAt (fun θ =&gt; supercriticalBias d s β (ρ θ)
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>      (Torus.cosMode k)) P0 0 ∧ 0 &lt; P0 := ⟨_, hBder, hP0⟩
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>  have hcd : Continuous (deriv (fun θ =&gt; supercriticalBias d s β (ρ θ) (Torus.cosMode k))) :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    hBcd.continuous_deriv (by simp)
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  have hev : ∀ᶠ θ in 𝓝 (0 : ℝ), P0 / 2 &lt; deriv (fun θ =&gt; supercriticalBias d s β (ρ θ)
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      (Torus.cosMode k)) θ :=
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    hcd.continuousAt.eventually (lt_mem_nhds (by rw [hBder.deriv]; linarith))
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>  obtain ⟨ε&#x27;, hε&#x27;0, hε&#x27;⟩ := Metric.eventually_nhds_iff.1 hev
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  set ε : ℝ := ε&#x27; / 2 with hεdef
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  have hε : 0 &lt; ε := by positivity
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>  have hder : ∀ θ ∈ Icc (0 : ℝ) ε, P0 / 2 &lt; deriv (fun θ =&gt; supercriticalBias d s β (ρ θ)
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      (Torus.cosMode k)) θ := by
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    intro θ hθ
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    refine hε&#x27; ?_
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    rw [Real.dist_eq, sub_zero, abs_of_nonneg hθ.1]
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    linarith [hθ.2]
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  have hBlow : ∀ a b : ℝ, 0 ≤ a → a ≤ b → b ≤ ε → P0 / 2 * (b - a) ≤
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      supercriticalBias d s β (ρ b) (Torus.cosMode k) -
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>        supercriticalBias d s β (ρ a) (Torus.cosMode k) := by
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>    intro a b ha hab hb
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    refine (convex_Icc (0 : ℝ) ε).mul_sub_le_image_sub_of_le_deriv (f := fun θ =&gt;
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>      supercriticalBias d s β (ρ θ) (Torus.cosMode k)) hBcd.continuous.continuousOn
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      (hBcd.differentiable (by simp)).differentiableOn (C := P0 / 2) (fun x hx =&gt; ?_) a
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>      ⟨ha, hab.trans hb⟩ b ⟨ha.trans hab, hb⟩ hab
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    rw [interior_Icc] at hx
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>    exact (hder x ⟨hx.1.le, hx.2.le⟩).le
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>  -- sub-Gaussian tail and variance bounds on [0, ε]
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  obtain ⟨D, hD2, hDt⟩ := response_subGaussian_proof hd hs hsd β hβ k hk ρ hρ 0 ε
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>  obtain ⟨Cu, hCu⟩ := rateVarN_uniform_bound hd hs hsd β hβ k hk 0 ε
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  set D&#x27; : ℝ := max Cu 1 with hD&#x27;def
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  have hD&#x27; : 1 ≤ D&#x27; := le_max_right _ _
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  have hCN : ∀ N : ℕ, 2 ≤ N → ∀ θ ∈ Icc (0 : ℝ) ε, rateVarN d s k β N θ ≤ D&#x27; :=
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    fun N hN θ hθ =&gt; (hCu N hN θ hθ).trans (le_max_left _ _)
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>  have htail : ∀ x : ℝ, 0 ≤ x → ∀ N : ℕ, 2 ≤ N → ∀ θ ∈ Icc (0 : ℝ) ε,
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>      rateGibbs d s k β θ N {X | x &lt; |rateY d s k β N θ X|} +
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>        gaussianReal 0 (covC d s β k ρ θ).toNNReal {z | x &lt; |z|} ≤
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>        ENNReal.ofReal (4 * Real.exp (-x ^ 2 / (2 * D))) :=
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    fun x hx N hN θ hθ =&gt; hDt x hx N hN θ hθ
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  have hDpos : 0 &lt; D := by linarith
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  have hD&#x27;pos : 0 &lt; D&#x27; := by linarith
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  set qf : ℕ → ℝ := fun i =&gt; P0 / 2 / (2 * Kfam D D&#x27; i) with hqf
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>  have hqfpos : ∀ i, 0 &lt; qf i := fun i =&gt; by
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>    have := Kfam_pos D D&#x27; hDpos hD&#x27;pos i
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>    simp only [hqf]; positivity
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  have hS : ∀ i : ℕ,
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      (∀ a b : ℝ, 0 &lt; a → a &lt; b → b &lt; ε → ENNReal.ofReal (qf i * (b - a)) ≤
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>        liminf (fun N : ℕ =&gt; ENNReal.ofReal (wfam d s i N) *
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>          ∫⁻ θ in Icc a b, Tfam d s k β ρ i N θ) atTop) ∧
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      ∃ R : Set ℝ, R ⊆ Ioo 0 ε ∧ IsGδ R ∧ Ioo 0 ε ⊆ closure R ∧
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        ∀ θ ∈ R, ∀ L : ℕ, ∃ N : ℕ, L ≤ N ∧ 2 ≤ N ∧ qf i / 2 &lt; gfam d s k β ρ D D&#x27; i N θ :=
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    fun i =&gt; scheme ε hε (gfam d s k β ρ D D&#x27; i) (Tfam d s k β ρ i) (wfam d s i)
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      (gfam_continuous H D D&#x27; i)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>      (gfam_nonneg d s k β ρ D D&#x27; (fun j =&gt; (Kfam_pos D D&#x27; hDpos hD&#x27;pos j).le)
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>        (deltaN_nonneg&#x27; hs1) i)
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      (fun N hN θ hθ =&gt; hmin H ε D D&#x27; hD2 hD&#x27; htail hCN i N hN θ ⟨hθ.1.le, hθ.2.le⟩)
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      (qf i) (hqfpos i)
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>      (fun c e hc hce he =&gt; avg_lower H ε D D&#x27; (P0 / 2) hDpos (by linarith) hBlow i
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>        (Kfam_pos D D&#x27; hDpos hD&#x27;pos i) c e hc hce he)
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>  choose R hR using fun i =&gt; (hS i).2
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>  have hint := inter_dense ε R (fun i =&gt; ⟨(hR i).1, (hR i).2.1, (hR i).2.2.1⟩)
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>  have key : ∀ θ ∈ ⋂ i, R i, ∀ i : ℕ, ∀ L : ℕ, ∃ N : ℕ, L ≤ N ∧ 2 ≤ N ∧
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>      ENNReal.ofReal (qf i / 2) ≤ ENNReal.ofReal (wfam d s i N) * Tfam d s k β ρ i N θ := by
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    intro θ hθ i L
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    have hθi := Set.mem_iInter.1 hθ i
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>    obtain ⟨N, h1, h2, h3⟩ := (hR i).2.2.2 θ hθi L
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    have hθ&#x27; : θ ∈ Ioo 0 ε := (hR i).1 hθi
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>    exact ⟨N, h1, h2, (ENNReal.ofReal_le_ofReal h3.le).trans
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>      (hmin H ε D D&#x27; hD2 hD&#x27; htail hCN i N h2 θ ⟨hθ&#x27;.1.le, hθ&#x27;.2.le⟩)⟩
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>  have hfreq : ∀ θ ∈ ⋂ i, R i, ∀ i : ℕ, ∃ᶠ N : ℕ in atTop,
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      ENNReal.ofReal (qf i / 2) ≤ ENNReal.ofReal (wfam d s i N) * Tfam d s k β ρ i N θ := by
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>    intro θ hθ i
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>    rw [Filter.frequently_atTop]
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>    intro L
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>    obtain ⟨N, h1, -, h3⟩ := key θ hθ i L
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>    exact ⟨N, h1, h3⟩
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>  refine ⟨ε, qf 0 / 2, hε, by have := hqfpos 0; positivity, hBcd, hB0,
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>    ⟨P0 / 2, by linarith, fun θ hθ =&gt; (hder θ hθ).le⟩,
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    ⟨qf 1, hqfpos 1, fun j =&gt; qf j, fun j hj =&gt; hqfpos j, fun a b ha hab hb =&gt; ?_⟩,
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    ⋂ i, R i, hint.2.1, hint.1, hint.2.2, fun θ hθ =&gt; ?_⟩
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>  · refine ⟨avg_tendsto hd hs1 hsd β hβ k hk ρ hρ a b, ?_, ?_, (hS 1).1 a b ha hab hb, ?_⟩
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    · have := hBlow a b ha.le hab.le hb.le
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>      have h2 : 0 &lt; P0 / 2 * (b - a) := by
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>        have : 0 &lt; b - a := by linarith
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>        positivity
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>      linarith
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>    · refine le_trans (ENNReal.ofReal_le_ofReal ?_) ((hS 0).1 a b ha hab hb)
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>      have : 0 &lt; b - a := by linarith
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>      have := hqfpos 0
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      nlinarith
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    · intro j hj
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      obtain ⟨j&#x27;, rfl⟩ := Nat.exists_eq_add_of_le&#x27; hj
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      exact (hS (j&#x27; + 2)).1 a b ha hab hb
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>  · have fr := hfreq θ hθ
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>    refine ⟨?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>    · exact Filter.le_limsup_of_frequently_le (fr 0)
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>    · exact lt_of_lt_of_le (ENNReal.ofReal_pos.2 (by have := hqfpos 1; positivity))
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        (Filter.le_limsup_of_frequently_le (fr 1))
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>    · intro j hj
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>      obtain ⟨j&#x27;, rfl⟩ := Nat.exists_eq_add_of_le&#x27; hj
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>      exact lt_of_lt_of_le (ENNReal.ofReal_pos.2 (by have := hqfpos (j&#x27; + 2); positivity))
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>        (Filter.le_limsup_of_frequently_le (fr (j&#x27; + 2)))
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>    · intro h23
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      refine ⟨?_, ?_, ?_⟩
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      · exact limsup_top_of_frequent (T := fun N =&gt; Tfam d s k β ρ 0 N θ) (w := wfam d s 0)
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>          (q := qf 0 / 2) (by have := hqfpos 0; positivity) (fun N hN =&gt; wfam_pos hs1 0 N hN)
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>          (fun L =&gt; key θ hθ 0 L) (growth hs1 h23 0)
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>      · exact limsup_top_of_frequent (T := fun N =&gt; Tfam d s k β ρ 1 N θ) (w := wfam d s 1)
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>          (q := qf 1 / 2) (by have := hqfpos 1; positivity) (fun N hN =&gt; wfam_pos hs1 1 N hN)
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          (fun L =&gt; key θ hθ 1 L) (growth hs1 h23 1)
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>      · intro j hj
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>        obtain ⟨j&#x27;, rfl⟩ := Nat.exists_eq_add_of_le&#x27; hj
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>        exact limsup_top_of_frequent (T := fun N =&gt; Tfam d s k β ρ (j&#x27; + 2) N θ)
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>          (w := wfam d s (j&#x27; + 2)) (q := qf (j&#x27; + 2) / 2)
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>          (by have := hqfpos (j&#x27; + 2); positivity) (fun N hN =&gt; wfam_pos hs1 (j&#x27; + 2) N hN)
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>          (fun L =&gt; key θ hθ (j&#x27; + 2) L) (growth hs1 h23 (j&#x27; + 2))
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>end HRS.MD.Cov211
+</span></code></pre></main></body></html>

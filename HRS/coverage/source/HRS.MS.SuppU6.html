@@ -1,0 +1,164 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.SuppU6 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.SuppU6</code></h1><p><a href="../../lean/HRS/MS/SuppU6.lean">Open the unaltered Lean file</a> · 163 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.SuppU6Aux8
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Whole.CriticalNoise
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Worker U6: proof of `HRS.Whole.adapted_charts` (frozen in `HRS/Whole/CriticalNoise.lean`)
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Route.  Charts `F_x(u) = x + A_x u`, `A_x = 1 - γ(|x|²) x xᵀ` (radial scale `⟨x⟩⁻¹`, angular scale `1`),
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>with inverse `B_x = 1 + δ(|x|²) x xᵀ`, `‖B_x v‖² = ‖v‖² + ⟪x,v⟫²`, `det A_x = ⟨x⟩⁻¹`.
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>A maximal `1/16`-separated set `S` for the relation &quot;`|x-y| ≥ ε` or `||x|²-|y|²| ≥ ε`&quot; (Zorn) gives
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>centres; the cover property and the uniform volume count (`u6_count`) give a locally finite family
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>of bumps `ψ_k = ψ ∘ F_k⁻¹`, `Ψ = ∑ ψ_k² ≥ 1`, `χ_k = ψ_k G(Ψ)` with `G(t) = t^{-1/2}` on `[1,∞)`.
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>Uniform derivative bounds: the transition maps satisfy `‖B_k A_j‖ ≤ 2` for overlapping charts, and the
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>Faà di Bruno / Leibniz bounds of Mathlib give constants independent of `j`.
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>-/
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>noncomputable section
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open MeasureTheory Metric
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>namespace HRS.Whole
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>open HRS.U6
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>variable {d : ℕ}
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>lemma u6_cube_norm_le {u : Euc d} (hu : u ∈ chartCube d) : ‖u‖ ≤ (d : ℝ) := by
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  have h1 : ∀ i, ‖u.ofLp i‖ ^ 2 ≤ 1 / 4 := by
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>    intro i
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    have := hu i
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    rw [Real.norm_eq_abs, sq_abs]
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>    nlinarith [abs_nonneg (u.ofLp i), sq_abs (u.ofLp i)]
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>  have h2 : ‖u‖ ^ 2 ≤ (d : ℝ) / 4 := by
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    rw [EuclideanSpace.norm_sq_eq]
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>    calc ∑ i, ‖u.ofLp i‖ ^ 2 ≤ ∑ _i : Fin d, (1 / 4 : ℝ) := Finset.sum_le_sum (fun i _ =&gt; h1 i)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      _ = (d : ℝ) / 4 := by simp [div_eq_inv_mul]; ring
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have h3 : (d : ℝ) / 4 ≤ (d : ℝ) ^ 2 := by
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>    rcases Nat.eq_zero_or_pos d with h | h
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>    · simp [h]
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    · have : (1 : ℝ) ≤ d := by exact_mod_cast h
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>      nlinarith
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>  exact le_of_sq_le_sq (h2.trans h3) (Nat.cast_nonneg d)
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>lemma u6_closedBall_subset_interior (d : ℕ) :
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    Metric.closedBall (0 : Euc d) (1 / 4) ⊆ interior (chartCube d) := by
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hopen : IsOpen {u : Euc d | ∀ i, |u.ofLp i| &lt; 1 / 2} := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    simp only [Set.ofPred_forall]
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    exact isOpen_iInter_of_finite (fun i =&gt; isOpen_lt
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>      (continuous_abs.comp (EuclideanSpace.proj i).continuous) continuous_const)
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  have hsub : {u : Euc d | ∀ i, |u.ofLp i| &lt; 1 / 2} ⊆ chartCube d := fun u hu i =&gt; (hu i).le
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  refine fun u hu =&gt; interior_maximal hsub hopen ?_
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  intro i
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  have h1 := PiLp.norm_apply_le u i
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  rw [Real.norm_eq_abs] at h1
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  rw [mem_closedBall, dist_zero_right] at hu
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  linarith
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>lemma u6_density {q c C : ℝ} (hc : 0 &lt; c) {ρ : Euc d → ℝ}
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>    (hρ : ∀ x, c * Real.exp (-q * ‖x‖ ^ 2 / 2) ≤ ρ x ∧ ρ x ≤ C * Real.exp (-q * ‖x‖ ^ 2 / 2))
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    (hq : 0 &lt; q) {M : ℝ} (x y : Euc d) (h : |‖y‖ ^ 2 - ‖x‖ ^ 2| ≤ M) :
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    (c / C) * Real.exp (-q * M / 2) * ρ x ≤ ρ y ∧
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>      ρ y ≤ (C / c) * Real.exp (q * M / 2) * ρ x := by
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  have hC : 0 &lt; C := by
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    have := hρ 0
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    have h0 := Real.exp_pos (-q * ‖(0 : Euc d)‖ ^ 2 / 2)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    nlinarith [this.1, this.2]
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hab := abs_le.mp h
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  obtain ⟨hx1, hx2⟩ := hρ x
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  obtain ⟨hy1, hy2⟩ := hρ y
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  constructor
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  · -- ρ y ≥ c e^{-q|y|²/2} ≥ c e^{-qM/2} e^{-q|x|²/2} ≥ (c/C) e^{-qM/2} ρ x
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have e1 : Real.exp (-q * M / 2) * Real.exp (-q * ‖x‖ ^ 2 / 2) ≤ Real.exp (-q * ‖y‖ ^ 2 / 2) := by
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>      rw [← Real.exp_add]; apply Real.exp_le_exp.mpr; nlinarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>    have e2 : (c / C) * Real.exp (-q * M / 2) * ρ x ≤ c * (Real.exp (-q * M / 2) *
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>        Real.exp (-q * ‖x‖ ^ 2 / 2)) := by
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>      have : (c / C) * ρ x ≤ c * Real.exp (-q * ‖x‖ ^ 2 / 2) := by
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>        rw [div_mul_eq_mul_div, div_le_iff₀ hC]
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>        nlinarith [hx2]
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>      have hE := Real.exp_pos (-q * M / 2)
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      nlinarith
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    nlinarith [mul_le_mul_of_nonneg_left e1 hc.le]
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  · have e1 : Real.exp (-q * ‖y‖ ^ 2 / 2) ≤ Real.exp (q * M / 2) * Real.exp (-q * ‖x‖ ^ 2 / 2) := by
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      rw [← Real.exp_add]; apply Real.exp_le_exp.mpr; nlinarith
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have e2 : C * (Real.exp (q * M / 2) * Real.exp (-q * ‖x‖ ^ 2 / 2)) ≤
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>        (C / c) * Real.exp (q * M / 2) * ρ x := by
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>      have : C * Real.exp (-q * ‖x‖ ^ 2 / 2) ≤ (C / c) * ρ x := by
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>        rw [div_mul_eq_mul_div, le_div_iff₀ hc]
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>        nlinarith [hx1]
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      have hE := Real.exp_pos (q * M / 2)
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>      nlinarith
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    nlinarith [mul_le_mul_of_nonneg_left e1 hC.le]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>theorem u6_adapted_charts_main : type_of% @HRS.Whole.adapted_charts := by
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  intro d hd q c C hq hc ρ hρ
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>  obtain ⟨S, hS, hcov⟩ := u6_exists_net (d := d) (1 / 16) (by norm_num)
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  have hcount : Countable S := by
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hc&#x27; : S.PairwiseDisjoint (fun x : Euc d =&gt; {y | ‖u6Fi x y‖ &lt; 1 / 128}) := by
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>      intro x hx x&#x27; hx&#x27; hne
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>      rw [Function.onFun, Set.disjoint_left]
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      intro y hy hy&#x27;
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      have h1 : u6F x (u6Fi x y) = u6F x&#x27; (u6Fi x&#x27; y) := by rw [u6F_Fi, u6F_Fi]
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      exact u6_not_sep_of_overlap (ε := 1 / 16) (ρ := 1 / 128) (by norm_num) (by norm_num) h1
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>        (le_of_lt hy) (le_of_lt hy&#x27;) (hS hx hx&#x27; hne)
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>    exact (Set.PairwiseDisjoint.countable_of_isOpen hc&#x27;
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (fun x _ =&gt; isOpen_lt (continuous_u6Fi x).norm continuous_const)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      (fun x _ =&gt; ⟨x, by simp [u6Fi]⟩)).to_subtype
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  refine ⟨S, hcount, fun j =&gt; j.1, fun j =&gt; u6A j.1, u6chi S, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  · intro j
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    refine ⟨u6chi_contDiff hS j, ?_⟩
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>    exact (u6chi_tsupport j).trans (Set.image_mono (u6_closedBall_subset_interior d))
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>  · exact fun x =&gt; u6chi_sum hS hcov x
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  · exact ⟨1, fun j =&gt; opNorm_u6A_le j.1⟩
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  · refine ⟨1, 1, one_pos, fun j =&gt; ?_⟩
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>    have h1 : |LinearMap.det (u6A j.1 : Euc d →ₗ[ℝ] Euc d)| = jbracket j.1 ^ (-1 : ℝ) := by
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      rw [u6_det, Real.rpow_neg_one]
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      show |1 / u6j j.1| = (u6j j.1)⁻¹
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>      have hp := u6j_pos j.1
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>      rw [abs_of_nonneg (by positivity), one_div]
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    show 1 * jbracket j.1 ^ (-1 : ℝ) ≤ |LinearMap.det (u6A j.1 : Euc d →ₗ[ℝ] Euc d)| ∧
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      |LinearMap.det (u6A j.1 : Euc d →ₗ[ℝ] Euc d)| ≤ 1 * jbracket j.1 ^ (-1 : ℝ)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [h1, one_mul]
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    exact ⟨le_rfl, le_rfl⟩
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  · intro l
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>    obtain ⟨Cl, hCl⟩ := u6_chart_deriv_bound hS l
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>    exact ⟨Cl, fun j u =&gt; hCl j u⟩
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  · obtain ⟨K, hK⟩ := u6_count_sub (d := d) (by norm_num : (0 : ℝ) &lt; 1 / 16) (by norm_num) hS
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>      (d : ℝ) 0 (Nat.cast_nonneg d) le_rfl
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    refine ⟨K, fun x =&gt; ?_⟩
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    refine (hK x _ ?_).2
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    rintro k ⟨u, hu, hux⟩
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    refine ⟨u, 0, u6_cube_norm_le hu, by simp, ?_⟩
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    simp only [u6F, map_zero, add_zero]
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    exact hux
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  · -- density comparison
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    set R : ℝ := (d : ℝ) with hR
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    set Mq : ℝ := 2 * R + R ^ 2 with hMq
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    refine ⟨(c / C) * Real.exp (-q * Mq / 2), (C / c) * Real.exp (q * Mq / 2), ?_, fun j u hu =&gt; ?_⟩
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    · have hC : 0 &lt; C := by
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>        have := hρ 0
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>        have h0 := Real.exp_pos (-q * ‖(0 : Euc d)‖ ^ 2 / 2)
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>        nlinarith [this.1, this.2]
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>      positivity
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    · have hb : |‖j.1 + u6A j.1 u‖ ^ 2 - ‖j.1‖ ^ 2| ≤ Mq := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>        have := abs_normsq_u6F j.1 u
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>        have hn := u6_cube_norm_le hu
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>        have h1 : 2 * ‖u‖ + ‖u‖ ^ 2 ≤ Mq := by
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>          rw [hMq, hR]; gcongr
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>        exact (this.trans h1)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>      have hdens := u6_density hc hρ hq j.1 (j.1 + u6A j.1 u) hb
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>      have hdet : 0 ≤ |LinearMap.det (u6A j.1 : Euc d →ₗ[ℝ] Euc d)| := abs_nonneg _
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>      constructor
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      · have := mul_le_mul_of_nonneg_right hdens.1 hdet
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>        simpa [mul_assoc] using this
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      · have := mul_le_mul_of_nonneg_right hdens.2 hdet
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>        simpa [mul_assoc] using this
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>  · intro p hp
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>    have := u6_summable_jbracket hS hp
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    exact this
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>end HRS.Whole
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>/-- Worker U6: the frozen statement `HRS.Whole.adapted_charts`. -/
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>theorem adapted_charts_proof : type_of% @HRS.Whole.adapted_charts :=
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  HRS.Whole.u6_adapted_charts_main
+</span></code></pre></main></body></html>

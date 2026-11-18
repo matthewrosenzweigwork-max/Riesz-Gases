@@ -1,0 +1,81 @@
+import HRS.MS.Fp81S21DriftPrimitive
+import HRS.MS.Fp81S21WindowSup45
+
+/-! Uniform sixth-moment bounds for both source extensions. -/
+set_option autoImplicit false
+set_option maxHeartbeats 400000
+noncomputable section
+open MeasureTheory Set
+namespace HRS.Fp81.S21
+open HRS HRS.Whole HRS.MS.R26T3 HRS.MS.R2WinErr HRS.MS.R2WinOrbNL
+
+/-- The same constants control all particle counts, realizations, source times,
+terminal times, and modes. -/
+theorem fp81s21_source_sixth_slices (p : Parameters) :
+    ∃ δ0 : ℝ, 0 < δ0 ∧ δ0 ≤ 1 / 2 ∧
+      ∀ δ : ℝ, 0 < δ → δ ≤ δ0 → ∀ R : Trajectory p δ,
+      ∃ C L : ℝ, 0 ≤ C ∧ 0 ≤ L ∧ ∀ N : ℕ, 2 ≤ N → ∀ A : Particle R N,
+      ∀ v t : ℝ, 0 ≤ v → v ≤ t → ∀ α : MultiIndex p.d,
+      SixthBound A.P
+        (fun ω => r2QuadField p.s (r26t3_mu R v) A.P A.X v ω
+          (oscTestFun (wholeSpaceIndex p.d : ℝ) α))
+        (C * (L * s104_b p.d α) ^ 6) ∧
+      SixthBound A.P
+        (fun ω => r2QuadField p.s (r26t3_mu R v) A.P A.X v ω
+          (propagatorW (r26t3_coeff R) v t (generatorW (r26t3_coeff R) t
+            (oscTestFun (wholeSpaceIndex p.d : ℝ) α))))
+        (C * (L * s104_b p.d α) ^ 6) := by
+  obtain ⟨δa, hδa, hδah, hSix⟩ := fp81s21_particle_sixth_quadField p
+  obtain ⟨δb, hδb, hδbh, hKernel⟩ := fp81s21_window_terminal_kernel_envelopes p
+  obtain ⟨δc, Co, co, hδc, hδch, hco, hCommon⟩ := fp81s21_common_radius p
+  let δ0 := min δa (min δb δc)
+  refine ⟨δ0, lt_min hδa (lt_min hδb hδc), (min_le_left _ _).trans hδah, ?_⟩
+  intro δ hδ hδle R
+  have hδa' : δ ≤ δa := hδle.trans (min_le_left _ _)
+  have hδb' : δ ≤ δb := hδle.trans ((min_le_right _ _).trans (min_le_left _ _))
+  have hδc' : δ ≤ δc := hδle.trans ((min_le_right _ _).trans (min_le_right _ _))
+  obtain ⟨C, hC, hMom⟩ := hSix δ hδ hδa' R
+  obtain ⟨B, hB, hEn⟩ := hKernel δ hδ hδb' R
+  obtain ⟨_, _, hTerm, _⟩ := hCommon δ hδ hδc' R.ρβ R.thermal
+  let L : ℝ := max p.s 1 * B
+  have hL : 0 ≤ L := by dsimp [L]; positivity
+  refine ⟨C, L, hC, hL, ?_⟩
+  intro N hN A v t hv hvt α
+  let φ : Euc p.d → ℝ := oscTestFun (wholeSpaceIndex p.d : ℝ) α
+  let W : WholeCoeff p.d := r26t3_coeff R
+  let a : ℝ := s104_b p.d α
+  have ha : 0 ≤ a := s104_b_nonneg α
+  have ht : 0 ≤ t := hv.trans hvt
+  have horb : S104nOrbit W φ (t + 1) :=
+    s104b_orbit_of_termRegGen hTerm R.admissible R.resulting α (t + 1) (by linarith)
+  have hv' : v ∈ Icc (0 : ℝ) (t + 1) := ⟨hv, by linarith⟩
+  have hτ : t - v ∈ Icc (0 : ℝ) (t + 1 - v) := by constructor <;> linarith
+  have hDmeas : Measurable (propagatorW W v t (generatorW W t φ)) := by
+    have h := (horb.cb1 hv' hτ).1.continuous.measurable
+    simpa only [add_sub_cancel] using h
+  let K : ℝ := L * a
+  have hK : 0 ≤ K := mul_nonneg hL ha
+  have heq : max p.s 1 * (Real.toNNReal (B * s104_b p.d α) : ℝ) = K := by
+    rw [Real.coe_toNNReal _ (mul_nonneg hB ha)]
+    dsimp [K, L, a]
+    ring
+  have hDenv : IsBoundedPairKernel p.s K
+      (commutatorKernel p.d p.s (gradient (propagatorW W v t (generatorW W t φ)))) := by
+    simpa only [heq, W, φ] using (hEn v t hv hvt α).2
+  have hdiag : propagatorW W v v φ = φ :=
+    (HRS.MS.Fcau.propagatorW_isClassical (horb.ex0 v hv')).terminal
+  have hUmeas : Measurable (propagatorW W v v φ) := by
+    have hτ0 : (0 : ℝ) ∈ Icc (0 : ℝ) (t + 1 - v) := ⟨le_rfl, by linarith⟩
+    simpa using (horb.cb0 hv' hτ0).1.continuous.measurable
+  have hUenv : IsBoundedPairKernel p.s K
+      (commutatorKernel p.d p.s (gradient (propagatorW W v v φ))) := by
+    simpa only [heq, W, φ] using (hEn v v hv le_rfl α).1
+  have hU := (hMom N hN A v hv K hK _ hUmeas hUenv).1
+  have hD := (hMom N hN A v hv K hK _ hDmeas hDenv).1
+  constructor
+  · simpa only [hdiag, K, a, W, φ] using hU
+  · simpa only [K, a, W, φ] using hD
+
+#print axioms fp81s21_source_sixth_slices
+end HRS.Fp81.S21
+end

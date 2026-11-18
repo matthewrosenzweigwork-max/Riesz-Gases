@@ -1,0 +1,156 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MC.L5566 · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MC.L5566</code></h1><p><a href="../../lean/HRS/MC/L5566.lean">Open the unaltered Lean file</a> · 155 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MC.L5566Aux3
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Packet L5566: the gradient of the bounded negative-exponent kernel is unbounded (`M:@remark:L5566`)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>Relocated proof of `HRS.negSpectral_grad_unbounded`.  Route: `G = lift g` is `C¹` off `ℤ^d` (Aux2/3:
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>`G(y)(cos 2πy_i - 1) = F_i(y)` with `F_i` a `C¹` series), `G(0) - G(τ e_i) ≥ c₁ τ^{-s}` by positivity of
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>the coefficients (Aux3), so a bound `‖∇G‖ ≤ C` along the axis would give `G(0) - G(τ e_i) ≤ C τ`,
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>which fails since `-s &lt; 1`.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>-/
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>noncomputable section
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>open MeasureTheory Filter Topology
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>namespace HRS.MC.L5566
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>open HRS
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>variable {d : ℕ}
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>lemma l5566_diffAt_shift (G : Euc d → ℝ) (v y : Euc d) (hper : ∀ z, G (z - v) = G z)
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>    (h : DifferentiableAt ℝ G y) : DifferentiableAt ℝ G (y + v) := by
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>  have h2 : DifferentiableAt ℝ G (y + v - v) := by rwa [add_sub_cancel_right]
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  have h1 := h2.comp (y + v) (differentiableAt_id.sub_const v)
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>  have heq : (G ∘ fun x =&gt; id x - v) = G := funext fun z =&gt; hper z
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  rwa [heq] at h1
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>lemma l5566_lipschitz_step {s c : ℝ} (hs : s &lt; 0) (i : Fin d) (C : ℝ)
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    (hC : ∀ τ ∈ Set.Ioo (0 : ℝ) 1, DifferentiableAt ℝ (Torus.lift (negSpectralKernel d s c)) (l5566_pt i τ) ∧
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      ‖fderiv ℝ (Torus.lift (negSpectralKernel d s c)) (l5566_pt i τ)‖ ≤ C)
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>    (τ : ℝ) (hτ : τ ∈ Set.Ioo (0 : ℝ) 1) :
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>    Torus.lift (negSpectralKernel d s c) 0 - Torus.lift (negSpectralKernel d s c) (l5566_pt i τ) ≤ C * τ := by
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  set G := Torus.lift (negSpectralKernel d s c) with hG
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  set v : Euc d := EuclideanSpace.single i (1 : ℝ) with hv
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  have hC0 : 0 ≤ C := (norm_nonneg _).trans (hC τ hτ).2
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>  set φ : ℝ → ℝ := fun t =&gt; G (l5566_pt i t) with hφ
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  have hpt : ∀ t : ℝ, HasDerivAt (fun t : ℝ =&gt; l5566_pt i t) v t := by
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>    intro t
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>    have := (hasDerivAt_id t).smul_const v
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>    simpa [l5566_pt, hv] using this
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  have hder : ∀ t ∈ Set.Ioo (0 : ℝ) 1, HasDerivAt φ (fderiv ℝ G (l5566_pt i t) v) t := by
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    intro t ht
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>    exact (hC t ht).1.hasFDerivAt.comp_hasDerivAt t (hpt t)
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  have hbd : ∀ t ∈ Set.Ioo (0 : ℝ) 1, ‖fderiv ℝ G (l5566_pt i t) v‖ ≤ C := by
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>    intro t ht
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    calc ‖fderiv ℝ G (l5566_pt i t) v‖ ≤ ‖fderiv ℝ G (l5566_pt i t)‖ * ‖v‖ :=
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>          ContinuousLinearMap.le_opNorm _ _
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>      _ ≤ C * 1 := by
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>          rw [hv, EuclideanSpace.norm_single]
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>          simp only [norm_one, mul_one]
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>          exact (hC t ht).2
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>      _ = C := mul_one C
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hmv : ∀ ε ∈ Set.Ioo (0 : ℝ) τ, φ ε - φ τ ≤ C * τ := by
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>    intro ε hε
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    have hε1 : ε ∈ Set.Ioo (0 : ℝ) 1 := ⟨hε.1, hε.2.trans hτ.2⟩
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>    have := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le (f := φ)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>      (f&#x27; := fun t =&gt; fderiv ℝ G (l5566_pt i t) v) (s := Set.Ioo (0 : ℝ) 1) (C := C)
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>      (fun t ht =&gt; (hder t ht).hasDerivWithinAt) hbd (convex_Ioo 0 1) hτ hε1
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>    rw [Real.norm_eq_abs, Real.norm_eq_abs] at this
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>    have h2 := (abs_le.mp this).2
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>    have h3 : |ε - τ| = τ - ε := by rw [abs_sub_comm, abs_of_pos (by linarith [hε.2])]
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>    rw [h3] at h2
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>    nlinarith [hε.1]
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  have hcont : Continuous G := l5566_continuous_lift hs c
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hlim : Tendsto (fun ε =&gt; φ ε - φ τ) (𝓝[&gt;] (0 : ℝ)) (𝓝 (φ 0 - φ τ)) := by
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    have hc0 : Continuous φ := hcont.comp (by unfold l5566_pt; fun_prop)
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>    exact ((hc0.tendsto 0).sub tendsto_const_nhds).mono_left nhdsWithin_le_nhds
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hev : ∀ᶠ ε in 𝓝[&gt;] (0 : ℝ), φ ε - φ τ ≤ C * τ := by
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>    have : Set.Ioo (0 : ℝ) τ ∈ 𝓝[&gt;] (0 : ℝ) := Ioo_mem_nhdsGT hτ.1
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    filter_upwards [this] with ε hε using hmv ε hε
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  have := le_of_tendsto hlim hev
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have h0 : l5566_pt i (0 : ℝ) = 0 := by simp [l5566_pt]
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  simpa [hφ, h0] using this
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>theorem negSpectral_grad_unbounded_proof (hd : 1 ≤ d) {s c : ℝ} (hs1 : -1 &lt; s) (hs0 : s &lt; 0)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>    (hc : 0 &lt; c) :
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>    ∀ C : ℝ, ∃ x : Torus d, x ≠ 0 ∧
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>      DifferentiableAt ℝ (Torus.lift (negSpectralKernel d s c)) (Torus.rep x) ∧
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>      C &lt; ‖Torus.grad (negSpectralKernel d s c) x‖ := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>  intro C
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>  by_contra hcon
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>  push_neg at hcon
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>  set G := Torus.lift (negSpectralKernel d s c) with hG
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  let i : Fin d := ⟨0, hd⟩
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>  have hpt : ∀ τ ∈ Set.Ioo (0 : ℝ) 1, DifferentiableAt ℝ G (l5566_pt i τ) ∧
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>      ‖fderiv ℝ G (l5566_pt i τ)‖ ≤ C := by
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>    intro τ hτ
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>    have hcos : Real.cos (2 * Real.pi * (l5566_pt i τ) i) ≠ 1 := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>      rw [l5566_pt_apply]
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      intro h
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      have hπ := Real.pi_pos
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      have := (Real.cos_eq_one_iff_of_lt_of_lt (x := 2 * Real.pi * τ) (by nlinarith [hτ.1])
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>        (by nlinarith [hτ.2])).mp h
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      nlinarith [hτ.1]
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    have hdiff := l5566_differentiableAt hs0 hc i hcos
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>    refine ⟨hdiff, ?_⟩
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>    have hx0 : Torus.mk (l5566_pt i τ) ≠ 0 := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>      intro h
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>      have h1 := congrFun h i
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>      simp only [Torus.mk, l5566_pt_apply, Pi.zero_apply] at h1
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>      rw [AddCircle.coe_eq_zero_iff] at h1
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>      obtain ⟨n, hn⟩ := h1
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      simp only [zsmul_eq_mul, mul_one] at hn
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>      have h2 : (0 : ℝ) &lt; n := by rw [hn]; exact hτ.1
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>      have h3 : (n : ℝ) &lt; 1 := by rw [hn]; exact hτ.2
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>      have h4 : (0 : ℤ) &lt; n := by exact_mod_cast h2
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>      have h5 : n &lt; (1 : ℤ) := by exact_mod_cast h3
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      omega
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    obtain ⟨n, hn⟩ := Torus.rep_mk (l5566_pt i τ)
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>    have hdiff&#x27; : DifferentiableAt ℝ G (Torus.rep (Torus.mk (l5566_pt i τ))) := by
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>      rw [hn]
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>      refine l5566_diffAt_shift G (Lattice.toEuc n) _ (fun z =&gt; ?_) hdiff
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>      have := Torus.lift_periodic (negSpectralKernel d s c) (z - Lattice.toEuc n) n
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>      simpa [hG] using this.symm
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    have h1 := hcon _ hx0 hdiff&#x27;
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    rw [NegHess.grad_mk_aux] at h1
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    have : ‖gradient G (l5566_pt i τ)‖ = ‖fderiv ℝ G (l5566_pt i τ)‖ :=
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>      LinearIsometryEquiv.norm_map (InnerProductSpace.toDual ℝ (Euc d)).symm _
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    rw [this] at h1
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    exact h1
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>  have hlip := l5566_lipschitz_step (c := c) hs0 i C hpt
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>  -- choose M
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>  set K : ℝ := c * (4 * Real.pi * d) ^ (s - d) with hK
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hdR : (1 : ℝ) ≤ d := by exact_mod_cast hd
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hKpos : 0 &lt; K := by
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>    have := Real.pi_pos
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    positivity
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>  have hlim : Tendsto (fun M : ℕ =&gt; (M : ℝ) ^ (s + 1)) atTop atTop :=
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>    (tendsto_rpow_atTop (by linarith : 0 &lt; s + 1)).comp tendsto_natCast_atTop_atTop
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  obtain ⟨M, hM1, hM2⟩ := ((eventually_ge_atTop 1).and (hlim.eventually_gt_atTop (C / (4 * K)))).exists
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  have hMpos : (0 : ℝ) &lt; M := by exact_mod_cast hM1
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  have hM1&#x27; : (1 : ℝ) ≤ M := by exact_mod_cast hM1
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hτ : (1 / (4 * (M : ℝ))) ∈ Set.Ioo (0 : ℝ) 1 := by
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>    constructor
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>    · positivity
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    · rw [div_lt_one (by positivity)]; linarith
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>  have h1 := l5566_lower hs0 hc hd i M hM1
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  have h2 := hlip _ hτ
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>  have h3 : K * (M : ℝ) ^ s ≤ C * (1 / (4 * (M : ℝ))) := h1.trans h2
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>  have h4 : (M : ℝ) ^ (s + 1) = (M : ℝ) ^ s * M := Real.rpow_add_one hMpos.ne&#x27; s
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>  have h5 : K * (M : ℝ) ^ (s + 1) ≤ C / 4 := by
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    rw [h4]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    have := mul_le_mul_of_nonneg_right h3 hMpos.le
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    calc K * ((M : ℝ) ^ s * M) = K * (M : ℝ) ^ s * M := by ring
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>      _ ≤ C * (1 / (4 * (M : ℝ))) * M := this
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>      _ = C / 4 := by field_simp
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have h6 : C / 4 &lt; K * (M : ℝ) ^ (s + 1) := by
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    have := (div_lt_iff₀ (by positivity : 0 &lt; 4 * K)).mp hM2
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    nlinarith
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  linarith
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>example := (@negSpectral_grad_unbounded_proof : type_of% @HRS.negSpectral_grad_unbounded)
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>end HRS.MC.L5566
+</span></code></pre></main></body></html>

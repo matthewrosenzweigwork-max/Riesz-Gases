@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Stochastic.SelectedFlow · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Stochastic.SelectedFlow</code></h1><p><a href="../../lean/HRS/Stochastic/SelectedFlow.lean">Open the unaltered Lean file</a> · 200 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Stochastic.Bridge
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>import HRS.Dynamics.Setup
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a>/-!
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a># Selected particle flows: contact-allowing solution concepts and Assumption A.1
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Package PART-01, packet P1 (definitions only; no theorems).  Sources
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>(`HRS_periodic_main_20261008T010000Z.tex`): Assumption A.1 `M:B:ass:sde` (L10127-10143),
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>Proposition B.2 (L11662-11670, the Cépa–Lépingle ordered flow), Lemma 3.6 (L1637-1648),
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>Proposition B.3 (L11678-11688), `B:eq:selected-particle-law` (L10141).
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>Contents:
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* `IsContactStrongSolution`: `IsStrongSolution` without the collision-free clause (the notion of
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>  the Cépa–Lépingle flow, case (c) of A.1);
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* `NullContactOccupation`, `CyclicallyOrdered`, `IsCepaLepingleFlow`;
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>* `IsFilteredSolution`: the Brownian filtration to which a solution is adapted (ISSUES D1; now defined in
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>  `HRS/Dynamics/Setup.lean`, which Theorem 2.1 needs, and re-exported here by the import);
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>* `SelectedFlow` (Assumption A.1), `selectedLaw`, `HasSelectedDensity`, `selectedDensity`;
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>* the test-function classes `IsC12Test`, `IsFKETest` and the generators of Proposition B.3
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>  (`configLift`, `fkeGenerator`, `fkeInteraction`), the empirical noise integrand and martingale
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  (`empiricalNoiseIntegrand`, `empiricalMartingale`) and the label-off-diagonal interaction
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  `empiricalInteraction` of Lemma 3.6.
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>Deviation from `PART01_REST_SPEC.md` (to be reported to the lead): `IsFilteredSolution` carries
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>an additional field `progressive : IsProgressive ℱ (ofNNRealTime X)`.  The spec&#x27;s field
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>`adapted : ∀ t, Measurable[ℱ t] (X t)` is kept verbatim, but it does not imply that the
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>integrand `empiricalNoiseIntegrand D t f X` is progressively measurable (the paths of `X` are
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>only a.s. continuous, so on a null set they may be non-measurable in time), and then
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>`empiricalMartingale` (an `itoIntegral`, junk-valued off the `L²` class) is meaningless.  With
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>the extra field the statements of Lemma 3.6 / Proposition 3.7 / Proposition B.3 are provable as
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>stated.  The field holds for every a.s.-continuous adapted process modified on a null set.
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>-/
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>noncomputable section
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>open MeasureTheory Filter Topology ProbabilityTheory Set
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>open scoped ENNReal NNReal BigOperators
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>namespace HRS
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>variable {Ω : Type*} [mΩ : MeasurableSpace Ω] {d N : ℕ}
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>/-! ### Contact-allowing solution concepts -/
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>/-- A strong solution in the sense of `IsStrongSolution` **without** the collision-free
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>clause: the same `lift`, `init`, `cont`, `adapted` fields.  This is the notion the
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>manuscript uses for the Cépa–Lépingle flow (case (c) of Assumption A.1, L10136) in which
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>contacts are allowed.  At a contact, `particleDrift` evaluates the junk value
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>`periodicRieszGrad d s 0`; see `NullContactOccupation`. -/
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>structure IsContactStrongSolution (P : Measure Ω) (D : DynData d) (T : ℝ)
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  lift : ∃ Y : ℝ≥0 → Ω → (Fin N → Euc d),
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>    (∀ᵐ ω ∂P, ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>      (∀ i, IntegrableOn (fun s : ℝ =&gt; particleDrift D (projectPath Y (Real.toNNReal s) ω) i)
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>        (Set.Icc 0 (t : ℝ))) ∧
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      ∀ i, Y t ω i = Y 0 ω i + (∫ s in Set.Icc (0 : ℝ) t, particleDrift D (projectPath Y (Real.toNNReal s) ω) i)
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>        + Real.sqrt (2 * D.invβ) • (W t ω i - W 0 ω i)) ∧
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>    X = projectPath Y
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  init : ∀ᵐ ω ∂P, X 0 ω = X₀ ω
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  cont : ∀ᵐ ω ∂P, ∀ i, Continuous fun t =&gt; X t ω i
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  adapted : ∀ t : ℝ≥0, Measurable (X t)
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>theorem IsStrongSolution.toContact {P : Measure Ω} {D : DynData d} {T : ℝ}
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>    {X₀ : Ω → Config d N} {W : ℝ≥0 → Ω → (Fin N → Euc d)} {X : ℝ≥0 → Ω → Config d N}
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (h : IsStrongSolution P D T X₀ W X) : IsContactStrongSolution P D T X₀ W X :=
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  ⟨h.lift, h.init, h.cont, h.adapted⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>/-- The set of contact times has Lebesgue measure zero, a.s. (CL 1997, Thm 2.2:
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>the ordered gap processes are Bessel of dimension δ &gt; 1 and so spend zero time at 0). -/
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>def NullContactOccupation (P : Measure Ω) (T : ℝ) (X : ℝ≥0 → Ω → Config d N) : Prop :=
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>  ∀ᵐ ω ∂P, volume {s : ℝ | s ∈ Set.Icc 0 T ∧ X (Real.toNNReal s) ω ∈ collisionSet d N} = 0
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>/-- Cyclic order of a lift `y : Fin N → Euc d` under a labelling `π`: along the lift the
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>labelled points are nondecreasing and the total spread is at most one period
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>(`B:eq:…` L11665: &quot;ordered on the circle, with the order preserved&quot;).  Stated for every
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>coordinate so the definition type-checks for general `d`; it is used only with `d = 1`. -/
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>def CyclicallyOrdered (π : Equiv.Perm (Fin N)) (y : Fin N → Euc d) : Prop :=
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  ∀ j : Fin d, (∀ k k&#x27; : Fin N, k ≤ k&#x27; → y (π k) j ≤ y (π k&#x27;) j) ∧
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>    ∀ k k&#x27; : Fin N, y (π k&#x27;) j ≤ y (π k) j + 1
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>/-- The Cépa–Lépingle ordered flow (Prop B.2, L11662-11670): a contact-allowing strong
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>solution whose lift is cyclically ordered for all times by a (random, measurable)
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>labelling fixed at time 0, and whose contact set is Lebesgue-null a.s. -/
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>structure IsCepaLepingleFlow (P : Measure Ω) (D : DynData d) (T : ℝ)
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>  toContact : IsContactStrongSolution P D T X₀ W X
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  ordered : ∃ π : Ω → Equiv.Perm (Fin N), (∀ σ, MeasurableSet {ω | π ω = σ}) ∧
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    ∀ᵐ ω ∂P, ∃ Y : ℝ≥0 → Fin N → Euc d,
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>      (∀ t : ℝ≥0, (t : ℝ) ≤ T → X t ω = fun i =&gt; Torus.mk (Y t i)) ∧
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      Continuous Y ∧ ∀ t : ℝ≥0, (t : ℝ) ≤ T → CyclicallyOrdered (π ω) (Y t)
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>  occupation : NullContactOccupation P T X
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>/-! ### Assumption A.1 and the selected law -/
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>/-- Assumption A.1 (L10127-10143).  Cases (a), (b) and (d) are all &quot;the unique strong
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>collision-free solution&quot; and collapse into one disjunct; case (c) is the Cépa–Lépingle flow. -/
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>structure SelectedFlow (P : Measure Ω) (D : DynData d) (T : ℝ)
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    (X₀ : Ω → Config d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>    (X : ℝ≥0 → Ω → Config d N) : Prop where
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  init_meas : Measurable X₀
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  init_distinct : ∀ᵐ ω ∂P, X₀ ω ∉ collisionSet d N
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>  brownian : IsVectorBrownian P W
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>  indep : IndepFun X₀ (fun ω =&gt; fun t =&gt; W t ω) P
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>  flow :
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>    (IsStrongSolution P D T X₀ W X ∧ PathwiseUnique P D T X₀ W) ∨
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    (d = 1 ∧ D.s = 0 ∧ 0 &lt; D.invβ ∧ (∃ a : ℝ, 0 &lt; a ∧ D.M = -(a • 1)) ∧
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>      IsCepaLepingleFlow P D T X₀ W X)
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>/-- `P_N^t := Law(X_N^t)` (`B:eq:selected-particle-law` L10141). -/
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>def selectedLaw (P : Measure Ω) (X : ℝ≥0 → Ω → Config d N) (t : ℝ) : Measure (Config d N) :=
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  law P (X (Real.toNNReal t))
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>/-- `f_N^t` exists iff `P_N^t ≪ volume`; it is then `rnDeriv`. -/
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>def HasSelectedDensity (P : Measure Ω) (X : ℝ≥0 → Ω → Config d N) (t : ℝ) : Prop :=
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>  selectedLaw P X t ≪ (volume : Measure (Config d N))
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>/-- The density `f_N^t = dP_N^t/dX` (a junk measurable function unless `HasSelectedDensity`). -/
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>def selectedDensity (P : Measure Ω) (X : ℝ≥0 → Ω → Config d N) (t : ℝ) : Config d N → ℝ≥0∞ :=
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>  (selectedLaw P X t).rnDeriv volume
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>/-! ### Test-function classes -/
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>/-- Regularity of a time-dependent test `f : ℝ → Torus d → ℝ` on `[0,t]`: the exact
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>regularity the adjoint solution of Definition 3.5 enjoys (`IsClassicalAdjointSolution`
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>fields `c2`, `cont_c2`, `cont_time_deriv`), with the time derivative `ft` given on
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>`Ioo 0 t` and continuous on `Icc 0 t × Torus d`. -/
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>structure IsC12Test (t : ℝ) (f ft : ℝ → Torus d → ℝ) : Prop where
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  c2 : ∀ r ∈ Set.Icc 0 t, Torus.IsCk 2 (f r)
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>  cont_c2 : ∀ j ≤ 2, Continuous fun p : Set.Icc (0:ℝ) t × Euc d =&gt;
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    iteratedFDeriv ℝ j (Torus.lift (f p.1)) p.2
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  time_deriv : ∀ x, ∀ r ∈ Set.Ioo 0 t, HasDerivAt (fun r =&gt; f r x) (ft r x) r
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  cont_time_deriv : Continuous fun p : Set.Icc (0:ℝ) t × Torus d =&gt; ft p.1 p.2
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>theorem IsClassicalAdjointSolution.isC12Test {D : DynData d} {ρ : ℝ → Torus d → ℝ} {t : ℝ}
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>    {φ : Torus d → ℝ} {f : ℝ → Torus d → ℝ} (h : IsClassicalAdjointSolution D ρ t φ f) :
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>    IsC12Test t f (fun r x =&gt; -(backwardGenerator D (ρ r) (f r) x)) :=
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>  ⟨h.c2, h.cont_c2, h.time_deriv, h.cont_time_deriv.neg⟩
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>/-- The integrand of the empirical martingale `M_N^t[f]` (`B:eq:…` L1645):
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>`N⁻¹ √(2/β) ∂_j f(r, x_i(r))` for the coordinate `k = (i,j)`, zero outside `[0,t]`. -/
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>def empiricalNoiseIntegrand (D : DynData d) (t : ℝ) (f : ℝ → Torus d → ℝ)
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    (X : ℝ≥0 → Ω → Config d N) : ℝ → Ω → (Fin N × Fin d) → ℝ :=
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>  fun s ω k =&gt; if s ∈ Set.Icc 0 t then
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>    (Real.sqrt (2 * D.invβ) / N) * (Torus.grad (f s) (X (Real.toNNReal s) ω k.1)) k.2 else 0
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>/-- The empirical martingale `M_N^τ[f] = ∫_0^τ ∑_{i,j} (empiricalNoiseIntegrand)_{(i,j)} dW&#x27;_{(i,j)}`. -/
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>def empiricalMartingale (P : Measure Ω) (ℱ : Filtration ℝ mΩ) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (D : DynData d) (t : ℝ) (f : ℝ → Torus d → ℝ) (X : ℝ≥0 → Ω → Config d N) : ℝ → Ω → ℝ :=
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>  itoIntegral P ℱ W&#x27; (empiricalNoiseIntegrand D t f X)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>/-- Label-off-diagonal empirical interaction (`B:eq:…` L1500, &quot;the CL label-off-diagonal
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>sum&quot;): `(2N²)⁻¹ ∑_i ∑_{j ≠ i} ⟨∇ψ(x_i) − ∇ψ(x_j), M ∇g(x_i − x_j)⟩`.  At a contact
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>`x_i = x_j` the summand contains the junk value `∇g(0)`. -/
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>def empiricalInteraction (D : DynData d) (ψ : Torus d → ℝ) (x : Config d N) : ℝ :=
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>  (1 / (2 * (N:ℝ)^2)) * ∑ i, ∑ j ∈ Finset.univ.erase i,
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>    inner ℝ (Torus.grad ψ (x i) - Torus.grad ψ (x j))
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>      (Torus.matVec D.M (periodicRieszGrad d D.s (x i - x j)))
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>/-! ### The test class and generators of Proposition B.3 -/
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>/-- `Φ` read on the covering space. -/
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>def configLift (Φ : ℝ → Config d N → ℝ) (r : ℝ) (Y : Fin N → Euc d) : ℝ :=
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>  Φ r (fun i =&gt; Torus.mk (Y i))
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>/-- `C_c^{1,2}([0,T) × Ω_N)`: `C^{1,2}` on the covering space (the exact regularity Itô&#x27;s
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>formula needs), vanishing for `r ≥ T&#x27;` for some `T&#x27; &lt; T`, and vanishing outside a compact
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>`K ⊆ Ω_N`. -/
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>structure IsFKETest (T : ℝ) (Φ : ℝ → Config d N → ℝ) : Prop where
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  c12 : IsC12On T Set.univ (configLift Φ)
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>  time_support : ∃ T&#x27; &lt; T, ∀ r, T&#x27; ≤ r → ∀ X, Φ r X = 0
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>  space_support : ∃ K : Set (Config d N), IsCompact K ∧ Disjoint K (collisionSet d N) ∧
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>    ∀ r X, X ∉ K → Φ r X = 0
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>/-- The basis vector `e_k := Pi.single k.1 (EuclideanSpace.single k.2 1)` of the covering
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>space `Fin N → Euc d`. -/
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>def configBasis (d N : ℕ) (k : Fin N × Fin d) : Fin N → Euc d :=
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>  Pi.single k.1 (EuclideanSpace.single k.2 1)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>/-- `∂_r Φ + β⁻¹ Δ_X Φ − ∑_i ∇V(x_i)·∇_{x_i} Φ` at `(r, X)`, computed through the lift
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>at `Y = rep ∘ X`. -/
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>def fkeGenerator (D : DynData d) (T : ℝ) (Φ : ℝ → Config d N → ℝ) (r : ℝ) (X : Config d N) : ℝ :=
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>  let Y : Fin N → Euc d := fun i =&gt; Torus.rep (X i)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>  derivWithin (fun r =&gt; configLift Φ r Y) (Set.Icc 0 T) r
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>  + D.invβ * ∑ k : Fin N × Fin d,
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>      fderiv ℝ (fderiv ℝ (configLift Φ r)) Y (configBasis d N k) (configBasis d N k)
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>  - ∑ i, fderiv ℝ (configLift Φ r) Y (Pi.single i (Torus.grad D.V (X i)))
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>/-- `∑_i N⁻¹ ∑_{j ≠ i} ∇_{x_i}Φ · M∇g(x_i − x_j)`, written label-off-diagonal and
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>antisymmetrised, `w_ij := M∇g(x_i − x_j)`. -/
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>def fkeInteraction (D : DynData d) (Φ : ℝ → Config d N → ℝ) (r : ℝ) (X : Config d N) : ℝ :=
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>  let Y : Fin N → Euc d := fun i =&gt; Torus.rep (X i)
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  (1 / (N : ℝ)) * ∑ i, ∑ j ∈ Finset.univ.filter (fun j =&gt; i &lt; j),
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    (fderiv ℝ (configLift Φ r) Y
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>        (Pi.single i (Torus.matVec D.M (periodicRieszGrad d D.s (X i - X j))))
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>     - fderiv ℝ (configLift Φ r) Y
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>        (Pi.single j (Torus.matVec D.M (periodicRieszGrad d D.s (X i - X j)))))
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>end HRS
+</span></code></pre></main></body></html>

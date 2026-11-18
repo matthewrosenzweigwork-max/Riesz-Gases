@@ -1,0 +1,591 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.Whole.HeadlineStatement · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.Whole.HeadlineStatement</code></h1><p><a href="../../lean/HRS/Whole/HeadlineStatement.lean">Open the unaltered Lean file</a> · 590 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.Whole.Orbits
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># Whole-space preparations, field remainder, varying-temperature paths, and the headline theorem
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>(package S-DYN-01): Sections S3.2, S5.3, S5.6 and S2.1
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>Source: HRS whole-space supplement (S).
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>* S3.2 `W:cor:euclidean-preparations` (S lines 814-845);
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>* S3.6 `W:rem:r2-log-scope` (S lines 1968-1977): **no_formal_content** (a scope remark: it says
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>  which hypotheses the (already stated) logarithmic static theorem S3.5 uses and that it supplies no
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>  adjoint estimate by itself; it contains no further mathematical claim);
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>* S5.3 `W:r2:field-remainder` (3466-3487);
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>* S5.6 `W:thm:r2-general-paths` (3971-3997);
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>* S2.1 `H:thm:whole-space` (348-396).
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>## Dependencies of S2.1 (reported to the orchestrator)
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>`H:thm:whole-space` (S L348-396) depends on later rows of the supplement:
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>* the nonlinear relaxation theorem S6.3 `W:thm:r2mov-nonlinear` (S L4345-4371), which supplies the
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>  solution `μ^t` (&quot;the resulting nonlinear mean-field solution&quot;) and its comparability/decay bounds,
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>  encoded here as the hypothesis predicate `IsResultingSolution` (the constants of S6.3 are
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>  quantified before the constants of S2.1);
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>* S9.9/S10.x/S11.x (the static and window Edgeworth expansions) for part (iii), whose coordinate
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>  formula `H:eq:cubic-formula` is `cubicFormula`;
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>* the critical-case Proposition `S:prop:critical-whole` (S8), mentioned in (i) at `s = d/2`, which is
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>  NOT part of this statement (it gives a *stronger* bound at `s = d/2`);
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>* S5.6 (this file) and S4.5-S4.7 (`HRS.Whole.quadratic_static_field_osc`, the fixed-time sharper
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>  smooth estimate `C√δ_N` mentioned at S L379-382, is that existing statement).
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>## Representation decisions
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>* The particle path law is that of a strong solution `X` of the whole-space particle system
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>  (`IsWholeStrongSolution`) on a probability space with an independent vector Brownian motion,
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>  with a prescribed initial law; every statement is &quot;for every such realization&quot;.  `C^k`-regularity,
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>  existence and the invariant laws are inputs, not asserted.
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>* `ε_N`, `E_{N,p}`, `ε_{N,p}` are `ℝ≥0∞`-valued (`⊤` when the moment is infinite), so the finiteness
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>  hypotheses of the source (&quot;stated initial and energy moments&quot;) are not needed: a bound with an
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>  infinite right side is trivial.
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>-/
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>noncomputable section
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>open MeasureTheory Filter Topology ProbabilityTheory
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>namespace HRS.Whole
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>variable {d : ℕ}
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>/-! ### S3.2 -/
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>section Preparations
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>variable {s : ℝ}
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>/-- Corollary S3.2 (S:W:cor:euclidean-preparations, TeX S L814-845), first assertion
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>`W:eq:euclidean-preparation-bounds` (L814-820, 833-835): under the hypotheses of S3.1
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>(`d ≥ 2`, `0 ≤ s &lt; d`, `μ = ρdx` a probability measure with `‖ρ‖_∞ ≤ M` and, for `s = 0`,
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>`∫log(2+|x|)dμ ≤ L`) and for fixed `b, b₀ &gt; 0`:
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>`H(μ^{⊗N} | Q_{N,b}^g) + H(Q_{N,b₀}^g | Q_{N,b}^g) ≤ C N δ_N`, `N ≥ 2`; `C` depends on
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>`d, s, M, L, b, b₀` only (quantified before `ρ`).  Relative entropies are `ℝ≥0∞`-valued
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>(finiteness is part of the claim). -/
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>abbrev EuclideanPreparationsBoundsStatement : Prop :=
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  ∀ {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d) (M L b b₀ : ℝ)
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>    (hb : 0 &lt; b) (hb₀ : 0 &lt; b₀),
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) →
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>      (s = 0 → HasLogMoment (withDensityReal ρ) L) → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>        relEntropy (Measure.pi fun _ : Fin N =&gt; withDensityReal ρ)
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>            (modulatedGibbs (rieszKernel d s) N b (withDensityReal ρ)) +
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>          relEntropy (modulatedGibbs (rieszKernel d s) N b₀ (withDensityReal ρ))
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>            (modulatedGibbs (rieszKernel d s) N b (withDensityReal ρ)) ≤
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>          ENNReal.ofReal (C * N * deltaN d s N)
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>/-- Corollary S3.2 (S:W:cor:euclidean-preparations, TeX S L814-845), stationary-reference
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>transfer (L821-845): suppose `μ = ρdx` (as in S3.1)
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>is a thermal equilibrium measure for a confining potential `V` and inverse temperature `b`
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>(`IsThermalDensity g V b ρ`, the thermal equation), and that the canonical gradient particle
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>semigroup (the whole-space particle system with `M = -1`, potential `V`, `ν = b⁻¹`) has invariant law
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>`Q_{N,b}^g(μ)` (hypothesis `hInv`: started from `Q_{N,b}^g(μ)` its time marginals equal
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>`Q_{N,b}^g(μ)`).  For either initial law `μ^{⊗N}` or `Q_{N,b₀}^g` the actual time marginal `f_N^t`
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>satisfies, for every `t ≥ 0`: (1) `H(f_N^t | Q_{N,b}^g(μ)) + H(f_N^t | μ^{⊗N}) ≤ C N δ_N`
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>(`W:eq:euclidean-stationary-entropy`); (2) `E_{f_N^t}|μ_N(a) - μ(a)| ≤ C‖a‖_∞√δ_N` for every
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>bounded measurable `a` (`W:eq:euclidean-linear-bound`); (3)
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>`E_{f_N^t}|𝖢_N(v;μ)| ≤ C‖∇v‖_∞ δ_N` for every globally Lipschitz `v` (`‖∇v‖_∞` is its Lipschitz
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>constant; the vector field may grow linearly), `𝖢_N(v;μ) = 2𝖥_N^{h_v}(X_N,μ) = Comm_N(v;X_N,μ)`
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>(`W:eq:euclidean-comm-bound`).  `C` as in the first assertion.  Technical hypothesis: the
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>initial configuration is independent of the Brownian motion (the usual setting of a strong
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>solution), and `T` is any finite horizon with `t ≤ T`. -/
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>abbrev EuclideanPreparationsStationaryStatement : Prop :=
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>  ∀ {d : ℕ} {s : ℝ} (hd : 2 ≤ d) (hs0 : 0 ≤ s) (hsd : s &lt; d)
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>    (M L b b₀ : ℝ) (hb : 0 &lt; b) (hb₀ : 0 &lt; b₀),
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>    ∃ C : ℝ, ∀ ρ : Euc d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ M) →
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      (s = 0 → HasLogMoment (withDensityReal ρ) L) → ∀ V : Euc d → ℝ,
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>      IsThermalDensity (rieszKernel d s) V b ρ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>      (∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>          (T : ℝ) (X₀&#x27; : Ω&#x27; → EucConfig d N) (W&#x27; : ℝ≥0 → Ω&#x27; → (Fin N → Euc d))
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>          (X&#x27; : ℝ≥0 → Ω&#x27; → EucConfig d N), IsVectorBrownian P&#x27; W&#x27; →
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>          IndepFun X₀&#x27; (fun ζ t =&gt; W&#x27; t ζ) P&#x27; →
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>          law P&#x27; X₀&#x27; = modulatedGibbs (rieszKernel d s) N b (withDensityReal ρ) →
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>          IsWholeStrongSolution P&#x27; (⟨s, -1, V, b⁻¹⟩ : WholeDyn d) T X₀&#x27; W&#x27; X&#x27; →
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>          ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>            law P&#x27; (X&#x27; t) = modulatedGibbs (rieszKernel d s) N b (withDensityReal ρ)) →
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P] (T : ℝ)
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>        IsVectorBrownian P W → IndepFun X₀ (fun ζ t =&gt; W t ζ) P →
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>        (law P X₀ = Measure.pi (fun _ : Fin N =&gt; withDensityReal ρ) ∨
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>          law P X₀ = modulatedGibbs (rieszKernel d s) N b₀ (withDensityReal ρ)) →
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>        IsWholeStrongSolution P (⟨s, -1, V, b⁻¹⟩ : WholeDyn d) T X₀ W X →
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>        ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>          (relEntropy (law P (X t)) (modulatedGibbs (rieszKernel d s) N b (withDensityReal ρ)) +
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>            relEntropy (law P (X t)) (Measure.pi fun _ : Fin N =&gt; withDensityReal ρ) ≤
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>              ENNReal.ofReal (C * N * deltaN d s N)) ∧
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>          (∀ (a : Euc d → ℝ) (A : ℝ), Measurable a → (∀ x, |a x| ≤ A) →
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>            Integrable (fun ζ =&gt; |pair (empirical (X t ζ)) a - pair (withDensityReal ρ) a|) P ∧
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>            ∫ ζ, |pair (empirical (X t ζ)) a - pair (withDensityReal ρ) a| ∂P ≤
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>              C * A * Real.sqrt (deltaN d s N)) ∧
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>          (∀ (v : Euc d → Euc d) (Λ : ℝ≥0), LipschitzWith Λ v →
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>            Integrable (fun ζ =&gt; |commN d s v (X t ζ) (withDensityReal ρ)|) P ∧
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>            ∫ ζ, |commN d s v (X t ζ) (withDensityReal ρ)| ∂P ≤ C * Λ * deltaN d s N)
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>end Preparations
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>/-! ### S5.3 -/
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>/-- The `α`-th Hermite coordinate of the instantaneous nonlinear forcing at time `r` for the terminal
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>time `t`: `D_μ(h_{U_{t-r}φ_α})(X_N^r)`, `h_f = (∇f(x)-∇f(y))·∇g(x-y)`,
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>`D_μ(h) = ∬_{x≠y} h d(μ_N-μ)^{⊗2}` (no factor `1/2`, S lines 3455-3461), with the adjoint evolution
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>`U_{t-r} = propagatorW C r t` of the coefficients `C`, and `φ_α = λ_α^{-m/2} h_α`. -/
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>def commForcing {Ω : Type*} {N : ℕ} (C : WholeCoeff d) (s m : ℝ) (μ : Measure (Euc d))
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    (X : ℝ≥0 → Ω → EucConfig d N) (α : MultiIndex d) (t r : ℝ) (ζ : Ω) : ℝ :=
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>  centeredPairFunctional
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>    (commutatorKernel d s (fun x =&gt; gradient (propagatorW C r t (oscTestFun m α)) x))
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>    (X (Real.toNNReal r) ζ) μ
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>/-- Proposition S5.3 (S:W:r2:field-remainder, TeX S L3466-3487), first assertion: in the setting of
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>S5.1 (`d ≥ 2`, `0 ≤ s &lt; d`, quadratic potential, `ρ` a Schwartz probability density, gradient
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>dynamics `M = -1` along the time-independent reference `μ = ρ dx`; indices `k &gt; d/2 + 6`,
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>`J = 2k+2d+20`, `m &gt; J+3d+4`), suppose under the actual time marginals that
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>`sup_{r≤T} E|D_μ(h_f)| ≤ C_A δ_N ‖D²f‖_∞` for every `f ∈ C_b²` (`W:r2:pressure-input`).  Then the
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>simultaneous Duhamel remainder satisfies
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>`E sup_{t≤T} ‖(-(√N/2)∫_0^t D_μ(h_{U_{t-r}φ_j})(X_N^r) dr)_j‖_{ℓ²} ≤ C_T √N δ_N`
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>(`W:r2:field-remainder-L1`), `C_T` independent of `N` (depends on `C_A` and the data).  The
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>pathwise time integrals exist (a.s.; part of the conclusion).  `U_{t-r}` is the classical adjoint
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>evolution (`propagatorW`) of the quadratic-gradient dynamics with the stationary reference. -/
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>abbrev FieldRemainderStatement : Prop :=
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  ∀ {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ)
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>    (hk : (d : ℝ) / 2 + 6 &lt; k) (m : ℝ) (hm : ((2 * k + 2 * d + 20 : ℕ) : ℝ) + 3 * d + 4 &lt; m)
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    (T ν : ℝ) (hT : 0 ≤ T) (hν : 0 &lt; ν) (Q : Matrix (Fin d) (Fin d) ℝ) (ρ : Euc d → ℝ)
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>    (hρ : IsSchwartzDensity ρ) (CA : ℝ),
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>    ∃ CT : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>      [IsProbabilityMeasure P] (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>      (X : ℝ≥0 → Ω → EucConfig d N), IsVectorBrownian P W →
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>      IsWholeStrongSolution P (⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d) T X₀ W X →
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>      (∀ r ∈ Set.Icc (0 : ℝ) T, ∀ f : Euc d → ℝ, MemCb 2 f →
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>        Integrable (fun ζ =&gt; |centeredPairFunctional (commutatorKernel d s (fun x =&gt; gradient f x))
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>            (X (Real.toNNReal r) ζ) (withDensityReal ρ)|) P ∧
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>        ∫ ζ, |centeredPairFunctional (commutatorKernel d s (fun x =&gt; gradient f x))
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>            (X (Real.toNNReal r) ζ) (withDensityReal ρ)| ∂P ≤
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>          CA * deltaN d s N * ⨆ x, ‖iteratedFDeriv ℝ 2 f x‖) →
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>      (∀ᵐ ζ ∂P, ∀ α : MultiIndex d, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>        IntegrableOn (fun r =&gt; commForcing ((⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d).coeff (fun _ =&gt; ρ))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>          s m (withDensityReal ρ) X α t r ζ) (Set.Icc 0 t)) ∧
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>      ∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>          -(Real.sqrt N / 2) * ∫ r in Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>            commForcing ((⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d).coeff (fun _ =&gt; ρ))
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>              s m (withDensityReal ρ) X α t r ζ)) ∂P ≤
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>        ENNReal.ofReal (CT * Real.sqrt N * deltaN d s N)
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>/-- Proposition S5.3 (S:W:r2:field-remainder, TeX S L3466-3487), centered assertion
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>(L3480-3487, `W:r2:centered-input`): if instead the
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>actual particle law is stationary and `N Var[D_μ(h_f)] ≤ C_A δ_N ‖D²f‖²_∞` for every `f ∈ C_b²`, the
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>same centered remainder, with `D_μ - E D_μ`, is bounded in `L²(C_tB_m)` by `C_T √δ_N`:
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>`(E sup_{t≤T}‖(-(√N/2)∫_0^t (D_μ - E D_μ)(h_{U_{t-r}φ_j})(X_N^r) dr)_j‖²_{ℓ²})^{1/2} ≤ C_T√δ_N`.
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>Variances are `evariance` (`ℝ≥0∞`, includes square integrability). -/
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>abbrev FieldRemainderCenteredStatement : Prop :=
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>  ∀ {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (k : ℕ)
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>    (hk : (d : ℝ) / 2 + 6 &lt; k) (m : ℝ) (hm : ((2 * k + 2 * d + 20 : ℕ) : ℝ) + 3 * d + 4 &lt; m)
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>    (T ν : ℝ) (hT : 0 ≤ T) (hν : 0 &lt; ν) (Q : Matrix (Fin d) (Fin d) ℝ) (ρ : Euc d → ℝ)
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>    (hρ : IsSchwartzDensity ρ) (CA : ℝ),
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>    ∃ CT : ℝ, ∀ N : ℕ, 2 ≤ N → ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω)
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>      [IsProbabilityMeasure P] (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>      (X : ℝ≥0 → Ω → EucConfig d N), IsVectorBrownian P W →
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      IsWholeStrongSolution P (⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d) T X₀ W X →
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>      (∀ t ∈ Set.Icc (0 : ℝ) T, law P (X (Real.toNNReal t)) = law P (X 0)) →
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>      (∀ f : Euc d → ℝ, MemCb 2 f →
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>        N * evariance (fun ζ =&gt; centeredPairFunctional
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>            (commutatorKernel d s (fun x =&gt; gradient f x)) (X 0 ζ) (withDensityReal ρ)) P ≤
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>          ENNReal.ofReal (CA * deltaN d s N * (⨆ x, ‖iteratedFDeriv ℝ 2 f x‖) ^ 2)) →
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      (∀ᵐ ζ ∂P, ∀ α : MultiIndex d, ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>        IntegrableOn (fun r =&gt; commForcing ((⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d).coeff (fun _ =&gt; ρ))
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>          s m (withDensityReal ρ) X α t r ζ) (Set.Icc 0 t)) ∧
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>      (∫⁻ ζ, (⨆ t : Set.Icc (0 : ℝ) T, l2NormE (fun α : MultiIndex d =&gt;
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>          -(Real.sqrt N / 2) * ∫ r in Set.Icc (0 : ℝ) t,
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>            (commForcing ((⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d).coeff (fun _ =&gt; ρ))
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>                s m (withDensityReal ρ) X α t r ζ -
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>              ∫ ζ&#x27;, commForcing ((⟨s, -1, quadV Q 0, ν⟩ : WholeDyn d).coeff (fun _ =&gt; ρ))
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>                s m (withDensityReal ρ) X α t r ζ&#x27; ∂P))) ^ 2 ∂P) ^ (1 / 2 : ℝ) ≤
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>        ENNReal.ofReal (CT * Real.sqrt (deltaN d s N))
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>/-! ### S5.6 -/
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>/-- Theorem S5.6 (S:W:thm:r2-general-paths, TeX S L3971-3997): quantitative whole-field paths at
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>varying temperature.  For a setup `S` of Section S5 (`WholeSetup b`, standing constraints
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>`WholeBounds.Valid`): `Ξ_N = σ_N(μ_N - ρ_N)` and `Y_N` the linearized process with initial field
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>`a_N η_N⁰` (a random functional `η₀` coupled with the particle initial configuration), noise factor
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>`q_N` and coefficients `ρ_N, ν_N`, one has on `𝒴 = C([0,T];B_m)`:
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>`d_{C_b²}(Ξ_N,Y_N) ≤ C_T(a_N ε_{N,1} + σ_N E_{N,1} + q_N w_N)`,
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>`W_1(Ξ_N,Y_N) ≤ C_T(a_N ε_{N,1} + σ_N E_{N,1} + √(q_N w_N))`,
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>`W_2(Ξ_N,Y_N) ≤ C_T(a_N ε_{N,2} + σ_N E_{N,2} + √(q_N w_N))`,
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>`w_N = inf_{R≥1}{R^{d/2}(N^{-1/d} + √E_{N,1}) + (1+M₂)R^{-2}}` (`generalLocalizationRate`),
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>`M₂` any bound for the actual and mean-field second moments on `[0,T]`.  `C_T` is independent of
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>`N`, of the setup within the bounds `b`, of `M₂` and of the realization.  The smooth metric is
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>`smoothDist 2` (sum of the function and first two derivative sup norms), `W_p` use the sup norm
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>(`OscPath`).  At zero noise (`β_N = ∞`, `q_N = 0`) the covariance terms vanish exactly (they are
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>`q_N w_N` and `√(q_N w_N)`).  A.e. measurability of both path maps (`AEMeasurable` with respect to `P`) is part of the
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>conclusion (so the laws are not junk; `Measurable` is false on a non-complete σ-algebra).  The noise of `Y_N` is not required independent of the particle initial data:
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>the three quantities depend only on the laws of `Ξ_N` and `Y_N`.  Technical hypotheses: `N ≥ 2`;
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>the particle process is a strong solution whose initial data `(X₀, η₀)` are independent of the
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>Brownian motion (the &quot;initial coupling&quot; is independent of the noise).  The second-moment bound `M₂`
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>is stated in `ℝ≥0∞` (`E μ_N^t(|x|²) ≤ M₂`, `ρ_N^t(|x|²) ≤ M₂`).  Statement repairs P6, P7, P8, P10
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>(docs/ISSUES.md, `Supplement repair`): `C_T` may depend on the completion constant `C₀ = b.C₀ ≥ C₀min` (all other
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>bounds those of `b₀`); the strong solution is moreover filtered (`IsWholeFilteredSolution` for some filtration);
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>`OscAdjointInput` (Duhamel identity for the orbit features, to be derived from `UlAdjointInput`, temporary
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>hypothesis); `AEMeasurable`. -/
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>abbrev GeneralPathsStatement : Prop :=
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>  ∀ {d : ℕ} (b₀ : WholeBounds d) (hb : b₀.Valid),
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>    ∃ C₀min : ℝ, ∀ b : WholeBounds d, b = { b₀ with C₀ := b.C₀ } → C₀min ≤ b.C₀ →
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>    ∃ C : ℝ, 0 &lt; C ∧ ∀ S : WholeSetup b, ∀ (N : ℕ), 2 ≤ N →
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>      OscAdjointInput (S.coeff N) b.m b.T → ∀ (M₂ : ℝ)
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>      {Ω : Type} [mΩ : MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)), IsVectorBrownian P W →
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      ∀ X : ℝ≥0 → Ω → EucConfig d N, IsWholeStrongSolution P (S.dyn N) b.T X₀ W X →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      (∃ (ℱ : Filtration ℝ mΩ) (W&#x27; : ℝ≥0 → Ω → (Fin N × Fin d) → ℝ),
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        IsWholeFilteredSolution P ℱ W&#x27; W X) →
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      ∀ η₀ : Ω → (Euc d → ℝ) → ℝ,
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      IndepFun (fun ζ =&gt; (X₀ ζ, η₀ ζ)) (fun ζ t =&gt; W t ζ) P →
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>      (∀ t ∈ Set.Icc (0 : ℝ) b.T,
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        ∫⁻ ζ, ENNReal.ofReal (pair (empirical (X (Real.toNNReal t) ζ)) (fun x =&gt; ‖x‖ ^ 2)) ∂P ≤
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>          ENNReal.ofReal M₂ ∧
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>        ENNReal.ofReal (pair (withDensityReal (S.ρ N t)) (fun x =&gt; ‖x‖ ^ 2)) ≤
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>          ENNReal.ofReal M₂) →
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>      ∀ Y : ℝ → Ω → OscDual d b.m,
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>      IsLinearFluctuationSolutionW P (S.coeff N) b.m (S.q N) b.T (fun ζ f =&gt; S.A N * η₀ ζ f) Y →
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>      AEMeasurable (flucPathW b.m b.T 0 (S.σ N) X (S.ρ N)) P ∧
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>      AEMeasurable (processWindow b.m b.T 0 Y) P ∧
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>      ENNReal.ofReal (smoothDist 2 (law P (flucPathW b.m b.T 0 (S.σ N) X (S.ρ N)))
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>          (law P (processWindow b.m b.T 0 Y))) ≤
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>        ENNReal.ofReal C * (ENNReal.ofReal (S.A N) * S.initialErrorE N 1 P X₀ η₀ +
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>          ENNReal.ofReal (S.σ N) * S.energyMomentE N 1 P X +
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>          ENNReal.ofReal (S.q N * generalLocalizationRate d (S.energyMomentE N 1 P X).toReal M₂ N)) ∧
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>      wassersteinE 1 (law P (flucPathW b.m b.T 0 (S.σ N) X (S.ρ N)))
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>          (law P (processWindow b.m b.T 0 Y)) ≤
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>        ENNReal.ofReal C * (ENNReal.ofReal (S.A N) * S.initialErrorE N 1 P X₀ η₀ +
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>          ENNReal.ofReal (S.σ N) * S.energyMomentE N 1 P X +
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>          ENNReal.ofReal (Real.sqrt (S.q N * generalLocalizationRate d
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>            (S.energyMomentE N 1 P X).toReal M₂ N))) ∧
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>      wassersteinE 2 (law P (flucPathW b.m b.T 0 (S.σ N) X (S.ρ N)))
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>          (law P (processWindow b.m b.T 0 Y)) ≤
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>        ENNReal.ofReal C * (ENNReal.ofReal (S.A N) * S.initialErrorE N 2 P X₀ η₀ +
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>          ENNReal.ofReal (S.σ N) * S.energyMomentE N 2 P X +
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>          ENNReal.ofReal (Real.sqrt (S.q N * generalLocalizationRate d
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>            (S.energyMomentE N 1 P X).toReal M₂ N)))
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>/-! ### S2.1: the whole-space headline theorem -/
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>section Headline
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>
+</span><span class="line" id="L269"><a class="ln" aria-label="Line 269" href="#L269">269</a>/-- The quadratic gradient dynamics of S2.1 (S lines 318-320): `V(x) = a|x|²/2`, gradient case
+</span><span class="line" id="L270"><a class="ln" aria-label="Line 270" href="#L270">270</a>`M = -I`, `ν = β⁻¹`. -/
+</span><span class="line" id="L271"><a class="ln" aria-label="Line 271" href="#L271">271</a>def quadraticGradientDyn (d : ℕ) (s a β : ℝ) : WholeDyn d := ⟨s, -1, confinement a, β⁻¹⟩
+</span><span class="line" id="L272"><a class="ln" aria-label="Line 272" href="#L272">272</a>
+</span><span class="line" id="L273"><a class="ln" aria-label="Line 273" href="#L273">273</a>/-- Gibbs invariance of the canonical quadratic gradient dynamics at fixed particle number `N` (statement change M1,
+</span><span class="line" id="L274"><a class="ln" aria-label="Line 274" href="#L274">274</a>2026-10-22; the whole-space &quot;Q47&quot;, S L7901, L4640-4650, L5064-5075: &quot;the canonical Gibbs law is invariant&quot;).  For every
+</span><span class="line" id="L275"><a class="ln" aria-label="Line 275" href="#L275">275</a>probability space with a vector Brownian motion `W&#x27;`, an initial configuration `X₀&#x27;` independent of it with law
+</span><span class="line" id="L276"><a class="ln" aria-label="Line 276" href="#L276">276</a>`canonicalGibbs (rieszKernel d s) (confinement a) N β = ℙ_{N,β}`, and every collision-free strong solution `X&#x27;` of
+</span><span class="line" id="L277"><a class="ln" aria-label="Line 277" href="#L277">277</a>`quadraticGradientDyn d s a β` on `[0,T]`, the time marginals are `ℙ_{N,β}`: `law (X&#x27; t) = ℙ_{N,β}` for `0 ≤ t ≤ T`.
+</span><span class="line" id="L278"><a class="ln" aria-label="Line 278" href="#L278">278</a>This is the same form as the hypothesis `hInv` of `euclidean_preparations_stationary` (S3.2).  It is a hypothesis about
+</span><span class="line" id="L279"><a class="ln" aria-label="Line 279" href="#L279">279</a>the dynamics only (it does not involve `ρβ`, `ε`, `ψ`), so it sits after `N` and before the realization.  It is a true
+</span><span class="line" id="L280"><a class="ln" aria-label="Line 280" href="#L280">280</a>statement for `d ≥ 2`, `0 ≤ s &lt; d`, `a, β &gt; 0`, `N ≥ 1` (no collisions, no explosion, pathwise uniqueness for the
+</span><span class="line" id="L281"><a class="ln" aria-label="Line 281" href="#L281">281</a>collision-free solutions, the Gibbs density is the invariant density of the associated Dirichlet-form diffusion); proving it
+</span><span class="line" id="L282"><a class="ln" aria-label="Line 282" href="#L282">282</a>(M1 option (a), whole-space analogue of the torus entropy-law argument) would let every edit below be reverted. -/
+</span><span class="line" id="L283"><a class="ln" aria-label="Line 283" href="#L283">283</a>def GibbsInvariant (d : ℕ) (s a β : ℝ) (N : ℕ) : Prop :=
+</span><span class="line" id="L284"><a class="ln" aria-label="Line 284" href="#L284">284</a>  ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L285"><a class="ln" aria-label="Line 285" href="#L285">285</a>    (T : ℝ) (X₀&#x27; : Ω&#x27; → EucConfig d N) (W&#x27; : ℝ≥0 → Ω&#x27; → (Fin N → Euc d))
+</span><span class="line" id="L286"><a class="ln" aria-label="Line 286" href="#L286">286</a>    (X&#x27; : ℝ≥0 → Ω&#x27; → EucConfig d N), IsVectorBrownian P&#x27; W&#x27; →
+</span><span class="line" id="L287"><a class="ln" aria-label="Line 287" href="#L287">287</a>    IndepFun X₀&#x27; (fun ζ t =&gt; W&#x27; t ζ) P&#x27; →
+</span><span class="line" id="L288"><a class="ln" aria-label="Line 288" href="#L288">288</a>    law P&#x27; X₀&#x27; = canonicalGibbs (rieszKernel d s) (confinement a) N β →
+</span><span class="line" id="L289"><a class="ln" aria-label="Line 289" href="#L289">289</a>    IsWholeStrongSolution P&#x27; (quadraticGradientDyn d s a β) T X₀&#x27; W&#x27; X&#x27; →
+</span><span class="line" id="L290"><a class="ln" aria-label="Line 290" href="#L290">290</a>    ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L291"><a class="ln" aria-label="Line 291" href="#L291">291</a>      law P&#x27; (X&#x27; t) = canonicalGibbs (rieszKernel d s) (confinement a) N β
+</span><span class="line" id="L292"><a class="ln" aria-label="Line 292" href="#L292">292</a>
+</span><span class="line" id="L293"><a class="ln" aria-label="Line 293" href="#L293">293</a>/-- Relative-entropy contraction of the canonical quadratic gradient dynamics with respect to its invariant Gibbs law, at fixed particle
+</span><span class="line" id="L294"><a class="ln" aria-label="Line 294" href="#L294">294</a>number `N` (statement change M1b, 2026-10-22; the Markov-semigroup step of S L4640-4650 and S L5160-5170: &quot;the Markov semigroup contracts
+</span><span class="line" id="L295"><a class="ln" aria-label="Line 295" href="#L295">295</a>relative entropy with respect to an invariant measure (Jensen)&quot;).  For every probability space with a vector Brownian motion `W&#x27;`, an
+</span><span class="line" id="L296"><a class="ln" aria-label="Line 296" href="#L296">296</a>initial configuration `X₀&#x27;` independent of it (of ARBITRARY law), and every collision-free strong solution `X&#x27;` of
+</span><span class="line" id="L297"><a class="ln" aria-label="Line 297" href="#L297">297</a>`quadraticGradientDyn d s a β` on `[0,T]`: `H(law X&#x27;_t | ℙ_{N,β}) ≤ H(law X₀&#x27; | ℙ_{N,β})` for `0 ≤ t ≤ T`, where
+</span><span class="line" id="L298"><a class="ln" aria-label="Line 298" href="#L298">298</a>`ℙ_{N,β} = canonicalGibbs (rieszKernel d s) (confinement a) N β` and `H = relEntropy` is `ℝ≥0∞`-valued (so the inequality is trivial when
+</span><span class="line" id="L299"><a class="ln" aria-label="Line 299" href="#L299">299</a>the right side is `⊤`, in particular when `law X₀&#x27;` is not absolutely continuous).  It is a hypothesis about the dynamics only, true for
+</span><span class="line" id="L300"><a class="ln" aria-label="Line 300" href="#L300">300</a>`d ≥ 2`, `0 ≤ s &lt; d`, `a, β &gt; 0`, `N ≥ 1` (pathwise uniqueness gives a Markov kernel `P_t` from every collision-free point, `ℙ_{N,β}` is
+</span><span class="line" id="L301"><a class="ln" aria-label="Line 301" href="#L301">301</a>`P_t`-invariant, and the kernel contracts relative entropy by data processing / joint convexity).  It implies `GibbsInvariant d s a β N`:
+</span><span class="line" id="L302"><a class="ln" aria-label="Line 302" href="#L302">302</a>for `law X₀&#x27; = ℙ_{N,β}` the right side is `klDiv ℙ ℙ = 0`, so `klDiv (law X&#x27;_t) ℙ = 0`, i.e. `law X&#x27;_t = ℙ_{N,β}` (`InformationTheory.klDiv_self`,
+</span><span class="line" id="L303"><a class="ln" aria-label="Line 303" href="#L303">303</a>`klDiv_eq_zero_iff` for the two finite measures; `law X&#x27;_t` is a probability measure because `X&#x27; t` is measurable, `IsWholeStrongSolution.adapted`).
+</span><span class="line" id="L304"><a class="ln" aria-label="Line 304" href="#L304">304</a>Unlike `GibbsInvariant` it also covers initial laws with density vanishing on a set of positive `ℙ_{N,β}`-mass, which a reweighting of a
+</span><span class="line" id="L305"><a class="ln" aria-label="Line 305" href="#L305">305</a>realization cannot reduce to the stationary case (reviewer D1 of docs/HINV_EDITS.md).  Proving it would let every use be reverted. -/
+</span><span class="line" id="L306"><a class="ln" aria-label="Line 306" href="#L306">306</a>def GibbsEntropyContraction (d : ℕ) (s a β : ℝ) (N : ℕ) : Prop :=
+</span><span class="line" id="L307"><a class="ln" aria-label="Line 307" href="#L307">307</a>  ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L308"><a class="ln" aria-label="Line 308" href="#L308">308</a>    (T : ℝ) (X₀&#x27; : Ω&#x27; → EucConfig d N) (W&#x27; : ℝ≥0 → Ω&#x27; → (Fin N → Euc d))
+</span><span class="line" id="L309"><a class="ln" aria-label="Line 309" href="#L309">309</a>    (X&#x27; : ℝ≥0 → Ω&#x27; → EucConfig d N), IsVectorBrownian P&#x27; W&#x27; →
+</span><span class="line" id="L310"><a class="ln" aria-label="Line 310" href="#L310">310</a>    IndepFun X₀&#x27; (fun ζ t =&gt; W&#x27; t ζ) P&#x27; →
+</span><span class="line" id="L311"><a class="ln" aria-label="Line 311" href="#L311">311</a>    IsWholeStrongSolution P&#x27; (quadraticGradientDyn d s a β) T X₀&#x27; W&#x27; X&#x27; →
+</span><span class="line" id="L312"><a class="ln" aria-label="Line 312" href="#L312">312</a>    ∀ t : ℝ≥0, (t : ℝ) ≤ T →
+</span><span class="line" id="L313"><a class="ln" aria-label="Line 313" href="#L313">313</a>      relEntropy (law P&#x27; (X&#x27; t)) (canonicalGibbs (rieszKernel d s) (confinement a) N β) ≤
+</span><span class="line" id="L314"><a class="ln" aria-label="Line 314" href="#L314">314</a>        relEntropy (law P&#x27; X₀&#x27;) (canonicalGibbs (rieszKernel d s) (confinement a) N β)
+</span><span class="line" id="L315"><a class="ln" aria-label="Line 315" href="#L315">315</a>
+</span><span class="line" id="L316"><a class="ln" aria-label="Line 316" href="#L316">316</a>/-- The initial smooth-estimate error `i_N` of `H:eq:whole-prepared-smooth`
+</span><span class="line" id="L317"><a class="ln" aria-label="Line 317" href="#L317">317</a>(S lines 380-383): `N^{-1/(4d+6)}` for independent preparation (`β₀ = 0`), `√δ_N` for Gibbs
+</span><span class="line" id="L318"><a class="ln" aria-label="Line 318" href="#L318">318</a>preparation (`β₀ &gt; 0`). -/
+</span><span class="line" id="L319"><a class="ln" aria-label="Line 319" href="#L319">319</a>def iN (d : ℕ) (s β₀ : ℝ) (N : ℕ) : ℝ :=
+</span><span class="line" id="L320"><a class="ln" aria-label="Line 320" href="#L320">320</a>  if β₀ = 0 then (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 6))) else Real.sqrt (deltaN d s N)
+</span><span class="line" id="L321"><a class="ln" aria-label="Line 321" href="#L321">321</a>
+</span><span class="line" id="L322"><a class="ln" aria-label="Line 322" href="#L322">322</a>/-- The initial `W_1` error `j_N` of `H:eq:whole-prepared-W1`: `N^{-1/(4d+6)}` (independent
+</span><span class="line" id="L323"><a class="ln" aria-label="Line 323" href="#L323">323</a>preparation), `δ_N^{3/20}` (Gibbs preparation). -/
+</span><span class="line" id="L324"><a class="ln" aria-label="Line 324" href="#L324">324</a>def jN (d : ℕ) (s β₀ : ℝ) (N : ℕ) : ℝ :=
+</span><span class="line" id="L325"><a class="ln" aria-label="Line 325" href="#L325">325</a>  if β₀ = 0 then (N : ℝ) ^ (-(1 / (4 * (d : ℝ) + 6))) else deltaN d s N ^ ((3 : ℝ) / 20)
+</span><span class="line" id="L326"><a class="ln" aria-label="Line 326" href="#L326">326</a>
+</span><span class="line" id="L327"><a class="ln" aria-label="Line 327" href="#L327">327</a>/-- &quot;The resulting nonlinear mean-field solution&quot; of S2.1 (S lines 322-336) of the quadratic
+</span><span class="line" id="L328"><a class="ln" aria-label="Line 328" href="#L328">328</a>gradient dynamics from `μ⁰ = (1+εψ)μ_β`, in the form in which it is constructed by Theorem S6.3
+</span><span class="line" id="L329"><a class="ln" aria-label="Line 329" href="#L329">329</a>`W:thm:r2mov-nonlinear` (S lines 4345-4371) with `j = 100d + 1000` and `m = 102d + 1020`: a global
+</span><span class="line" id="L330"><a class="ln" aria-label="Line 330" href="#L330">330</a>weak solution (`IsWholeMeanFieldSolution` on every `[0,T&#x27;]`) with
+</span><span class="line" id="L331"><a class="ln" aria-label="Line 331" href="#L331">331</a>* `C₁⁻¹ρ_β ≤ ρ^t ≤ C₁ρ_β` (`W:r2mov:ratio`),
+</span><span class="line" id="L332"><a class="ln" aria-label="Line 332" href="#L332">332</a>* `‖(ρ^t - ρ_β)/√ρ_β‖_{Σ^{102d+1020}} ≤ C₁ε_* e^{-c₁t}` (`W:r2mov:nonlinear-weighted`),
+</span><span class="line" id="L333"><a class="ln" aria-label="Line 333" href="#L333">333</a>* `‖∇log(ρ^t/ρ_β)‖_{C_b^j} + ‖u^t‖_{C_b^j} ≤ C₁ε_* e^{-c₁t}`, `u^t = ν∇log ρ^t + a x + ∇g*ρ^t`
+</span><span class="line" id="L334"><a class="ln" aria-label="Line 334" href="#L334">334</a>  (`W:r2mov:velocity`; `a = a₀` the confinement strength, `ν = β⁻¹`).
+</span><span class="line" id="L335"><a class="ln" aria-label="Line 335" href="#L335">335</a>The constants `c₁, C₁` are those of S6.3 (they depend only on the model parameters); the existence
+</span><span class="line" id="L336"><a class="ln" aria-label="Line 336" href="#L336">336</a>and uniqueness of such a solution is Theorem S6.3, not asserted here.
+</span><span class="line" id="L337"><a class="ln" aria-label="Line 337" href="#L337">337</a>Statement repair `Supplement repair P3` (docs/ISSUES.md): `0 &lt; c₁`, continuity of `t ↦ v_t = (ρ^t-ρ_β)/√ρ_β` into
+</span><span class="line" id="L338"><a class="ln" aria-label="Line 338" href="#L338">338</a>`Σ^{102d+1020}` on `[0,∞)` and continuity of `ρ^t` in `x`, so that the structure implies the S6.3 uniqueness class
+</span><span class="line" id="L339"><a class="ln" aria-label="Line 339" href="#L339">339</a>`MovInSmallClass` (with `m = 102d+1020`, `r = C₁ε_*`, `c₀ = c₁`, and exponent `0` by `MovInSmallClass.mono_rate`). -/
+</span><span class="line" id="L340"><a class="ln" aria-label="Line 340" href="#L340">340</a>structure IsResultingSolution (d : ℕ) (s a β : ℝ) (ρβ : Euc d → ℝ) (εstar ε : ℝ)
+</span><span class="line" id="L341"><a class="ln" aria-label="Line 341" href="#L341">341</a>    (ψ : Euc d → ℝ) (c₁ C₁ : ℝ) (ρ : ℝ → Euc d → ℝ) : Prop where
+</span><span class="line" id="L342"><a class="ln" aria-label="Line 342" href="#L342">342</a>  cpos : 0 &lt; c₁
+</span><span class="line" id="L343"><a class="ln" aria-label="Line 343" href="#L343">343</a>  global : ∀ T&#x27; : ℝ, IsWholeMeanFieldSolution (quadraticGradientDyn d s a β) T&#x27; ρ
+</span><span class="line" id="L344"><a class="ln" aria-label="Line 344" href="#L344">344</a>  init : ρ 0 = perturbedDensity ρβ ε ψ
+</span><span class="line" id="L345"><a class="ln" aria-label="Line 345" href="#L345">345</a>  ratio : ∀ t : ℝ, 0 ≤ t → ∀ x, C₁⁻¹ * ρβ x ≤ ρ t x ∧ ρ t x ≤ C₁ * ρβ x
+</span><span class="line" id="L346"><a class="ln" aria-label="Line 346" href="#L346">346</a>  weighted : ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L347"><a class="ln" aria-label="Line 347" href="#L347">347</a>    MemOsc (102 * (d : ℝ) + 1020) (fun x =&gt; (ρ t x - ρβ x) / Real.sqrt (ρβ x)) ∧
+</span><span class="line" id="L348"><a class="ln" aria-label="Line 348" href="#L348">348</a>    oscNorm (102 * (d : ℝ) + 1020) (fun x =&gt; (ρ t x - ρβ x) / Real.sqrt (ρβ x)) ≤
+</span><span class="line" id="L349"><a class="ln" aria-label="Line 349" href="#L349">349</a>      C₁ * εstar * Real.exp (-c₁ * t)
+</span><span class="line" id="L350"><a class="ln" aria-label="Line 350" href="#L350">350</a>  velocity : ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L351"><a class="ln" aria-label="Line 351" href="#L351">351</a>    cbNormVecE (100 * d + 1000) (fun x =&gt; gradient (fun y =&gt; Real.log (ρ t y / ρβ y)) x) +
+</span><span class="line" id="L352"><a class="ln" aria-label="Line 352" href="#L352">352</a>      cbNormVecE (100 * d + 1000) (fun x =&gt; β⁻¹ • gradient (fun y =&gt; Real.log (ρ t y)) x +
+</span><span class="line" id="L353"><a class="ln" aria-label="Line 353" href="#L353">353</a>        a • x + convGradConvW (rieszKernelGrad d s) (ρ t) x) ≤
+</span><span class="line" id="L354"><a class="ln" aria-label="Line 354" href="#L354">354</a>      ENNReal.ofReal (C₁ * εstar * Real.exp (-c₁ * t))
+</span><span class="line" id="L355"><a class="ln" aria-label="Line 355" href="#L355">355</a>  cont : ContinuousOn (fun t : ℝ =&gt; OscSpace.ofFun (d := d) (102 * (d : ℝ) + 1020)
+</span><span class="line" id="L356"><a class="ln" aria-label="Line 356" href="#L356">356</a>    (fun x =&gt; (ρ t x - ρβ x) / Real.sqrt (ρβ x))) (Set.Ici 0)
+</span><span class="line" id="L357"><a class="ln" aria-label="Line 357" href="#L357">357</a>  regular : ∀ t : ℝ, 0 ≤ t → Continuous (ρ t)
+</span><span class="line" id="L358"><a class="ln" aria-label="Line 358" href="#L358">358</a>
+</span><span class="line" id="L359"><a class="ln" aria-label="Line 359" href="#L359">359</a>/-- Theorem S2.1 (S:H:thm:whole-space, TeX S L348-396), part (i): for `d ≥ 2`, `0 ≤ s &lt; d`, the
+</span><span class="line" id="L360"><a class="ln" aria-label="Line 360" href="#L360">360</a>quadratic potential `V = a|x|²/2` (`a, β &gt; 0`) and `T &lt; ∞`, with `m = 24d + 240`, stationary
+</span><span class="line" id="L361"><a class="ln" aria-label="Line 361" href="#L361">361</a>canonical preparation (the particles are started from the canonical Gibbs law `ℙ_{N,β}` and run
+</span><span class="line" id="L362"><a class="ln" aria-label="Line 362" href="#L362">362</a>with the gradient dynamics) and exact first-marginal centering `ζ_N^t = √N(μ_N^t - m_N^t)`, on
+</span><span class="line" id="L363"><a class="ln" aria-label="Line 363" href="#L363">363</a>`𝒳 = C([0,T];B_m)`:
+</span><span class="line" id="L364"><a class="ln" aria-label="Line 364" href="#L364">364</a>`d_2^𝒳(ζ_N, Z_β) ≤ C_T(√δ_N + w_N)` and `W_1^𝒳(ζ_N, Z_β) ≤ C_T(δ_N^{3/20} + √w_N)`
+</span><span class="line" id="L365"><a class="ln" aria-label="Line 365" href="#L365">365</a>(`H:eq:whole-stationary`), `w_N = (N^{-1/d} + √o_N)^{4/(d+4)}` (`localizationRate`), with the heat-kernel
+</span><span class="line" id="L366"><a class="ln" aria-label="Line 366" href="#L366">366</a>completion `o_N = oN d s C₀ N` whose constant `C₀` is chosen for the class (`∃ C₀` with the
+</span><span class="line" id="L367"><a class="ln" aria-label="Line 367" href="#L367">367</a>completion property `F_N(X_N, μ_β) + o_N ≥ 0` off collisions, the lower bound for `F_N`).  `Z_β` is the
+</span><span class="line" id="L368"><a class="ln" aria-label="Line 368" href="#L368">368</a>stationary linear Gaussian field of the equilibrium (`IsLinearGaussianEvolutionW` along the constant
+</span><span class="line" id="L369"><a class="ln" aria-label="Line 369" href="#L369">369</a>reference `ρ_β` with noise level `q = β⁻¹` and initial covariance the susceptibility form
+</span><span class="line" id="L370"><a class="ln" aria-label="Line 370" href="#L370">370</a>`C_β(φ,ψ) = ⟨P_μφ, R_{β,μ}P_μψ⟩_{L²(μ)}`, `H:eq:susceptibility`), for any realization on any
+</span><span class="line" id="L371"><a class="ln" aria-label="Line 371" href="#L371">371</a>probability space.  `μ_β = ρ_β dx` is the thermal equilibrium (`IsThermalEquilibrium`; its
+</span><span class="line" id="L372"><a class="ln" aria-label="Line 372" href="#L372">372</a>existence and uniqueness is S3.4).  The constants depend on `d, s, a, β, T`.
+</span><span class="line" id="L373"><a class="ln" aria-label="Line 373" href="#L373">373</a>Not stated here (pointers in the source, not claims of this theorem): the `s = d/2` strengthening
+</span><span class="line" id="L374"><a class="ln" aria-label="Line 374" href="#L374">374</a>(`S:prop:critical-whole`) and the sharper fixed-time smooth estimate `C√δ_N` for integer `J &gt; d/2+2`,
+</span><span class="line" id="L375"><a class="ln" aria-label="Line 375" href="#L375">375</a>`m &gt; J + 2d` (S lines 379-382; it is `HRS.Whole.quadratic_static_field_osc`).
+</span><span class="line" id="L376"><a class="ln" aria-label="Line 376" href="#L376">376</a>Statement change M1 (2026-10-22): the second conjunct is conditional on `GibbsInvariant d s a β N` (the canonical Gibbs law
+</span><span class="line" id="L377"><a class="ln" aria-label="Line 377" href="#L377">377</a>`ℙ_{N,β}` is invariant for the gradient particle dynamics, S L7901 &quot;The canonical law is invariant&quot;; the whole-space analogue of
+</span><span class="line" id="L378"><a class="ln" aria-label="Line 378" href="#L378">378</a>the hypothesis `hInv` of S3.2).  In this theorem the realization is itself started from `ℙ_{N,β}`, so the hypothesis is used only
+</span><span class="line" id="L379"><a class="ln" aria-label="Line 379" href="#L379">379</a>to read off `law (X t) = ℙ_{N,β}`; it is removed if the invariance is proved later.
+</span><span class="line" id="L380"><a class="ln" aria-label="Line 380" href="#L380">380</a>Technical hypothesis: `T &gt; 0`. -/
+</span><span class="line" id="L381"><a class="ln" aria-label="Line 381" href="#L381">381</a>abbrev WholeSpaceStationaryStatement : Prop :=
+</span><span class="line" id="L382"><a class="ln" aria-label="Line 382" href="#L382">382</a>  ∀ {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (a β : ℝ)
+</span><span class="line" id="L383"><a class="ln" aria-label="Line 383" href="#L383">383</a>    (ha : 0 &lt; a) (hβ : 0 &lt; β) (T : ℝ) (hT : 0 &lt; T),
+</span><span class="line" id="L384"><a class="ln" aria-label="Line 384" href="#L384">384</a>    ∃ C₀ C : ℝ, (∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L385"><a class="ln" aria-label="Line 385" href="#L385">385</a>        ∀ X : EucConfig d N, X ∉ eucCollisionSet d N →
+</span><span class="line" id="L386"><a class="ln" aria-label="Line 386" href="#L386">386</a>          0 ≤ rieszModulatedEnergy d s X (withDensityReal ρβ) + oN d s C₀ N) ∧
+</span><span class="line" id="L387"><a class="ln" aria-label="Line 387" href="#L387">387</a>      ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L388"><a class="ln" aria-label="Line 388" href="#L388">388</a>      GibbsInvariant d s a β N →
+</span><span class="line" id="L389"><a class="ln" aria-label="Line 389" href="#L389">389</a>      ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L390"><a class="ln" aria-label="Line 390" href="#L390">390</a>        (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d)) (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L391"><a class="ln" aria-label="Line 391" href="#L391">391</a>        IsVectorBrownian P W → IndepFun X₀ (fun ζ t =&gt; W t ζ) P →
+</span><span class="line" id="L392"><a class="ln" aria-label="Line 392" href="#L392">392</a>        law P X₀ = canonicalGibbs (rieszKernel d s) (confinement a) N β →
+</span><span class="line" id="L393"><a class="ln" aria-label="Line 393" href="#L393">393</a>        IsWholeStrongSolution P (quadraticGradientDyn d s a β) T X₀ W X →
+</span><span class="line" id="L394"><a class="ln" aria-label="Line 394" href="#L394">394</a>      ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L395"><a class="ln" aria-label="Line 395" href="#L395">395</a>        (Z : ℝ → Ω&#x27; → OscDual d (wholeSpaceIndex d)),
+</span><span class="line" id="L396"><a class="ln" aria-label="Line 396" href="#L396">396</a>        IsLinearGaussianEvolutionW P&#x27; ((quadraticGradientDyn d s a β).coeff (fun _ =&gt; ρβ))
+</span><span class="line" id="L397"><a class="ln" aria-label="Line 397" href="#L397">397</a>          (wholeSpaceIndex d) β⁻¹ T
+</span><span class="line" id="L398"><a class="ln" aria-label="Line 398" href="#L398">398</a>          (susceptibilityCov (rieszKernel d s) (withDensityReal ρβ) β) Z →
+</span><span class="line" id="L399"><a class="ln" aria-label="Line 399" href="#L399">399</a>        AEMeasurable (zetaPathW (wholeSpaceIndex d) T 0 P X) P ∧
+</span><span class="line" id="L400"><a class="ln" aria-label="Line 400" href="#L400">400</a>        AEMeasurable (processWindow (wholeSpaceIndex d) T 0 Z) P&#x27; ∧
+</span><span class="line" id="L401"><a class="ln" aria-label="Line 401" href="#L401">401</a>        smoothDist 2 (law P (zetaPathW (wholeSpaceIndex d) T 0 P X))
+</span><span class="line" id="L402"><a class="ln" aria-label="Line 402" href="#L402">402</a>            (law P&#x27; (processWindow (wholeSpaceIndex d) T 0 Z)) ≤
+</span><span class="line" id="L403"><a class="ln" aria-label="Line 403" href="#L403">403</a>          C * (Real.sqrt (deltaN d s N) + localizationRate d s C₀ N) ∧
+</span><span class="line" id="L404"><a class="ln" aria-label="Line 404" href="#L404">404</a>        wassersteinE 1 (law P (zetaPathW (wholeSpaceIndex d) T 0 P X))
+</span><span class="line" id="L405"><a class="ln" aria-label="Line 405" href="#L405">405</a>            (law P&#x27; (processWindow (wholeSpaceIndex d) T 0 Z)) ≤
+</span><span class="line" id="L406"><a class="ln" aria-label="Line 406" href="#L406">406</a>          ENNReal.ofReal (C * (deltaN d s N ^ ((3 : ℝ) / 20) +
+</span><span class="line" id="L407"><a class="ln" aria-label="Line 407" href="#L407">407</a>            Real.sqrt (localizationRate d s C₀ N)))
+</span><span class="line" id="L408"><a class="ln" aria-label="Line 408" href="#L408">408</a>
+</span><span class="line" id="L409"><a class="ln" aria-label="Line 409" href="#L409">409</a>/-- Theorem S2.1 (S:H:thm:whole-space, TeX S L348-396), part (ii) (L369-386): `0 ≤ s &lt; 2d/3`, mean-field
+</span><span class="line" id="L410"><a class="ln" aria-label="Line 410" href="#L410">410</a>initial measure `μ⁰ = (1+εψ)μ_β` in the class `H:eq:whole-smallness` (`IsAdmissiblePerturbation`:
+</span><span class="line" id="L411"><a class="ln" aria-label="Line 411" href="#L411">411</a>`ψ ∈ C_c^∞` nonzero with `μ_β(ψ) = 0`, `ε = 0` allowed, the smallness
+</span><span class="line" id="L412"><a class="ln" aria-label="Line 412" href="#L412">412</a>`‖εψ‖_{C_b^{100d+1001}} + ‖ε√ρ_βψ‖_{Σ^{102d+1020}} ≤ ε_*`), `μ^t` the resulting nonlinear mean-field
+</span><span class="line" id="L413"><a class="ln" aria-label="Line 413" href="#L413">413</a>solution (`IsResultingSolution` with the constants `c₁, C₁` of S6.3, quantified first), particles
+</span><span class="line" id="L414"><a class="ln" aria-label="Line 414" href="#L414">414</a>prepared from `ℚ_{N,β₀}(μ⁰)` (`β₀ ≥ 0` fixed, `ℚ_{N,0} = (μ⁰)^{⊗N}`; `modulatedGibbs`) and evolved from
+</span><span class="line" id="L415"><a class="ln" aria-label="Line 415" href="#L415">415</a>time zero (not restarted at the window boundary).  `Z` is the linear Gaussian evolution along `μ^t`
+</span><span class="line" id="L416"><a class="ln" aria-label="Line 416" href="#L416">416</a>(noise level `q = β⁻¹`) with initial covariance the bridge (`β₀ = 0`) or the susceptibility
+</span><span class="line" id="L417"><a class="ln" aria-label="Line 417" href="#L417">417</a>(`β₀ &gt; 0`) covariance `⟨P_{μ⁰}φ, (I+β₀K_{μ⁰})⁻¹P_{μ⁰}ψ⟩_{L²(μ⁰)}` (`susceptibilityCov` at `μ⁰`,
+</span><span class="line" id="L418"><a class="ln" aria-label="Line 418" href="#L418">418</a>`β₀`; at `β₀ = 0` it is the bridge covariance `Cov_{μ⁰}`).  Then uniformly over all window starts
+</span><span class="line" id="L419"><a class="ln" aria-label="Line 419" href="#L419">419</a>`a₀ ≥ 0`, on `𝒳 = C([0,T];B_m)`, `m = 24d+240`:
+</span><span class="line" id="L420"><a class="ln" aria-label="Line 420" href="#L420">420</a>`d_2^𝒳(η_N^{a₀+·}, Z^{a₀+·}) ≤ C_T(√N δ_N + w_N + i_N)`,
+</span><span class="line" id="L421"><a class="ln" aria-label="Line 421" href="#L421">421</a>`W_1^𝒳(η_N^{a₀+·}, Z^{a₀+·}) ≤ C_T(√N δ_N + √w_N + j_N)` (`H:eq:whole-prepared-smooth`,
+</span><span class="line" id="L422"><a class="ln" aria-label="Line 422" href="#L422">422</a>`H:eq:whole-prepared-W1`), `η_N^t = √N(μ_N^t - μ^t)`, `i_N, j_N` as in the source (`iN`, `jN`).
+</span><span class="line" id="L423"><a class="ln" aria-label="Line 423" href="#L423">423</a>The quantifier order: `ε_*` and the completion constant `C₀` (chosen for the class: `F_N(X_N,μ^t) +
+</span><span class="line" id="L424"><a class="ln" aria-label="Line 424" href="#L424">424</a>o_N ≥ 0` for all `t ≥ 0`) first, then `C_T` (uniform over the class and over `a₀`).  The conclusion
+</span><span class="line" id="L425"><a class="ln" aria-label="Line 425" href="#L425">425</a>does not assert the `W_2` version (S lines 397-400).
+</span><span class="line" id="L426"><a class="ln" aria-label="Line 426" href="#L426">426</a>Statement change M1b (2026-10-22): the second conjunct (the particle estimates) is conditional on `GibbsEntropyContraction d s a β N`:
+</span><span class="line" id="L427"><a class="ln" aria-label="Line 427" href="#L427">427</a>the entropy-contraction clauses are conditional on it, which holds because the canonical Gibbs law `ℙ_{N,β}` is invariant for the Markov kernel
+</span><span class="line" id="L428"><a class="ln" aria-label="Line 428" href="#L428">428</a>of the particle dynamics at the physical `β` and relative entropy contracts along a Markov kernel (S L7901, L4640-4650, L5160-5170); the completion
+</span><span class="line" id="L429"><a class="ln" aria-label="Line 429" href="#L429">429</a>clause `0 ≤ F_N + o_N` is unconditional.
+</span><span class="line" id="L430"><a class="ln" aria-label="Line 430" href="#L430">430</a>Depends on S6.3 (see the module docstring). -/
+</span><span class="line" id="L431"><a class="ln" aria-label="Line 431" href="#L431">431</a>abbrev WholeSpacePreparedStatement : Prop :=
+</span><span class="line" id="L432"><a class="ln" aria-label="Line 432" href="#L432">432</a>  ∀ {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; 2 * (d : ℝ) / 3)
+</span><span class="line" id="L433"><a class="ln" aria-label="Line 433" href="#L433">433</a>    (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (β₀ : ℝ) (hβ₀ : 0 ≤ β₀) (T : ℝ) (hT : 0 &lt; T)
+</span><span class="line" id="L434"><a class="ln" aria-label="Line 434" href="#L434">434</a>    (c₁ C₁ : ℝ),
+</span><span class="line" id="L435"><a class="ln" aria-label="Line 435" href="#L435">435</a>    ∃ εstar : ℝ, 0 &lt; εstar ∧ ∃ C₀ C : ℝ,
+</span><span class="line" id="L436"><a class="ln" aria-label="Line 436" href="#L436">436</a>      (∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ε : ℝ, ∀ ψ : Euc d → ℝ,
+</span><span class="line" id="L437"><a class="ln" aria-label="Line 437" href="#L437">437</a>        IsAdmissiblePerturbation ρβ εstar ε ψ → ∀ ρ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L438"><a class="ln" aria-label="Line 438" href="#L438">438</a>        IsResultingSolution d s a β ρβ εstar ε ψ c₁ C₁ ρ → ∀ N : ℕ, 2 ≤ N → ∀ t : ℝ, 0 ≤ t →
+</span><span class="line" id="L439"><a class="ln" aria-label="Line 439" href="#L439">439</a>        ∀ X : EucConfig d N, X ∉ eucCollisionSet d N →
+</span><span class="line" id="L440"><a class="ln" aria-label="Line 440" href="#L440">440</a>          0 ≤ rieszModulatedEnergy d s X (withDensityReal (ρ t)) + oN d s C₀ N) ∧
+</span><span class="line" id="L441"><a class="ln" aria-label="Line 441" href="#L441">441</a>      ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ε : ℝ, ∀ ψ : Euc d → ℝ,
+</span><span class="line" id="L442"><a class="ln" aria-label="Line 442" href="#L442">442</a>        IsAdmissiblePerturbation ρβ εstar ε ψ → ∀ ρ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L443"><a class="ln" aria-label="Line 443" href="#L443">443</a>        IsResultingSolution d s a β ρβ εstar ε ψ c₁ C₁ ρ → ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L444"><a class="ln" aria-label="Line 444" href="#L444">444</a>        GibbsEntropyContraction d s a β N →
+</span><span class="line" id="L445"><a class="ln" aria-label="Line 445" href="#L445">445</a>        ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L446"><a class="ln" aria-label="Line 446" href="#L446">446</a>          (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L447"><a class="ln" aria-label="Line 447" href="#L447">447</a>          (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L448"><a class="ln" aria-label="Line 448" href="#L448">448</a>          IsVectorBrownian P W → IndepFun X₀ (fun ζ t =&gt; W t ζ) P →
+</span><span class="line" id="L449"><a class="ln" aria-label="Line 449" href="#L449">449</a>          law P X₀ = modulatedGibbs (rieszKernel d s) N β₀ (withDensityReal (ρ 0)) →
+</span><span class="line" id="L450"><a class="ln" aria-label="Line 450" href="#L450">450</a>          (∀ T&#x27; : ℝ, IsWholeStrongSolution P (quadraticGradientDyn d s a β) T&#x27; X₀ W X) →
+</span><span class="line" id="L451"><a class="ln" aria-label="Line 451" href="#L451">451</a>        ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L452"><a class="ln" aria-label="Line 452" href="#L452">452</a>          (Z : ℝ → Ω&#x27; → OscDual d (wholeSpaceIndex d)),
+</span><span class="line" id="L453"><a class="ln" aria-label="Line 453" href="#L453">453</a>          (∀ T&#x27; : ℝ, IsLinearGaussianEvolutionW P&#x27; ((quadraticGradientDyn d s a β).coeff ρ)
+</span><span class="line" id="L454"><a class="ln" aria-label="Line 454" href="#L454">454</a>            (wholeSpaceIndex d) β⁻¹ T&#x27;
+</span><span class="line" id="L455"><a class="ln" aria-label="Line 455" href="#L455">455</a>            (susceptibilityCov (rieszKernel d s) (withDensityReal (ρ 0)) β₀) Z) →
+</span><span class="line" id="L456"><a class="ln" aria-label="Line 456" href="#L456">456</a>        ∀ a₀ : ℝ, 0 ≤ a₀ →
+</span><span class="line" id="L457"><a class="ln" aria-label="Line 457" href="#L457">457</a>          AEMeasurable (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X ρ) P ∧
+</span><span class="line" id="L458"><a class="ln" aria-label="Line 458" href="#L458">458</a>          AEMeasurable (processWindow (wholeSpaceIndex d) T a₀ Z) P&#x27; ∧
+</span><span class="line" id="L459"><a class="ln" aria-label="Line 459" href="#L459">459</a>          smoothDist 2 (law P (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X ρ))
+</span><span class="line" id="L460"><a class="ln" aria-label="Line 460" href="#L460">460</a>              (law P&#x27; (processWindow (wholeSpaceIndex d) T a₀ Z)) ≤
+</span><span class="line" id="L461"><a class="ln" aria-label="Line 461" href="#L461">461</a>            C * (Real.sqrt N * deltaN d s N + localizationRate d s C₀ N + iN d s β₀ N) ∧
+</span><span class="line" id="L462"><a class="ln" aria-label="Line 462" href="#L462">462</a>          wassersteinE 1 (law P (flucPathW (wholeSpaceIndex d) T a₀ (Real.sqrt N) X ρ))
+</span><span class="line" id="L463"><a class="ln" aria-label="Line 463" href="#L463">463</a>              (law P&#x27; (processWindow (wholeSpaceIndex d) T a₀ Z)) ≤
+</span><span class="line" id="L464"><a class="ln" aria-label="Line 464" href="#L464">464</a>            ENNReal.ofReal (C * (Real.sqrt N * deltaN d s N +
+</span><span class="line" id="L465"><a class="ln" aria-label="Line 465" href="#L465">465</a>              Real.sqrt (localizationRate d s C₀ N) + jN d s β₀ N))
+</span><span class="line" id="L466"><a class="ln" aria-label="Line 466" href="#L466">466</a>
+</span><span class="line" id="L467"><a class="ln" aria-label="Line 467" href="#L467">467</a>/-- `h_v(x,y) = (v(x)-v(y))·∇g(x-y)` for the cyclic sums of `H:eq:cubic-formula`; the triple
+</span><span class="line" id="L468"><a class="ln" aria-label="Line 468" href="#L468">468</a>`(i,j,k)` is `(i, i+1, i+2)` in `Fin 3`. -/
+</span><span class="line" id="L469"><a class="ln" aria-label="Line 469" href="#L469">469</a>def cubicFormula (D : WholeDyn d) (ρ : ℝ → Euc d → ℝ) (β β₀ : ℝ) (μ0 : Measure (Euc d))
+</span><span class="line" id="L470"><a class="ln" aria-label="Line 470" href="#L470">470</a>    (t : Fin 3 → ℝ) (φ : Fin 3 → Euc d → ℝ) (χ : Fin 3 → ℝ → Euc d → ℝ) : ℝ :=
+</span><span class="line" id="L471"><a class="ln" aria-label="Line 471" href="#L471">471</a>  let f : Fin 3 → ℝ → Euc d → ℝ := fun i r =&gt; propagatorW (D.coeff ρ) r (t i) (φ i)
+</span><span class="line" id="L472"><a class="ln" aria-label="Line 472" href="#L472">472</a>  let r0 : Fin 3 → Euc d → ℝ := fun i =&gt; responseInverse (rieszKernel d D.s) μ0 β₀ (f i 0)
+</span><span class="line" id="L473"><a class="ln" aria-label="Line 473" href="#L473">473</a>  (∫ x, r0 0 x * r0 1 x * r0 2 x ∂μ0)
+</span><span class="line" id="L474"><a class="ln" aria-label="Line 474" href="#L474">474</a>    - (∑ i : Fin 3, ∫ r in Set.Icc (0 : ℝ) (t i), ∫ x, ∫ y,
+</span><span class="line" id="L475"><a class="ln" aria-label="Line 475" href="#L475">475</a>        commutatorKernel d D.s (fun z =&gt; gradient (f i r) z) x y * χ (i + 1) r x * χ (i + 2) r y)
+</span><span class="line" id="L476"><a class="ln" aria-label="Line 476" href="#L476">476</a>    + (2 / β) * ∑ i : Fin 3, ∫ r in Set.Icc (0 : ℝ) (min (t i) (t (i + 1))), ∫ x,
+</span><span class="line" id="L477"><a class="ln" aria-label="Line 477" href="#L477">477</a>        inner ℝ (gradient (f i r) x) (gradient (f (i + 1) r) x) * χ (i + 2) r x
+</span><span class="line" id="L478"><a class="ln" aria-label="Line 478" href="#L478">478</a>
+</span><span class="line" id="L479"><a class="ln" aria-label="Line 479" href="#L479">479</a>/-- Integrability of the integrands in `cubicFormula` (the Bochner integrals there are the source&#x27;s
+</span><span class="line" id="L480"><a class="ln" aria-label="Line 480" href="#L480">480</a>integrals only if these hold; stated as part of the conclusion of `whole_space_edgeworth`). -/
+</span><span class="line" id="L481"><a class="ln" aria-label="Line 481" href="#L481">481</a>def CubicFormulaIntegrable (D : WholeDyn d) (ρ : ℝ → Euc d → ℝ) (β₀ : ℝ) (μ0 : Measure (Euc d))
+</span><span class="line" id="L482"><a class="ln" aria-label="Line 482" href="#L482">482</a>    (t : Fin 3 → ℝ) (φ : Fin 3 → Euc d → ℝ) (χ : Fin 3 → ℝ → Euc d → ℝ) : Prop :=
+</span><span class="line" id="L483"><a class="ln" aria-label="Line 483" href="#L483">483</a>  let f : Fin 3 → ℝ → Euc d → ℝ := fun i r =&gt; propagatorW (D.coeff ρ) r (t i) (φ i)
+</span><span class="line" id="L484"><a class="ln" aria-label="Line 484" href="#L484">484</a>  let r0 : Fin 3 → Euc d → ℝ := fun i =&gt; responseInverse (rieszKernel d D.s) μ0 β₀ (f i 0)
+</span><span class="line" id="L485"><a class="ln" aria-label="Line 485" href="#L485">485</a>  Integrable (fun x =&gt; r0 0 x * r0 1 x * r0 2 x) μ0 ∧
+</span><span class="line" id="L486"><a class="ln" aria-label="Line 486" href="#L486">486</a>  (∀ i : Fin 3, ∀ r ∈ Set.Icc (0 : ℝ) (t i),
+</span><span class="line" id="L487"><a class="ln" aria-label="Line 487" href="#L487">487</a>    Integrable (fun p : Euc d × Euc d =&gt;
+</span><span class="line" id="L488"><a class="ln" aria-label="Line 488" href="#L488">488</a>      commutatorKernel d D.s (fun z =&gt; gradient (f i r) z) p.1 p.2 * χ (i + 1) r p.1 * χ (i + 2) r p.2)) ∧
+</span><span class="line" id="L489"><a class="ln" aria-label="Line 489" href="#L489">489</a>  (∀ i : Fin 3, IntegrableOn (fun r =&gt; ∫ x, ∫ y,
+</span><span class="line" id="L490"><a class="ln" aria-label="Line 490" href="#L490">490</a>      commutatorKernel d D.s (fun z =&gt; gradient (f i r) z) x y * χ (i + 1) r x * χ (i + 2) r y)
+</span><span class="line" id="L491"><a class="ln" aria-label="Line 491" href="#L491">491</a>    (Set.Icc (0 : ℝ) (t i))) ∧
+</span><span class="line" id="L492"><a class="ln" aria-label="Line 492" href="#L492">492</a>  (∀ i : Fin 3, ∀ r ∈ Set.Icc (0 : ℝ) (min (t i) (t (i + 1))),
+</span><span class="line" id="L493"><a class="ln" aria-label="Line 493" href="#L493">493</a>    Integrable (fun x =&gt; inner ℝ (gradient (f i r) x) (gradient (f (i + 1) r) x) * χ (i + 2) r x)) ∧
+</span><span class="line" id="L494"><a class="ln" aria-label="Line 494" href="#L494">494</a>  (∀ i : Fin 3, IntegrableOn (fun r =&gt; ∫ x,
+</span><span class="line" id="L495"><a class="ln" aria-label="Line 495" href="#L495">495</a>      inner ℝ (gradient (f i r) x) (gradient (f (i + 1) r) x) * χ (i + 2) r x)
+</span><span class="line" id="L496"><a class="ln" aria-label="Line 496" href="#L496">496</a>    (Set.Icc (0 : ℝ) (min (t i) (t (i + 1)))))
+</span><span class="line" id="L497"><a class="ln" aria-label="Line 497" href="#L497">497</a>
+</span><span class="line" id="L498"><a class="ln" aria-label="Line 498" href="#L498">498</a>/-- Theorem S2.1 (S:H:thm:whole-space, TeX S L348-396), part (iii) (L387-394): `0 ≤ s &lt; d/2`; for a positive Riesz
+</span><span class="line" id="L499"><a class="ln" aria-label="Line 499" href="#L499">499</a>exponent `β₀ &gt; 0`, for the logarithm every `β₀ ≥ 0`; same data as (ii).  The exactly centered path
+</span><span class="line" id="L500"><a class="ln" aria-label="Line 500" href="#L500">500</a>`ζ_N^{a₀+·}` (centered at the actual first marginal `m_N^t`, the preparation `ℚ_{N,β₀}(μ⁰)`
+</span><span class="line" id="L501"><a class="ln" aria-label="Line 501" href="#L501">501</a>evolved from time zero) satisfies the uniform `C_b^5` expansion `H:eq:window-edgeworth` in
+</span><span class="line" id="L502"><a class="ln" aria-label="Line 502" href="#L502">502</a>`𝒳 = C([0,T];B_m)`: there are symmetric projective cubic tensors `κ_{a₀,T} ∈ 𝒳 ⊗̂_π 𝒳 ⊗̂_π 𝒳`
+</span><span class="line" id="L503"><a class="ln" aria-label="Line 503" href="#L503">503</a>(`projTensor`) with `sup_{a₀≥0} ‖κ_{a₀,T}‖_π &lt; ∞` and a sequence `ε_N(T) → 0` such that, uniformly in
+</span><span class="line" id="L504"><a class="ln" aria-label="Line 504" href="#L504">504</a>`a₀ ≥ 0` and `‖Φ‖_{C_b^5(𝒳)} ≤ 1`,
+</span><span class="line" id="L505"><a class="ln" aria-label="Line 505" href="#L505">505</a>`|√N(E Φ(ζ_N^{a₀+·}) - E Φ(Z^{a₀+·})) - (1/6) E⟨D³Φ(Z^{a₀+·}), κ_{a₀,T}⟩| ≤ ε_N(T)`.  The tensor has
+</span><span class="line" id="L506"><a class="ln" aria-label="Line 506" href="#L506">506</a>the three terms of `H:eq:cubic-formula` with the whole-space adjoint and the actual nonstationary
+</span><span class="line" id="L507"><a class="ln" aria-label="Line 507" href="#L507">507</a>Gaussian covariance: for every observation family (`φ_i` oscillator test functions at window times
+</span><span class="line" id="L508"><a class="ln" aria-label="Line 508" href="#L508">508</a>`τ_i ∈ [0,T]`, physical times `t_i = a₀ + τ_i`) and every bounded trilinear form `M` on `𝒳` evaluating
+</span><span class="line" id="L509"><a class="ln" aria-label="Line 509" href="#L509">509</a>`M(w₁,w₂,w₃) = ∏_i w_i(τ_i)(φ_i)`, and every family `χ_i^r` of signed densities with `χ_i^r/ρ^r ∈ L²(ρ^r dx)` (the source&#x27;s `L²(μ)`-relative densities; no
+</span><span class="line" id="L510"><a class="ln" aria-label="Line 510" href="#L510">510</a>smoothness) determined by
+</span><span class="line" id="L511"><a class="ln" aria-label="Line 511" href="#L511">511</a>`∫ψχ_i^r = Cov(Z^r(ψ), Z^{t_i}(φ_i))` (`linearGaussianCov`; their existence is part of the conclusion, repair P4 of
+</span><span class="line" id="L512"><a class="ln" aria-label="Line 512" href="#L512">512</a>2026-10-20, so that the formula clause is not vacuous; imposed for *all* `r ∈ [0,a₀+T]`, since
+</span><span class="line" id="L513"><a class="ln" aria-label="Line 513" href="#L513">513</a>`cubicFormula` uses `χ_{i+1}^r, χ_{i+2}^r` for `r ≤ t_i` where `t_{i+1}` may be smaller; M L1297 defines `χ_i^r`
+</span><span class="line" id="L514"><a class="ln" aria-label="Line 514" href="#L514">514</a>for all `r`), `⟨κ_{a₀,T}, M⟩ = cubicFormula` with all integrals absolutely defined
+</span><span class="line" id="L515"><a class="ln" aria-label="Line 515" href="#L515">515</a>(`CubicFormulaIntegrable`, part of the conclusion); the
+</span><span class="line" id="L516"><a class="ln" aria-label="Line 516" href="#L516">516</a>`r`-integrals begin at physical time `0` even for a late window; at `β₀ = 0` the initial
+</span><span class="line" id="L517"><a class="ln" aria-label="Line 517" href="#L517">517</a>susceptibility is the identity.  `ε_N(T)` and `κ` depend on the data (they are not uniform over the
+</span><span class="line" id="L518"><a class="ln" aria-label="Line 518" href="#L518">518</a>class), and `ε_*` is the smallness constant of the class.  The logarithmic endpoint is verified in
+</span><span class="line" id="L519"><a class="ln" aria-label="Line 519" href="#L519">519</a>`O:cor:log-path` (M), not here.  Depends on S6.3 and on the static/window Edgeworth rows of S9-S11
+</span><span class="line" id="L520"><a class="ln" aria-label="Line 520" href="#L520">520</a>for its proof.
+</span><span class="line" id="L521"><a class="ln" aria-label="Line 521" href="#L521">521</a>Technical hypotheses: `T &gt; 0`; the densities `χ_i^r` are quantified (their existence is asserted in the conclusion). -/
+</span><span class="line" id="L522"><a class="ln" aria-label="Line 522" href="#L522">522</a>abbrev WholeSpaceEdgeworthStatement : Prop :=
+</span><span class="line" id="L523"><a class="ln" aria-label="Line 523" href="#L523">523</a>  ∀ {d : ℕ} (hd : 2 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hs : s &lt; (d : ℝ) / 2)
+</span><span class="line" id="L524"><a class="ln" aria-label="Line 524" href="#L524">524</a>    (a β : ℝ) (ha : 0 &lt; a) (hβ : 0 &lt; β) (β₀ : ℝ) (hβ₀ : 0 ≤ β₀) (hβ₀s : 0 &lt; s → 0 &lt; β₀)
+</span><span class="line" id="L525"><a class="ln" aria-label="Line 525" href="#L525">525</a>    (T : ℝ) (hT : 0 &lt; T) (c₁ C₁ : ℝ),
+</span><span class="line" id="L526"><a class="ln" aria-label="Line 526" href="#L526">526</a>    ∃ εstar : ℝ, 0 &lt; εstar ∧
+</span><span class="line" id="L527"><a class="ln" aria-label="Line 527" href="#L527">527</a>      ∀ ρβ : Euc d → ℝ, IsThermalEquilibrium d s a β ρβ → ∀ ε : ℝ, ∀ ψ : Euc d → ℝ,
+</span><span class="line" id="L528"><a class="ln" aria-label="Line 528" href="#L528">528</a>        IsAdmissiblePerturbation ρβ εstar ε ψ → ∀ ρ : ℝ → Euc d → ℝ,
+</span><span class="line" id="L529"><a class="ln" aria-label="Line 529" href="#L529">529</a>        IsResultingSolution d s a β ρβ εstar ε ψ c₁ C₁ ρ →
+</span><span class="line" id="L530"><a class="ln" aria-label="Line 530" href="#L530">530</a>        ∃ (κ : ℝ → projTensor (OscPath d (wholeSpaceIndex d) T) 3) (εN : ℕ → ℝ),
+</span><span class="line" id="L531"><a class="ln" aria-label="Line 531" href="#L531">531</a>          (∃ Kb : ℝ, ∀ a₀ : ℝ, 0 ≤ a₀ → ‖κ a₀‖ ≤ Kb) ∧
+</span><span class="line" id="L532"><a class="ln" aria-label="Line 532" href="#L532">532</a>          (∀ a₀ : ℝ, 0 ≤ a₀ → ∀ (σ : Equiv.Perm (Fin 3))
+</span><span class="line" id="L533"><a class="ln" aria-label="Line 533" href="#L533">533</a>            (M : (OscPath d (wholeSpaceIndex d) T) [×3]→L[ℝ] ℝ),
+</span><span class="line" id="L534"><a class="ln" aria-label="Line 534" href="#L534">534</a>            (κ a₀ : TensorDual (OscPath d (wholeSpaceIndex d) T) 3) (M.domDomCongr σ) =
+</span><span class="line" id="L535"><a class="ln" aria-label="Line 535" href="#L535">535</a>              (κ a₀ : TensorDual (OscPath d (wholeSpaceIndex d) T) 3) M) ∧
+</span><span class="line" id="L536"><a class="ln" aria-label="Line 536" href="#L536">536</a>          Tendsto εN atTop (𝓝 0) ∧
+</span><span class="line" id="L537"><a class="ln" aria-label="Line 537" href="#L537">537</a>          (∀ a₀ : ℝ, 0 ≤ a₀ → ∀ (τ : Fin 3 → Set.Icc (0 : ℝ) T) (φ : Fin 3 → Euc d → ℝ),
+</span><span class="line" id="L538"><a class="ln" aria-label="Line 538" href="#L538">538</a>            (∀ i, IsOscTest (wholeSpaceIndex d) (φ i)) →
+</span><span class="line" id="L539"><a class="ln" aria-label="Line 539" href="#L539">539</a>            (∃ χ : Fin 3 → ℝ → Euc d → ℝ,
+</span><span class="line" id="L540"><a class="ln" aria-label="Line 540" href="#L540">540</a>              ∀ i, ∀ r ∈ Set.Icc (0 : ℝ) (a₀ + T),
+</span><span class="line" id="L541"><a class="ln" aria-label="Line 541" href="#L541">541</a>                MemLp (fun x =&gt; χ i r x / ρ r x) 2 (withDensityReal (ρ r)) ∧
+</span><span class="line" id="L542"><a class="ln" aria-label="Line 542" href="#L542">542</a>                ∀ ψ&#x27;, IsOscTest (wholeSpaceIndex d) ψ&#x27; →
+</span><span class="line" id="L543"><a class="ln" aria-label="Line 543" href="#L543">543</a>                  Integrable (fun x =&gt; ψ&#x27; x * χ i r x) ∧
+</span><span class="line" id="L544"><a class="ln" aria-label="Line 544" href="#L544">544</a>                  ∫ x, ψ&#x27; x * χ i r x = linearGaussianCov
+</span><span class="line" id="L545"><a class="ln" aria-label="Line 545" href="#L545">545</a>                    ((quadraticGradientDyn d s a β).coeff ρ) β⁻¹
+</span><span class="line" id="L546"><a class="ln" aria-label="Line 546" href="#L546">546</a>                    (susceptibilityCov (rieszKernel d s) (withDensityReal (ρ 0)) β₀) r (a₀ + τ i)
+</span><span class="line" id="L547"><a class="ln" aria-label="Line 547" href="#L547">547</a>                    ψ&#x27; (φ i)) ∧
+</span><span class="line" id="L548"><a class="ln" aria-label="Line 548" href="#L548">548</a>            ∀ χ : Fin 3 → ℝ → Euc d → ℝ,
+</span><span class="line" id="L549"><a class="ln" aria-label="Line 549" href="#L549">549</a>            (∀ i, ∀ r ∈ Set.Icc (0 : ℝ) (a₀ + T),
+</span><span class="line" id="L550"><a class="ln" aria-label="Line 550" href="#L550">550</a>              MemLp (fun x =&gt; χ i r x / ρ r x) 2 (withDensityReal (ρ r)) ∧
+</span><span class="line" id="L551"><a class="ln" aria-label="Line 551" href="#L551">551</a>              ∀ ψ&#x27;, IsOscTest (wholeSpaceIndex d) ψ&#x27; →
+</span><span class="line" id="L552"><a class="ln" aria-label="Line 552" href="#L552">552</a>                Integrable (fun x =&gt; ψ&#x27; x * χ i r x) ∧
+</span><span class="line" id="L553"><a class="ln" aria-label="Line 553" href="#L553">553</a>                ∫ x, ψ&#x27; x * χ i r x = linearGaussianCov
+</span><span class="line" id="L554"><a class="ln" aria-label="Line 554" href="#L554">554</a>                  ((quadraticGradientDyn d s a β).coeff ρ) β⁻¹
+</span><span class="line" id="L555"><a class="ln" aria-label="Line 555" href="#L555">555</a>                  (susceptibilityCov (rieszKernel d s) (withDensityReal (ρ 0)) β₀) r (a₀ + τ i)
+</span><span class="line" id="L556"><a class="ln" aria-label="Line 556" href="#L556">556</a>                  ψ&#x27; (φ i)) →
+</span><span class="line" id="L557"><a class="ln" aria-label="Line 557" href="#L557">557</a>            ∀ M : (OscPath d (wholeSpaceIndex d) T) [×3]→L[ℝ] ℝ,
+</span><span class="line" id="L558"><a class="ln" aria-label="Line 558" href="#L558">558</a>              (∀ w : Fin 3 → OscPath d (wholeSpaceIndex d) T,
+</span><span class="line" id="L559"><a class="ln" aria-label="Line 559" href="#L559">559</a>                M w = ∏ i, OscDual.eval (OscPath.at&#x27; (w i) (τ i)) (φ i)) →
+</span><span class="line" id="L560"><a class="ln" aria-label="Line 560" href="#L560">560</a>              (κ a₀ : TensorDual (OscPath d (wholeSpaceIndex d) T) 3) M =
+</span><span class="line" id="L561"><a class="ln" aria-label="Line 561" href="#L561">561</a>                cubicFormula (quadraticGradientDyn d s a β) ρ β β₀ (withDensityReal (ρ 0))
+</span><span class="line" id="L562"><a class="ln" aria-label="Line 562" href="#L562">562</a>                  (fun i =&gt; a₀ + τ i) φ χ ∧
+</span><span class="line" id="L563"><a class="ln" aria-label="Line 563" href="#L563">563</a>              CubicFormulaIntegrable (quadraticGradientDyn d s a β) ρ β₀ (withDensityReal (ρ 0))
+</span><span class="line" id="L564"><a class="ln" aria-label="Line 564" href="#L564">564</a>                (fun i =&gt; a₀ + τ i) φ χ) ∧
+</span><span class="line" id="L565"><a class="ln" aria-label="Line 565" href="#L565">565</a>          ∀ N : ℕ, 2 ≤ N →
+</span><span class="line" id="L566"><a class="ln" aria-label="Line 566" href="#L566">566</a>          ∀ {Ω : Type} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+</span><span class="line" id="L567"><a class="ln" aria-label="Line 567" href="#L567">567</a>            (X₀ : Ω → EucConfig d N) (W : ℝ≥0 → Ω → (Fin N → Euc d))
+</span><span class="line" id="L568"><a class="ln" aria-label="Line 568" href="#L568">568</a>            (X : ℝ≥0 → Ω → EucConfig d N),
+</span><span class="line" id="L569"><a class="ln" aria-label="Line 569" href="#L569">569</a>            IsVectorBrownian P W → IndepFun X₀ (fun ζ t =&gt; W t ζ) P →
+</span><span class="line" id="L570"><a class="ln" aria-label="Line 570" href="#L570">570</a>            law P X₀ = modulatedGibbs (rieszKernel d s) N β₀ (withDensityReal (ρ 0)) →
+</span><span class="line" id="L571"><a class="ln" aria-label="Line 571" href="#L571">571</a>            (∀ T&#x27; : ℝ, IsWholeStrongSolution P (quadraticGradientDyn d s a β) T&#x27; X₀ W X) →
+</span><span class="line" id="L572"><a class="ln" aria-label="Line 572" href="#L572">572</a>          ∀ {Ω&#x27; : Type} [MeasurableSpace Ω&#x27;] (P&#x27; : Measure Ω&#x27;) [IsProbabilityMeasure P&#x27;]
+</span><span class="line" id="L573"><a class="ln" aria-label="Line 573" href="#L573">573</a>            (Z : ℝ → Ω&#x27; → OscDual d (wholeSpaceIndex d)),
+</span><span class="line" id="L574"><a class="ln" aria-label="Line 574" href="#L574">574</a>            (∀ T&#x27; : ℝ, IsLinearGaussianEvolutionW P&#x27; ((quadraticGradientDyn d s a β).coeff ρ)
+</span><span class="line" id="L575"><a class="ln" aria-label="Line 575" href="#L575">575</a>              (wholeSpaceIndex d) β⁻¹ T&#x27;
+</span><span class="line" id="L576"><a class="ln" aria-label="Line 576" href="#L576">576</a>              (susceptibilityCov (rieszKernel d s) (withDensityReal (ρ 0)) β₀) Z) →
+</span><span class="line" id="L577"><a class="ln" aria-label="Line 577" href="#L577">577</a>          ∀ a₀ : ℝ, 0 ≤ a₀ →
+</span><span class="line" id="L578"><a class="ln" aria-label="Line 578" href="#L578">578</a>            AEMeasurable (zetaPathW (wholeSpaceIndex d) T a₀ P X) P ∧
+</span><span class="line" id="L579"><a class="ln" aria-label="Line 579" href="#L579">579</a>            AEMeasurable (processWindow (wholeSpaceIndex d) T a₀ Z) P&#x27; ∧
+</span><span class="line" id="L580"><a class="ln" aria-label="Line 580" href="#L580">580</a>            ∀ Φ : OscPath d (wholeSpaceIndex d) T → ℝ,
+</span><span class="line" id="L581"><a class="ln" aria-label="Line 581" href="#L581">581</a>              Φ ∈ CbUnitBall (OscPath d (wholeSpaceIndex d) T) 5 →
+</span><span class="line" id="L582"><a class="ln" aria-label="Line 582" href="#L582">582</a>              |Real.sqrt N * (∫ ζ, Φ (zetaPathW (wholeSpaceIndex d) T a₀ P X ζ) ∂P -
+</span><span class="line" id="L583"><a class="ln" aria-label="Line 583" href="#L583">583</a>                  ∫ ζ&#x27;, Φ (processWindow (wholeSpaceIndex d) T a₀ Z ζ&#x27;) ∂P&#x27;) -
+</span><span class="line" id="L584"><a class="ln" aria-label="Line 584" href="#L584">584</a>                (1 / 6) * ∫ ζ&#x27;, (κ a₀ : TensorDual (OscPath d (wholeSpaceIndex d) T) 3)
+</span><span class="line" id="L585"><a class="ln" aria-label="Line 585" href="#L585">585</a>                  (iteratedFDeriv ℝ 3 Φ (processWindow (wholeSpaceIndex d) T a₀ Z ζ&#x27;)) ∂P&#x27;| ≤
+</span><span class="line" id="L586"><a class="ln" aria-label="Line 586" href="#L586">586</a>                εN N
+</span><span class="line" id="L587"><a class="ln" aria-label="Line 587" href="#L587">587</a>
+</span><span class="line" id="L588"><a class="ln" aria-label="Line 588" href="#L588">588</a>end Headline
+</span><span class="line" id="L589"><a class="ln" aria-label="Line 589" href="#L589">589</a>
+</span><span class="line" id="L590"><a class="ln" aria-label="Line 590" href="#L590">590</a>end HRS.Whole
+</span></code></pre></main></body></html>

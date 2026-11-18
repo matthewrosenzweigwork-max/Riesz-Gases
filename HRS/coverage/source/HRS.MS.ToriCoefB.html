@@ -1,0 +1,269 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>HRS.MS.ToriCoefB · Fluctuations of Riesz gases</title><link rel="icon" type="image/svg+xml" href="../mark.svg"><link rel="stylesheet" href="../coverage.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Project"><a href="../../reader/index.html">Mathematical reader</a><a href="../index.html">Paper index</a><a href="../evidence.html">Reading the evidence</a></nav></header><main id="main"><p class="kicker">Lean source</p><h1><code>HRS.MS.ToriCoefB</code></h1><p><a href="../../lean/HRS/MS/ToriCoefB.lean">Open the unaltered Lean file</a> · 268 lines</p><pre class="source" tabindex="0" aria-label="Lean source, scroll horizontally if needed"><code><span class="line" id="L1"><a class="ln" aria-label="Line 1" href="#L1">1</a>import HRS.MS.ToriCoefBAux6
+</span><span class="line" id="L2"><a class="ln" aria-label="Line 2" href="#L2">2</a>
+</span><span class="line" id="L3"><a class="ln" aria-label="Line 3" href="#L3">3</a>/-!
+</span><span class="line" id="L4"><a class="ln" aria-label="Line 4" href="#L4">4</a># MS-TORI-COEFB: part B of `expanding_tori_coefficients` (S.A.34, coefficient part, conjuncts 4-6)
+</span><span class="line" id="L5"><a class="ln" aria-label="Line 5" href="#L5">5</a>
+</span><span class="line" id="L6"><a class="ln" aria-label="Line 6" href="#L6">6</a>`expanding_tori_coefficients_B_proof` proves the drift conjuncts (regularity, `C^j` bounds `1 ≤ j ≤ m+1`, linear
+</span><span class="line" id="L7"><a class="ln" aria-label="Line 7" href="#L7">7</a>growth on the central cube) with the existential `Λ&#x27; C L₀` replaced by `C L₀`; `expanding_tori_coefficients_proof`
+</span><span class="line" id="L8"><a class="ln" aria-label="Line 8" href="#L8">8</a>assembles the frozen statement `HRS.Whole.AppendixALemmas.expanding_tori_coefficients` from part A
+</span><span class="line" id="L9"><a class="ln" aria-label="Line 9" href="#L9">9</a>(`HRS.MS.ToriCoefA.expanding_tori_coefficients_A_proof`) and part B.
+</span><span class="line" id="L10"><a class="ln" aria-label="Line 10" href="#L10">10</a>
+</span><span class="line" id="L11"><a class="ln" aria-label="Line 11" href="#L11">11</a>Route: `b_L = M F - ∇V_L` with `F = convGradConvL L ∇γ_L μ_L`; the coordinates of `F` are the operators `T_{k_i}`
+</span><span class="line" id="L12"><a class="ln" aria-label="Line 12" href="#L12">12</a>of `ToriCoefBAux1`-`ToriCoefBAux2` (differentiation under the integral sign, the derivative falling on `μ_L`),
+</span><span class="line" id="L13"><a class="ln" aria-label="Line 13" href="#L13">13</a>whose kernel hypotheses are `ToriCoefBAux3` (`∇γ_L = O(|z|^{-s-1})`, `ker1_eq_gam` and scaling), whose cube
+</span><span class="line" id="L14"><a class="ln" aria-label="Line 14" href="#L14">14</a>`L¹` hypothesis on `D^j μ_L` is `ToriCoefBAux4`.
+</span><span class="line" id="L15"><a class="ln" aria-label="Line 15" href="#L15">15</a>-/
+</span><span class="line" id="L16"><a class="ln" aria-label="Line 16" href="#L16">16</a>
+</span><span class="line" id="L17"><a class="ln" aria-label="Line 17" href="#L17">17</a>noncomputable section
+</span><span class="line" id="L18"><a class="ln" aria-label="Line 18" href="#L18">18</a>
+</span><span class="line" id="L19"><a class="ln" aria-label="Line 19" href="#L19">19</a>open MeasureTheory Filter Topology Set
+</span><span class="line" id="L20"><a class="ln" aria-label="Line 20" href="#L20">20</a>open scoped ENNReal NNReal BigOperators ContDiff
+</span><span class="line" id="L21"><a class="ln" aria-label="Line 21" href="#L21">21</a>
+</span><span class="line" id="L22"><a class="ln" aria-label="Line 22" href="#L22">22</a>namespace HRS.MS.ToriCoefB
+</span><span class="line" id="L23"><a class="ln" aria-label="Line 23" href="#L23">23</a>
+</span><span class="line" id="L24"><a class="ln" aria-label="Line 24" href="#L24">24</a>open HRS HRS.Whole HRS.Whole.AppendixA HRS.Whole.AppendixALemmas HRS.MS.ToriCoefA
+</span><span class="line" id="L25"><a class="ln" aria-label="Line 25" href="#L25">25</a>
+</span><span class="line" id="L26"><a class="ln" aria-label="Line 26" href="#L26">26</a>variable {d : ℕ}
+</span><span class="line" id="L27"><a class="ln" aria-label="Line 27" href="#L27">27</a>
+</span><span class="line" id="L28"><a class="ln" aria-label="Line 28" href="#L28">28</a>theorem expanding_tori_coefficients_B_proof (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ)
+</span><span class="line" id="L29"><a class="ln" aria-label="Line 29" href="#L29">29</a>    (T Λ ΛV MB G₀ V₀ : ℝ) (ζ : Euc d → ℝ) (hζ : IsCutoffRad (1 / 4) (1 / 3) ζ) :
+</span><span class="line" id="L30"><a class="ln" aria-label="Line 30" href="#L30">30</a>    ∃ C L₀ : ℝ, ∀ (M : Matrix (Fin d) (Fin d) ℝ) (V : Euc d → ℝ) (ρ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L31"><a class="ln" aria-label="Line 31" href="#L31">31</a>      PDE.MatBound MB M → VHypRd (m + 3) ΛV G₀ V → |V 0| ≤ V₀ → CoeffHypRd s m Λ T ρ →
+</span><span class="line" id="L32"><a class="ln" aria-label="Line 32" href="#L32">32</a>      ∀ γ : ℝ → Euc d → ℝ, (∀ L : ℝ, 1 ≤ L → IsPeriodicRieszKernel d s L (γ L)) →
+</span><span class="line" id="L33"><a class="ln" aria-label="Line 33" href="#L33">33</a>      let μL : ℝ → ℝ → Euc d → ℝ := fun L t =&gt;
+</span><span class="line" id="L34"><a class="ln" aria-label="Line 34" href="#L34">34</a>        perL L fun x =&gt; (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ * (ζ (L⁻¹ • x) * ρ t x)
+</span><span class="line" id="L35"><a class="ln" aria-label="Line 35" href="#L35">35</a>      let VL : ℝ → Euc d → ℝ := fun L =&gt; perL L fun x =&gt; ζ (L⁻¹ • x) * V x
+</span><span class="line" id="L36"><a class="ln" aria-label="Line 36" href="#L36">36</a>      ∀ L : ℝ, max 1 L₀ ≤ L → ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L37"><a class="ln" aria-label="Line 37" href="#L37">37</a>        ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (torusDriftL M L (γ L) (μL L t) (VL L)) ∧
+</span><span class="line" id="L38"><a class="ln" aria-label="Line 38" href="#L38">38</a>        (∀ j : ℕ, 1 ≤ j → j ≤ m + 1 → ∀ x : Euc d,
+</span><span class="line" id="L39"><a class="ln" aria-label="Line 39" href="#L39">39</a>          ‖iteratedFDeriv ℝ j (torusDriftL M L (γ L) (μL L t) (VL L)) x‖ ≤ C) ∧
+</span><span class="line" id="L40"><a class="ln" aria-label="Line 40" href="#L40">40</a>        (∀ x : Euc d, ‖x‖ ≤ L / 2 →
+</span><span class="line" id="L41"><a class="ln" aria-label="Line 41" href="#L41">41</a>          ‖torusDriftL M L (γ L) (μL L t) (VL L) x‖ ≤ C * (1 + ‖x‖)) := by
+</span><span class="line" id="L42"><a class="ln" aria-label="Line 42" href="#L42">42</a>  obtain ⟨Λ&#x27;, L₁, hA⟩ :=
+</span><span class="line" id="L43"><a class="ln" aria-label="Line 43" href="#L43">43</a>    HRS.MS.ToriCoefA.expanding_tori_coefficients_A_proof hd s hs0 hsd m T Λ ΛV MB G₀ V₀ ζ hζ
+</span><span class="line" id="L44"><a class="ln" aria-label="Line 44" href="#L44">44</a>  choose K hK0 hK using fun i : ℕ =&gt; tca_bdd_iter ζ hζ i
+</span><span class="line" id="L45"><a class="ln" aria-label="Line 45" href="#L45">45</a>  obtain ⟨N, hN⟩ := tca_tail (d := d) (1 / (2 * (|Λ| + 1))) (by positivity)
+</span><span class="line" id="L46"><a class="ln" aria-label="Line 46" href="#L46">46</a>  have hBε : |Λ| * (1 / (2 * (|Λ| + 1))) ≤ 1 / 2 := by
+</span><span class="line" id="L47"><a class="ln" aria-label="Line 47" href="#L47">47</a>    rw [mul_one_div, div_le_iff₀ (by positivity)]
+</span><span class="line" id="L48"><a class="ln" aria-label="Line 48" href="#L48">48</a>    nlinarith [abs_nonneg Λ]
+</span><span class="line" id="L49"><a class="ln" aria-label="Line 49" href="#L49">49</a>  obtain ⟨C₀, A₀, hC₀, hA₀, hkern⟩ := tcb_kern_coord hd hs0 hsd
+</span><span class="line" id="L50"><a class="ln" aria-label="Line 50" href="#L50">50</a>  set I₀ : ℝ := ∫ w : Euc d, tca_g w with hI₀
+</span><span class="line" id="L51"><a class="ln" aria-label="Line 51" href="#L51">51</a>  have hI₀0 : 0 ≤ I₀ := integral_nonneg fun w =&gt; (tcb_g_pos w).le
+</span><span class="line" id="L52"><a class="ln" aria-label="Line 52" href="#L52">52</a>  set Bd : ℝ := ∑ j ∈ Finset.range (m + 4), 2 * tca_S d K |Λ| j with hBd
+</span><span class="line" id="L53"><a class="ln" aria-label="Line 53" href="#L53">53</a>  have hS0 : ∀ j : ℕ, 0 ≤ tca_S d K |Λ| j := fun j =&gt; tca_S_nonneg d K hK0 |Λ| (abs_nonneg _) j
+</span><span class="line" id="L54"><a class="ln" aria-label="Line 54" href="#L54">54</a>  have hBd0 : 0 ≤ Bd := Finset.sum_nonneg fun j _ =&gt; by linarith [hS0 j]
+</span><span class="line" id="L55"><a class="ln" aria-label="Line 55" href="#L55">55</a>  have hBdle : ∀ j : ℕ, j ≤ m + 3 → 2 * tca_S d K |Λ| j ≤ Bd := fun j hj =&gt;
+</span><span class="line" id="L56"><a class="ln" aria-label="Line 56" href="#L56">56</a>    Finset.single_le_sum (f := fun j =&gt; 2 * tca_S d K |Λ| j) (fun i _ =&gt; by linarith [hS0 i])
+</span><span class="line" id="L57"><a class="ln" aria-label="Line 57" href="#L57">57</a>      (Finset.mem_range.2 (by omega))
+</span><span class="line" id="L58"><a class="ln" aria-label="Line 58" href="#L58">58</a>  set Bc : ℝ := 2 ^ d * Bd * I₀ with hBc
+</span><span class="line" id="L59"><a class="ln" aria-label="Line 59" href="#L59">59</a>  have hBc0 : 0 ≤ Bc := by positivity
+</span><span class="line" id="L60"><a class="ln" aria-label="Line 60" href="#L60">60</a>  set b : ℝ := A₀ * Bd + C₀ * Bc with hb
+</span><span class="line" id="L61"><a class="ln" aria-label="Line 61" href="#L61">61</a>  have hb0 : 0 ≤ b := by positivity
+</span><span class="line" id="L62"><a class="ln" aria-label="Line 62" href="#L62">62</a>  set MV : ℝ := |V₀| + |G₀| + |ΛV| with hMV
+</span><span class="line" id="L63"><a class="ln" aria-label="Line 63" href="#L63">63</a>  set CV : ℝ := (K 0 + K 1) * MV with hCV
+</span><span class="line" id="L64"><a class="ln" aria-label="Line 64" href="#L64">64</a>  have hCV0 : 0 ≤ CV := mul_nonneg (add_nonneg (hK0 0) (hK0 1)) (by positivity)
+</span><span class="line" id="L65"><a class="ln" aria-label="Line 65" href="#L65">65</a>  set P : ℝ := (d : ℝ) ^ 2 * |MB| * (d * b) with hP
+</span><span class="line" id="L66"><a class="ln" aria-label="Line 66" href="#L66">66</a>  have hP0 : 0 ≤ P := by positivity
+</span><span class="line" id="L67"><a class="ln" aria-label="Line 67" href="#L67">67</a>  refine ⟨P + |Λ&#x27;| + CV, max L₁ (4 * (N : ℝ)), ?_⟩
+</span><span class="line" id="L68"><a class="ln" aria-label="Line 68" href="#L68">68</a>  intro M V ρ hM hV hV0 hρ γ hγ μL VL L hL t ht
+</span><span class="line" id="L69"><a class="ln" aria-label="Line 69" href="#L69">69</a>  have hL1 : 1 ≤ L := le_trans (le_max_left 1 _) hL
+</span><span class="line" id="L70"><a class="ln" aria-label="Line 70" href="#L70">70</a>  have hL4 : (N : ℝ) ≤ L / 4 := by
+</span><span class="line" id="L71"><a class="ln" aria-label="Line 71" href="#L71">71</a>    have := le_trans (le_max_right L₁ (4 * (N : ℝ))) (le_trans (le_max_right 1 _) hL)
+</span><span class="line" id="L72"><a class="ln" aria-label="Line 72" href="#L72">72</a>    linarith
+</span><span class="line" id="L73"><a class="ln" aria-label="Line 73" href="#L73">73</a>  have hL0 : 0 &lt; L := by linarith
+</span><span class="line" id="L74"><a class="ln" aria-label="Line 74" href="#L74">74</a>  have hLA : max 1 L₁ ≤ L :=
+</span><span class="line" id="L75"><a class="ln" aria-label="Line 75" href="#L75">75</a>    max_le hL1 (le_trans (le_max_left L₁ (4 * (N : ℝ))) (le_trans (le_max_right 1 _) hL))
+</span><span class="line" id="L76"><a class="ln" aria-label="Line 76" href="#L76">76</a>  obtain ⟨-, -, hVsm, hVbd⟩ := hA M V ρ hM hV hV0 hρ γ hγ L hLA t ht
+</span><span class="line" id="L77"><a class="ln" aria-label="Line 77" href="#L77">77</a>  -- the density `ρ t`
+</span><span class="line" id="L78"><a class="ln" aria-label="Line 78" href="#L78">78</a>  have hprob : HRS.Whole.IsProbDensity (ρ t) := hρ.prob t ht
+</span><span class="line" id="L79"><a class="ln" aria-label="Line 79" href="#L79">79</a>  obtain ⟨hMC, hWfin, hWle⟩ := hρ.regular.1 t ht
+</span><span class="line" id="L80"><a class="ln" aria-label="Line 80" href="#L80">80</a>  have hWle&#x27; : (weightedSupE (m + 3) ((d : ℝ) + 3) (ρ t)).toReal ≤ |Λ| := by
+</span><span class="line" id="L81"><a class="ln" aria-label="Line 81" href="#L81">81</a>    have hcb0 : 0 ≤ cbNorm (m + 3) (ρ t) :=
+</span><span class="line" id="L82"><a class="ln" aria-label="Line 82" href="#L82">82</a>      Finset.sum_nonneg fun j _ =&gt; Real.iSup_nonneg fun z =&gt; norm_nonneg _
+</span><span class="line" id="L83"><a class="ln" aria-label="Line 83" href="#L83">83</a>    have := le_abs_self Λ
+</span><span class="line" id="L84"><a class="ln" aria-label="Line 84" href="#L84">84</a>    linarith
+</span><span class="line" id="L85"><a class="ln" aria-label="Line 85" href="#L85">85</a>  have hWk : ∀ k : ℕ, k ≤ m + 3 → ∀ w : Euc d,
+</span><span class="line" id="L86"><a class="ln" aria-label="Line 86" href="#L86">86</a>      jbracket w ^ ((d : ℝ) + 3) * ‖iteratedFDeriv ℝ k (ρ t) w‖ ≤ (d : ℝ) ^ k * |Λ| := fun k hk w =&gt;
+</span><span class="line" id="L87"><a class="ln" aria-label="Line 87" href="#L87">87</a>    (tca_weight_le (m + 3) ((d : ℝ) + 3) (ρ t) hWfin.ne k hk w).trans
+</span><span class="line" id="L88"><a class="ln" aria-label="Line 88" href="#L88">88</a>      (mul_le_mul_of_nonneg_left hWle&#x27; (pow_nonneg (Nat.cast_nonneg d) _))
+</span><span class="line" id="L89"><a class="ln" aria-label="Line 89" href="#L89">89</a>  have hρB : ∀ y : Euc d, |ρ t y| ≤ |Λ| * tca_g y := by
+</span><span class="line" id="L90"><a class="ln" aria-label="Line 90" href="#L90">90</a>    intro y
+</span><span class="line" id="L91"><a class="ln" aria-label="Line 91" href="#L91">91</a>    exact tca_abs_le_weight (ρ t) |Λ| (fun y&#x27; =&gt; by
+</span><span class="line" id="L92"><a class="ln" aria-label="Line 92" href="#L92">92</a>      have := hWk 0 (Nat.zero_le _) y&#x27;
+</span><span class="line" id="L93"><a class="ln" aria-label="Line 93" href="#L93">93</a>      rw [norm_iteratedFDeriv_zero, Real.norm_eq_abs, pow_zero, one_mul] at this
+</span><span class="line" id="L94"><a class="ln" aria-label="Line 94" href="#L94">94</a>      exact this) y
+</span><span class="line" id="L95"><a class="ln" aria-label="Line 95" href="#L95">95</a>  have hZ : 1 / 2 ≤ ∫ y, ζ (L⁻¹ • y) * ρ t y :=
+</span><span class="line" id="L96"><a class="ln" aria-label="Line 96" href="#L96">96</a>    tca_Z_ge hζ (ρ t) hprob |Λ| (abs_nonneg _) hρB L hL0 N hL4 _ hN hBε
+</span><span class="line" id="L97"><a class="ln" aria-label="Line 97" href="#L97">97</a>  have hc0 : 0 &lt; (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ := inv_pos.2 (by linarith)
+</span><span class="line" id="L98"><a class="ln" aria-label="Line 98" href="#L98">98</a>  have hc2 : (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ ≤ 2 := by
+</span><span class="line" id="L99"><a class="ln" aria-label="Line 99" href="#L99">99</a>    rw [inv_eq_one_div, div_le_iff₀ (by linarith)]
+</span><span class="line" id="L100"><a class="ln" aria-label="Line 100" href="#L100">100</a>    linarith
+</span><span class="line" id="L101"><a class="ln" aria-label="Line 101" href="#L101">101</a>  have hμdef : μL L t = perL L (fun x =&gt; (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ * (ζ (L⁻¹ • x) * ρ t x)) := rfl
+</span><span class="line" id="L102"><a class="ln" aria-label="Line 102" href="#L102">102</a>  have hVdef : VL L = perL L (fun x =&gt; ζ (L⁻¹ • x) * V x) := rfl
+</span><span class="line" id="L103"><a class="ln" aria-label="Line 103" href="#L103">103</a>  have hvan : ∀ y : Euc d, L / 3 ≤ ‖y‖ →
+</span><span class="line" id="L104"><a class="ln" aria-label="Line 104" href="#L104">104</a>      (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ * (ζ (L⁻¹ • y) * ρ t y) = 0 := by
+</span><span class="line" id="L105"><a class="ln" aria-label="Line 105" href="#L105">105</a>    intro y hy
+</span><span class="line" id="L106"><a class="ln" aria-label="Line 106" href="#L106">106</a>    rw [tca_zeta_far_val hζ L hL0 y hy, zero_mul, mul_zero]
+</span><span class="line" id="L107"><a class="ln" aria-label="Line 107" href="#L107">107</a>  obtain ⟨hcd, hglob, -⟩ := tca_mu_package hζ L hL1 (m + 3) (ρ t) hMC.1 K hK hK0 |Λ|
+</span><span class="line" id="L108"><a class="ln" aria-label="Line 108" href="#L108">108</a>    (abs_nonneg _) hWk _ hc0 hc2
+</span><span class="line" id="L109"><a class="ln" aria-label="Line 109" href="#L109">109</a>  have hfw := fun j hj w =&gt; tcb_f_weighted hζ L hL1 (m + 3) (ρ t) hMC.1 K hK hK0 |Λ|
+</span><span class="line" id="L110"><a class="ln" aria-label="Line 110" href="#L110">110</a>    (abs_nonneg _) hWk _ hc0 hc2 j hj w
+</span><span class="line" id="L111"><a class="ln" aria-label="Line 111" href="#L111">111</a>  -- the coefficient `μ = μL L t`
+</span><span class="line" id="L112"><a class="ln" aria-label="Line 112" href="#L112">112</a>  set μ : Euc d → ℝ := μL L t with hμ
+</span><span class="line" id="L113"><a class="ln" aria-label="Line 113" href="#L113">113</a>  have hD : ∀ i ≤ m + 1 + 2, ∀ y, ‖iteratedFDeriv ℝ i μ y‖ ≤ Bd := fun i hi y =&gt;
+</span><span class="line" id="L114"><a class="ln" aria-label="Line 114" href="#L114">114</a>    (hglob i (by omega) y).trans (hBdle i (by omega))
+</span><span class="line" id="L115"><a class="ln" aria-label="Line 115" href="#L115">115</a>  have hcube : ∀ i ≤ m + 1, ∀ x, ∫ z in tcb_Q d L, ‖iteratedFDeriv ℝ i μ (x - z)‖ ≤ Bc := by
+</span><span class="line" id="L116"><a class="ln" aria-label="Line 116" href="#L116">116</a>    intro i hi x
+</span><span class="line" id="L117"><a class="ln" aria-label="Line 117" href="#L117">117</a>    refine (tcb_cube_l1 hL0 _ hvan i (2 * tca_S d K |Λ| i) (hfw i (by omega)) x).trans ?_
+</span><span class="line" id="L118"><a class="ln" aria-label="Line 118" href="#L118">118</a>    rw [hBc]
+</span><span class="line" id="L119"><a class="ln" aria-label="Line 119" href="#L119">119</a>    have := hBdle i (by omega)
+</span><span class="line" id="L120"><a class="ln" aria-label="Line 120" href="#L120">120</a>    have h2 : (0 : ℝ) ≤ 2 ^ d := by positivity
+</span><span class="line" id="L121"><a class="ln" aria-label="Line 121" href="#L121">121</a>    calc 2 ^ d * (2 * tca_S d K |Λ| i) * ∫ w : Euc d, tca_g w
+</span><span class="line" id="L122"><a class="ln" aria-label="Line 122" href="#L122">122</a>        ≤ 2 ^ d * Bd * ∫ w : Euc d, tca_g w :=
+</span><span class="line" id="L123"><a class="ln" aria-label="Line 123" href="#L123">123</a>          mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left this h2) hI₀0
+</span><span class="line" id="L124"><a class="ln" aria-label="Line 124" href="#L124">124</a>      _ = _ := rfl
+</span><span class="line" id="L125"><a class="ln" aria-label="Line 125" href="#L125">125</a>  have hμ3 : ContDiff ℝ ((m + 1 + 2 : ℕ) : WithTop ℕ∞) μ := hcd
+</span><span class="line" id="L126"><a class="ln" aria-label="Line 126" href="#L126">126</a>  have hμ1 : ContDiff ℝ 1 μ := hcd.of_le (by exact_mod_cast (by omega : 1 ≤ m + 3))
+</span><span class="line" id="L127"><a class="ln" aria-label="Line 127" href="#L127">127</a>  have hμ0 : ∀ y, ‖μ y‖ ≤ Bd := fun y =&gt; by
+</span><span class="line" id="L128"><a class="ln" aria-label="Line 128" href="#L128">128</a>    have := hD 0 (by omega) y
+</span><span class="line" id="L129"><a class="ln" aria-label="Line 129" href="#L129">129</a>    rwa [norm_iteratedFDeriv_zero] at this
+</span><span class="line" id="L130"><a class="ln" aria-label="Line 130" href="#L130">130</a>  have hμ1b : ∀ y, ‖fderiv ℝ μ y‖ ≤ Bd := fun y =&gt; by
+</span><span class="line" id="L131"><a class="ln" aria-label="Line 131" href="#L131">131</a>    have := hD 1 (by omega) y
+</span><span class="line" id="L132"><a class="ln" aria-label="Line 132" href="#L132">132</a>    rwa [norm_iteratedFDeriv_one] at this
+</span><span class="line" id="L133"><a class="ln" aria-label="Line 133" href="#L133">133</a>  -- the kernel
+</span><span class="line" id="L134"><a class="ln" aria-label="Line 134" href="#L134">134</a>  have hkc : ∀ i : Fin d, tcb_Kern L (fun z =&gt; gradient (γ L) z i) C₀ ∧
+</span><span class="line" id="L135"><a class="ln" aria-label="Line 135" href="#L135">135</a>      tcb_a (fun z =&gt; gradient (γ L) z i) ≤ A₀ := hkern L hL1 (γ L) (hγ L hL1)
+</span><span class="line" id="L136"><a class="ln" aria-label="Line 136" href="#L136">136</a>  -- the scalar operators
+</span><span class="line" id="L137"><a class="ln" aria-label="Line 137" href="#L137">137</a>  have hTi : ∀ i : Fin d,
+</span><span class="line" id="L138"><a class="ln" aria-label="Line 138" href="#L138">138</a>      ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (tcb_T L (fun z =&gt; gradient (γ L) z i) μ) ∧
+</span><span class="line" id="L139"><a class="ln" aria-label="Line 139" href="#L139">139</a>      ∀ j ≤ m + 1, ∀ x, ‖iteratedFDeriv ℝ j (tcb_T L (fun z =&gt; gradient (γ L) z i) μ) x‖ ≤ b := by
+</span><span class="line" id="L140"><a class="ln" aria-label="Line 140" href="#L140">140</a>    intro i
+</span><span class="line" id="L141"><a class="ln" aria-label="Line 141" href="#L141">141</a>    obtain ⟨h1, h2⟩ := tcb_main (hkc i).1 Bd Bc (m + 1) ℝ μ hμ3 hD hcube
+</span><span class="line" id="L142"><a class="ln" aria-label="Line 142" href="#L142">142</a>    refine ⟨h1, fun j hj x =&gt; (h2 j hj x).trans ?_⟩
+</span><span class="line" id="L143"><a class="ln" aria-label="Line 143" href="#L143">143</a>    rw [hb]
+</span><span class="line" id="L144"><a class="ln" aria-label="Line 144" href="#L144">144</a>    have := mul_le_mul_of_nonneg_right (hkc i).2 hBd0
+</span><span class="line" id="L145"><a class="ln" aria-label="Line 145" href="#L145">145</a>    linarith
+</span><span class="line" id="L146"><a class="ln" aria-label="Line 146" href="#L146">146</a>  -- the vector `F`
+</span><span class="line" id="L147"><a class="ln" aria-label="Line 147" href="#L147">147</a>  set F : Euc d → Euc d := convGradConvL L (gradient (γ L)) μ with hF
+</span><span class="line" id="L148"><a class="ln" aria-label="Line 148" href="#L148">148</a>  have hFc : ∀ x c, F x c = tcb_T L (fun z =&gt; gradient (γ L) z c) μ x := fun x c =&gt;
+</span><span class="line" id="L149"><a class="ln" aria-label="Line 149" href="#L149">149</a>    tcb_conv_coord (gradient (γ L)) (fun i =&gt; (hkc i).1) μ hμ1 Bd Bd hμ0 hμ1b x c
+</span><span class="line" id="L150"><a class="ln" aria-label="Line 150" href="#L150">150</a>  have hFvec : F = fun x =&gt; ∑ i, tcb_T L (fun z =&gt; gradient (γ L) z i) μ x •
+</span><span class="line" id="L151"><a class="ln" aria-label="Line 151" href="#L151">151</a>      (EuclideanSpace.single i (1 : ℝ) : Euc d) := by
+</span><span class="line" id="L152"><a class="ln" aria-label="Line 152" href="#L152">152</a>    funext x
+</span><span class="line" id="L153"><a class="ln" aria-label="Line 153" href="#L153">153</a>    ext c
+</span><span class="line" id="L154"><a class="ln" aria-label="Line 154" href="#L154">154</a>    rw [hFc x c]
+</span><span class="line" id="L155"><a class="ln" aria-label="Line 155" href="#L155">155</a>    simp [Pi.single_apply]
+</span><span class="line" id="L156"><a class="ln" aria-label="Line 156" href="#L156">156</a>  obtain ⟨hFcd, hFb⟩ := tcb_vec_bound (m + 1) (fun i =&gt; tcb_T L (fun z =&gt; gradient (γ L) z i) μ) b
+</span><span class="line" id="L157"><a class="ln" aria-label="Line 157" href="#L157">157</a>    (fun i =&gt; (hTi i).1) (fun i =&gt; (hTi i).2)
+</span><span class="line" id="L158"><a class="ln" aria-label="Line 158" href="#L158">158</a>  rw [← hFvec] at hFcd hFb
+</span><span class="line" id="L159"><a class="ln" aria-label="Line 159" href="#L159">159</a>  -- the matrix
+</span><span class="line" id="L160"><a class="ln" aria-label="Line 160" href="#L160">160</a>  obtain ⟨Tm, hTm, hTmn⟩ := tcb_matVec_clm hd M MB hM
+</span><span class="line" id="L161"><a class="ln" aria-label="Line 161" href="#L161">161</a>  have hTmn&#x27; : ‖Tm‖ ≤ (d : ℝ) ^ 2 * |MB| :=
+</span><span class="line" id="L162"><a class="ln" aria-label="Line 162" href="#L162">162</a>    hTmn.trans (mul_le_mul_of_nonneg_left (le_abs_self MB) (by positivity))
+</span><span class="line" id="L163"><a class="ln" aria-label="Line 163" href="#L163">163</a>  have hdrift : torusDriftL M L (γ L) μ (VL L) = fun x =&gt; Tm (F x) - gradient (VL L) x := by
+</span><span class="line" id="L164"><a class="ln" aria-label="Line 164" href="#L164">164</a>    funext x
+</span><span class="line" id="L165"><a class="ln" aria-label="Line 165" href="#L165">165</a>    show Torus.matVec M (F x) - gradient (VL L) x = Tm (F x) - gradient (VL L) x
+</span><span class="line" id="L166"><a class="ln" aria-label="Line 166" href="#L166">166</a>    rw [hTm]
+</span><span class="line" id="L167"><a class="ln" aria-label="Line 167" href="#L167">167</a>  have hgrad_cd : ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (gradient (VL L)) :=
+</span><span class="line" id="L168"><a class="ln" aria-label="Line 168" href="#L168">168</a>    tcb_grad_contDiff (VL L) m hVsm
+</span><span class="line" id="L169"><a class="ln" aria-label="Line 169" href="#L169">169</a>  have hTF : ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (fun x =&gt; Tm (F x)) :=
+</span><span class="line" id="L170"><a class="ln" aria-label="Line 170" href="#L170">170</a>    Tm.contDiff.comp hFcd
+</span><span class="line" id="L171"><a class="ln" aria-label="Line 171" href="#L171">171</a>  have hTFb : ∀ j ≤ m + 1, ∀ x, ‖iteratedFDeriv ℝ j (fun x =&gt; Tm (F x)) x‖ ≤ P := by
+</span><span class="line" id="L172"><a class="ln" aria-label="Line 172" href="#L172">172</a>    intro j hj x
+</span><span class="line" id="L173"><a class="ln" aria-label="Line 173" href="#L173">173</a>    have h1 := Tm.norm_iteratedFDeriv_comp_left (hFcd.of_le (by exact_mod_cast hj)).contDiffAt
+</span><span class="line" id="L174"><a class="ln" aria-label="Line 174" href="#L174">174</a>      (x := x) (le_refl (j : WithTop ℕ∞))
+</span><span class="line" id="L175"><a class="ln" aria-label="Line 175" href="#L175">175</a>    have h2 := hFb j hj x
+</span><span class="line" id="L176"><a class="ln" aria-label="Line 176" href="#L176">176</a>    calc _ ≤ ‖Tm‖ * ‖iteratedFDeriv ℝ j F x‖ := h1
+</span><span class="line" id="L177"><a class="ln" aria-label="Line 177" href="#L177">177</a>      _ ≤ ((d : ℝ) ^ 2 * |MB|) * (d * b) :=
+</span><span class="line" id="L178"><a class="ln" aria-label="Line 178" href="#L178">178</a>          mul_le_mul hTmn&#x27; h2 (norm_nonneg _) (by positivity)
+</span><span class="line" id="L179"><a class="ln" aria-label="Line 179" href="#L179">179</a>      _ = P := by rw [hP]
+</span><span class="line" id="L180"><a class="ln" aria-label="Line 180" href="#L180">180</a>  rw [hdrift]
+</span><span class="line" id="L181"><a class="ln" aria-label="Line 181" href="#L181">181</a>  refine ⟨hTF.sub hgrad_cd, fun j hj1 hjm x =&gt; ?_, fun x hx =&gt; ?_⟩
+</span><span class="line" id="L182"><a class="ln" aria-label="Line 182" href="#L182">182</a>  · have e : iteratedFDeriv ℝ j (fun x =&gt; Tm (F x) - gradient (VL L) x) x =
+</span><span class="line" id="L183"><a class="ln" aria-label="Line 183" href="#L183">183</a>        iteratedFDeriv ℝ j (fun x =&gt; Tm (F x)) x - iteratedFDeriv ℝ j (gradient (VL L)) x :=
+</span><span class="line" id="L184"><a class="ln" aria-label="Line 184" href="#L184">184</a>      iteratedFDeriv_sub_apply ((hTF.of_le (by exact_mod_cast hjm)).contDiffAt)
+</span><span class="line" id="L185"><a class="ln" aria-label="Line 185" href="#L185">185</a>        ((hgrad_cd.of_le (by exact_mod_cast hjm)).contDiffAt)
+</span><span class="line" id="L186"><a class="ln" aria-label="Line 186" href="#L186">186</a>    rw [e]
+</span><span class="line" id="L187"><a class="ln" aria-label="Line 187" href="#L187">187</a>    refine (norm_sub_le _ _).trans ?_
+</span><span class="line" id="L188"><a class="ln" aria-label="Line 188" href="#L188">188</a>    have h1 := hTFb j hjm x
+</span><span class="line" id="L189"><a class="ln" aria-label="Line 189" href="#L189">189</a>    have h2 : ‖iteratedFDeriv ℝ j (gradient (VL L)) x‖ ≤ Λ&#x27; := by
+</span><span class="line" id="L190"><a class="ln" aria-label="Line 190" href="#L190">190</a>      rw [tcb_grad_iter_norm]
+</span><span class="line" id="L191"><a class="ln" aria-label="Line 191" href="#L191">191</a>      exact hVbd (j + 1) (by omega) (by omega) x
+</span><span class="line" id="L192"><a class="ln" aria-label="Line 192" href="#L192">192</a>    have h3 : Λ&#x27; ≤ |Λ&#x27;| := le_abs_self _
+</span><span class="line" id="L193"><a class="ln" aria-label="Line 193" href="#L193">193</a>    linarith
+</span><span class="line" id="L194"><a class="ln" aria-label="Line 194" href="#L194">194</a>  · refine (norm_sub_le _ _).trans ?_
+</span><span class="line" id="L195"><a class="ln" aria-label="Line 195" href="#L195">195</a>    have h1 : ‖Tm (F x)‖ ≤ P := by
+</span><span class="line" id="L196"><a class="ln" aria-label="Line 196" href="#L196">196</a>      have := hTFb 0 (by omega) x
+</span><span class="line" id="L197"><a class="ln" aria-label="Line 197" href="#L197">197</a>      rwa [norm_iteratedFDeriv_zero] at this
+</span><span class="line" id="L198"><a class="ln" aria-label="Line 198" href="#L198">198</a>    have hx1 : 0 ≤ ‖x‖ := norm_nonneg x
+</span><span class="line" id="L199"><a class="ln" aria-label="Line 199" href="#L199">199</a>    -- the gradient of `V_L` on the central cube
+</span><span class="line" id="L200"><a class="ln" aria-label="Line 200" href="#L200">200</a>    have hV2 : ∀ x : Euc d, ‖iteratedFDeriv ℝ 2 V x‖ ≤ ΛV := fun x =&gt; hV.2.1 2 le_rfl (by omega) x
+</span><span class="line" id="L201"><a class="ln" aria-label="Line 201" href="#L201">201</a>    have hV3 : ‖gradient V 0‖ ≤ G₀ := hV.2.2
+</span><span class="line" id="L202"><a class="ln" aria-label="Line 202" href="#L202">202</a>    have hΛ0 : 0 ≤ ΛV := (norm_nonneg _).trans (hV2 0)
+</span><span class="line" id="L203"><a class="ln" aria-label="Line 203" href="#L203">203</a>    have hG0 : 0 ≤ G₀ := (norm_nonneg _).trans hV3
+</span><span class="line" id="L204"><a class="ln" aria-label="Line 204" href="#L204">204</a>    have hV0₀ : 0 ≤ V₀ := (abs_nonneg _).trans hV0
+</span><span class="line" id="L205"><a class="ln" aria-label="Line 205" href="#L205">205</a>    have hMabs : V₀ + G₀ + ΛV ≤ MV := by
+</span><span class="line" id="L206"><a class="ln" aria-label="Line 206" href="#L206">206</a>      rw [hMV]; linarith [le_abs_self V₀, le_abs_self G₀, le_abs_self ΛV]
+</span><span class="line" id="L207"><a class="ln" aria-label="Line 207" href="#L207">207</a>    have hvanV : ∀ y : Euc d, L / 3 ≤ ‖y‖ → ζ (L⁻¹ • y) * V y = 0 := fun y hy =&gt; by
+</span><span class="line" id="L208"><a class="ln" aria-label="Line 208" href="#L208">208</a>      rw [tca_zeta_far_val hζ L hL0 y hy, zero_mul]
+</span><span class="line" id="L209"><a class="ln" aria-label="Line 209" href="#L209">209</a>    have h2 : ‖gradient (VL L) x‖ ≤ CV * (1 + ‖x‖) := by
+</span><span class="line" id="L210"><a class="ln" aria-label="Line 210" href="#L210">210</a>      have e1 : ‖gradient (VL L) x‖ = ‖iteratedFDeriv ℝ 1 (VL L) x‖ := tcb_norm_gradient _ _
+</span><span class="line" id="L211"><a class="ln" aria-label="Line 211" href="#L211">211</a>      have e2 : iteratedFDeriv ℝ 1 (VL L) x =
+</span><span class="line" id="L212"><a class="ln" aria-label="Line 212" href="#L212">212</a>          iteratedFDeriv ℝ 1 (fun x =&gt; ζ (L⁻¹ • x) * V x) x := by
+</span><span class="line" id="L213"><a class="ln" aria-label="Line 213" href="#L213">213</a>        rw [hVdef]
+</span><span class="line" id="L214"><a class="ln" aria-label="Line 214" href="#L214">214</a>        exact tca_perL_central L hL0 (fun x =&gt; ζ (L⁻¹ • x) * V x) hvanV x hx 1
+</span><span class="line" id="L215"><a class="ln" aria-label="Line 215" href="#L215">215</a>      have e3 := tcb_VL_grad_central hζ L hL1 V hV.1 ΛV G₀ V₀ hΛ0 hG0 hV0₀ hV2 hV3 hV0 K hK hK0 MV
+</span><span class="line" id="L216"><a class="ln" aria-label="Line 216" href="#L216">216</a>        hMabs x
+</span><span class="line" id="L217"><a class="ln" aria-label="Line 217" href="#L217">217</a>      rw [e1, e2]
+</span><span class="line" id="L218"><a class="ln" aria-label="Line 218" href="#L218">218</a>      exact e3
+</span><span class="line" id="L219"><a class="ln" aria-label="Line 219" href="#L219">219</a>    have h3 : |Λ&#x27;| ≥ 0 := abs_nonneg _
+</span><span class="line" id="L220"><a class="ln" aria-label="Line 220" href="#L220">220</a>    have h4 : P ≤ P * (1 + ‖x‖) := le_mul_of_one_le_right hP0 (by linarith)
+</span><span class="line" id="L221"><a class="ln" aria-label="Line 221" href="#L221">221</a>    have h5 : 0 ≤ |Λ&#x27;| * (1 + ‖x‖) := mul_nonneg h3 (by linarith)
+</span><span class="line" id="L222"><a class="ln" aria-label="Line 222" href="#L222">222</a>    have h6 : (P + |Λ&#x27;| + CV) * (1 + ‖x‖) =
+</span><span class="line" id="L223"><a class="ln" aria-label="Line 223" href="#L223">223</a>        P * (1 + ‖x‖) + |Λ&#x27;| * (1 + ‖x‖) + CV * (1 + ‖x‖) := by ring
+</span><span class="line" id="L224"><a class="ln" aria-label="Line 224" href="#L224">224</a>    rw [h6]
+</span><span class="line" id="L225"><a class="ln" aria-label="Line 225" href="#L225">225</a>    linarith [h1, h2, h4, h5]
+</span><span class="line" id="L226"><a class="ln" aria-label="Line 226" href="#L226">226</a>
+</span><span class="line" id="L227"><a class="ln" aria-label="Line 227" href="#L227">227</a>/-- The frozen statement `HRS.Whole.AppendixALemmas.expanding_tori_coefficients`, assembled from part A
+</span><span class="line" id="L228"><a class="ln" aria-label="Line 228" href="#L228">228</a>(conjuncts 1-3) and part B (conjuncts 4-6). -/
+</span><span class="line" id="L229"><a class="ln" aria-label="Line 229" href="#L229">229</a>theorem expanding_tori_coefficients_proof (hd : 1 ≤ d) (s : ℝ) (hs0 : 0 ≤ s) (hsd : s &lt; d) (m : ℕ)
+</span><span class="line" id="L230"><a class="ln" aria-label="Line 230" href="#L230">230</a>    (T Λ ΛV MB G₀ V₀ : ℝ) (ζ : Euc d → ℝ) (hζ : IsCutoffRad (1 / 4) (1 / 3) ζ) :
+</span><span class="line" id="L231"><a class="ln" aria-label="Line 231" href="#L231">231</a>    ∃ Λ&#x27; C L₀ : ℝ, ∀ (M : Matrix (Fin d) (Fin d) ℝ) (V : Euc d → ℝ) (ρ : ℝ → Euc d → ℝ),
+</span><span class="line" id="L232"><a class="ln" aria-label="Line 232" href="#L232">232</a>      PDE.MatBound MB M → VHypRd (m + 3) ΛV G₀ V → |V 0| ≤ V₀ → CoeffHypRd s m Λ T ρ →
+</span><span class="line" id="L233"><a class="ln" aria-label="Line 233" href="#L233">233</a>      ∀ γ : ℝ → Euc d → ℝ, (∀ L : ℝ, 1 ≤ L → IsPeriodicRieszKernel d s L (γ L)) →
+</span><span class="line" id="L234"><a class="ln" aria-label="Line 234" href="#L234">234</a>      let μL : ℝ → ℝ → Euc d → ℝ := fun L t =&gt;
+</span><span class="line" id="L235"><a class="ln" aria-label="Line 235" href="#L235">235</a>        perL L fun x =&gt; (∫ y, ζ (L⁻¹ • y) * ρ t y)⁻¹ * (ζ (L⁻¹ • x) * ρ t x)
+</span><span class="line" id="L236"><a class="ln" aria-label="Line 236" href="#L236">236</a>      let VL : ℝ → Euc d → ℝ := fun L =&gt; perL L fun x =&gt; ζ (L⁻¹ • x) * V x
+</span><span class="line" id="L237"><a class="ln" aria-label="Line 237" href="#L237">237</a>      ∀ L : ℝ, max 1 L₀ ≤ L → ∀ t ∈ Set.Icc (0 : ℝ) T,
+</span><span class="line" id="L238"><a class="ln" aria-label="Line 238" href="#L238">238</a>        (0 &lt; ∫ y, ζ (L⁻¹ • y) * ρ t y) ∧
+</span><span class="line" id="L239"><a class="ln" aria-label="Line 239" href="#L239">239</a>        (ContDiff ℝ ((m + 3 : ℕ) : WithTop ℕ∞) (μL L t) ∧ MemCb (m + 3) (μL L t) ∧
+</span><span class="line" id="L240"><a class="ln" aria-label="Line 240" href="#L240">240</a>          cbNorm (m + 3) (μL L t) ≤ Λ&#x27; ∧
+</span><span class="line" id="L241"><a class="ln" aria-label="Line 241" href="#L241">241</a>          ∀ j ≤ m + 3, ∀ x : Euc d, ‖x‖ ≤ L / 2 →
+</span><span class="line" id="L242"><a class="ln" aria-label="Line 242" href="#L242">242</a>            jbracket x ^ ((d : ℝ) + 3) * ‖iteratedFDeriv ℝ j (μL L t) x‖ ≤ Λ&#x27;) ∧
+</span><span class="line" id="L243"><a class="ln" aria-label="Line 243" href="#L243">243</a>        (ContDiff ℝ ∞ (VL L) ∧
+</span><span class="line" id="L244"><a class="ln" aria-label="Line 244" href="#L244">244</a>          ∀ j : ℕ, 2 ≤ j → j ≤ m + 3 → ∀ x : Euc d, ‖iteratedFDeriv ℝ j (VL L) x‖ ≤ Λ&#x27;) ∧
+</span><span class="line" id="L245"><a class="ln" aria-label="Line 245" href="#L245">245</a>        ContDiff ℝ ((m + 1 : ℕ) : WithTop ℕ∞) (torusDriftL M L (γ L) (μL L t) (VL L)) ∧
+</span><span class="line" id="L246"><a class="ln" aria-label="Line 246" href="#L246">246</a>        (∀ j : ℕ, 1 ≤ j → j ≤ m + 1 → ∀ x : Euc d,
+</span><span class="line" id="L247"><a class="ln" aria-label="Line 247" href="#L247">247</a>          ‖iteratedFDeriv ℝ j (torusDriftL M L (γ L) (μL L t) (VL L)) x‖ ≤ C) ∧
+</span><span class="line" id="L248"><a class="ln" aria-label="Line 248" href="#L248">248</a>        (∀ x : Euc d, ‖x‖ ≤ L / 2 →
+</span><span class="line" id="L249"><a class="ln" aria-label="Line 249" href="#L249">249</a>          ‖torusDriftL M L (γ L) (μL L t) (VL L) x‖ ≤ C * (1 + ‖x‖)) := by
+</span><span class="line" id="L250"><a class="ln" aria-label="Line 250" href="#L250">250</a>  obtain ⟨Λ&#x27;, L₁, hA⟩ :=
+</span><span class="line" id="L251"><a class="ln" aria-label="Line 251" href="#L251">251</a>    HRS.MS.ToriCoefA.expanding_tori_coefficients_A_proof hd s hs0 hsd m T Λ ΛV MB G₀ V₀ ζ hζ
+</span><span class="line" id="L252"><a class="ln" aria-label="Line 252" href="#L252">252</a>  obtain ⟨C, L₂, hB⟩ := expanding_tori_coefficients_B_proof hd s hs0 hsd m T Λ ΛV MB G₀ V₀ ζ hζ
+</span><span class="line" id="L253"><a class="ln" aria-label="Line 253" href="#L253">253</a>  refine ⟨Λ&#x27;, C, max L₁ L₂, ?_⟩
+</span><span class="line" id="L254"><a class="ln" aria-label="Line 254" href="#L254">254</a>  intro M V ρ hM hV hV0 hρ γ hγ μL VL L hL t ht
+</span><span class="line" id="L255"><a class="ln" aria-label="Line 255" href="#L255">255</a>  have hLA : max 1 L₁ ≤ L :=
+</span><span class="line" id="L256"><a class="ln" aria-label="Line 256" href="#L256">256</a>    max_le (le_trans (le_max_left _ _) hL)
+</span><span class="line" id="L257"><a class="ln" aria-label="Line 257" href="#L257">257</a>      (le_trans (le_max_left L₁ L₂) (le_trans (le_max_right _ _) hL))
+</span><span class="line" id="L258"><a class="ln" aria-label="Line 258" href="#L258">258</a>  have hLB : max 1 L₂ ≤ L :=
+</span><span class="line" id="L259"><a class="ln" aria-label="Line 259" href="#L259">259</a>    max_le (le_trans (le_max_left _ _) hL)
+</span><span class="line" id="L260"><a class="ln" aria-label="Line 260" href="#L260">260</a>      (le_trans (le_max_right L₁ L₂) (le_trans (le_max_right _ _) hL))
+</span><span class="line" id="L261"><a class="ln" aria-label="Line 261" href="#L261">261</a>  obtain ⟨h1, h2, h3⟩ := hA M V ρ hM hV hV0 hρ γ hγ L hLA t ht
+</span><span class="line" id="L262"><a class="ln" aria-label="Line 262" href="#L262">262</a>  obtain ⟨h4, h5, h6⟩ := hB M V ρ hM hV hV0 hρ γ hγ L hLB t ht
+</span><span class="line" id="L263"><a class="ln" aria-label="Line 263" href="#L263">263</a>  exact ⟨h1, h2, h3, h4, h5, h6⟩
+</span><span class="line" id="L264"><a class="ln" aria-label="Line 264" href="#L264">264</a>
+</span><span class="line" id="L265"><a class="ln" aria-label="Line 265" href="#L265">265</a>example := (@expanding_tori_coefficients_proof :
+</span><span class="line" id="L266"><a class="ln" aria-label="Line 266" href="#L266">266</a>  type_of% @HRS.Whole.AppendixALemmas.expanding_tori_coefficients)
+</span><span class="line" id="L267"><a class="ln" aria-label="Line 267" href="#L267">267</a>
+</span><span class="line" id="L268"><a class="ln" aria-label="Line 268" href="#L268">268</a>end HRS.MS.ToriCoefB
+</span></code></pre></main></body></html>
