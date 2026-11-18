@@ -7,7 +7,7 @@ These 31 Lean modules contain the proofs of covariance and cubic-tensor relaxati
 | `r2_tensor_relaxation` | `fp81v01_tensor_relaxation` |
 | `r2_two_parameter_edgeworth` | `fp81v01_two_parameter_edgeworth` |
 
-Both proved terms are in [the final module](HRS/MS/Fp81V01Final.lean). The [type check](ExactTypes.lean) uses the full type of each frozen statement. The frozen [base package](../lean/) is unchanged.
+Both proved terms are in [the final module](HRS/MS/Fp81V01Final.lean). The [type check](ExactTypes.lean) uses the full type of each frozen statement. The 48 direct retained-module source inputs in this [base package](../lean/) are unchanged from the scoped check; see the [current-source note](../lean/CURRENT_SOURCE_CHANGES.md).
 
 ## Reproduce the scoped check
 

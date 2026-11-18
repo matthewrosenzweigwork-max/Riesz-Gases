@@ -12,7 +12,7 @@ Statements only (`sorry` proofs); packet SPEC-D, part D.  Source: `HRS_periodic_
 * Lemma D.3 `M:B:lem:fdl-kernel` (L12403-12427): `fdl_kernel_euclid`, `fdl_kernel_torus`;
 * Lemma D.4 `M:B:lem:fdl-compare` (L12435-12442): `fdl_compare`, `fdl_compare_reverse_false`;
 * Lemma D.5 `M:B:lem:fdl-ito` (L12452-12457): `fdl_ito`;
-* Lemma D.6 `M:B:lem:fdl-commutator` (L12473-12475): `fdl_commutator`;
+
 * Remark D.7 `M:B:rem:fdl-scope` (L12477-12479): `fdl_scope`.
 
 ## Representation decisions (to be checked by the orchestrator)
@@ -367,28 +367,28 @@ theorem fdl_ito (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s < d) {ψ : Euc
           ≤ C * Λ ^ ((s + 2) / d) * (N : ℝ) ^ ((s + 2) / d - 1) := by
   sorry
 
-/-! ### Lemma D.6: the truncated commutator estimate -/
 
-/-- Lemma D.6 (`M:B:lem:fdl-commutator`, TeX M L12473-12475; Hess-Childs-Rosenzweig, Cor. 3.2):
-`|∬_{𝔻²∖△} (u(x) - u(y)) · ∇g_η(x - y) d(μ_N - μ)^{⊗2}| ≤ C 𝒱(u) (F_{N,η} + o_N)`
-(`B:eq:fdl-commutator`) for all pairwise distinct `X_N`, admissible `μ` with `‖μ‖_∞ ≤ Λ`,
-`η ∈ [λ, 1)`, `λ = (NΛ)^{-1/d} < 1/2`, and Lipschitz `u`, where `𝒱(u)` is the transport seminorm of
-Proposition 3.32 "according to the case" (`HasTransportBound d s u K`: `‖u‖_* ≤ K`, which contains the
-fractional term exactly when `s < d - 2`).  The integral is `commQuantityWith (∇g_η) u X μ`
-(`Torus.grad (fdlTruncT ...)`); `C₀, C` depend only on `d, s, φ`.
-Technical hypotheses: `2 ≤ N` (the range of Proposition 3.32, `commutator_estimate`, from which D.6 is
-derived; the TeX states none), `1 ≤ Λ`. -/
-theorem fdl_commutator (hd : 1 ≤ d) {s : ℝ} (hs0 : 0 ≤ s) (hsd : s < d) {ψ : Euc d → ℝ}
-    (hψ : IsFDLProfile ψ) {b : ℝ} (hb : IsFDLConst ψ s b) :
-    ∃ C₀ C : ℝ, 0 ≤ C₀ ∧ 0 < C ∧
-      ∀ Λ : ℝ, 1 ≤ Λ → ∀ N : ℕ, 2 ≤ N → smearScale d N Λ < 1 / 2 →
-      ∀ ρ : Torus d → ℝ, IsProbDensity ρ → (∀ x, ρ x ≤ Λ) →
-      ∀ X : Config d N, X ∉ collisionSet d N →
-      ∀ (u : Torus d → Euc d) (K : ℝ), HasTransportBound d s u K →
-      ∀ η : ℝ, smearScale d N Λ ≤ η → η < 1 →
-        |commQuantityWith (Torus.grad (fdlTruncT ψ s b η)) u X (withDensityReal ρ)| ≤
-          C * K * (fdlEnergy ψ s b η X (withDensityReal ρ) + oNΛ d s C₀ Λ N) := by
-  sorry
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /-! ### Remark D.7: scope -/
 
